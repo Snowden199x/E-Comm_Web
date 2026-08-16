@@ -12,9 +12,9 @@ class AdminSeeder extends Seeder
     {
         $admins = [
             [
-                'name' => 'Admin',
-                'email' => 'vendoapp.official@gmail.com',
-                'password' => '@vendoadmin2026',
+                'name' => 'Snow Admin',
+                'email' => env('ADMIN_EMAIL'),
+                'password' => env('ADMIN_PASSWORD'),
             ],
         ];
 
