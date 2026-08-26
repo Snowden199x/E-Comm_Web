@@ -116,25 +116,21 @@
 
                 <!-- Recent Registrations + Recent Complaints (placeholder for now) -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="bg-white rounded-2xl p-5 shadow-sm overflow-x-auto">
-                        <div class="flex items-center justify-between mb-4">
+                    <div class="bg-white rounded-2xl p-5 shadow-sm overflow-x-auto" x-data="{ openId: null, rejectId: null }">
+                        <div class="flex items-center justify-between mb-2">
                             <h3 class="font-bold text-gray-900">Recent Registrations</h3>
-                            <a href="#" class="text-sm text-[#3b1735] font-medium hover:underline">View All</a>
+                            <a href="{{ route('registrations.index') }}"
+                                class="text-sm text-[#3b1735] font-medium hover:underline">View All</a>
                         </div>
-
-                        @if (session('success'))
-                            <div class="mb-3 text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg">
-                                {{ session('success') }}</div>
-                        @endif
 
                         <table class="w-full text-sm">
                             <thead>
                                 <tr class="text-left text-gray-500 border-b">
-                                    <th class="pb-2 font-medium">Name</th>
-                                    <th class="pb-2 font-medium">Type</th>
-                                    <th class="pb-2 font-medium">Date</th>
-                                    <th class="pb-2 font-medium">Status</th>
-                                    <th class="pb-2 font-medium">Action</th>
+                                    <th class="py-2 font-medium">Name</th>
+                                    <th class="py-2 font-medium">Type</th>
+                                    <th class="py-2 font-medium">Date</th>
+                                    <th class="py-2 font-medium">Status</th>
+                                    <th class="py-2 font-medium">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -155,7 +151,8 @@
                                         </td>
                                         <td class="py-3">
                                             <div class="flex items-center gap-3">
-                                                <button type="button" title="View Details">
+                                                <button type="button" @click="openId = {{ $reg->id }}"
+                                                    title="View Details">
                                                     <img src="{{ asset('assets/icons/dashboard/see-password.svg') }}"
                                                         alt="View" class="w-4 h-4 opacity-60 hover:opacity-100">
                                                 </button>
@@ -166,18 +163,15 @@
                                                         @csrf
                                                         <button type="submit"
                                                             class="text-green-600 hover:text-green-800 font-bold"
-                                                            title="Approve">
-                                                            ✓
-                                                        </button>
+                                                            title="Approve">✓</button>
                                                     </form>
                                                     <form method="POST"
                                                         action="{{ route('registrations.disapprove', $reg) }}">
                                                         @csrf
-                                                        <button type="submit"
+                                                        <button type="button"
+                                                            @click="rejectId = {{ $reg->id }}"
                                                             class="text-red-600 hover:text-red-800 font-bold"
-                                                            title="Disapprove">
-                                                            ✕
-                                                        </button>
+                                                            title="Disapprove">✕</button>
                                                     </form>
                                                 @else
                                                     <span class="text-gray-400">—</span>
@@ -193,6 +187,30 @@
                                 @endforelse
                             </tbody>
                         </table>
+
+                        <!-- View Modals -->
+                        @foreach ($recentRegistrations as $reg)
+                            <div x-show="openId === {{ $reg->id }}" x-cloak
+                                class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 overflow-y-auto"
+                                @click.self="openId = null">
+                                <div class="bg-white rounded-2xl p-6 w-full max-w-5xl my-8" @click.stop>
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h3 class="font-bold text-lg text-gray-900">Applicant Details</h3>
+                                        <button type="button" @click="openId = null"
+                                            class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+                                    </div>
+
+                                    @include('registrations.partials.applicant-details', ['user' => $reg])
+                                </div>
+                            </div>
+                        @endforeach
+                        @foreach ($recentRegistrations as $reg)
+                            @include('registrations.partials.reject-modal', [
+                                'user' => $reg,
+                                'showExpr' => "rejectId === {$reg->id}",
+                                'closeExpr' => 'rejectId = null',
+                            ])
+                        @endforeach
                     </div>
                     <div class="bg-white rounded-2xl p-5 shadow-sm overflow-x-auto">
                         <div class="flex items-center justify-between mb-4">
@@ -280,13 +298,6 @@
                             <span class="text-sm text-gray-600 flex-1">Sellers</span>
                             <span
                                 class="text-sm font-semibold text-gray-900">{{ $pendingRegistrations['sellers'] }}</span>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <img src="{{ asset('assets/icons/dashboard/couriers-registrations.svg') }}"
-                                alt="" class="w-5 h-5">
-                            <span class="text-sm text-gray-600 flex-1">Couriers</span>
-                            <span
-                                class="text-sm font-semibold text-gray-900">{{ $pendingRegistrations['couriers'] }}</span>
                         </div>
                         <div class="flex items-center gap-3">
                             <img src="{{ asset('assets/icons/dashboard/buyers-registrations.svg') }}" alt=""

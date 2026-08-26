@@ -54,20 +54,20 @@ class DashboardController extends Controller
         // Pending Registrations count per role
         $pendingRegistrations = [
             'sellers' => User::where('role', 'seller')->where('status', 'pending')->count(),
-            'couriers' => User::where('role', 'courier')->where('status', 'pending')->count(),
             'buyers' => User::where('role', 'buyer')->where('status', 'pending')->count(),
         ];
 
         // Latest Notifications
         $notifications = Notification::latest()->take(5)->get();
 
-        // Recent Registrations (latest 5, any status)
-        $recentRegistrations = User::whereIn('role', ['seller', 'courier', 'buyer'])
+        // Recent Registrations
+        $recentRegistrations = User::with(['sellerDetail', 'buyerDetail', 'categories'])
+            ->whereIn('role', ['seller', 'buyer'])
             ->latest()
             ->take(5)
             ->get();
 
-        // Recent Complaints (latest 5)
+        // Recent Complaints
         $recentComplaints = Complaint::with(['order', 'complainant', 'respondent'])
             ->latest()
             ->take(5)

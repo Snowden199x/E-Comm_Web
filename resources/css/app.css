@@ -5,3 +5,6 @@
 [x-cloak] {
     display: none;
 }
+.icon-purple {
+    filter: invert(11%) sepia(28%) saturate(2500%) hue-rotate(270deg) brightness(75%) contrast(95%);
+}
