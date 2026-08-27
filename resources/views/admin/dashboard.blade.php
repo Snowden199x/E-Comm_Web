@@ -200,12 +200,12 @@
                                             class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
                                     </div>
 
-                                    @include('registrations.partials.applicant-details', ['user' => $reg])
+                                    @include('admin.registrations.partials.applicant-details', ['user' => $reg])
                                 </div>
                             </div>
                         @endforeach
                         @foreach ($recentRegistrations as $reg)
-                            @include('registrations.partials.reject-modal', [
+                            @include('admin.registrations.partials.reject-modal', [
                                 'user' => $reg,
                                 'showExpr' => "rejectId === {$reg->id}",
                                 'closeExpr' => 'rejectId = null',

@@ -1,0 +1,1 @@
+<h1>Logistics Dashboard - Coming Soon</h1>

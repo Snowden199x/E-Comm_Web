@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,14 +42,14 @@ class RegistrationController extends Controller
             'pending_buyers' => User::where('role', 'buyer')->where('status', 'pending')->count(),
         ];
 
-        return view('registrations.index', compact('registrations', 'stats'));
+        return view('admin.registrations.index', compact('registrations', 'stats'));
     }
 
     public function show(User $user): View
     {
         $user->load(['sellerDetail', 'courierDetail', 'categories', 'buyerDetail']);
 
-        return view('registrations.show', compact('user'));
+        return view('admin.registrations.show', compact('user'));
     }
 
     public function approve(User $user): RedirectResponse
