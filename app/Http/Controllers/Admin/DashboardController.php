@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\User;
@@ -76,7 +77,7 @@ class DashboardController extends Controller
         // Latest active announcement
         $announcement = Announcement::where('is_active', true)->latest()->first();
 
-        return view('dashboard', compact(
+        return view('admin.dashboard', compact(
             'stats',
             'salesSummary',
             'chartData',

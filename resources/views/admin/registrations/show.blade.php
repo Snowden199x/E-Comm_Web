@@ -6,7 +6,7 @@
             <a href="{{ route('registrations.index') }}" class="text-sm text-[#3b1735] hover:underline">&lt; Back to Registrations</a>
         </div>
 
-        @include('registrations.partials.applicant-details', ['user' => $user])
+        @include('admin.registrations.partials.applicant-details', ['user' => $user])
 
         @if ($user->status === 'pending')
             <div class="flex justify-end gap-3 mt-6">
@@ -23,8 +23,8 @@
             </div>
         @endif
 
-        @include('registrations.partials.reject-modal', ['user' => $user])
-        @include('registrations.partials.confirmation-modal')
+        @include('admin.registrations.partials.reject-modal', ['user' => $user])
+        @include('admin.registrations.partials.confirmation-modal')
 
     </div>
 </x-admin-layout>

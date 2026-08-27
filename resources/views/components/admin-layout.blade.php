@@ -14,7 +14,7 @@
         <!-- Sidebar (fixed drawer on mobile, static column on desktop) -->
         <div x-cloak :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
             class="fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:z-auto">
-            @include('layouts.partials.sidebar')
+            @include('admin.partials.sidebar')
         </div>
 
         <!-- Mobile backdrop overlay -->
