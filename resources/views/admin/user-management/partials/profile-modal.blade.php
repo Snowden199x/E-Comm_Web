@@ -96,7 +96,8 @@
                                 class="font-medium text-gray-900">{{ $user->suspended_until->format('F j, Y') }}</span>
                         </div>
                         <div class="flex justify-between"><span class="text-gray-500">Duration:</span><span
-                                class="font-medium text-gray-900">7 Days</span></div>
+                                class="font-medium text-gray-900">{{ is_null($user->suspended_until) ? 'Permanent' : 'Until ' . $user->suspended_until->format('F j, Y') }}</span>
+                        </div>
                     </div>
                 @endif
 
@@ -114,8 +115,10 @@
                             </button>
                         </div>
                     @elseif ($user->status === 'suspended')
-                        <p class="text-sm text-red-600 text-center mb-3"
-                            x-data="{
+                        @if (is_null($user->suspended_until))
+                            <p class="text-sm text-red-600 text-center mb-3 font-semibold">Permanently Suspended</p>
+                        @else
+                            <p class="text-sm text-red-600 text-center mb-3" x-data="{
                                 endTime: new Date('{{ $user->suspended_until->toIso8601String() }}').getTime(),
                                 display: '',
                                 tick() {
@@ -128,9 +131,11 @@
                                     this.display = `${d}d ${h}h ${m}m ${s}s`;
                                 }
                             }"
-                            x-init="tick(); setInterval(() => tick(), 1000)">
-                            Suspended for <span x-text="display"></span>
-                        </p>
+                                x-init="tick();
+                                setInterval(() => tick(), 1000)">
+                                Suspended for <span x-text="display"></span>
+                            </p>
+                        @endif
                         <button type="button" @click="activateId = {{ $user->id }}"
                             class="w-full px-4 py-2 rounded-lg border border-green-300 text-green-700 text-sm font-medium hover:bg-green-50">
                             Activate
