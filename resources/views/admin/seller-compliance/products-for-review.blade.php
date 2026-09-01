@@ -9,10 +9,30 @@
 
         @include('admin.seller-compliance.partials.stat-cards', [
             'cards' => [
-                ['label' => 'For Review', 'value' => $stats['for_review'], 'icon' => 'product-approved-element.svg', 'color' => 'green'],
-                ['label' => 'Warning Issued', 'value' => $stats['warnings_issued'], 'icon' => 'warning-issued-element.svg', 'color' => 'orange'],
-                ['label' => 'Violations (Rejected)', 'value' => $stats['violations'], 'icon' => 'product-rejected-element.svg', 'color' => 'red'],
-                ['label' => 'Suspended Sellers', 'value' => $stats['suspended_sellers'], 'icon' => 'suspended-sellers-icon.svg', 'color' => 'purple'],
+                [
+                    'label' => 'For Review',
+                    'value' => $stats['for_review'],
+                    'icon' => 'product-approved-element.svg',
+                    'color' => 'green',
+                ],
+                [
+                    'label' => 'Warning Issued',
+                    'value' => $stats['warnings_issued'],
+                    'icon' => 'warning-issued-element.svg',
+                    'color' => 'orange',
+                ],
+                [
+                    'label' => 'Violations (Rejected)',
+                    'value' => $stats['violations'],
+                    'icon' => 'product-rejected-element.svg',
+                    'color' => 'red',
+                ],
+                [
+                    'label' => 'Suspended Sellers',
+                    'value' => $stats['suspended_sellers'],
+                    'icon' => 'suspended-sellers-icon.svg',
+                    'color' => 'purple',
+                ],
             ],
         ])
 
@@ -38,13 +58,24 @@
                         placeholder="Search seller name or email..."
                         class="w-full pl-10 pr-4 py-2.5 rounded-full border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]">
                 </div>
-                <select x-model="categoryId" @change="search"
-                    class="px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]">
-                    <option value="">All Categories</option>
-                    @foreach ($categories as $cat)
-                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                    @endforeach
-                </select>
+                <div class="relative" x-data="{ catOpen: false, categoryName: 'All Categories' }" @click.outside="catOpen = false">
+                    <button type="button" @click="catOpen = !catOpen"
+                        class="px-3 py-2.5 rounded-lg border border-gray-200 text-sm flex items-center gap-2 min-w-[180px] justify-between focus:outline-none focus:ring-2 focus:ring-[#3b1735]">
+                        <span x-text="categoryName"></span>
+                        <span class="text-gray-400">&#9662;</span>
+                    </button>
+                    <div x-show="catOpen" x-cloak
+                        class="absolute z-10 mt-1 w-full bg-white rounded-lg border border-gray-100 shadow-lg max-h-[224px] overflow-y-auto">
+                        <button type="button"
+                            @click="categoryId = ''; categoryName = 'All Categories'; catOpen = false; search()"
+                            class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm">All Categories</button>
+                        @foreach ($categories as $cat)
+                            <button type="button"
+                                @click="categoryId = '{{ $cat->id }}'; categoryName = '{{ $cat->name }}'; catOpen = false; search()"
+                                class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm">{{ $cat->name }}</button>
+                        @endforeach
+                    </div>
+                </div>
             </div>
 
             <div id="products-table-wrap">

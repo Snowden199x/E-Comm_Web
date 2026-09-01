@@ -50,10 +50,9 @@
                     <p class="font-semibold">{{ $product->stock }} pieces</p>
                 </div>
                 <div><span class="text-gray-500 text-xs">Category</span><br>
-                    @if ($product->category)
-                        <span
-                            class="px-2 py-0.5 rounded-full bg-pink-50 text-pink-700 text-xs font-medium">{{ $product->category->name }}</span>
-                    @endif
+                    @include('admin.seller-compliance.partials.category-badge', [
+                        'category' => $product->category,
+                    ])
                 </div>
                 <div><span class="text-gray-500 text-xs">Submitted</span>
                     <p class="font-semibold">{{ $product->created_at->format('M d, Y g:i A') }}</p>
