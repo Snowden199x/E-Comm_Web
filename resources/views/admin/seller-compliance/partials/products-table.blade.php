@@ -33,10 +33,9 @@
                             class="text-xs text-gray-400">{{ $product->seller->sellerDetail->business_name ?? '' }}</span>
                     </td>
                     <td class="py-3">
-                        @if ($product->category)
-                            <span
-                                class="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">{{ $product->category->name }}</span>
-                        @endif
+                        @include('admin.seller-compliance.partials.category-badge', [
+                            'category' => $product->category,
+                        ])
                     </td>
                     <td class="py-3 text-gray-600">{{ $product->created_at->format('M d, Y g:i A') }}</td>
                     <td class="py-3">

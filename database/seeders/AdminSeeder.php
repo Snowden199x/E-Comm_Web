@@ -12,7 +12,7 @@ class AdminSeeder extends Seeder
     {
         $admins = [
             [
-                'name' => 'Snow Admin',
+                'name' => 'Admin',
                 'email' => env('ADMIN_EMAIL'),
                 'password' => env('ADMIN_PASSWORD'),
             ],

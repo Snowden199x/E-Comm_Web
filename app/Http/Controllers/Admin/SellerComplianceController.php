@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Illuminate\Database\Eloquent\Builder;
 
 class SellerComplianceController extends Controller
 {
@@ -134,6 +135,8 @@ class SellerComplianceController extends Controller
             'details' => $request->details,
         ]);
 
+        $product->update(['status' => 'warned']);
+
         $seller = $product->seller;
 
         if ($seller->productWarnings()->count() % 3 === 0) {
@@ -150,7 +153,7 @@ class SellerComplianceController extends Controller
         return back()->with('confirmation', 'warning_issued');
     }
 
-        private function escalateSuspension(User $seller): void
+    private function escalateSuspension(User $seller): void
     {
         $count = $seller->productViolations()->count();
 
@@ -215,22 +218,9 @@ class SellerComplianceController extends Controller
             $query->whereHas('seller', fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
         }
 
+        $this->applyDateFilter($query, $request);
+
         return $query->latest()->paginate(8)->withQueryString();
-    }
-
-    public function violations(Request $request): View
-    {
-        $violations = $this->filteredViolations($request);
-        $stats = $this->complianceStats();
-
-        return view('admin.seller-compliance.violations', compact('violations', 'stats'));
-    }
-
-    public function violationsTable(Request $request): View
-    {
-        $violations = $this->filteredViolations($request);
-
-        return view('admin.seller-compliance.partials.violations-table', compact('violations'));
     }
 
     private function filteredViolations(Request $request)
@@ -242,9 +232,39 @@ class SellerComplianceController extends Controller
             $query->whereHas('seller', fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
         }
 
+        $this->applyDateFilter($query, $request);
+
         return $query->latest()->paginate(8)->withQueryString();
     }
 
+    private function applyDateFilter(Builder $query, Request $request): void
+    {
+        $filter = $request->get('date_filter', 'all');
+
+        match ($filter) {
+            'today' => $query->whereDate('created_at', now()->toDateString()),
+            'week' => $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]),
+            'month' => $query->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()]),
+            'custom' => $request->filled('custom_date') ? $query->whereDate('created_at', $request->custom_date) : null,
+            default => null,
+        };
+    }
+
+    public function violationsTable(Request $request): View
+    {
+        $violations = $this->filteredViolations($request);
+
+        return view('admin.seller-compliance.partials.violations-table', compact('violations'));
+    }
+
+    public function violations(Request $request): View
+    {
+        $violations = $this->filteredViolations($request);
+        $stats = $this->complianceStats();
+
+        return view('admin.seller-compliance.violations', compact('violations', 'stats'));
+    }
+    
     public function suspendedSellers(Request $request): View
     {
         $sellers = $this->filteredSuspendedSellers($request);
