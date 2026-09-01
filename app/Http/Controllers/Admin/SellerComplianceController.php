@@ -115,6 +115,8 @@ class SellerComplianceController extends Controller
             'details' => $request->details,
         ]);
 
+        $this->escalateSuspension($product->seller);
+
         return back()->with('confirmation', 'product_rejected');
     }
 
@@ -132,9 +134,53 @@ class SellerComplianceController extends Controller
             'details' => $request->details,
         ]);
 
+        $seller = $product->seller;
+
+        if ($seller->productWarnings()->count() % 3 === 0) {
+            ProductViolation::create([
+                'product_id' => $product->id,
+                'seller_id' => $seller->id,
+                'reason' => 'Accumulated 3 Warnings',
+                'details' => 'Automatically recorded after the seller received 3 warnings.',
+            ]);
+
+            $this->escalateSuspension($seller);
+        }
+
         return back()->with('confirmation', 'warning_issued');
     }
 
+        private function escalateSuspension(User $seller): void
+    {
+        $count = $seller->productViolations()->count();
+
+        if ($count >= 9) {
+            $seller->update([
+                'status' => 'suspended',
+                'suspension_reason' => 'Severe/repeated violations',
+                'suspension_notes' => 'Permanent suspension due to repeated policy violations.',
+                'suspended_at' => now(),
+                'suspended_until' => null,
+            ]);
+        } elseif ($count === 6) {
+            $seller->update([
+                'status' => 'suspended',
+                'suspension_reason' => 'Repeated Violations',
+                'suspension_notes' => 'Suspended for 30 days after 6 recorded violations.',
+                'suspended_at' => now(),
+                'suspended_until' => now()->addDays(30),
+            ]);
+        } elseif ($count === 3) {
+            $seller->update([
+                'status' => 'suspended',
+                'suspension_reason' => 'Repeated Violations',
+                'suspension_notes' => 'Suspended for 7 days after 3 recorded violations.',
+                'suspended_at' => now(),
+                'suspended_until' => now()->addDays(7),
+            ]);
+        }
+    }
+    
     private function complianceStats(): array
     {
         return [
