@@ -56,4 +56,26 @@ class User extends Authenticatable
     {
         return $this->hasOne(BuyerDetail::class);
     }
+
+        public function products()
+    {
+        return $this->hasMany(Product::class, 'seller_id');
+    }
+
+    public function productWarnings()
+    {
+        return $this->hasMany(ProductWarning::class, 'seller_id');
+    }
+
+    public function productViolations()
+    {
+        return $this->hasMany(ProductViolation::class, 'seller_id');
+    }
+
+    public function complianceScore(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => max(0, 100 - ($this->productViolations()->count() * 10)),
+        );
+    }
 }

@@ -1,15 +1,18 @@
 <?php
 
-
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\RegistrationController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admin\SellerComplianceController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Seller\DashboardController as SellerDashboardController;
+use App\Http\Controllers\Buyer\DashboardController as BuyerDashboardController;
+use App\Http\Controllers\Logistics\Courier\DashboardController as CourierDashboardController;
+use App\Http\Controllers\Logistics\DashboardController as LogisticsDashboardController;
 
 Route::get('/', function () {
     return redirect('/login');
 });
-
-use App\Http\Controllers\Admin\DashboardController;
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -23,15 +26,30 @@ Route::middleware('auth')->group(function () {
     Route::post('/user-management/{user}/suspend', [UserManagementController::class, 'suspend'])->name('user-management.suspend');
     Route::post('/user-management/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('user-management.deactivate');
     Route::post('/user-management/{user}/activate', [UserManagementController::class, 'activate'])->name('user-management.activate');
-});
 
-use App\Http\Controllers\Seller\DashboardController as SellerDashboardController;
-use App\Http\Controllers\Buyer\DashboardController as BuyerDashboardController;
-use App\Http\Controllers\Logistics\Courier\DashboardController as CourierDashboardController;
-use App\Http\Controllers\Logistics\DashboardController as LogisticsDashboardController;
+    Route::prefix('seller-compliance')->name('seller-compliance.')->group(function () {
+        Route::get('/', [SellerComplianceController::class, 'overview'])->name('overview');
+        Route::get('/products-for-review', [SellerComplianceController::class, 'productsForReview'])->name('products-for-review');
+        Route::get('/search-sellers', [SellerComplianceController::class, 'searchSellers'])->name('search-sellers');
+        Route::get('/warnings', [SellerComplianceController::class, 'warnings'])->name('warnings');
+        Route::get('/violations', [SellerComplianceController::class, 'violations'])->name('violations');
+        Route::get('/suspended-sellers', [SellerComplianceController::class, 'suspendedSellers'])->name('suspended-sellers');
+        Route::get('/sellers-table', [SellerComplianceController::class, 'sellersTable'])->name('sellers-table');
+        Route::get('/products-table', [SellerComplianceController::class, 'productsTable'])->name('products-table');
+        Route::get('/products-table', [SellerComplianceController::class, 'productsTable'])->name('products-table');
+        Route::get('/warnings-table', [SellerComplianceController::class, 'warningsTable'])->name('warnings-table');
+        Route::get('/violations-table', [SellerComplianceController::class, 'violationsTable'])->name('violations-table');
+        Route::get('/suspended-sellers-table', [SellerComplianceController::class, 'suspendedSellersTable'])->name('suspended-sellers-table');
+
+        Route::post('/products/{product}/approve', [SellerComplianceController::class, 'approve'])->name('products.approve');
+        Route::post('/products/{product}/reject', [SellerComplianceController::class, 'reject'])->name('products.reject');
+        Route::post('/products/{product}/warn', [SellerComplianceController::class, 'warn'])->name('products.warn');
+    });
+});
 
 Route::get('/logistics/dashboard', [LogisticsDashboardController::class, 'index']);
 Route::get('/logistics/courier/dashboard', [CourierDashboardController::class, 'index']);
 Route::get('/seller/dashboard', [SellerDashboardController::class, 'index']);
 Route::get('/buyer/dashboard', [BuyerDashboardController::class, 'index']);
+
 require __DIR__.'/auth.php';
