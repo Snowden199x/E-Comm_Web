@@ -43,6 +43,10 @@ class NewPasswordController extends Controller
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user) use ($request) {
+                if ($user->role !== 'admin') {
+                    return;
+                }
+
                 $user->forceFill([
                     'password' => Hash::make($request->password),
                     'remember_token' => Str::random(60),
@@ -56,7 +60,7 @@ class NewPasswordController extends Controller
         // the application's home authenticated view. If there is an error we can
         // redirect them back to where they came from with their error message.
         return $status == Password::PASSWORD_RESET
-                    ? redirect()->route('login')->with('status', __($status))
+                    ? redirect()->route('login')->with('status', 'Your password has been reset successfully. You can now sign in with your new password.')
                     : back()->withInput($request->only('email'))
                         ->withErrors(['email' => __($status)]);
     }
