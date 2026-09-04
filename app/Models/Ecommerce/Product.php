@@ -1,9 +1,13 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Ecommerce;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use App\Models\User;
+use App\Models\Category;
+use App\Models\Compliance\ProductWarning;
+use App\Models\Compliance\ProductViolation;
 
 #[Fillable([
     'product_code', 'seller_id', 'category_id', 'name', 'description', 'price', 'stock',

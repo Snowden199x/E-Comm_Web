@@ -32,7 +32,8 @@
             <span class="text-sm font-medium">Seller Compliance</span>
         </a>
 
-        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/5">
+        <a href="{{ route('complaints.index') }}"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('complaints.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
             <img src="{{ asset('assets/icons/dashboard/complaints-disputes-menu.svg') }}" alt=""
                 class="w-5 h-5">
             <span class="text-sm font-medium">Complaints and Disputes</span>

@@ -200,7 +200,9 @@
                                             class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
                                     </div>
 
-                                    @include('admin.registrations.partials.applicant-details', ['user' => $reg])
+                                    @include('admin.registrations.partials.applicant-details', [
+                                        'user' => $reg,
+                                    ])
                                 </div>
                             </div>
                         @endforeach
@@ -214,14 +216,15 @@
                     </div>
                     <div class="bg-white rounded-2xl p-5 shadow-sm overflow-x-auto">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="font-bold text-gray-900">Recent Complaint</h3>
-                            <a href="#" class="text-sm text-[#3b1735] font-medium hover:underline">View All</a>
+                            <h3 class="font-bold text-gray-900">Pending Registrations</h3>
+                            <a href="{{ route('registrations.index') }}"
+                                class="text-sm text-[#3b1735] font-medium hover:underline">View All</a>
                         </div>
 
                         <table class="w-full text-sm">
                             <thead>
                                 <tr class="text-left text-gray-500 border-b">
-                                    <th class="pb-2 font-medium">Order ID</th>
+                                    <th class="pb-2 font-medium">Complaint ID</th>
                                     <th class="pb-2 font-medium">From</th>
                                     <th class="pb-2 font-medium">Against</th>
                                     <th class="pb-2 font-medium">Status</th>
@@ -289,7 +292,8 @@
                 <div class="bg-white rounded-2xl p-5 shadow-sm">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="font-bold text-gray-900">Pending Registrations</h3>
-                        <a href="#" class="text-sm text-[#3b1735] font-medium hover:underline">View All</a>
+                        <a href="{{ route('registrations.index') }}"
+                            class="text-sm text-[#3b1735] font-medium hover:underline">View All</a>
                     </div>
                     <div class="space-y-3">
                         <div class="flex items-center gap-3">

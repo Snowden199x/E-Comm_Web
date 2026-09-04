@@ -1,7 +1,9 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Compliance;
 
+use App\Models\Ecommerce\Product;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 

@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Ecommerce;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 
 class Order extends Model
 {
@@ -28,5 +29,10 @@ class Order extends Model
     public function courier()
     {
         return $this->belongsTo(User::class, 'courier_id');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(OrderItem::class);
     }
 }

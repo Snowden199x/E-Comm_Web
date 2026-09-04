@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Notification;
-use App\Models\Order;
+use App\Models\Communication\Notification;
+use App\Models\Ecommerce\Order;
 use App\Models\User;
 use Illuminate\Support\Carbon;
-use App\Models\Announcement;
-use App\Models\Complaint;
+use App\Models\Communication\Announcement;
+use App\Models\Complaints\Complaint;
 
 class DashboardController extends Controller
 {

@@ -50,8 +50,8 @@
                 }, 250);
             }
         }">
-            <div class="flex flex-col sm:flex-row gap-3 mb-4">
-                <div class="flex-1 relative">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div class="relative w-80">
                     <img src="{{ asset('assets/icons/user-management/search-icon.svg') }}" alt=""
                         class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 opacity-50">
                     <input type="text" x-model="q" @input="search" autocomplete="off"

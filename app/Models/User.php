@@ -10,6 +10,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Models\Ecommerce\Product;
+use App\Models\Compliance\ProductWarning;
+use App\Models\Compliance\ProductViolation;
+use App\Models\Profiles\SellerDetail;
+use App\Models\Profiles\BuyerDetail;
+use App\Models\Profiles\CourierDetail;
 
 #[Fillable(['name', 'email', 'password', 'role', 'status', 'phone_number','rejection_reason', 'suspension_reason', 'suspension_notes', 'suspended_at', 'suspended_until'])]
 #[Hidden(['password', 'remember_token'])]
