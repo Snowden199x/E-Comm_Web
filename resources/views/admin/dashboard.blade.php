@@ -216,8 +216,8 @@
                     </div>
                     <div class="bg-white rounded-2xl p-5 shadow-sm overflow-x-auto">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="font-bold text-gray-900">Pending Registrations</h3>
-                            <a href="{{ route('registrations.index') }}"
+                            <h3 class="font-bold text-gray-900">Recent Complaint</h3>
+                            <a href="{{ route('complaints.index') }}"
                                 class="text-sm text-[#3b1735] font-medium hover:underline">View All</a>
                         </div>
 
