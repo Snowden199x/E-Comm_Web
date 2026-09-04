@@ -12,29 +12,7 @@ class RegistrationController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = User::whereIn('role', ['seller', 'buyer'])
-            ->where('status', 'pending');
-
-        // Search by name or email
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        // Filter by user type (role)
-        if ($request->filled('user_type') && $request->user_type !== 'all') {
-            $query->where('role', $request->user_type);
-        }
-
-        // Filter by date applied
-        if ($request->filled('date')) {
-            $query->whereDate('created_at', $request->date);
-        }
-
-        $registrations = $query->latest()->paginate(8)->withQueryString();
+        $registrations = $this->filteredRegistrations($request);
 
         $stats = [
             'pending_request' => User::whereIn('role', ['seller', 'buyer'])->where('status', 'pending')->count(),
@@ -43,6 +21,33 @@ class RegistrationController extends Controller
         ];
 
         return view('admin.registrations.index', compact('registrations', 'stats'));
+    }
+
+    public function table(Request $request): View
+    {
+        $registrations = $this->filteredRegistrations($request);
+
+        return view('admin.registrations.partials.registrations-table', compact('registrations'));
+    }
+
+    private function filteredRegistrations(Request $request)
+    {
+        $query = User::whereIn('role', ['seller', 'buyer'])->where('status', 'pending');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
+        }
+
+        if ($request->filled('user_type') && $request->user_type !== 'all') {
+            $query->where('role', $request->user_type);
+        }
+
+        if ($request->filled('date')) {
+            $query->whereDate('created_at', $request->date);
+        }
+
+        return $query->latest()->paginate(8)->withQueryString();
     }
 
     public function show(User $user): View

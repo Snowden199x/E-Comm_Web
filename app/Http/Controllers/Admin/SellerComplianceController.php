@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
-use App\Models\Product;
-use App\Models\ProductViolation;
-use App\Models\ProductWarning;
+use App\Models\Ecommerce\Product;
+use App\Models\Compliance\ProductViolation;
+use App\Models\Compliance\ProductWarning;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;

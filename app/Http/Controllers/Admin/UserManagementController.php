@@ -13,7 +13,27 @@ class UserManagementController extends Controller
     public function index(Request $request): View
     {
         $showRejected = $request->boolean('rejected');
+        $users = $this->filteredUsers($request, $showRejected);
 
+        $stats = [
+            'total_users' => User::whereIn('role', ['seller', 'buyer'])->count(),
+            'sellers' => User::where('role', 'seller')->count(),
+            'buyers' => User::where('role', 'buyer')->count(),
+        ];
+
+        return view('admin.user-management.index', compact('users', 'stats', 'showRejected'));
+    }
+
+    public function table(Request $request): View
+    {
+        $showRejected = $request->boolean('rejected');
+        $users = $this->filteredUsers($request, $showRejected);
+
+        return view('admin.user-management.partials.users-table', compact('users'));
+    }
+
+    private function filteredUsers(Request $request, bool $showRejected)
+    {
         $query = User::whereIn('role', ['seller', 'buyer']);
 
         if ($showRejected) {
@@ -24,10 +44,7 @@ class UserManagementController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
+            $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
         }
 
         if ($request->filled('user_type') && $request->user_type !== 'all') {
@@ -38,18 +55,10 @@ class UserManagementController extends Controller
             $query->whereDate('created_at', $request->date);
         }
 
-        $users = $query->with(['sellerDetail', 'buyerDetail', 'categories'])
+        return $query->with(['sellerDetail', 'buyerDetail', 'categories'])
             ->latest()
             ->paginate(8)
             ->withQueryString();
-
-        $stats = [
-            'total_users' => User::whereIn('role', ['seller', 'buyer'])->count(),
-            'sellers' => User::where('role', 'seller')->count(),
-            'buyers' => User::where('role', 'buyer')->count(),
-        ];
-
-        return view('admin.user-management.index', compact('users', 'stats', 'showRejected'));
     }
 
     public function suspend(Request $request, User $user): RedirectResponse
