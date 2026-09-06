@@ -329,10 +329,10 @@
                             <p class="text-sm text-gray-300 mb-4">No active announcement yet.</p>
                         @endif
 
-                        <button
-                            class="bg-white text-[#3b1735] text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-100">
+                        <a href="{{ route('platform-settings.index') }}"
+                            class="inline-block bg-white text-[#3b1735] text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-100">
                             Manage Announcement
-                        </button>
+                        </a>
                     </div>
 
                 </div>
