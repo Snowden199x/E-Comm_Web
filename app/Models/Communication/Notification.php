@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Notification extends Model
 {
     protected $fillable = [
+        'user_id',
         'type',
         'title',
         'message',
@@ -22,7 +23,8 @@ class Notification extends Model
     {
         return $this->created_at->diffForHumans();
     }
-        public function icon(): string
+
+    public function icon(): string
     {
         return match ($this->type) {
             'new_seller_registration', 'new_buyer_registration' => 'new-register-notif.svg',
@@ -32,5 +34,10 @@ class Notification extends Model
             'platform_announcement' => 'announcement-notif.svg',
             default => 'notifications-icon.svg',
         };
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class);
     }
 }

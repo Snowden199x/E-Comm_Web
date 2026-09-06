@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title ?? 'Admin' }} - Vendo</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
 </head>
 
 <body class="antialiased bg-[#faf6f0]" x-data="{ sidebarOpen: false }">
@@ -24,7 +26,8 @@
         <div class="flex-1 flex flex-col min-w-0">
 
             <!-- Top Bar -->
-            <header class="flex items-center justify-between px-8 py-4 bg-[#faf6f0] border-b border-gray-200">
+            <header
+                class="sticky top-0 z-30 flex items-center justify-between px-8 py-4 bg-[#faf6f0] border-b border-gray-200">
                 <button class="p-2 lg:hidden" @click="sidebarOpen = !sidebarOpen">
                     <img src="{{ asset('assets/icons/dashboard/sidebar-menu-icon.svg') }}" alt="Menu"
                         class="w-6 h-6">
@@ -33,11 +36,6 @@
                 <div class="flex items-center gap-6 ml-auto">
                     <button class="p-2">
                         <img src="{{ asset('assets/icons/dashboard/notifications-icon.svg') }}" alt="Notifications"
-                            class="w-6 h-6">
-                    </button>
-
-                    <button class="p-2">
-                        <img src="{{ asset('assets/icons/dashboard/message-icon.svg') }}" alt="Messages"
                             class="w-6 h-6">
                     </button>
 
@@ -53,7 +51,7 @@
             </header>
 
             <!-- Page Content -->
-            <main class="flex-1">
+            <main class="flex-1 h-screen overflow-y-auto">
                 {{ $slot }}
             </main>
 

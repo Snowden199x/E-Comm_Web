@@ -10,7 +10,7 @@ use App\Http\Controllers\Seller\DashboardController as SellerDashboardController
 use App\Http\Controllers\Buyer\DashboardController as BuyerDashboardController;
 use App\Http\Controllers\Logistics\Courier\DashboardController as CourierDashboardController;
 use App\Http\Controllers\Logistics\DashboardController as LogisticsDashboardController;
-
+use App\Http\Controllers\Admin\PlatformSettingsController;
 Route::get('/', function () {
     return redirect('/login');
 });
@@ -53,6 +53,17 @@ Route::middleware('auth')->group(function () {
         Route::get('/table', [ComplaintController::class, 'table'])->name('table');
         Route::get('/{complaint}', [ComplaintController::class, 'show'])->name('show');
         Route::post('/{complaint}/status', [ComplaintController::class, 'updateStatus'])->name('update-status');
+    });
+
+    Route::prefix('platform-settings')->name('platform-settings.')->group(function () {
+        Route::get('/', [PlatformSettingsController::class, 'index'])->name('index');
+        Route::post('/announcements', [PlatformSettingsController::class, 'storeAnnouncement'])->name('announcements.store');
+        Route::post('/policies', [PlatformSettingsController::class, 'storePolicy'])->name('policies.store');
+        Route::put('/policies/{policy}', [PlatformSettingsController::class, 'updatePolicy'])->name('policies.update');
+        Route::put('/announcements/{announcement}', [PlatformSettingsController::class, 'updateAnnouncement'])->name('announcements.update');
+        Route::delete('/announcements/{announcement}', [PlatformSettingsController::class, 'destroyAnnouncement'])->name('announcements.destroy');
+        Route::delete('/policies/{policy}', [PlatformSettingsController::class, 'destroyPolicy'])->name('policies.destroy');
+        Route::get('/announcements-table', [PlatformSettingsController::class, 'announcementsTable'])->name('announcements-table');
     });
 });
 

@@ -75,7 +75,10 @@ class DashboardController extends Controller
             ->get();
             
         // Latest active announcement
-        $announcement = Announcement::where('is_active', true)->latest()->first();
+        $announcement = Announcement::where('audience', 'All Users')
+            ->where('status', 'published')
+            ->latest()
+            ->first();
 
         return view('admin.dashboard', compact(
             'stats',
