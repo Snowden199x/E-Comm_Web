@@ -269,10 +269,14 @@
 
                 <!-- Notifications -->
                 <div class="bg-white rounded-2xl p-5 shadow-sm">
-                    <h3 class="font-bold text-gray-900 mb-4">Notifications</h3>
-                    <div class="space-y-4">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                        <h3 class="font-bold text-gray-900">Notifications</h3>
+                        <a href="{{ route('notifications.index') }}"
+                            class="text-sm text-[#3b1735] font-medium hover:underline">View All</a>
+                    </div>
+                    <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
                         @forelse ($notifications as $notification)
-                            <div class="flex items-start gap-3">
+                            <div class="flex items-start gap-3 p-3 rounded-lg border border-gray-100">
                                 <img src="{{ asset('assets/icons/dashboard/' . $notification->icon()) }}"
                                     alt="" class="w-5 h-5 mt-0.5">
                                 <div class="flex-1">
@@ -343,65 +347,68 @@
     </div>
 
     <!-- Chart.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <script>
-        const ctx = document.getElementById('salesOverviewChart');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: @json($chartData['labels']),
-                datasets: [{
-                        label: 'Sales',
-                        data: @json($chartData['sales']),
-                        borderColor: '#7a6a9e',
-                        backgroundColor: 'rgba(122, 106, 158, 0.15)',
-                        fill: true,
-                        tension: 0.4,
-                        yAxisID: 'y',
-                    },
-                    {
-                        label: 'Orders',
-                        data: @json($chartData['orders']),
-                        borderColor: '#c97b5f',
-                        backgroundColor: 'rgba(201, 123, 95, 0.15)',
-                        fill: true,
-                        tension: 0.4,
-                        yAxisID: 'y1',
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
+        (function() {
+            const ctx = document.getElementById('salesOverviewChart');
+            if (!ctx) return;
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: @json($chartData['labels']),
+                    datasets: [{
+                            label: 'Sales',
+                            data: @json($chartData['sales']),
+                            borderColor: '#7a6a9e',
+                            backgroundColor: 'rgba(122, 106, 158, 0.15)',
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: 'Orders',
+                            data: @json($chartData['orders']),
+                            borderColor: '#c97b5f',
+                            backgroundColor: 'rgba(201, 123, 95, 0.15)',
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y1',
+                        }
+                    ]
                 },
-                scales: {
-                    y: {
-                        type: 'linear',
-                        position: 'left',
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                if (value >= 1000) {
-                                    return (value / 1000) + 'k';
-                                }
-                                return value;
-                            }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
                         }
                     },
-                    y1: {
-                        type: 'linear',
-                        position: 'right',
-                        beginAtZero: true,
-                        grid: {
-                            drawOnChartArea: false
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    if (value >= 1000) {
+                                        return (value / 1000) + 'k';
+                                    }
+                                    return value;
+                                }
+                            }
                         },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                        }
                     }
                 }
-            }
-        });
+            });
+        })();
     </script>
 </x-admin-layout>
