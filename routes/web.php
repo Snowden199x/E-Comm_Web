@@ -11,6 +11,8 @@ use App\Http\Controllers\Buyer\DashboardController as BuyerDashboardController;
 use App\Http\Controllers\Logistics\Courier\DashboardController as CourierDashboardController;
 use App\Http\Controllers\Logistics\DashboardController as LogisticsDashboardController;
 use App\Http\Controllers\Admin\PlatformSettingsController;
+use App\Http\Controllers\Admin\NotificationController;
+
 Route::get('/', function () {
     return redirect('/login');
 });
@@ -30,6 +32,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/user-management/{user}/activate', [UserManagementController::class, 'activate'])->name('user-management.activate');
     Route::get('/user-management/table', [UserManagementController::class, 'table'])->name('user-management.table');
 
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    
     Route::prefix('seller-compliance')->name('seller-compliance.')->group(function () {
         Route::get('/', [SellerComplianceController::class, 'overview'])->name('overview');
         Route::get('/products-for-review', [SellerComplianceController::class, 'productsForReview'])->name('products-for-review');

@@ -19,5 +19,8 @@
     },
     "optionalDependencies": {
         "@laravel/multiplex": "^0.4.1"
+    },
+    "dependencies": {
+        "@imacrayon/alpine-ajax": "^0.12.7"
     }
 }
