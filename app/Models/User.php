@@ -84,4 +84,9 @@ class User extends Authenticatable
             get: fn () => max(0, 100 - ($this->productViolations()->count() * 10)),
         );
     }
+
+    public function orders()
+    {
+        return $this->hasMany(\App\Models\Ecommerce\Order::class, 'seller_id');
+    }
 }
