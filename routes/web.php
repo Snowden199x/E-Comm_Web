@@ -12,6 +12,8 @@ use App\Http\Controllers\Logistics\Courier\DashboardController as CourierDashboa
 use App\Http\Controllers\Logistics\DashboardController as LogisticsDashboardController;
 use App\Http\Controllers\Admin\PlatformSettingsController;
 use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\CommissionController;
+use App\Http\Controllers\Admin\ReportController;
 
 Route::get('/', function () {
     return redirect('/login');
@@ -31,8 +33,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/user-management/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('user-management.deactivate');
     Route::post('/user-management/{user}/activate', [UserManagementController::class, 'activate'])->name('user-management.activate');
     Route::get('/user-management/table', [UserManagementController::class, 'table'])->name('user-management.table');
-
+    
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    
+    Route::prefix('commission')->name('commission.')->group(function () {
+        Route::get('/', [CommissionController::class, 'index'])->name('index');
+        Route::get('/table', [CommissionController::class, 'table'])->name('table');
+        Route::post('/rate', [CommissionController::class, 'updateRate'])->name('update-rate');
+        Route::get('/seller/{seller}', [CommissionController::class, 'sellerDetail'])->name('seller-detail');
+    });
     
     Route::prefix('seller-compliance')->name('seller-compliance.')->group(function () {
         Route::get('/', [SellerComplianceController::class, 'overview'])->name('overview');
@@ -68,6 +77,12 @@ Route::middleware('auth')->group(function () {
         Route::delete('/announcements/{announcement}', [PlatformSettingsController::class, 'destroyAnnouncement'])->name('announcements.destroy');
         Route::delete('/policies/{policy}', [PlatformSettingsController::class, 'destroyPolicy'])->name('policies.destroy');
         Route::get('/announcements-table', [PlatformSettingsController::class, 'announcementsTable'])->name('announcements-table');
+    });
+
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('/preview', [ReportController::class, 'preview'])->name('preview');
+        Route::get('/download', [ReportController::class, 'download'])->name('download');
     });
 });
 
