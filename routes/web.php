@@ -21,7 +21,7 @@ Route::get('/', function () {
 });
 
 Route::get('/admin', function () {
-    return redirect('/login');
+    return redirect('/admin/dashboard');
 });
 
 Route::get('/seller', function () {
