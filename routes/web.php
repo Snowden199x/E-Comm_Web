@@ -20,6 +20,22 @@ Route::get('/', function () {
     return view('home');
 });
 
+Route::get('/admin', function () {
+    return redirect('/login');
+});
+
+Route::get('/seller', function () {
+    return view('coming-soon', ['title' => 'Seller Portal — Coming Soon']);
+});
+
+Route::get('/logistics', function () {
+    return view('coming-soon', ['title' => 'Logistics Portal — Coming Soon']);
+});
+
+Route::get('/buyer/login', function () {
+    return view('coming-soon', ['title' => 'Coming Soon']);
+});
+
 Route::prefix('admin')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
