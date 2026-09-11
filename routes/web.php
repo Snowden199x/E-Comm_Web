@@ -33,8 +33,16 @@ Route::get('/logistics', function () {
 });
 
 Route::get('/buyer/login', function () {
-    return view('coming-soon', ['title' => 'Coming Soon']);
-});
+    return view('auth.login-buyer');
+})->name('buyer.login');
+
+Route::get('/buyer/register', function () {
+    return view('auth.register-buyer');
+})->name('buyer.register');
+
+Route::get('/buyer/forgot-password', function () {
+    return view('auth.forgot-password-buyer');
+})->name('buyer.password.request');
 
 Route::prefix('admin')->group(function () {
 

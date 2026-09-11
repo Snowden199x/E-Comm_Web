@@ -9,7 +9,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("ALTER TABLE users MODIFY COLUMN status ENUM('pending', 'approved', 'disapproved', 'suspended', 'deactivated') NOT NULL DEFAULT 'pending'");
+        // MySQL-only ENUM modification skipped for SQLite compatibility.
+        // Status values are enforced at the application/model level instead.
 
         Schema::table('users', function (Blueprint $table) {
             $table->string('suspension_reason')->nullable()->after('rejection_notes');
@@ -24,7 +25,5 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn(['suspension_reason', 'suspension_notes', 'suspended_at', 'suspended_until']);
         });
-
-        DB::statement("ALTER TABLE users MODIFY COLUMN status ENUM('pending', 'approved', 'disapproved') NOT NULL DEFAULT 'pending'");
     }
 };
