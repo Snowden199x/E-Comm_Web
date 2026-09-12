@@ -105,7 +105,7 @@
                                         class="w-full px-3 py-2 rounded border border-gray-200 text-sm">
                                 </div>
                             </div>
-
+                        </div>
                             <select x-model="statusFilter" @change="search"
                                 class="appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:12px] px-3 pr-9 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]"
                                 style="background-image: url('{{ asset('assets/icons/user-management/down-arrow-icon.svg') }}');">
@@ -133,6 +133,17 @@
                         onclick="document.getElementById('add-policy-form').classList.toggle('hidden')"
                         class="text-xs px-3 py-1.5 rounded-full border border-[#3b1735] text-[#3b1735] hover:bg-purple-50">+
                         Add</button>
+                </div>
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mt-4">
+                    <h3 class="font-bold text-gray-900 mb-1">Chat Welcome Message</h3>
+                    <p class="text-xs text-gray-500 mb-3">Sent automatically when a user starts a support chat.</p>
+                    <form method="POST" action="{{ route('platform-settings.chat-welcome.update') }}">
+                        @csrf
+                        <textarea name="welcome_message" rows="3" required
+                            class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-[#3b1735]">{{ $chatSetting->welcome_message ?? 'Hi! How can we help you today?' }}</textarea>
+                        <button type="submit"
+                            class="px-4 py-2 rounded-lg bg-[#3b1735] text-white text-sm font-medium hover:opacity-90">Save</button>
+                    </form>
                 </div>
 
                 <form id="add-policy-form" method="POST" action="{{ route('platform-settings.policies.store') }}"

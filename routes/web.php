@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\PlatformSettingsController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\MessageController;
 
 // Buyer landing = root domain
 Route::get('/', function () {
@@ -104,6 +105,7 @@ Route::prefix('admin')->group(function () {
             Route::delete('/announcements/{announcement}', [PlatformSettingsController::class, 'destroyAnnouncement'])->name('announcements.destroy');
             Route::delete('/policies/{policy}', [PlatformSettingsController::class, 'destroyPolicy'])->name('policies.destroy');
             Route::get('/announcements-table', [PlatformSettingsController::class, 'announcementsTable'])->name('announcements-table');
+            Route::post('/chat-welcome', [PlatformSettingsController::class, 'updateChatWelcome'])->name('chat-welcome.update');
         });
 
         Route::prefix('reports')->name('reports.')->group(function () {
@@ -111,8 +113,13 @@ Route::prefix('admin')->group(function () {
             Route::get('/preview', [ReportController::class, 'preview'])->name('preview');
             Route::get('/download', [ReportController::class, 'download'])->name('download');
         });
+        Route::prefix('messages')->name('messages.')->group(function () {
+            Route::get('/', [MessageController::class, 'index'])->name('index');
+            Route::get('/list', [MessageController::class, 'conversationsList'])->name('list');
+            Route::get('/{conversation}/thread', [MessageController::class, 'thread'])->name('thread');
+            Route::post('/{conversation}/send', [MessageController::class, 'send'])->name('send');
+        });
     });
-
 });
 
 Route::get('/logistics/dashboard', [LogisticsDashboardController::class, 'index']);
