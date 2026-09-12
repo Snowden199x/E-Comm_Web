@@ -89,4 +89,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(\App\Models\Ecommerce\Order::class, 'seller_id');
     }
+
+        public function conversations()
+    {
+        return $this->hasMany(\App\Models\Communication\Conversation::class);
+    }
 }
