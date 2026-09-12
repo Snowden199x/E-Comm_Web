@@ -15,16 +15,23 @@ use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\MessageController;
+use App\Http\Controllers\Buyer\OtpController;
+use App\Http\Controllers\Buyer\RegisteredBuyerController;
 
-// Buyer landing = root domain
+/*
+|--------------------------------------------------------------------------
+| Public / Landing
+|--------------------------------------------------------------------------
+*/
 Route::get('/', function () {
     return view('home');
 });
 
-Route::get('/admin', function () {
-    return redirect('/admin/dashboard');
-});
-
+/*
+|--------------------------------------------------------------------------
+| Seller & Logistics (placeholder, not built yet)
+|--------------------------------------------------------------------------
+*/
 Route::get('/seller', function () {
     return view('coming-soon', ['title' => 'Seller Portal — Coming Soon']);
 });
@@ -33,6 +40,11 @@ Route::get('/logistics', function () {
     return view('coming-soon', ['title' => 'Logistics Portal — Coming Soon']);
 });
 
+/*
+|--------------------------------------------------------------------------
+| Buyer — Guest routes (login, register, forgot password, OTP)
+|--------------------------------------------------------------------------
+*/
 Route::get('/buyer/login', function () {
     return view('auth.login-buyer');
 })->name('buyer.login');
@@ -41,9 +53,30 @@ Route::get('/buyer/register', function () {
     return view('auth.register-buyer');
 })->name('buyer.register');
 
+Route::post('/buyer/register', [RegisteredBuyerController::class, 'store'])->name('buyer.register.store');
+
 Route::get('/buyer/forgot-password', function () {
     return view('auth.forgot-password-buyer');
 })->name('buyer.password.request');
+
+Route::post('/buyer/otp/send', [OtpController::class, 'send']);
+Route::post('/buyer/otp/verify', [OtpController::class, 'verify']);
+
+/*
+|--------------------------------------------------------------------------
+| Buyer — Dashboard (authenticated)
+|--------------------------------------------------------------------------
+*/
+Route::get('/buyer/dashboard', [BuyerDashboardController::class, 'index']);
+
+/*
+|--------------------------------------------------------------------------
+| Admin
+|--------------------------------------------------------------------------
+*/
+Route::get('/admin', function () {
+    return redirect('/admin/dashboard');
+});
 
 Route::prefix('admin')->group(function () {
 
@@ -113,6 +146,7 @@ Route::prefix('admin')->group(function () {
             Route::get('/preview', [ReportController::class, 'preview'])->name('preview');
             Route::get('/download', [ReportController::class, 'download'])->name('download');
         });
+
         Route::prefix('messages')->name('messages.')->group(function () {
             Route::get('/', [MessageController::class, 'index'])->name('index');
             Route::get('/list', [MessageController::class, 'conversationsList'])->name('list');
@@ -122,9 +156,13 @@ Route::prefix('admin')->group(function () {
     });
 });
 
+/*
+|--------------------------------------------------------------------------
+| Logistics / Seller — Dashboard (authenticated) — placeholder controllers
+|--------------------------------------------------------------------------
+*/
 Route::get('/logistics/dashboard', [LogisticsDashboardController::class, 'index']);
 Route::get('/logistics/courier/dashboard', [CourierDashboardController::class, 'index']);
 Route::get('/seller/dashboard', [SellerDashboardController::class, 'index']);
-Route::get('/buyer/dashboard', [BuyerDashboardController::class, 'index']);
 
 require __DIR__.'/auth.php';
