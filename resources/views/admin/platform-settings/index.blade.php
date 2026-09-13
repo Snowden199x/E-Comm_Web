@@ -105,7 +105,7 @@
                                         class="w-full px-3 py-2 rounded border border-gray-200 text-sm">
                                 </div>
                             </div>
-                        </div>
+
                             <select x-model="statusFilter" @change="search"
                                 class="appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:12px] px-3 pr-9 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]"
                                 style="background-image: url('{{ asset('assets/icons/user-management/down-arrow-icon.svg') }}');">
@@ -123,18 +123,63 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h3 class="font-bold text-lg text-gray-900">Platform Policy</h3>
-                        <p class="text-xs text-gray-500">Manage and update platform policies</p>
+            <div class="space-y-4">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-900">Platform Policy</h3>
+                            <p class="text-xs text-gray-500">Manage and update platform policies</p>
+                        </div>
+                        <button type="button"
+                            onclick="document.getElementById('add-policy-form').classList.toggle('hidden')"
+                            class="text-xs px-3 py-1.5 rounded-full border border-[#3b1735] text-[#3b1735] hover:bg-purple-50">+
+                            Add</button>
                     </div>
-                    <button type="button"
-                        onclick="document.getElementById('add-policy-form').classList.toggle('hidden')"
-                        class="text-xs px-3 py-1.5 rounded-full border border-[#3b1735] text-[#3b1735] hover:bg-purple-50">+
-                        Add</button>
+
+                    <form id="add-policy-form" method="POST" action="{{ route('platform-settings.policies.store') }}"
+                        class="hidden mb-4 flex gap-2">
+                        @csrf
+                        <select name="name" required
+                            class="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]">
+                            <option value="">Select policy type...</option>
+                            <option value="Seller Policy">Seller Policy</option>
+                            <option value="Buyer Policy">Buyer Policy</option>
+                            <option value="Logistics Policy">Logistics Policy</option>
+                            <option value="Prohibited Item Policy">Prohibited Item Policy</option>
+                        </select>
+                        <button type="submit"
+                            class="px-3 py-2 rounded-lg bg-[#3b1735] text-white text-xs font-medium">Add</button>
+                    </form>
+
+                    <div class="space-y-3">
+                        @forelse ($policies as $policy)
+                            <div class="pb-3 border-b border-gray-100 last:border-0">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <img src="{{ asset('assets/icons/platform_settings/' . $policy->icon['icon']) }}"
+                                        alt="" class="w-10 h-10 flex-shrink-0">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 truncate">{{ $policy->name }}</p>
+                                        <p class="text-xs text-gray-400">Version {{ $policy->version }}</p>
+                                        <p class="text-xs text-gray-400">Last updated
+                                            {{ $policy->updated_at->format('M j, Y') }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" @click="viewPolicyId = {{ $policy->id }}"
+                                        class="px-4 py-1.5 rounded-full border border-[#3b1735] text-xs font-medium text-[#3b1735] hover:bg-purple-50 whitespace-nowrap">View</button>
+                                    <button type="button" @click="editPolicyId = {{ $policy->id }}"
+                                        class="px-4 py-1.5 rounded-full border border-[#3b1735] text-xs font-medium text-[#3b1735] hover:bg-purple-50 whitespace-nowrap">Edit</button>
+                                    <button type="button" @click="deletePolicyId = {{ $policy->id }}"
+                                        class="px-4 py-1.5 rounded-full border border-red-300 text-xs font-medium text-red-600 hover:bg-red-50 whitespace-nowrap">Delete</button>
+                                </div>
+                            </div>
+                        @empty
+                            <p class="text-sm text-gray-400">No policies yet.</p>
+                        @endforelse
+                    </div>
                 </div>
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mt-4">
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                     <h3 class="font-bold text-gray-900 mb-1">Chat Welcome Message</h3>
                     <p class="text-xs text-gray-500 mb-3">Sent automatically when a user starts a support chat.</p>
                     <form method="POST" action="{{ route('platform-settings.chat-welcome.update') }}">
@@ -145,50 +190,10 @@
                             class="px-4 py-2 rounded-lg bg-[#3b1735] text-white text-sm font-medium hover:opacity-90">Save</button>
                     </form>
                 </div>
-
-                <form id="add-policy-form" method="POST" action="{{ route('platform-settings.policies.store') }}"
-                    class="hidden mb-4 flex gap-2">
-                    @csrf
-                    <select name="name" required
-                        class="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]">
-                        <option value="">Select policy type...</option>
-                        <option value="Seller Policy">Seller Policy</option>
-                        <option value="Buyer Policy">Buyer Policy</option>
-                        <option value="Logistics Policy">Logistics Policy</option>
-                        <option value="Prohibited Item Policy">Prohibited Item Policy</option>
-                    </select>
-                    <button type="submit"
-                        class="px-3 py-2 rounded-lg bg-[#3b1735] text-white text-xs font-medium">Add</button>
-                </form>
-
-                <div class="space-y-3">
-                    @forelse ($policies as $policy)
-                        <div class="pb-3 border-b border-gray-100 last:border-0">
-                            <div class="flex items-center gap-3 mb-2">
-                                <img src="{{ asset('assets/icons/platform_settings/' . $policy->icon['icon']) }}"
-                                    alt="" class="w-10 h-10 flex-shrink-0">
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-medium text-gray-900 truncate">{{ $policy->name }}</p>
-                                    <p class="text-xs text-gray-400">Version {{ $policy->version }}</p>
-                                    <p class="text-xs text-gray-400">Last updated
-                                        {{ $policy->updated_at->format('M j, Y') }}</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2 pl-13">
-                                <button type="button" @click="viewPolicyId = {{ $policy->id }}"
-                                    class="px-4 py-1.5 rounded-full border border-[#3b1735] text-xs font-medium text-[#3b1735] hover:bg-purple-50 whitespace-nowrap">View</button>
-                                <button type="button" @click="editPolicyId = {{ $policy->id }}"
-                                    class="px-4 py-1.5 rounded-full border border-[#3b1735] text-xs font-medium text-[#3b1735] hover:bg-purple-50 whitespace-nowrap">Edit</button>
-                                <button type="button" @click="deletePolicyId = {{ $policy->id }}"
-                                    class="px-4 py-1.5 rounded-full border border-red-300 text-xs font-medium text-red-600 hover:bg-red-50 whitespace-nowrap">Delete</button>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-sm text-gray-400">No policies yet.</p>
-                    @endforelse
-                </div>
             </div>
+
         </div>
+
         @include('admin.platform-settings.partials.create-announcement-modal')
         @foreach ($announcements as $a)
             @include('admin.platform-settings.partials.view-announcement-modal', ['a' => $a])

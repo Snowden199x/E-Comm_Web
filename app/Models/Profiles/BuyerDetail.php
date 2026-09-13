@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 
 #[Fillable([
     'user_id', 'last_name', 'first_name', 'middle_name', 'sex', 'birthday', 'valid_id_path',
-    'province', 'municipality', 'barangay', 'street', 'house_no', 'zip_code',
+    'id_type', 'valid_id_path_2', 'province', 'municipality', 'barangay', 'street', 'house_no', 'zip_code',
 ])]
 class BuyerDetail extends Model
 {
