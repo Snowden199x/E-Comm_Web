@@ -21,16 +21,7 @@ class RegisteredBuyerController extends Controller
             'sex' => 'required|in:male,female,prefer_not_to_say',
             'email' => 'required|string|email|max:255|unique:users,email',
             'birthday' => 'required|date',
-
-            'id_category' => 'required|in:primary,secondary',
-
-            'id_type' => 'required_if:id_category,primary|string',
-            'id_type_1' => 'required_if:id_category,secondary|string',
-            'id_type_2' => 'required_if:id_category,secondary|string',
-
             'valid_id' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'valid_id_2' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'province' => 'required|string',
             'municipality' => 'required|string',
@@ -42,28 +33,15 @@ class RegisteredBuyerController extends Controller
             'agree_terms' => 'accepted',
         ]);
 
-        if ($request->id_category === 'secondary' && !$request->hasFile('valid_id_2')) {
-            return back()
-                ->withErrors(['valid_id_2' => 'The second valid ID field is required.'])
-                ->withInput();
-        }
-
         $otp = OtpVerification::where('email', $request->email)
             ->where('is_verified', true)
             ->first();
 
         if (!$otp) {
-            return back()->withErrors([
-                'email' => 'Please verify your email first.'
-            ])->withInput();
+            return response()->json(['message' => 'Please verify your email first.'], 422);
         }
 
-        $validIdPath = $request->file('valid_id')
-            ->store('valid-ids', 'public');
-
-        $validIdPath2 = $request->hasFile('valid_id_2')
-            ? $request->file('valid_id_2')->store('valid-ids', 'public')
-            : null;
+        $validIdPath = $request->file('valid_id')->store('valid-ids', 'public');
 
         $user = User::create([
             'name' => $request->first_name . ' ' . $request->last_name,
@@ -81,11 +59,7 @@ class RegisteredBuyerController extends Controller
             'middle_name' => $request->middle_initial,
             'sex' => $request->sex,
             'birthday' => $request->birthday,
-            'id_type' => $request->id_category === 'primary'
-                ? $request->id_type
-                : $request->id_type_1,
             'valid_id_path' => $validIdPath,
-            'valid_id_path_2' => $validIdPath2,
             'province' => $request->province,
             'municipality' => $request->municipality,
             'barangay' => $request->barangay,
@@ -94,7 +68,6 @@ class RegisteredBuyerController extends Controller
             'zip_code' => $request->zip_code,
         ]);
 
-        return redirect()->route('buyer.login')
-            ->with('status', 'Registration submitted. Please wait for admin approval.');
+        return response()->json(['success' => true, 'message' => 'Registration submitted.']);
     }
 }

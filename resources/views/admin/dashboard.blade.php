@@ -4,7 +4,7 @@
         <!-- Greeting -->
         <div class="mb-6">
             <p class="text-gray-500">Welcome Back,</p>
-            <h2 class="text-2xl font-bold text-gray-900">{{ Auth::user()->name }}</h2>
+            <h2 class="text-2xl font-bold text-gray-900">{{ Auth::guard('admin')->user()->name }}</h2>
             <p class="text-gray-500">Here's what's happening in Vendo today.</p>
         </div>
 

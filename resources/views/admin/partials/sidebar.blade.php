@@ -74,9 +74,9 @@
 
     <!-- Logout -->
     <div class="px-4 pb-6">
-        <form method="POST" action="{{ route('logout') }}">
+        <form method="POST" action="{{ route('admin.logout') }}">
             @csrf
-            <a href="{{ route('logout') }}" onclick="event.preventDefault(); this.closest('form').submit();"
+            <a href="{{ route('admin.logout') }}" onclick="event.preventDefault(); this.closest('form').submit();"
                 class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/5 cursor-pointer">
                 <img src="{{ asset('assets/icons/dashboard/logout-menu.svg') }}" alt="" class="w-5 h-5">
                 <span class="text-sm font-medium">Logout</span>

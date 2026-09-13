@@ -12,6 +12,11 @@ use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\MessageController;
 
+use App\Http\Controllers\Auth\UnifiedLoginController;
+use App\Http\Controllers\Auth\EmailOtpController;
+use App\Http\Controllers\Auth\UserPasswordResetLinkController;
+use App\Http\Controllers\Auth\UserNewPasswordController;
+
 use App\Http\Controllers\Buyer\OtpController;
 use App\Http\Controllers\Buyer\RegisteredBuyerController;
 use App\Http\Controllers\Buyer\AuthenticatedSessionController as BuyerAuthenticatedSessionController;
@@ -38,19 +43,29 @@ Route::get('/register', function () {
     return view('auth.choose-role');
 })->name('register.choose');
 
+Route::post('/email/otp/send', [EmailOtpController::class, 'send'])->name('email-otp.send');
+Route::post('/email/otp/verify', [EmailOtpController::class, 'verify'])->name('email-otp.verify');
+
+Route::get('/seller', function () {
+    return redirect('/seller/login');
+});
+
+Route::get('/buyer', function () {
+    return redirect('/');
+});
+
 /*
 |--------------------------------------------------------------------------
 | Admin
 |--------------------------------------------------------------------------
 */
 Route::get('/admin', function () {
-    return redirect('/admin/dashboard');
+    return redirect('/admin/login');
 });
 
 Route::prefix('admin')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('admin.dashboard');
-
-    Route::middleware('auth')->group(function () {
+Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth:admin', 'verified'])->name('admin.dashboard');
+        Route::middleware('auth:admin')->group(function () {
         Route::get('/registrations', [RegistrationController::class, 'index'])->name('registrations.index');
         Route::get('/registrations/table', [RegistrationController::class, 'table'])->name('registrations.table');
         Route::get('/registrations/{user}', [RegistrationController::class, 'show'])->name('registrations.show');
@@ -140,12 +155,9 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::post('/login', [BuyerAuthenticatedSessionController::class, 'store'])->name('login.store');
     Route::post('/logout', [BuyerAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
-    Route::get('/forgot-password', function () {
-        return view('auth.forgot-password-buyer');
-    })->name('password.request');
-
-    Route::get('/dashboard', [BuyerDashboardController::class, 'index'])->name('dashboard');
-});
+    Route::get('/dashboard', function () {
+        return view('coming-soon', ['title' => 'Buyer Dashboard — Coming Soon']);
+    })->middleware('auth')->name('dashboard');});
 
 Route::post('/buyer/otp/send', [OtpController::class, 'send']);
 Route::post('/buyer/otp/verify', [OtpController::class, 'verify']);
@@ -156,6 +168,8 @@ Route::post('/buyer/otp/verify', [OtpController::class, 'verify']);
 |--------------------------------------------------------------------------
 */
 Route::prefix('seller')->name('seller.')->group(function () {
+ 
+
     Route::get('/register', [SellerRegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [SellerRegisteredUserController::class, 'store'])->name('register.store');
 
@@ -163,8 +177,9 @@ Route::prefix('seller')->name('seller.')->group(function () {
     Route::post('/login', [SellerAuthenticatedSessionController::class, 'store'])->name('login.store');
     Route::post('/logout', [SellerAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
-    Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
-});
+    Route::get('/dashboard', function () {
+        return view('coming-soon', ['title' => 'Seller Dashboard — Coming Soon']);
+    })->middleware('auth')->name('dashboard');});
 
 /*
 |--------------------------------------------------------------------------
@@ -186,4 +201,12 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
     Route::get('/dashboard', [LogisticsDashboardController::class, 'index'])->name('dashboard');
 });
 
+Route::get('/login', [UnifiedLoginController::class, 'create'])->name('login');
+Route::post('/login', [UnifiedLoginController::class, 'store'])->name('login.store');
+Route::post('/logout', [UnifiedLoginController::class, 'destroy'])->middleware('auth')->name('logout');
+
+Route::get('/forgot-password', [UserPasswordResetLinkController::class, 'create'])->name('password.request');
+Route::post('/forgot-password', [UserPasswordResetLinkController::class, 'store'])->name('password.email');
+Route::get('/reset-password/{token}', [UserNewPasswordController::class, 'create'])->name('password.reset');
+Route::post('/reset-password', [UserNewPasswordController::class, 'store'])->name('password.store');
 require __DIR__.'/auth.php';
