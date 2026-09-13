@@ -27,6 +27,7 @@
         @include('buyer.partials.showcase')
         @include('buyer.partials.order-tracking')
         @include('buyer.partials.trust')
+        @include('buyer.partials.logistics-partner')
         @include('buyer.partials.final-cta')
     </main>
 

@@ -319,7 +319,6 @@
                                 Tell about your contact and where you live from
                             </p>
                         </div>
-                    </div>
 
                     <div class="flex items-start gap-3">
                         <div
@@ -335,8 +334,8 @@
                                 Review your information and submit
                             </p>
                         </div>
-                    </div>
 
+                    </div>
                 </div>
             </div>
         </div>
@@ -377,8 +376,8 @@
                     </div>
 
                     <div class="flex-1 flex h-px shrink">
-                        <div class="w-1/2 h-px bg-[#3b1735]"></div>
-                        <div class="w-1/2 h-px" :class="step >= 2 ? 'bg-[#3b1735]' : 'bg-gray-300'"></div>
+                        <div class="w-1/2 h-px bg-[#3b1735] transition-colors duration-500"></div>
+                        <div class="w-1/2 h-px transition-colors duration-500" :class="step >= 2 ? 'bg-[#3b1735]' : 'bg-gray-300'"></div>
                     </div>
 
                     <div class="shrink-0 w-8">
@@ -389,8 +388,8 @@
                     </div>
 
                     <div class="flex-1 flex h-px shrink">
-                        <div class="w-1/2 h-px" :class="step >= 2 ? 'bg-[#3b1735]' : 'bg-gray-300'"></div>
-                        <div class="w-1/2 h-px" :class="step >= 3 ? 'bg-[#3b1735]' : 'bg-gray-300'"></div>
+                        <div class="w-1/2 h-px transition-colors duration-500" :class="step >= 2 ? 'bg-[#3b1735]' : 'bg-gray-300'"></div>
+                        <div class="w-1/2 h-px transition-colors duration-500" :class="step >= 3 ? 'bg-[#3b1735]' : 'bg-gray-300'"></div>
                     </div>
 
                     <div class="shrink-0 w-8">
@@ -507,7 +506,6 @@
                                         <option value="" disabled selected>Select Sex</option>
                                         <option value="male">Male</option>
                                         <option value="female">Female</option>
-                                        <option value="prefer_not_to_say">Prefer not to say</option>
                                     </select>
 
                                     <div class="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">
@@ -686,6 +684,7 @@
                                         :disabled="idCategory !== 'secondary'"
                                         onchange="document.getElementById('valid-id-1-label').textContent = this.files[0]?.name || 'Upload ID here'">
                                 </label>
+                                <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF.</p>
                             </div>
 
                             <div>

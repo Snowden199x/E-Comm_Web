@@ -29,7 +29,7 @@
 
                 {{-- Welcome copy --}}
                 <h1 class="text-[2.6rem] font-bold text-white leading-tight mb-2 tracking-tight">
-                    Welcome Back!
+                    Welcome Back, Partner!
                 </h1>
                 <p class="text-[1rem] font-light text-white/70 tracking-wide">
                     Find What You Love. Vendo It.
@@ -72,7 +72,7 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('buyer.login.store') }}" x-data="{ showPassword: false }">
+                    <form method="POST" action="{{ route('logistics.login.store') }}" x-data="{ showPassword: false }">
                         @csrf
 
                         {{-- Email --}}
@@ -103,7 +103,7 @@
                                     Password
                                 </label>
                                 @if (Route::has('password.request'))
-                                    <a href="{{ route('buyer.password.request') }}"
+                                    <a href="{{ route('logistics.password.request') }}"
                                        class="text-[0.78rem] text-gray-500 hover:text-[#3b1735] transition font-normal">
                                         Forgot password?
                                     </a>
@@ -178,7 +178,7 @@
                     {{-- Register link --}}
                     <p class="text-center text-[0.78rem] text-gray-500 mt-6 font-normal">
                         Don't have an account?
-                        <a href="{{ route('buyer.register') }}" class="text-[#3b1735] font-semibold hover:underline">
+                        <a href="{{ route('logistics.register') }}" class="text-[#3b1735] font-semibold hover:underline">
                             Register Here.
                         </a>
                     </p>

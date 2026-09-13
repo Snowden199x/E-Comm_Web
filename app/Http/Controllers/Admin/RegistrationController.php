@@ -14,10 +14,11 @@ class RegistrationController extends Controller
     {
         $registrations = $this->filteredRegistrations($request);
 
-        $stats = [
-            'pending_request' => User::whereIn('role', ['seller', 'buyer'])->where('status', 'pending')->count(),
+         $stats = [
+            'pending_request' => User::whereIn('role', ['seller', 'buyer', 'logistics_center'])->where('status', 'pending')->count(),
             'pending_sellers' => User::where('role', 'seller')->where('status', 'pending')->count(),
             'pending_buyers' => User::where('role', 'buyer')->where('status', 'pending')->count(),
+            'pending_logistics_centers' => User::where('role', 'logistics_center')->where('status', 'pending')->count(),
         ];
 
         return view('admin.registrations.index', compact('registrations', 'stats'));
@@ -32,7 +33,7 @@ class RegistrationController extends Controller
 
     private function filteredRegistrations(Request $request)
     {
-        $query = User::whereIn('role', ['seller', 'buyer'])->where('status', 'pending');
+        $query = User::whereIn('role', ['seller', 'buyer', 'logistics_center'])->where('status', 'pending');
 
         if ($request->filled('search')) {
             $search = $request->search;

@@ -6,7 +6,7 @@
             <p class="text-gray-500">Manage user registration here.</p>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
             <div class="bg-purple-50 border-2 border-[#3b1735] rounded-2xl p-4 flex items-center gap-3">
                 <img src="{{ asset('assets/icons/dashboard/total-orders-icon.svg') }}" alt="" class="w-10 h-10">
                 <div>
@@ -28,6 +28,14 @@
                 <div>
                     <p class="text-xs text-gray-600">Pending Buyers</p>
                     <p class="text-xl font-bold text-gray-900">{{ number_format($stats['pending_buyers']) }}</p>
+                </div>
+            </div>
+            <div class="bg-purple-50 border-2 border-[#3b1735] rounded-2xl p-4 flex items-center gap-3">
+                <img src="{{ asset('assets/icons/dashboard/couriers-registrations.svg') }}" alt=""
+                    class="w-10 h-10">
+                <div>
+                    <p class="text-xs text-gray-600">Pending Logistics Centers</p>
+                    <p class="text-xl font-bold text-gray-900">{{ number_format($stats['pending_logistics_centers']) }}</p>
                 </div>
             </div>
         </div>
@@ -64,6 +72,7 @@
                     <option value="all">All Users</option>
                     <option value="seller">Sellers</option>
                     <option value="buyer">Buyers</option>
+                    <option value="logistics_center">Logistics Centers</option>
                 </select>
             </div>
         </div>

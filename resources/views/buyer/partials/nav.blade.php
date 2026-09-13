@@ -25,7 +25,7 @@
         <span class="cart-count" id="cartCount">0</span>
       </button>
       <a href="{{ url('/buyer/login') }}" class="login-link">Log in</a>
-      <a href="#" class="btn btn-primary">Get Started</a>
+      <a href="{{ route('register.choose') }}" class="btn btn-primary">Get Started</a>
       <button class="hamburger" id="hamburgerBtn" aria-label="Menu"><span></span><span></span><span></span></button>
     </div>
   </nav>
@@ -36,6 +36,6 @@
   <a href="#categories">Categories</a>
   <a href="#how-it-works">How It Works</a>
   <a href="#trust">About Vendo</a>
-  <a href="#" class="btn btn-primary" style="align-self:flex-start;font-size:16px;">Get Started</a>
+  <a href="{{ route('register.choose') }}" class="btn btn-primary" style="align-self:flex-start;font-size:16px;">Get Started</a>
 </div>
 

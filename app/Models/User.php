@@ -17,7 +17,7 @@ use App\Models\Profiles\SellerDetail;
 use App\Models\Profiles\BuyerDetail;
 use App\Models\Profiles\CourierDetail;
 
-#[Fillable(['name', 'email', 'password', 'role', 'status', 'phone_number','rejection_reason', 'suspension_reason', 'suspension_notes', 'suspended_at', 'suspended_until'])]
+#[Fillable(['name', 'email', 'password', 'role', 'status', 'phone_number','rejection_reason', 'rejection_notes', 'suspension_reason', 'suspension_notes', 'suspended_at', 'suspended_until'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -53,9 +53,14 @@ class User extends Authenticatable
         return $this->belongsToMany(Category::class, 'seller_categories');
     }
 
-    public function courierDetail()
+     public function courierDetail()
     {
         return $this->hasOne(CourierDetail::class);
+    }
+
+    public function logisticsCenterDetail()
+    {
+        return $this->hasOne(\App\Models\Profiles\LogisticsCenter::class);
     }
 
     public function buyerDetail()

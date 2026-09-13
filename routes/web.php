@@ -37,7 +37,28 @@ Route::get('/seller', function () {
 });
 
 Route::get('/logistics', function () {
-    return view('coming-soon', ['title' => 'Logistics Portal — Coming Soon']);
+    return view('logistics.landing');
+})->name('logistics.landing');
+
+// "Sign up as Seller / Buyer" chooser
+Route::get('/register', function () {
+    return view('auth.choose-role');
+})->name('register.choose');
+
+// Shared email OTP endpoints used by all registration wizards
+Route::post('/email/otp/send', [EmailOtpController::class, 'send'])->name('email-otp.send');
+Route::post('/email/otp/verify', [EmailOtpController::class, 'verify'])->name('email-otp.verify');
+
+Route::prefix('buyer')->name('buyer.')->middleware('guest')->group(function () {
+    Route::get('/register', [BuyerRegisteredUserController::class, 'create'])->name('register');
+    Route::post('/register', [BuyerRegisteredUserController::class, 'store'])->name('register.store');
+
+    Route::get('/login', [BuyerAuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('/login', [BuyerAuthenticatedSessionController::class, 'store'])->name('login.store');
+
+    Route::get('/forgot-password', function () {
+        return view('auth.forgot-password-buyer');
+    })->name('password.request');
 });
 
 /*
@@ -49,9 +70,8 @@ Route::get('/buyer/login', function () {
     return view('auth.login-buyer');
 })->name('buyer.login');
 
-Route::get('/buyer/register', function () {
-    return view('auth.register-buyer');
-})->name('buyer.register');
+Route::post('/seller/logout', [SellerAuthenticatedSessionController::class, 'destroy'])
+    ->middleware('auth')->name('seller.logout');
 
 Route::post('/buyer/register', [RegisteredBuyerController::class, 'store'])->name('buyer.register.store');
 
@@ -80,7 +100,7 @@ Route::get('/admin', function () {
 
 Route::prefix('admin')->group(function () {
 
-    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('admin.dashboard');
 
     Route::middleware('auth')->group(function () {
         Route::get('/registrations', [RegistrationController::class, 'index'])->name('registrations.index');

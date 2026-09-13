@@ -72,7 +72,7 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('buyer.login.store') }}" x-data="{ showPassword: false }">
+                    <form method="POST" action="{{ route('seller.login.store') }}" x-data="{ showPassword: false }">
                         @csrf
 
                         {{-- Email --}}
@@ -103,7 +103,7 @@
                                     Password
                                 </label>
                                 @if (Route::has('password.request'))
-                                    <a href="{{ route('buyer.password.request') }}"
+                                    <a href="{{ route('seller.password.request') }}"
                                        class="text-[0.78rem] text-gray-500 hover:text-[#3b1735] transition font-normal">
                                         Forgot password?
                                     </a>
@@ -178,7 +178,7 @@
                     {{-- Register link --}}
                     <p class="text-center text-[0.78rem] text-gray-500 mt-6 font-normal">
                         Don't have an account?
-                        <a href="{{ route('buyer.register') }}" class="text-[#3b1735] font-semibold hover:underline">
+                        <a href="{{ route('seller.register') }}" class="text-[#3b1735] font-semibold hover:underline">
                             Register Here.
                         </a>
                     </p>
