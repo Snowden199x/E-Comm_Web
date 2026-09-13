@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use App\Mail\AccountApprovedMail;
+use Illuminate\Support\Facades\Mail;
 
 class RegistrationController extends Controller
 {
@@ -59,11 +61,13 @@ class RegistrationController extends Controller
     }
 
     public function approve(User $user): RedirectResponse
-    {
-        $user->update(['status' => 'approved']);
+{
+    $user->update(['status' => 'approved']);
 
-        return back()->with('confirmation', 'approved');
-    }
+    Mail::to($user->email)->send(new AccountApprovedMail($user));
+
+    return back()->with('confirmation', 'approved');
+}
 
     public function disapprove(Request $request, User $user): RedirectResponse
     {

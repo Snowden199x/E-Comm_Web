@@ -45,7 +45,7 @@
                         <img src="{{ asset('assets/icons/dashboard/user-icon.svg') }}" alt=""
                             class="w-9 h-9 rounded-full bg-gray-200 p-1.5">
                         <div class="text-sm">
-                            <p class="font-semibold text-gray-900">{{ Auth::user()->name }}</p>
+                            <p class="font-semibold text-gray-900">{{ Auth::guard('admin')->user()->name }}</p>
                             <p class="text-gray-500">Super Administrator</p>
                         </div>
                     </div>

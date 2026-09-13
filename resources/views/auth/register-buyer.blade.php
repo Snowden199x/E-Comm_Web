@@ -59,14 +59,14 @@
         email: '',
         emailVerified: false,
         step1Error: '',
-
+    
         sendOtp() {
             const email = document.querySelector('[name=email]').value;
             if (!email) {
                 this.otpError = 'Enter your email first.';
                 return;
             }
-
+    
             fetch('/buyer/otp/send', {
                 method: 'POST',
                 headers: {
@@ -79,51 +79,51 @@
                 this.otpSent = true;
             });
         },
-
+    
         verifyOtp() {
             const email = document.querySelector('[name=email]').value;
             const otp_code = [...document.querySelectorAll('[id^=otp-]')]
                 .map(el => el.value)
                 .join('');
-
+    
             fetch('/buyer/otp/verify', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ||
-                        document.querySelector('input[name=_token]').value
-                },
-                body: JSON.stringify({ email, otp_code })
-            })
-            .then(res => res.json().then(data => ({
-                status: res.status,
-                data
-            })))
-            .then(({ status, data }) => {
-                if (status !== 200) {
-                    this.otpError = data.message;
-                    return;
-                }
-
-                this.showVerifyModal = false;
-                this.emailVerified = true;
-            });
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ||
+                            document.querySelector('input[name=_token]').value
+                    },
+                    body: JSON.stringify({ email, otp_code })
+                })
+                .then(res => res.json().then(data => ({
+                    status: res.status,
+                    data
+                })))
+                .then(({ status, data }) => {
+                    if (status !== 200) {
+                        this.otpError = data.message;
+                        return;
+                    }
+    
+                    this.showVerifyModal = false;
+                    this.emailVerified = true;
+                });
         },
-
+    
         shakeField(el) {
             if (!el) return;
-
+    
             el.classList.remove('shake-error');
             void el.offsetWidth;
             el.classList.add('shake-error');
-
+    
             setTimeout(() => el.classList.remove('shake-error'), 500);
         },
-
+    
         validateStep1() {
             this.step1Error = '';
             let valid = true;
-
+    
             const required = [
                 'last_name',
                 'first_name',
@@ -134,86 +134,86 @@
                 'password',
                 'password_confirmation'
             ];
-
+    
             for (const name of required) {
                 const el = document.querySelector(`[name=${name}]`);
-
+    
                 if (!el || !el.value) {
                     this.shakeField(el);
                     valid = false;
                 }
             }
-
+    
             const pw = document.querySelector('[name=password]');
             const pwConfirm = document.querySelector('[name=password_confirmation]');
-
+    
             if (pw.value && pwConfirm.value && pw.value !== pwConfirm.value) {
                 this.shakeField(pwConfirm);
                 this.step1Error = 'Passwords do not match.';
                 valid = false;
             }
-
+    
             if (this.idCategory === 'primary') {
                 const idType = document.querySelector('[name=id_type]');
                 const validId = document.querySelector('#primary-valid-id');
-
+    
                 if (!idType || !idType.value) {
                     this.shakeField(idType);
                     valid = false;
                 }
-
+    
                 if (!validId || !validId.files.length) {
                     this.shakeField(validId);
                     valid = false;
                 }
             }
-
+    
             if (this.idCategory === 'secondary') {
                 const idType1 = document.querySelector('[name=id_type_1]');
                 const idType2 = document.querySelector('[name=id_type_2]');
                 const validId1 = document.querySelector('#secondary-valid-id-1');
                 const validId2 = document.querySelector('#secondary-valid-id-2');
-
+    
                 if (!idType1 || !idType1.value) {
                     this.shakeField(idType1);
                     valid = false;
                 }
-
+    
                 if (!idType2 || !idType2.value) {
                     this.shakeField(idType2);
                     valid = false;
                 }
-
+    
                 if (!validId1 || !validId1.files.length) {
                     this.shakeField(validId1);
                     valid = false;
                 }
-
+    
                 if (!validId2 || !validId2.files.length) {
                     this.shakeField(validId2);
                     valid = false;
                 }
             }
-
+    
             if (!this.emailVerified) {
                 this.shakeField(document.querySelector('[name=email]'));
                 this.step1Error = 'Please verify your email first.';
                 valid = false;
             }
-
+    
             if (!valid && !this.step1Error) {
                 this.step1Error = 'Please fill in all required fields.';
             }
-
+    
             return valid;
         },
-
+    
         step2Error: '',
-
+    
         validateStep2() {
             this.step2Error = '';
             let valid = true;
-
+    
             const required = [
                 'province',
                 'municipality',
@@ -223,35 +223,70 @@
                 'zip_code',
                 'contact_number'
             ];
-
+    
             for (const name of required) {
                 const el = document.querySelector(`[name=${name}]`);
-
+    
                 if (!el || !el.value) {
                     this.shakeField(el);
                     valid = false;
                 }
             }
-
+    
             if (!valid) {
                 this.step2Error = 'Please fill in all required fields.';
             }
-
+    
             return valid;
         },
-
+    
         agreeTerms: false,
         step3Error: '',
-
+    
         validateStep3() {
             this.step3Error = '';
-
+    
             if (!this.agreeTerms) {
                 this.step3Error = 'Please agree to the Terms and Conditions and Privacy Policy.';
                 return false;
             }
-
+    
             return true;
+        },
+    
+        formError: '',
+        submitting: false,
+    
+        async submitForm(form) {
+            if (!this.validateStep3()) return;
+    
+            this.submitting = true;
+            this.formError = '';
+    
+            try {
+                const res = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content
+                    },
+                    body: new FormData(form),
+                });
+    
+                const data = await res.json().catch(() => ({}));
+    
+                if (res.ok) {
+                    this.showSuccessModal = true;
+                } else if (res.status === 422 && data.errors) {
+                    this.formError = Object.values(data.errors)[0][0];
+                } else {
+                    this.formError = data.message || 'Something went wrong. Please try again.';
+                }
+            } catch (e) {
+                this.formError = 'Network error. Please try again.';
+            }
+    
+            this.submitting = false;
         }
     }">
 
@@ -319,6 +354,7 @@
                                 Tell about your contact and where you live from
                             </p>
                         </div>
+                    </div>
 
                     <div class="flex items-start gap-3">
                         <div
@@ -334,7 +370,6 @@
                                 Review your information and submit
                             </p>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -344,6 +379,14 @@
 
             <div class="flex items-start justify-between px-8 pt-7 pb-2">
                 <div>
+                    <a href="{{ url('/') }}"
+                        class="inline-flex items-center gap-1 text-[0.75rem] font-medium text-gray-400 hover:text-[#3b1735] mb-1.5 transition-all duration-200 hover:-translate-x-0.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Back to Landing Page
+                    </a>
                     <h1 class="text-[1.25rem] font-bold text-gray-900 tracking-tight leading-tight">
                         Buyer Registration
                     </h1>
@@ -377,7 +420,8 @@
 
                     <div class="flex-1 flex h-px shrink">
                         <div class="w-1/2 h-px bg-[#3b1735] transition-colors duration-500"></div>
-                        <div class="w-1/2 h-px transition-colors duration-500" :class="step >= 2 ? 'bg-[#3b1735]' : 'bg-gray-300'"></div>
+                        <div class="w-1/2 h-px transition-colors duration-500"
+                            :class="step >= 2 ? 'bg-[#3b1735]' : 'bg-gray-300'"></div>
                     </div>
 
                     <div class="shrink-0 w-8">
@@ -388,8 +432,10 @@
                     </div>
 
                     <div class="flex-1 flex h-px shrink">
-                        <div class="w-1/2 h-px transition-colors duration-500" :class="step >= 2 ? 'bg-[#3b1735]' : 'bg-gray-300'"></div>
-                        <div class="w-1/2 h-px transition-colors duration-500" :class="step >= 3 ? 'bg-[#3b1735]' : 'bg-gray-300'"></div>
+                        <div class="w-1/2 h-px transition-colors duration-500"
+                            :class="step >= 2 ? 'bg-[#3b1735]' : 'bg-gray-300'"></div>
+                        <div class="w-1/2 h-px transition-colors duration-500"
+                            :class="step >= 3 ? 'bg-[#3b1735]' : 'bg-gray-300'"></div>
                     </div>
 
                     <div class="shrink-0 w-8">
@@ -403,8 +449,7 @@
 
                 <div class="relative flex w-full max-w-[580px] mx-auto mb-6 mt-1.5">
                     <div class="shrink-0 w-8 relative">
-                        <span
-                            class="absolute left-1/2 -translate-x-1/2 text-[0.62rem] whitespace-nowrap"
+                        <span class="absolute left-1/2 -translate-x-1/2 text-[0.62rem] whitespace-nowrap"
                             :class="step >= 1 ? 'font-semibold text-[#3b1735]' : 'font-normal text-gray-400'">
                             Personal Information
                         </span>
@@ -413,8 +458,7 @@
                     <div class="flex-1"></div>
 
                     <div class="shrink-0 w-8 relative">
-                        <span
-                            class="absolute left-1/2 -translate-x-1/2 text-[0.62rem] whitespace-nowrap"
+                        <span class="absolute left-1/2 -translate-x-1/2 text-[0.62rem] whitespace-nowrap"
                             :class="step >= 2 ? 'font-semibold text-[#3b1735]' : 'font-normal text-gray-400'">
                             Contact &amp; Address
                         </span>
@@ -423,8 +467,7 @@
                     <div class="flex-1"></div>
 
                     <div class="shrink-0 w-8 relative">
-                        <span
-                            class="absolute left-1/2 -translate-x-1/2 text-[0.62rem] whitespace-nowrap"
+                        <span class="absolute left-1/2 -translate-x-1/2 text-[0.62rem] whitespace-nowrap"
                             :class="step >= 3 ? 'font-semibold text-[#3b1735]' : 'font-normal text-gray-400'">
                             Review &amp; Submit
                         </span>
@@ -433,19 +476,13 @@
 
                 <div class="mb-4"></div>
 
-                @if ($errors->any())
-                    <div
-                        class="max-w-[580px] mx-auto mb-4 bg-red-50 border border-red-300 text-red-700 text-[0.72rem] rounded-md p-3">
-                        <ul class="list-disc list-inside">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
+                <div x-show="formError" x-cloak
+                    class="max-w-[580px] mx-auto mb-4 bg-red-50 border border-red-300 text-red-700 text-[0.72rem] rounded-md p-3">
+                    <span x-text="formError"></span>
+                </div>
 
-                <form method="POST" action="{{ route('buyer.register.store') }}"
-                    enctype="multipart/form-data">
+                <form method="POST" action="{{ route('buyer.register.store') }}" enctype="multipart/form-data"
+                    @submit.prevent="submitForm($el)">
                     @csrf
 
                     <div x-show="step === 1">
@@ -509,10 +546,10 @@
                                     </select>
 
                                     <div class="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">
-                                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none"
-                                            stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </div>
                                 </div>
@@ -524,22 +561,19 @@
                                         Email <span class="text-red-500">*</span>
                                     </label>
 
-                                    <button type="button"
-                                        @click="sendOtp(); showVerifyModal = true"
+                                    <button type="button" @click="sendOtp(); showVerifyModal = true"
                                         x-show="email.length > 0 && !emailVerified"
                                         class="text-[0.65rem] font-semibold text-[#3b1735] hover:underline">
                                         Verify
                                     </button>
 
-                                    <span x-show="emailVerified"
-                                        class="text-[0.65rem] font-semibold text-green-600">
+                                    <span x-show="emailVerified" class="text-[0.65rem] font-semibold text-green-600">
                                         ✓ Verified
                                     </span>
                                 </div>
 
                                 <input type="email" name="email" placeholder="Enter email address"
-                                    x-model="email" :readonly="emailVerified"
-                                    value="{{ old('email') }}"
+                                    x-model="email" :readonly="emailVerified" value="{{ old('email') }}"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition"
                                     :class="emailVerified ? 'bg-gray-50 cursor-not-allowed' : ''">
                             </div>
@@ -553,8 +587,7 @@
                                     Birthday <span class="text-red-500">*</span>
                                 </label>
 
-                                <input type="date" name="birthday"
-                                    value="{{ old('birthday') }}"
+                                <input type="date" name="birthday" value="{{ old('birthday') }}"
                                     onchange="
                                         const b = new Date(this.value);
                                         const t = new Date();
@@ -589,16 +622,14 @@
                             </select>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3 mb-5"
-                            x-show="idCategory === 'primary'">
+                        <div class="grid grid-cols-2 gap-3 mb-5" x-show="idCategory === 'primary'">
 
                             <div>
                                 <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
                                     ID Type <span class="text-red-500">*</span>
                                 </label>
 
-                                <select name="id_type"
-                                    :disabled="idCategory !== 'primary'"
+                                <select name="id_type" :disabled="idCategory !== 'primary'"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.72rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                     <option value="" disabled selected>Select ID Type</option>
                                     <option value="Philippine Passport">Philippine Passport</option>
@@ -622,36 +653,28 @@
 
                                     <span id="valid-id-label">Upload ID here</span>
 
-                                    <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
-                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            stroke-width="2"
+                                    <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                     </svg>
 
-                                    <input type="file"
-                                        name="valid_id"
-                                        id="primary-valid-id"
-                                        class="hidden"
-                                        accept="image/*,.pdf"
-                                        :disabled="idCategory !== 'primary'"
+                                    <input type="file" name="valid_id" id="primary-valid-id" class="hidden"
+                                        accept="image/*,.pdf" :disabled="idCategory !== 'primary'"
                                         onchange="document.getElementById('valid-id-label').textContent = this.files[0]?.name || 'Upload ID here'">
                                 </label>
                             </div>
 
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3 mb-5"
-                            x-show="idCategory === 'secondary'"
-                            x-cloak>
+                        <div class="grid grid-cols-2 gap-3 mb-5" x-show="idCategory === 'secondary'" x-cloak>
 
                             <div>
                                 <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
                                     First Secondary ID Type <span class="text-red-500">*</span>
                                 </label>
 
-                                <select name="id_type_1"
-                                    :disabled="idCategory !== 'secondary'"
+                                <select name="id_type_1" :disabled="idCategory !== 'secondary'"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.72rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                     <option value="" disabled selected>Select ID Type</option>
                                     <option value="PhilHealth ID">PhilHealth ID</option>
@@ -669,19 +692,14 @@
 
                                     <span id="valid-id-1-label">Upload ID here</span>
 
-                                    <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
-                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            stroke-width="2"
+                                    <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                     </svg>
 
-                                    <input type="file"
-                                        name="valid_id"
-                                        id="secondary-valid-id-1"
-                                        class="hidden"
-                                        accept="image/*,.pdf"
-                                        :disabled="idCategory !== 'secondary'"
+                                    <input type="file" name="valid_id" id="secondary-valid-id-1" class="hidden"
+                                        accept="image/*,.pdf" :disabled="idCategory !== 'secondary'"
                                         onchange="document.getElementById('valid-id-1-label').textContent = this.files[0]?.name || 'Upload ID here'">
                                 </label>
                                 <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF.</p>
@@ -692,8 +710,7 @@
                                     Second Secondary ID Type <span class="text-red-500">*</span>
                                 </label>
 
-                                <select name="id_type_2"
-                                    :disabled="idCategory !== 'secondary'"
+                                <select name="id_type_2" :disabled="idCategory !== 'secondary'"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.72rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                     <option value="" disabled selected>Select ID Type</option>
                                     <option value="PhilHealth ID">PhilHealth ID</option>
@@ -711,19 +728,14 @@
 
                                     <span id="valid-id-2-label">Upload ID here</span>
 
-                                    <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
-                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            stroke-width="2"
+                                    <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                     </svg>
 
-                                    <input type="file"
-                                        name="valid_id_2"
-                                        id="secondary-valid-id-2"
-                                        class="hidden"
-                                        accept="image/*,.pdf"
-                                        :disabled="idCategory !== 'secondary'"
+                                    <input type="file" name="valid_id_2" id="secondary-valid-id-2" class="hidden"
+                                        accept="image/*,.pdf" :disabled="idCategory !== 'secondary'"
                                         onchange="document.getElementById('valid-id-2-label').textContent = this.files[0]?.name || 'Upload ID here'">
                                 </label>
                             </div>
@@ -749,31 +761,26 @@
                                 </label>
 
                                 <div class="relative">
-                                    <input name="password"
-                                        x-bind:type="showPassword ? 'text' : 'password'"
+                                    <input name="password" x-bind:type="showPassword ? 'text' : 'password'"
                                         placeholder="Create a password"
                                         class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
 
-                                    <button type="button"
-                                        @click="showPassword = !showPassword"
+                                    <button type="button" @click="showPassword = !showPassword"
                                         class="absolute inset-y-0 right-0 flex items-center justify-center w-9 text-gray-400 hover:text-gray-600 transition"
                                         tabindex="-1">
 
-                                        <svg x-show="!showPassword"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="1.8">
+                                        <svg x-show="!showPassword" xmlns="http://www.w3.org/2000/svg"
+                                            class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                            stroke-width="1.8">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
 
-                                        <svg x-show="showPassword"
-                                            x-cloak
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="1.8">
+                                        <svg x-show="showPassword" x-cloak xmlns="http://www.w3.org/2000/svg"
+                                            class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                            stroke-width="1.8">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.956 9.956 0 012.293-3.95M6.47 6.47A9.953 9.953 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.963 9.963 0 01-4.134 5.247M15 12a3 3 0 00-3-3m0 6a3 3 0 01-2.83-2M3 3l18 18" />
                                         </svg>
@@ -793,26 +800,22 @@
                                         placeholder="Confirm your password"
                                         class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
 
-                                    <button type="button"
-                                        @click="showConfirmPassword = !showConfirmPassword"
+                                    <button type="button" @click="showConfirmPassword = !showConfirmPassword"
                                         class="absolute inset-y-0 right-0 flex items-center justify-center w-9 text-gray-400 hover:text-gray-600 transition"
                                         tabindex="-1">
 
-                                        <svg x-show="!showConfirmPassword"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="1.8">
+                                        <svg x-show="!showConfirmPassword" xmlns="http://www.w3.org/2000/svg"
+                                            class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                            stroke-width="1.8">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
 
-                                        <svg x-show="showConfirmPassword"
-                                            x-cloak
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="1.8">
+                                        <svg x-show="showConfirmPassword" x-cloak xmlns="http://www.w3.org/2000/svg"
+                                            class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                            stroke-width="1.8">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.956 9.956 0 012.293-3.95M6.47 6.47A9.953 9.953 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.963 9.963 0 01-4.134 5.247M15 12a3 3 0 00-3-3m0 6a3 3 0 01-2.83-2M3 3l18 18" />
                                         </svg>
@@ -828,21 +831,18 @@
                         </p>
 
                         <div class="flex justify-end">
-                            <button type="button"
-                                @click="if (validateStep1()) step = 2"
+                            <button type="button" @click="if (validateStep1()) step = 2"
                                 class="flex items-center gap-1.5 bg-[#3b1735] hover:bg-[#4d1f45] active:bg-[#2e1229] text-white text-[0.75rem] font-semibold rounded-lg px-5 py-2 transition-colors duration-150">
                                 Next: Contact &amp; Address
 
-                                <svg class="w-3.5 h-3.5" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        stroke-width="2.5" d="M9 5l7 7-7 7" />
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                        d="M9 5l7 7-7 7" />
                                 </svg>
                             </button>
                         </div>
 
-                        <p x-show="step1Error"
-                            x-text="step1Error"
+                        <p x-show="step1Error" x-text="step1Error"
                             class="text-red-500 text-[0.7rem] text-right mt-2">
                         </p>
 
@@ -874,10 +874,10 @@
                                     </select>
 
                                     <div class="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">
-                                        <svg class="w-3.5 h-3.5 text-gray-400"
-                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </div>
                                 </div>
@@ -895,10 +895,10 @@
                                     </select>
 
                                     <div class="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">
-                                        <svg class="w-3.5 h-3.5 text-gray-400"
-                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </div>
                                 </div>
@@ -916,10 +916,10 @@
                                     </select>
 
                                     <div class="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">
-                                        <svg class="w-3.5 h-3.5 text-gray-400"
-                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </div>
                                 </div>
@@ -934,8 +934,7 @@
                                     House No. <span class="text-red-500">*</span>
                                 </label>
 
-                                <input type="text" name="house_no"
-                                    placeholder="House/Unit No."
+                                <input type="text" name="house_no" placeholder="House/Unit No."
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
@@ -954,8 +953,7 @@
                                     Zip Code <span class="text-red-500">*</span>
                                 </label>
 
-                                <input type="text" name="zip_code"
-                                    placeholder="Enter zip code"
+                                <input type="text" name="zip_code" placeholder="Enter zip code"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
@@ -964,8 +962,7 @@
                                     Contact Number <span class="text-red-500">*</span>
                                 </label>
 
-                                <input type="text" name="contact_number"
-                                    placeholder="09XX XXX XXXX"
+                                <input type="text" name="contact_number" placeholder="09XX XXX XXXX"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
@@ -973,28 +970,24 @@
 
                         <div class="flex justify-end gap-3">
 
-                            <button type="button"
-                                @click="step = 1"
+                            <button type="button" @click="step = 1"
                                 class="text-[0.75rem] font-medium text-gray-700 border border-gray-300 rounded-lg px-5 py-2 hover:bg-gray-50 transition">
                                 Back
                             </button>
 
-                            <button type="button"
-                                @click="if (validateStep2()) step = 3"
+                            <button type="button" @click="if (validateStep2()) step = 3"
                                 class="flex items-center gap-1.5 bg-[#3b1735] hover:bg-[#4d1f45] active:bg-[#2e1229] text-white text-[0.75rem] font-semibold rounded-lg px-5 py-2 transition-colors duration-150">
                                 Next: Review &amp; Submit
 
-                                <svg class="w-3.5 h-3.5" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        stroke-width="2.5" d="M9 5l7 7-7 7" />
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                        d="M9 5l7 7-7 7" />
                                 </svg>
                             </button>
 
                         </div>
 
-                        <p x-show="step2Error"
-                            x-text="step2Error"
+                        <p x-show="step2Error" x-text="step2Error"
                             class="text-red-500 text-[0.7rem] text-right mt-2">
                         </p>
 
@@ -1020,12 +1013,10 @@
                                     <div
                                         class="w-9 h-9 rounded-full bg-[#ede6f0] flex items-center justify-center shrink-0">
 
-                                        <svg xmlns="http://www.w3.org/2000/svg"
-                                            class="w-5 h-5 text-[#3b1735]"
-                                            fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="1.8">
-                                            <path stroke-linecap="round"
-                                                stroke-linejoin="round"
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#3b1735]"
+                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                            stroke-width="1.8">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                         </svg>
 
@@ -1036,8 +1027,7 @@
                                     </span>
                                 </div>
 
-                                <button type="button"
-                                    @click="step = 1"
+                                <button type="button" @click="step = 1"
                                     class="text-[0.7rem] font-medium text-gray-700 border border-gray-300 rounded-md px-4 py-1 hover:bg-gray-50 transition">
                                     Edit
                                 </button>
@@ -1053,11 +1043,11 @@
 
                                     <p class="text-[0.72rem] font-semibold text-gray-800"
                                         x-text="
-                                            ((document.querySelector('[name=first_name]')?.value || '') + ' ' +
+                                            step && (((document.querySelector('[name=first_name]')?.value || '') + ' ' +
                                             (document.querySelector('[name=middle_initial]')?.value
                                                 ? document.querySelector('[name=middle_initial]').value + '. '
                                                 : '') +
-                                            (document.querySelector('[name=last_name]')?.value || '')) || '—'
+                                            (document.querySelector('[name=last_name]')?.value || '')) || '—')
                                         ">
                                     </p>
                                 </div>
@@ -1068,7 +1058,7 @@
                                     </p>
 
                                     <p class="text-[0.72rem] font-semibold text-gray-800"
-                                        x-text="document.querySelector('[name=contact_number]')?.value || '—'">
+                                        x-text="step && document.querySelector('[name=contact_number]')?.value || '—'">
                                     </p>
                                 </div>
 
@@ -1078,7 +1068,7 @@
                                     </p>
 
                                     <p class="text-[0.72rem] font-semibold text-gray-800"
-                                        x-text="document.querySelector('[name=province]')?.options[document.querySelector('[name=province]')?.selectedIndex]?.text || '—'">
+                                        x-text="step && document.querySelector('[name=province]')?.options[document.querySelector('[name=province]')?.selectedIndex]?.text || '—'">
                                     </p>
                                 </div>
 
@@ -1089,8 +1079,8 @@
 
                                     <p class="text-[0.72rem] font-semibold text-gray-800"
                                         x-text="
-                                            ((document.querySelector('[name=house_no]')?.value || '') + ' ' +
-                                            (document.querySelector('[name=street]')?.value || '')) || '—'
+                                            step && (((document.querySelector('[name=house_no]')?.value || '') + ' ' +
+                                            (document.querySelector('[name=street]')?.value || '')) || '—')
                                         ">
                                     </p>
                                 </div>
@@ -1101,7 +1091,7 @@
                                     </p>
 
                                     <p class="text-[0.72rem] font-semibold text-gray-800 capitalize"
-                                        x-text="document.querySelector('[name=sex]')?.value || '—'">
+                                        x-text="step && document.querySelector('[name=sex]')?.value || '—'">
                                     </p>
                                 </div>
 
@@ -1111,7 +1101,7 @@
                                     </p>
 
                                     <p class="text-[0.72rem] font-semibold text-gray-800"
-                                        x-text="document.querySelector('[name=birthday]')?.value || '—'">
+                                        x-text="step && document.querySelector('[name=birthday]')?.value || '—'">
                                     </p>
                                 </div>
 
@@ -1121,7 +1111,7 @@
                                     </p>
 
                                     <p class="text-[0.72rem] font-semibold text-gray-800"
-                                        x-text="document.querySelector('[name=municipality]')?.options[document.querySelector('[name=municipality]')?.selectedIndex]?.text || '—'">
+                                        x-text="step && document.querySelector('[name=municipality]')?.options[document.querySelector('[name=municipality]')?.selectedIndex]?.text || '—'">
                                     </p>
                                 </div>
 
@@ -1131,7 +1121,7 @@
                                     </p>
 
                                     <p class="text-[0.72rem] font-semibold text-gray-800"
-                                        x-text="document.querySelector('[name=zip_code]')?.value || '—'">
+                                        x-text="step && document.querySelector('[name=zip_code]')?.value || '—'">
                                     </p>
                                 </div>
 
@@ -1141,7 +1131,7 @@
                                     </p>
 
                                     <p class="text-[0.72rem] font-semibold text-gray-800 break-all"
-                                        x-text="document.querySelector('[name=email]')?.value || '—'">
+                                        x-text="step && document.querySelector('[name=email]')?.value || '—'">
                                     </p>
                                 </div>
 
@@ -1151,7 +1141,7 @@
                                     </p>
 
                                     <p class="text-[0.72rem] font-semibold text-gray-800"
-                                        x-text="document.querySelector('[name=age]')?.value || '—'">
+                                        x-text="step && document.querySelector('[name=age]')?.value || '—'">
                                     </p>
                                 </div>
 
@@ -1161,7 +1151,7 @@
                                     </p>
 
                                     <p class="text-[0.72rem] font-semibold text-gray-800"
-                                        x-text="document.querySelector('[name=barangay]')?.options[document.querySelector('[name=barangay]')?.selectedIndex]?.text || '—'">
+                                        x-text="step && document.querySelector('[name=barangay]')?.options[document.querySelector('[name=barangay]')?.selectedIndex]?.text || '—'">
                                     </p>
                                 </div>
 
@@ -1171,17 +1161,13 @@
                                     </p>
 
                                     <div class="flex items-center gap-1.5 mt-0.5">
-                                        <svg class="w-3.5 h-3.5 text-gray-400 shrink-0"
-                                            fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
+                                        <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
 
-                                        <span class="text-[0.68rem] text-gray-600 truncate"
-                                            id="review-valid-id">
+                                        <span class="text-[0.68rem] text-gray-600 truncate" id="review-valid-id">
                                             —
                                         </span>
                                     </div>
@@ -1216,20 +1202,16 @@
 
                                     <label class="flex items-center gap-2 cursor-pointer">
 
-                                        <input type="checkbox"
-                                            name="agree_terms"
-                                            x-model="agreeTerms"
+                                        <input type="checkbox" name="agree_terms" x-model="agreeTerms"
                                             class="w-3.5 h-3.5 rounded border-gray-400 text-[#3b1735] focus:ring-[#3b1735]">
 
                                         <span class="text-[0.68rem] text-gray-600">
                                             I agree to the
-                                            <a href="#"
-                                                class="text-[#3b1735] font-semibold hover:underline">
+                                            <a href="#" class="text-[#3b1735] font-semibold hover:underline">
                                                 Terms and Conditions
                                             </a>
                                             and
-                                            <a href="#"
-                                                class="text-[#3b1735] font-semibold hover:underline">
+                                            <a href="#" class="text-[#3b1735] font-semibold hover:underline">
                                                 Privacy Policy
                                             </a>.
                                         </span>
@@ -1243,22 +1225,20 @@
 
                         <div class="flex justify-end gap-3">
 
-                            <button type="button"
-                                @click="step = 2"
+                            <button type="button" @click="step = 2"
                                 class="text-[0.75rem] font-medium text-gray-700 border border-gray-300 rounded-lg px-5 py-2 hover:bg-gray-50 transition">
                                 Back
                             </button>
 
-                            <button type="submit"
-                                @click="if (!validateStep3()) $event.preventDefault()"
-                                class="bg-[#3b1735] hover:bg-[#4d1f45] text-white text-[0.75rem] font-semibold rounded-lg px-6 py-2 transition-colors duration-150">
-                                Submit
+                            <button type="submit" :disabled="submitting"
+                                class="bg-[#3b1735] hover:bg-[#4d1f45] text-white text-[0.75rem] font-semibold rounded-lg px-6 py-2 transition-colors duration-150 disabled:opacity-50">
+                                <span x-show="!submitting">Submit</span>
+                                <span x-show="submitting" x-cloak>Submitting…</span>
                             </button>
 
                         </div>
 
-                        <p x-show="step3Error"
-                            x-text="step3Error"
+                        <p x-show="step3Error" x-text="step3Error"
                             class="text-red-500 text-[0.7rem] text-right mt-2">
                         </p>
 
@@ -1268,8 +1248,7 @@
             </div>
         </div>
 
-        <div x-show="showVerifyModal"
-            style="display:none;"
+        <div x-show="showVerifyModal" style="display:none;"
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
             @keydown.escape.window="showVerifyModal = false">
 
@@ -1278,18 +1257,13 @@
 
                 <div class="flex justify-center mb-6">
                     <div class="w-16 h-16 rounded-full bg-[#ede6f0] flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                            class="w-8 h-8 text-[#3b1735]"
-                            viewBox="0 0 24 24"
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-[#3b1735]" viewBox="0 0 24 24"
                             fill="currentColor">
                             <path
                                 d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 2-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z" />
                             <circle cx="17" cy="17" r="5" fill="#3b1735" />
-                            <path d="M15.5 17.5l1 1 2.5-2.5"
-                                stroke="white" stroke-width="1.2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                fill="none" />
+                            <path d="M15.5 17.5l1 1 2.5-2.5" stroke="white" stroke-width="1.2" stroke-linecap="round"
+                                stroke-linejoin="round" fill="none" />
                         </svg>
                     </div>
                 </div>
@@ -1305,20 +1279,13 @@
                     </span>
                 </p>
 
-                <div class="flex justify-center gap-3 mb-6"
-                    x-data="otpInput()"
+                <div class="flex justify-center gap-3 mb-6" x-data="otpInput()"
                     @paste.prevent="handlePaste($event)">
 
                     <template x-for="(digit, index) in digits" :key="index">
-                        <input type="text"
-                            maxlength="1"
-                            inputmode="numeric"
-                            pattern="[0-9]"
-                            x-model="digits[index]"
-                            :id="'otp-' + index"
-                            @input="onInput(index, $event)"
-                            @keydown.backspace="onBackspace(index, $event)"
-                            @keydown.left="focusAt(index - 1)"
+                        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]"
+                            x-model="digits[index]" :id="'otp-' + index" @input="onInput(index, $event)"
+                            @keydown.backspace="onBackspace(index, $event)" @keydown.left="focusAt(index - 1)"
                             @keydown.right="focusAt(index + 1)"
                             class="w-12 h-14 rounded-xl border border-gray-300 text-center text-[1.1rem] font-semibold text-gray-900 focus:outline-none focus:border-[#3b1735] focus:ring-2 focus:ring-[#3b1735]/20 transition">
                     </template>
@@ -1329,13 +1296,9 @@
                     <button type="button"
                         class="flex items-center gap-1.5 text-[0.78rem] font-semibold text-[#c0392b] hover:underline">
 
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                            class="w-4 h-4" fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            stroke-width="2">
-                            <path stroke-linecap="round"
-                                stroke-linejoin="round"
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
                                 d="M4 4v5h.582M20 20v-5h-.581M4.582 9A8 8 0 0119.418 15M19.418 15A8 8 0 014.582 9" />
                         </svg>
 
@@ -1343,22 +1306,18 @@
                     </button>
                 </div>
 
-                <button type="button"
-                    @click="verifyOtp()"
+                <button type="button" @click="verifyOtp()"
                     class="w-full bg-[#3b1735] hover:bg-[#4d1f45] text-white text-[0.9rem] font-bold rounded-full py-3.5 transition-colors duration-150">
                     Verify Email
                 </button>
 
-                <p x-show="otpError"
-                    x-text="otpError"
-                    class="text-red-500 text-[0.7rem] mt-3">
+                <p x-show="otpError" x-text="otpError" class="text-red-500 text-[0.7rem] mt-3">
                 </p>
 
             </div>
         </div>
 
-        <div x-show="showSuccessModal"
-            style="display:none;"
+        <div x-show="showSuccessModal" style="display:none;"
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
 
             <div
@@ -1366,8 +1325,7 @@
 
                 <div class="flex justify-center mb-6">
                     <img src="{{ asset('assets/icons/seller-compliance/product-approved-element.svg') }}"
-                        alt="Registration approved"
-                        class="w-36 h-36 object-contain">
+                        alt="Registration approved" class="w-36 h-36 object-contain">
                 </div>
 
                 <h2 class="text-[1.15rem] font-bold text-gray-900 mb-2">

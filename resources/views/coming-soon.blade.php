@@ -10,8 +10,13 @@
 </head>
 <body>
     <div>
-        <h1>{{ $title ?? 'Coming Soon' }}</h1>
-        <p>We're working on this. Check back soon.</p>
-    </div>
+    <h1>{{ $title ?? 'Coming Soon' }}</h1>
+    <p>We're working on this. Check back soon.</p>
+
+    <form method="POST" action="{{ route('logout') }}" style="margin-top: 1rem;">
+        @csrf
+        <button type="submit">Logout</button>
+    </form>
+</div>
 </body>
 </html>

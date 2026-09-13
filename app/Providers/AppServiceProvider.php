@@ -28,16 +28,28 @@ class AppServiceProvider extends ServiceProvider
         // still signed in under a different role from an earlier session,
         // instead of taking them to that role's own dashboard.
         RedirectIfAuthenticated::redirectUsing(function () {
+            if (Auth::guard('admin')->check()) {
+                return route('admin.dashboard');
+            }
+
             $user = Auth::user();
 
             return match ($user?->role) {
-                'admin' => route('admin.dashboard'),
                 'buyer' => route('buyer.dashboard'),
                 'seller' => route('seller.dashboard'),
                 'courier' => route('logistics.courier.dashboard'),
                 'logistics_center' => route('logistics.dashboard'),
                 default => '/',
             };
+        });
+
+        \Illuminate\Auth\Notifications\ResetPassword::createUrlUsing(function ($user, string $token) {
+            $routeName = $user->role === 'admin' ? 'admin.password.reset' : 'password.reset';
+
+            return url(route($routeName, [
+                'token' => $token,
+                'email' => $user->email,
+            ], false));
         });
     }
 }
