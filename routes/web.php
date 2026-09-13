@@ -6,17 +6,24 @@ use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\SellerComplianceController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Seller\DashboardController as SellerDashboardController;
-use App\Http\Controllers\Buyer\DashboardController as BuyerDashboardController;
-use App\Http\Controllers\Logistics\Courier\DashboardController as CourierDashboardController;
-use App\Http\Controllers\Logistics\DashboardController as LogisticsDashboardController;
 use App\Http\Controllers\Admin\PlatformSettingsController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\MessageController;
+
 use App\Http\Controllers\Buyer\OtpController;
 use App\Http\Controllers\Buyer\RegisteredBuyerController;
+use App\Http\Controllers\Buyer\AuthenticatedSessionController as BuyerAuthenticatedSessionController;
+use App\Http\Controllers\Buyer\DashboardController as BuyerDashboardController;
+
+use App\Http\Controllers\Seller\RegisteredUserController as SellerRegisteredUserController;
+use App\Http\Controllers\Seller\AuthenticatedSessionController as SellerAuthenticatedSessionController;
+use App\Http\Controllers\Seller\DashboardController as SellerDashboardController;
+
+use App\Http\Controllers\Logistics\Auth\RegisteredUserController as LogisticsRegisteredUserController;
+use App\Http\Controllers\Logistics\Auth\AuthenticatedSessionController as LogisticsAuthenticatedSessionController;
+use App\Http\Controllers\Logistics\DashboardController as LogisticsDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,67 +34,9 @@ Route::get('/', function () {
     return view('home');
 });
 
-/*
-|--------------------------------------------------------------------------
-| Seller & Logistics (placeholder, not built yet)
-|--------------------------------------------------------------------------
-*/
-Route::get('/seller', function () {
-    return view('coming-soon', ['title' => 'Seller Portal — Coming Soon']);
-});
-
-Route::get('/logistics', function () {
-    return view('logistics.landing');
-})->name('logistics.landing');
-
-// "Sign up as Seller / Buyer" chooser
 Route::get('/register', function () {
     return view('auth.choose-role');
 })->name('register.choose');
-
-// Shared email OTP endpoints used by all registration wizards
-Route::post('/email/otp/send', [EmailOtpController::class, 'send'])->name('email-otp.send');
-Route::post('/email/otp/verify', [EmailOtpController::class, 'verify'])->name('email-otp.verify');
-
-Route::prefix('buyer')->name('buyer.')->middleware('guest')->group(function () {
-    Route::get('/register', [BuyerRegisteredUserController::class, 'create'])->name('register');
-    Route::post('/register', [BuyerRegisteredUserController::class, 'store'])->name('register.store');
-
-    Route::get('/login', [BuyerAuthenticatedSessionController::class, 'create'])->name('login');
-    Route::post('/login', [BuyerAuthenticatedSessionController::class, 'store'])->name('login.store');
-
-    Route::get('/forgot-password', function () {
-        return view('auth.forgot-password-buyer');
-    })->name('password.request');
-});
-
-/*
-|--------------------------------------------------------------------------
-| Buyer — Guest routes (login, register, forgot password, OTP)
-|--------------------------------------------------------------------------
-*/
-Route::get('/buyer/login', function () {
-    return view('auth.login-buyer');
-})->name('buyer.login');
-
-Route::post('/seller/logout', [SellerAuthenticatedSessionController::class, 'destroy'])
-    ->middleware('auth')->name('seller.logout');
-
-Route::post('/buyer/register', [RegisteredBuyerController::class, 'store'])->name('buyer.register.store');
-
-Route::get('/buyer/forgot-password', function () {
-    return view('auth.forgot-password-buyer');
-})->name('buyer.password.request');
-
-Route::post('/buyer/otp/send', [OtpController::class, 'send']);
-Route::post('/buyer/otp/verify', [OtpController::class, 'verify']);
-
-/*
-|--------------------------------------------------------------------------
-| Buyer — Dashboard (authenticated)
-|--------------------------------------------------------------------------
-*/
-Route::get('/buyer/dashboard', [BuyerDashboardController::class, 'index']);
 
 /*
 |--------------------------------------------------------------------------
@@ -99,7 +48,6 @@ Route::get('/admin', function () {
 });
 
 Route::prefix('admin')->group(function () {
-
     Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('admin.dashboard');
 
     Route::middleware('auth')->group(function () {
@@ -136,7 +84,6 @@ Route::prefix('admin')->group(function () {
             Route::get('/warnings-table', [SellerComplianceController::class, 'warningsTable'])->name('warnings-table');
             Route::get('/violations-table', [SellerComplianceController::class, 'violationsTable'])->name('violations-table');
             Route::get('/suspended-sellers-table', [SellerComplianceController::class, 'suspendedSellersTable'])->name('suspended-sellers-table');
-
             Route::post('/products/{product}/approve', [SellerComplianceController::class, 'approve'])->name('products.approve');
             Route::post('/products/{product}/reject', [SellerComplianceController::class, 'reject'])->name('products.reject');
             Route::post('/products/{product}/warn', [SellerComplianceController::class, 'warn'])->name('products.warn');
@@ -178,11 +125,65 @@ Route::prefix('admin')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Logistics / Seller — Dashboard (authenticated) — placeholder controllers
+| Buyer
 |--------------------------------------------------------------------------
 */
-Route::get('/logistics/dashboard', [LogisticsDashboardController::class, 'index']);
-Route::get('/logistics/courier/dashboard', [CourierDashboardController::class, 'index']);
-Route::get('/seller/dashboard', [SellerDashboardController::class, 'index']);
+Route::prefix('buyer')->name('buyer.')->group(function () {
+    Route::get('/register', function () {
+        return view('auth.register-buyer');
+    })->name('register');
+    Route::post('/register', [RegisteredBuyerController::class, 'store'])->name('register.store');
+
+    Route::get('/login', function () {
+        return view('auth.login-buyer');
+    })->name('login');
+    Route::post('/login', [BuyerAuthenticatedSessionController::class, 'store'])->name('login.store');
+    Route::post('/logout', [BuyerAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
+
+    Route::get('/forgot-password', function () {
+        return view('auth.forgot-password-buyer');
+    })->name('password.request');
+
+    Route::get('/dashboard', [BuyerDashboardController::class, 'index'])->name('dashboard');
+});
+
+Route::post('/buyer/otp/send', [OtpController::class, 'send']);
+Route::post('/buyer/otp/verify', [OtpController::class, 'verify']);
+
+/*
+|--------------------------------------------------------------------------
+| Seller
+|--------------------------------------------------------------------------
+*/
+Route::prefix('seller')->name('seller.')->group(function () {
+    Route::get('/register', [SellerRegisteredUserController::class, 'create'])->name('register');
+    Route::post('/register', [SellerRegisteredUserController::class, 'store'])->name('register.store');
+
+    Route::get('/login', [SellerAuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('/login', [SellerAuthenticatedSessionController::class, 'store'])->name('login.store');
+    Route::post('/logout', [SellerAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
+
+    Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Logistics
+|--------------------------------------------------------------------------
+*/
+Route::prefix('logistics')->name('logistics.')->group(function () {
+    Route::get('/', function () {
+        return view('logistics.landing');
+    })->name('landing');
+
+    Route::get('/register', [LogisticsRegisteredUserController::class, 'create'])->name('register');
+    Route::post('/register', [LogisticsRegisteredUserController::class, 'store'])->name('register.store');
+
+    Route::get('/login', [LogisticsAuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('/login', [LogisticsAuthenticatedSessionController::class, 'store'])->name('login.store');
+    Route::post('/logout', [LogisticsAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
+
+    Route::get('/dashboard', [LogisticsDashboardController::class, 'index'])->name('dashboard');
+});
 
 require __DIR__.'/auth.php';
