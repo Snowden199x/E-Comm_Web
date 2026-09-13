@@ -22,7 +22,7 @@
                             <span class="text-gray-900">{{ $reg->name }}</span>
                         </div>
                     </td>
-                    <td class="py-3 text-gray-600 capitalize">{{ $reg->role }}</td>
+                    <td class="py-3 text-gray-600">{{ ucwords(str_replace('_', ' ', $reg->role)) }}</td>
                     <td class="py-3 text-gray-600">{{ $reg->email }}</td>
                     <td class="py-3 text-gray-600">{{ $reg->phone_number ?? '—' }}</td>
                     <td class="py-3 text-gray-600">{{ $reg->created_at->format('M d, Y') }}</td>

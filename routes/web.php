@@ -20,6 +20,9 @@ use App\Http\Controllers\Buyer\RegisteredUserController as BuyerRegisteredUserCo
 use App\Http\Controllers\Buyer\AuthenticatedSessionController as BuyerAuthenticatedSessionController;
 use App\Http\Controllers\Seller\RegisteredUserController as SellerRegisteredUserController;
 use App\Http\Controllers\Seller\AuthenticatedSessionController as SellerAuthenticatedSessionController;
+use App\Http\Controllers\Logistics\Courier\RegisteredUserController as RiderRegisteredUserController;
+use App\Http\Controllers\Logistics\Auth\RegisteredUserController as LogisticsCenterRegisteredUserController;
+use App\Http\Controllers\Logistics\Auth\AuthenticatedSessionController as LogisticsAuthenticatedSessionController;
 
 // Buyer landing = root domain
 Route::get('/', function () {
@@ -35,15 +38,15 @@ Route::get('/seller', function () {
 });
 
 Route::get('/logistics', function () {
-    return view('coming-soon', ['title' => 'Logistics Portal — Coming Soon']);
-});
+    return view('logistics.landing');
+})->name('logistics.landing');
 
 // "Sign up as Seller / Buyer" chooser
 Route::get('/register', function () {
     return view('auth.choose-role');
 })->name('register.choose');
 
-// Shared email OTP endpoints used by both registration wizards
+// Shared email OTP endpoints used by all registration wizards
 Route::post('/email/otp/send', [EmailOtpController::class, 'send'])->name('email-otp.send');
 Route::post('/email/otp/verify', [EmailOtpController::class, 'verify'])->name('email-otp.verify');
 
@@ -77,9 +80,35 @@ Route::prefix('seller')->name('seller.')->middleware('guest')->group(function ()
 Route::post('/seller/logout', [SellerAuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth')->name('seller.logout');
 
+Route::prefix('logistics')->name('logistics.')->middleware('guest')->group(function () {
+    // "Sign up as Rider / Logistics-Sorting Center" chooser
+    Route::get('/register', function () {
+        return view('auth.choose-logistics-role');
+    })->name('register');
+
+    // Rider wizard
+    Route::get('/register/rider', [RiderRegisteredUserController::class, 'create'])->name('rider.register');
+    Route::post('/register/rider', [RiderRegisteredUserController::class, 'store'])->name('rider.register.store');
+
+    // Logistics/Sorting Center wizard
+    Route::get('/register/center', [LogisticsCenterRegisteredUserController::class, 'create'])->name('center.register');
+    Route::post('/register/center', [LogisticsCenterRegisteredUserController::class, 'store'])->name('center.register.store');
+
+    // Shared login — branches to the right dashboard after auth
+    Route::get('/login', [LogisticsAuthenticatedSessionController::class, 'create'])->name('login');
+    Route::post('/login', [LogisticsAuthenticatedSessionController::class, 'store'])->name('login.store');
+
+    Route::get('/forgot-password', function () {
+        return view('auth.forgot-password-logistics');
+    })->name('password.request');
+});
+
+Route::post('/logistics/logout', [LogisticsAuthenticatedSessionController::class, 'destroy'])
+    ->middleware('auth')->name('logistics.logout');
+
 Route::prefix('admin')->group(function () {
 
-    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('admin.dashboard');
 
     Route::middleware('auth')->group(function () {
         Route::get('/registrations', [RegistrationController::class, 'index'])->name('registrations.index');
@@ -154,8 +183,14 @@ Route::prefix('admin')->group(function () {
     });
 });
 
-Route::get('/logistics/dashboard', [LogisticsDashboardController::class, 'index']);
-Route::get('/logistics/courier/dashboard', [CourierDashboardController::class, 'index']);
+// Logistics/Sorting Center's own mini admin panel — approving/rejecting the riders under them
+Route::prefix('logistics')->name('logistics.')->middleware('auth')->group(function () {
+    Route::get('/dashboard', [LogisticsDashboardController::class, 'index'])->name('dashboard');
+    Route::post('/riders/{courierDetail}/approve', [LogisticsDashboardController::class, 'approveRider'])->name('riders.approve');
+    Route::post('/riders/{courierDetail}/reject', [LogisticsDashboardController::class, 'rejectRider'])->name('riders.reject');
+});
+
+Route::get('/logistics/courier/dashboard', [CourierDashboardController::class, 'index'])->middleware('auth')->name('logistics.courier.dashboard');
 Route::get('/seller/dashboard', [SellerDashboardController::class, 'index'])->middleware('auth')->name('seller.dashboard');
 Route::get('/buyer/dashboard', [BuyerDashboardController::class, 'index'])->middleware('auth')->name('buyer.dashboard');
 

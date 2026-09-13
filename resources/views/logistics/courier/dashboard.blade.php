@@ -1,1 +1,1 @@
-<h1>Seller Dashboard - Coming Soon</h1>
+<h1>Rider Dashboard - Coming Soon</h1>

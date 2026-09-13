@@ -29,9 +29,13 @@
                 return false;
             }
             if (field.type === 'file' && field.files.length === 0) {
-                vendoToast(field.name === 'business_permit'
-                    ? 'Please upload your business permit.'
-                    : 'Please upload a valid ID.');
+                const labels = {
+                    business_permit: 'your business permit',
+                    drivers_license: "your driver's license",
+                    or_cr: 'your OR/CR (Official Receipt / Certificate of Registration)',
+                    valid_id: 'a valid ID',
+                };
+                vendoToast('Please upload ' + (labels[field.name] || 'a valid ID') + '.');
                 field.focus();
                 return false;
             }
@@ -141,6 +145,7 @@
         vendoSetText('review-email', vendoFieldValue('email'));
         vendoSetText('review-age', vendoFieldValue('age'));
         vendoSetText('review-barangay', vendoFieldValue('barangay'));
+        vendoSetText('review-logistics-center', vendoSelectText('logistics_center_id'));
 
         const validIdLabel = document.getElementById('valid-id-label')?.textContent;
         vendoSetText('review-valid-id', (validIdLabel && validIdLabel !== 'Upload Valid ID here') ? validIdLabel : '');
@@ -153,6 +158,14 @@
             .map((el) => el.nextElementSibling?.textContent?.trim())
             .filter(Boolean);
         vendoSetText('review-categories', checkedCategories.join(', '));
+
+        // Courier/logistics-only fields (no-ops on the buyer/seller forms)
+        vendoSetText('review-vehicle-type', vendoSelectText('vehicle_type'));
+        vendoSetText('review-plate-number', vendoFieldValue('plate_number'));
+        const licenseLabel = document.getElementById('drivers-license-label')?.textContent;
+        vendoSetText('review-drivers-license', (licenseLabel && licenseLabel !== "Upload driver's license here") ? licenseLabel : '');
+        const orCrLabel = document.getElementById('or-cr-label')?.textContent;
+        vendoSetText('review-or-cr', (orCrLabel && orCrLabel !== 'Upload OR/CR here') ? orCrLabel : '');
     }
     window.vendoRefreshRegistrationReview = vendoRefreshRegistrationReview;
 

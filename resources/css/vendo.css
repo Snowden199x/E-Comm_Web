@@ -476,6 +476,28 @@ nav.navbar{
 .trust-item h4{color:#fff;font-size:15.5px;}
 .trust-item p{color:rgba(255,255,255,0.65);font-size:13.5px;margin-top:6px;line-height:1.55;}
 
+/* ===== VENDO LOGISTICS PARTNER CTA ===== */
+.partner-band{
+  background:linear-gradient(120deg,var(--deep) 0%, var(--deep-soft) 100%);
+  border-radius:var(--radius-l);padding:64px 56px;color:#fff;
+  display:grid;grid-template-columns:1.1fr 1fr;gap:56px;align-items:center;
+}
+.partner-copy .eyebrow{color:var(--gold);}
+.partner-copy h2{color:#fff;font-size:clamp(26px,3.2vw,38px);margin-top:12px;line-height:1.2;}
+.partner-copy p{color:rgba(255,255,255,0.72);margin-top:16px;font-size:16px;line-height:1.6;max-width:460px;}
+.partner-benefits{display:flex;flex-direction:column;gap:0;}
+.partner-benefit{display:flex;gap:16px;padding:18px 0;border-top:1px solid rgba(255,255,255,0.14);}
+.partner-benefit:first-child{border-top:none;}
+.partner-benefit .ti-icon{
+  width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,0.08);color:var(--gold);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.partner-benefit h4{color:#fff;font-size:15.5px;}
+.partner-benefit p{color:rgba(255,255,255,0.65);font-size:13.5px;margin-top:4px;line-height:1.55;}
+@media (max-width:900px){
+  .partner-band{grid-template-columns:1fr;padding:44px 26px;}
+}
+
 /* ===== FINAL CTA ===== */
 .final-cta{
   text-align:center;padding:96px 40px;background:linear-gradient(180deg,var(--cream) 0%, var(--purple-tint) 100%);
