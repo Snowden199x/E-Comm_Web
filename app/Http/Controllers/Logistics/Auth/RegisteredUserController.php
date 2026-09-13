@@ -55,6 +55,7 @@ class RegisteredUserController extends Controller
             'email' => $email,
             'phone_number' => $validated['contact_number'],
             'role' => 'logistics_center',
+            'status' => 'pending',
             'password' => Hash::make($validated['password']),
         ]);
 
