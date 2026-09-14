@@ -199,6 +199,16 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
     Route::post('/logout', [LogisticsAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
     Route::get('/dashboard', [LogisticsDashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('/forgot-password', function () {
+        return view('auth.forgot-password-logistics');
+    })->name('password.request');
+
+    // Temporary placeholder — individual riders will apply via the Vendo Rider mobile app,
+    // which isn't built yet. Swap this for a real app-store/landing redirect once it exists.
+    Route::get('/get-the-app', function () {
+        return view('coming-soon', ['title' => 'Vendo Rider App — Coming Soon']);
+    })->name('rider-app');
 });
 
 Route::get('/login', [UnifiedLoginController::class, 'create'])->name('login');

@@ -87,7 +87,7 @@
          x-data="{
             step: 1, showPassword: false, showConfirmPassword: false,
             showVerifyModal: false, showSuccessModal: false,
-            submitting: false, formError: '',
+            submitting: false, formError: '', idCategory: 'primary',
             async submitForm(form) {
                 if (!Alpine.store('registration').otpVerified) {
                     this.formError = 'Please verify your email address before submitting.';
@@ -132,7 +132,7 @@
             <div class="relative z-10 w-full flex flex-col flex-1">
 
                 <div class="flex justify-center w-full mb-8 fade-in-up" style="animation-delay: .05s">
-                    <a href="{{ url('/') }}" title="Back to landing page"><img src="{{ asset('assets/branding/log-in-logo.svg') }}" alt="Vendo" class="w-[180px] cursor-pointer transition-transform duration-300 hover:scale-105"></a>
+                    <a href="{{ route('logistics.landing') }}" title="Back to logistics landing page"><img src="{{ asset('assets/branding/log-in-logo.svg') }}" alt="Vendo" class="w-[180px] cursor-pointer transition-transform duration-300 hover:scale-105"></a>
                 </div>
 
                 <div class="w-full mb-8 fade-in-up" style="animation-delay: .1s">
@@ -289,7 +289,7 @@
 
                 <div class="mb-4"></div>
 
-                <form method="POST" action="{{ route('logistics.center.register.store') }}" enctype="multipart/form-data" @submit.prevent="submitForm($el)" class="fade-in-up" style="animation-delay: .16s">
+                <form method="POST" action="{{ route('logistics.register.store') }}" enctype="multipart/form-data" @submit.prevent="submitForm($el)" class="fade-in-up" style="animation-delay: .16s">
                     @csrf
 
                     {{-- STEP 1: Personal Information + Address + Account Security --}}
@@ -371,15 +371,85 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3 mb-5">
+                        <div class="mb-3">
+                            <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">ID Category <span class="text-red-500">*</span></label>
+                            <select name="id_category" x-model="idCategory"
+                                class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
+                                <option value="primary">Primary ID (1 ID)</option>
+                                <option value="secondary">Secondary ID (2 IDs required)</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 mb-5" x-show="idCategory === 'primary'">
                             <div>
-                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Valid ID <span class="text-red-500">*</span></label>
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">ID Type <span class="text-red-500">*</span></label>
+                                <select name="id_type" :disabled="idCategory !== 'primary'"
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
+                                    <option value="" disabled selected>Select ID Type</option>
+                                    <option value="Philippine Passport">Philippine Passport</option>
+                                    <option value="PhilSys National ID">PhilSys National ID</option>
+                                    <option value="Driver's License">Driver's License</option>
+                                    <option value="UMID">UMID</option>
+                                    <option value="SSS ID">SSS ID</option>
+                                    <option value="GSIS ID">GSIS ID</option>
+                                    <option value="PRC ID">PRC ID</option>
+                                    <option value="Postal ID">Postal ID</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Upload ID <span class="text-red-500">*</span></label>
                                 <label class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.85rem] px-3 py-2 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all duration-200">
-                                    <span id="valid-id-label">Upload Valid ID here</span>
+                                    <span id="valid-id-label">Upload ID here</span>
                                     <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                                    <input type="file" name="valid_id" required class="hidden" accept=".jpg,.jpeg,.png,.pdf" onchange="document.getElementById('valid-id-label').textContent = this.files[0]?.name || 'Upload Valid ID here'">
+                                    <input type="file" name="valid_id" id="primary-valid-id" class="hidden" accept="image/*,.pdf" :disabled="idCategory !== 'primary'"
+                                        onchange="document.getElementById('valid-id-label').textContent = this.files[0]?.name || 'Upload ID here'">
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 mb-5" x-show="idCategory === 'secondary'" x-cloak>
+                            <div>
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">First Secondary ID Type <span class="text-red-500">*</span></label>
+                                <select name="id_type_1" :disabled="idCategory !== 'secondary'"
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
+                                    <option value="" disabled selected>Select ID Type</option>
+                                    <option value="PhilHealth ID">PhilHealth ID</option>
+                                    <option value="TIN ID">TIN ID</option>
+                                    <option value="Voter's ID/Certification">Voter's ID/Certification</option>
+                                    <option value="NBI Clearance">NBI Clearance</option>
+                                    <option value="Barangay Certification">Barangay Certification</option>
+                                    <option value="Company ID">Company ID</option>
+                                    <option value="School ID">School ID</option>
+                                    <option value="Senior Citizen/PWD ID">Senior Citizen/PWD ID</option>
+                                </select>
+                                <label class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.85rem] px-3 py-2 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 mt-2">
+                                    <span id="valid-id-1-label">Upload ID here</span>
+                                    <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                    <input type="file" name="valid_id" id="secondary-valid-id-1" class="hidden" accept="image/*,.pdf" :disabled="idCategory !== 'secondary'"
+                                        onchange="document.getElementById('valid-id-1-label').textContent = this.files[0]?.name || 'Upload ID here'">
                                 </label>
                                 <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF.</p>
+                            </div>
+                            <div>
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Second Secondary ID Type <span class="text-red-500">*</span></label>
+                                <select name="id_type_2" :disabled="idCategory !== 'secondary'"
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
+                                    <option value="" disabled selected>Select ID Type</option>
+                                    <option value="PhilHealth ID">PhilHealth ID</option>
+                                    <option value="TIN ID">TIN ID</option>
+                                    <option value="Voter's ID/Certification">Voter's ID/Certification</option>
+                                    <option value="NBI Clearance">NBI Clearance</option>
+                                    <option value="Barangay Certification">Barangay Certification</option>
+                                    <option value="Company ID">Company ID</option>
+                                    <option value="School ID">School ID</option>
+                                    <option value="Senior Citizen/PWD ID">Senior Citizen/PWD ID</option>
+                                </select>
+                                <label class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.85rem] px-3 py-2 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 mt-2">
+                                    <span id="valid-id-2-label">Upload ID here</span>
+                                    <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                    <input type="file" name="valid_id_2" id="secondary-valid-id-2" class="hidden" accept="image/*,.pdf" :disabled="idCategory !== 'secondary'"
+                                        onchange="document.getElementById('valid-id-2-label').textContent = this.files[0]?.name || 'Upload ID here'">
+                                </label>
                             </div>
                         </div>
 
@@ -440,7 +510,10 @@
                         <p class="text-[0.72rem] text-gray-400 mt-1.5 mb-6 font-normal">Minimum 8 characters, with at least one capital letter, one number, and one special character.</p>
 
                         <div class="flex justify-end">
-                            <button type="button" @click="if (vendoValidateStep($refs.step1)) step = 2"
+                            <button type="button" @click="
+                                if (idCategory === 'primary' && (!document.querySelector('[name=id_type]')?.value || !document.getElementById('primary-valid-id')?.files.length)) { vendoToast('Please select your ID type and upload your ID.'); return; }
+                                if (idCategory === 'secondary' && (!document.querySelector('[name=id_type_1]')?.value || !document.querySelector('[name=id_type_2]')?.value || !document.getElementById('secondary-valid-id-1')?.files.length || !document.getElementById('secondary-valid-id-2')?.files.length)) { vendoToast('Please complete both secondary IDs.'); return; }
+                                if (vendoValidateStep($refs.step1)) step = 2"
                                 class="flex items-center gap-1.5 bg-[#3b1735] hover:bg-[#4d1f45] active:bg-[#2e1229] text-white text-[0.85rem] font-semibold rounded-lg px-5 py-2 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97]">
                                 Next: Business Information
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
