@@ -144,8 +144,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/force-password', [AccountManagementController::class, 'storeForcePassword'])->name('force-password.store');
             Route::get('/create', [AccountManagementController::class, 'create'])->name('create');
             Route::post('/', [AccountManagementController::class, 'store'])->name('store');
+            Route::delete('/{admin}', [AccountManagementController::class, 'destroy'])->name('destroy');
             Route::get('/{admin}', [AccountManagementController::class, 'show'])->name('show');
             Route::put('/{admin}', [AccountManagementController::class, 'update'])->name('update');
+            Route::delete('/{admin}', [AccountManagementController::class, 'destroy'])->name('destroy');
             Route::post('/{admin}/view-temp-password', [AccountManagementController::class, 'viewTempPassword'])->name('view-temp-password');
             Route::post('/{admin}/suspend', [AccountManagementController::class, 'suspend'])->name('suspend');
             Route::post('/{admin}/reactivate', [AccountManagementController::class, 'reactivate'])->name('reactivate');

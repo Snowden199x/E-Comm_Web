@@ -29,7 +29,16 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $admin = \Illuminate\Support\Facades\Auth::guard('admin')->user();
-        $admin->update(['last_login_at' => now()]);
+
+        $admin->update([
+            'last_login_at' => now(),
+        ]);
+
+        $admin->loginSessions()->create([
+            'login_at' => now(),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
 
         if ($admin->must_change_password) {
             return redirect()->route('admin.account-management.force-password');
@@ -41,12 +50,26 @@ class AuthenticatedSessionController extends Controller
     /**
      * Destroy an authenticated session.
      */
-        public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request): RedirectResponse
     {
+        $admin = Auth::guard('admin')->user();
+
+        if ($admin) {
+            $session = $admin->loginSessions()
+                ->whereNull('logged_out_at')
+                ->latest('login_at')
+                ->first();
+
+            if ($session) {
+                $session->update([
+                    'logged_out_at' => now(),
+                ]);
+            }
+        }
+
         Auth::guard('admin')->logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
         return redirect('/admin');
