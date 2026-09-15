@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\AdminLoginSession;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -110,5 +111,18 @@ class User extends Authenticatable
         public function conversations()
     {
         return $this->hasMany(\App\Models\Communication\Conversation::class);
+    }
+
+    public function loginSessions()
+    {
+        return $this->hasMany(AdminLoginSession::class)
+            ->latest('login_at');
+    }
+
+    public function isOnline(): bool
+    {
+        return $this->loginSessions()
+            ->whereNull('logged_out_at')
+            ->exists();
     }
 }

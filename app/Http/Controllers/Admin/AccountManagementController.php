@@ -17,9 +17,18 @@ class AccountManagementController extends Controller
     {
         $currentAdmin = Auth::guard('admin')->user();
 
-        $admins = $currentAdmin->is_super_admin ? $this->filteredAdmins($request) : collect();
+        $admins = $currentAdmin->is_super_admin
+            ? $this->filteredAdmins($request)
+            : collect();
 
-        return view('admin.account-management.index', compact('currentAdmin', 'admins'));
+        $loginSessions = $currentAdmin->loginSessions()
+            ->limit(100)
+            ->get();
+
+        return view(
+            'admin.account-management.index',
+            compact('currentAdmin', 'admins', 'loginSessions')
+        );
     }
 
     public function table(Request $request): View
@@ -158,6 +167,23 @@ class AccountManagementController extends Controller
         return back()->with('confirmation', 'deactivated');
     }
 
+    public function destroy(User $admin): RedirectResponse
+    {
+        $this->authorizeSuperAdmin();
+
+        // Only admin accounts can be deleted
+        abort_unless($admin->role === 'admin', 404);
+
+        // A Super Admin cannot be deleted
+        abort_if($admin->is_super_admin, 403);
+
+        $admin->delete();
+
+        return redirect()
+            ->route('admin.account-management.index')
+            ->with('confirmation', 'admin-deleted');
+    }
+    
     public function sendResetLink(User $admin): RedirectResponse
     {
         $this->authorizeSuperAdmin();
