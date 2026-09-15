@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Admin\RegistrationController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\SellerComplianceController;
@@ -138,13 +137,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/{conversation}/send', [MessageController::class, 'send'])->name('send');
         });
         
-        Route::get('/admin/session-status', function () {
-            $admin = Auth::guard('admin')->user();
-
-            return response()->json([
-                'active' => $admin && $admin->account_status === 'active',
-            ]);
-        })->name('admin.session.status');
         Route::prefix('account-management')->name('account-management.')->group(function () {
             Route::get('/', [AccountManagementController::class, 'index'])->name('index');
             Route::get('/table', [AccountManagementController::class, 'table'])->name('table');

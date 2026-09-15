@@ -138,45 +138,33 @@ class AccountManagementController extends Controller
         return back()->with('confirmation', 'admin-updated');
     }
 
-    public function suspend(Request $request, User $admin): RedirectResponse
+    public function suspend(User $admin): RedirectResponse
     {
         $this->authorizeSuperAdmin();
         abort_if($admin->is_super_admin, 403);
 
-        $admin->update([
-            'account_status' => 'suspended',
-        ]);
+        $admin->update(['account_status' => 'suspended']);
 
-        return redirect()
-            ->route('admin.account-management.show', $admin)
-            ->with('confirmation', 'suspended');
+        return back()->with('confirmation', 'suspended');
     }
 
-    public function reactivate(Request $request, User $admin): RedirectResponse
+    public function reactivate(User $admin): RedirectResponse
     {
         $this->authorizeSuperAdmin();
 
-        $admin->update([
-            'account_status' => 'active',
-        ]);
+        $admin->update(['account_status' => 'active']);
 
-        return redirect()
-            ->route('admin.account-management.show', $admin)
-            ->with('confirmation', 'reactivated');
+        return back()->with('confirmation', 'reactivated');
     }
 
-    public function deactivate(Request $request, User $admin): RedirectResponse
+    public function deactivate(User $admin): RedirectResponse
     {
         $this->authorizeSuperAdmin();
         abort_if($admin->is_super_admin, 403);
 
-        $admin->update([
-            'account_status' => 'deactivated',
-        ]);
+        $admin->update(['account_status' => 'deactivated']);
 
-        return redirect()
-            ->route('admin.account-management.show', $admin)
-            ->with('confirmation', 'deactivated');
+        return back()->with('confirmation', 'deactivated');
     }
 
     public function destroy(User $admin): RedirectResponse
