@@ -12,7 +12,29 @@
 </head>
 
 <body class="antialiased bg-[#faf6f0]" x-data="{ sidebarOpen: false, loading: false }" @ajax:before.window="loading = true"
-    @ajax:after.window="loading = false">
+    @ajax:after.window="loading = false" x-init="setInterval(() => {
+        fetch('{{ route('admin.session.status') }}', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (response.status === 401 || response.status === 403) {
+                    window.location.href = '{{ route('admin.login') }}';
+                    return null;
+                }
+    
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.active === false) {
+                    window.location.href = '{{ route('admin.login') }}';
+                }
+            })
+            .catch(() => {});
+    }, 3000);">
     <div class="flex min-h-screen">
 
         <!-- Sidebar (fixed drawer on mobile, static column on desktop) -->
@@ -41,27 +63,31 @@
                             class="w-6 h-6">
                     </button>
 
-                                        @php $admin = Auth::guard('admin')->user(); @endphp
+                    @php $admin = Auth::guard('admin')->user(); @endphp
                     <div class="relative" x-data="{ open: false }">
                         <button type="button" @click="open = !open" @click.outside="open = false"
                             class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-xs font-bold text-gray-600">
+                            <div
+                                class="w-9 h-9 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-xs font-bold text-gray-600">
                                 @if ($admin->profile_picture)
-                                    <img src="{{ asset('storage/'.$admin->profile_picture) }}" class="w-full h-full object-cover">
+                                    <img src="{{ asset('storage/' . $admin->profile_picture) }}"
+                                        class="w-full h-full object-cover">
                                 @else
-                                    <img src="{{ asset('assets/icons/dashboard/user-icon.svg') }}" alt="" class="w-full h-full p-1.5">
+                                    <img src="{{ asset('assets/icons/dashboard/user-icon.svg') }}" alt=""
+                                        class="w-full h-full p-1.5">
                                 @endif
                             </div>
                             <div class="text-sm text-left">
                                 <p class="font-semibold text-gray-900">{{ $admin->name }}</p>
-                                <p class="text-gray-500">{{ $admin->is_super_admin ? 'Super Administrator' : 'Administrator' }}</p>
+                                <p class="text-gray-500">
+                                    {{ $admin->is_super_admin ? 'Super Administrator' : 'Administrator' }}</p>
                             </div>
                         </button>
 
                         <div x-show="open" x-cloak x-transition
                             class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50">
-                            <a href="{{ route('admin.account-management.index') }}" x-target.push="main-content sidebar"
-                                @click="open = false"
+                            <a href="{{ route('admin.account-management.index') }}"
+                                x-target.push="main-content sidebar" @click="open = false"
                                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                                 Account Settings
                             </a>
