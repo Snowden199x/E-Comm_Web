@@ -49,7 +49,7 @@
                 clearTimeout(this.timer);
                 this.timer = setTimeout(() => {
                     const params = new URLSearchParams({ search: this.q, date: this.dateVal, user_type: this.userType });
-                    fetch('{{ route('registrations.table') }}?' + params)
+                    fetch('{{ route('admin.registrations.table') }}?' + params)
                         .then(r => r.text()).then(html => { document.getElementById('registrations-table-wrap').innerHTML = html; });
                 }, 250);
             }

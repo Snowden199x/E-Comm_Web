@@ -8,7 +8,7 @@
             <button type="button" @click="createOpen = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
 
-        <form method="POST" action="{{ route('platform-settings.announcements.store') }}" class="space-y-4">
+        <form method="POST" action="{{ route('admin.platform-settings.announcements.store') }}" class="space-y-4">
             @csrf
 
             <div>

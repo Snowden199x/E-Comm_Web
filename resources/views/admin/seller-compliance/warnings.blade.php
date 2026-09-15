@@ -49,7 +49,7 @@
                 clearTimeout(this.timer);
                 this.timer = setTimeout(() => {
                     const params = new URLSearchParams({ search: this.q, date_filter: this.dateFilter, custom_date: this.customDate });
-                    fetch('{{ route('seller-compliance.warnings-table') }}?' + params)
+                    fetch('{{ route('admin.seller-compliance.warnings-table') }}?' + params)
                         .then(r => r.text()).then(html => { document.getElementById('warnings-table-wrap').innerHTML = html; });
                 }, 250);
             }

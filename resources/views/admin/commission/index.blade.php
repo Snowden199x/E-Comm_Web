@@ -76,7 +76,7 @@
                 clearTimeout(this.timer);
                 this.timer = setTimeout(() => {
                     const params = new URLSearchParams({ search: this.q, month: this.month });
-                    fetch('{{ route('commission.table') }}?' + params)
+                    fetch('{{ route('admin.commission.table') }}?' + params)
                         .then(r => r.text()).then(html => { document.getElementById('commission-table-wrap').innerHTML = html; });
                 }, 250);
             }

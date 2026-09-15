@@ -61,7 +61,7 @@
         </div>
 
         <div class="flex justify-end">
-            <a href="{{ route('complaints.show', $complaint) }}"
+            <a href="{{ route('admin.complaints.show', $complaint) }}"
                 class="px-4 py-2 rounded-lg bg-[#3b1735] text-white text-sm font-medium hover:opacity-90">See Full
                 Details</a>
         </div>

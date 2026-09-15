@@ -7,7 +7,7 @@
             <button type="button" @click="editRateOpen = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
 
-        <form method="POST" action="{{ route('commission.update-rate') }}">
+        <form method="POST" action="{{ route('admin.commission.update-rate') }}">
             @csrf
             <label class="text-sm font-medium text-gray-900 mb-1 block">Commission Rate (%)</label>
             <input type="number" name="rate" step="0.01" min="0" max="100" value="{{ $rate }}" required

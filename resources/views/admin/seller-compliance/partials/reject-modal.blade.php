@@ -13,7 +13,7 @@
             <p class="text-sm text-gray-500">The product will not be visible to the buyers.</p>
         </div>
 
-        <form method="POST" action="{{ route('seller-compliance.products.reject', $product) }}">
+        <form method="POST" action="{{ route('admin.seller-compliance.products.reject', $product) }}">
             @csrf
             <p class="text-sm font-medium text-gray-900 mb-2">Reason for Rejection<span class="text-red-500">*</span>
             </p>

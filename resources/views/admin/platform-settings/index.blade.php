@@ -57,7 +57,7 @@
                         clearTimeout(this.timer);
                         this.timer = setTimeout(() => {
                             const params = new URLSearchParams({ search: this.q, status: this.statusFilter, date_filter: this.dateFilter, custom_date: this.customDate });
-                            fetch('{{ route('platform-settings.announcements-table') }}?' + params)
+                            fetch('{{ route('admin.platform-settings.announcements-table') }}?' + params)
                                 .then(r => r.text()).then(html => { document.getElementById('announcements-table-wrap').innerHTML = html; });
                         }, 250);
                     }
@@ -136,7 +136,7 @@
                             Add</button>
                     </div>
 
-                    <form id="add-policy-form" method="POST" action="{{ route('platform-settings.policies.store') }}"
+                    <form id="add-policy-form" method="POST" action="{{ route('admin.platform-settings.policies.store') }}"
                         class="hidden mb-4 flex gap-2">
                         @csrf
                         <select name="name" required
@@ -182,7 +182,7 @@
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                     <h3 class="font-bold text-gray-900 mb-1">Chat Welcome Message</h3>
                     <p class="text-xs text-gray-500 mb-3">Sent automatically when a user starts a support chat.</p>
-                    <form method="POST" action="{{ route('platform-settings.chat-welcome.update') }}">
+                    <form method="POST" action="{{ route('admin.platform-settings.chat-welcome.update') }}">
                         @csrf
                         <textarea name="welcome_message" rows="3" required
                             class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-[#3b1735]">{{ $chatSetting->welcome_message ?? 'Hi! How can we help you today?' }}</textarea>

@@ -14,7 +14,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): View
+        public function create(): View
     {
         return view('auth.login-admin');
     }
@@ -22,11 +22,18 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+        public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        $admin = \Illuminate\Support\Facades\Auth::guard('admin')->user();
+        $admin->update(['last_login_at' => now()]);
+
+        if ($admin->must_change_password) {
+            return redirect()->route('admin.account-management.force-password');
+        }
 
         return redirect()->route('admin.dashboard');
     }
@@ -34,7 +41,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Destroy an authenticated session.
      */
-    public function destroy(Request $request): RedirectResponse
+        public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('admin')->logout();
 

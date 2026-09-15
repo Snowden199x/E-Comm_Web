@@ -4,7 +4,7 @@
     <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" @click.stop
          x-data="{ reason: '', details: '' }">
 
-        <form method="POST" action="{{ route('registrations.disapprove', $user) }}" class="p-6">
+        <form method="POST" action="{{ route('admin.registrations.disapprove', $user) }}" class="p-6">
             @csrf
 
             <div class="flex justify-end">

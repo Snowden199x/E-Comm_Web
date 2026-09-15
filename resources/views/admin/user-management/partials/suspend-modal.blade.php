@@ -3,7 +3,7 @@
      @click.self="suspendId = null">
     <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" @click.stop>
 
-        <form method="POST" action="{{ route('user-management.suspend', $user) }}" class="p-6" x-data="{ reasons: [], details: '' }">
+        <form method="POST" action="{{ route('admin.user-management.suspend', $user) }}" class="p-6" x-data="{ reasons: [], details: '' }">
             @csrf
 
             <div class="flex justify-end">

@@ -54,7 +54,7 @@
                 clearTimeout(this.timer);
                 this.timer = setTimeout(() => {
                     const params = new URLSearchParams({ search: this.q, type: this.typeFilter, date_filter: this.dateFilter, custom_date: this.customDate });
-                    fetch('{{ route('complaints.table') }}?' + params)
+                    fetch('{{ route('admin.complaints.table') }}?' + params)
                         .then(r => r.text()).then(html => { document.getElementById('complaints-table-wrap').innerHTML = html; });
                 }, 250);
             }

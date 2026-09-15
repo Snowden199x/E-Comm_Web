@@ -8,7 +8,7 @@
         <h3 class="font-bold text-lg text-gray-900 mb-1">Delete "{{ $a->title }}"?</h3>
         <p class="text-sm text-gray-500 mb-5">This action cannot be undone.</p>
 
-        <form method="POST" action="{{ route('platform-settings.announcements.destroy', $a) }}" class="flex gap-3">
+        <form method="POST" action="{{ route('admin.platform-settings.announcements.destroy', $a) }}" class="flex gap-3">
             @csrf
             @method('DELETE')
             <button type="button" @click="deleteAnnouncementId = null"

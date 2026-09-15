@@ -20,8 +20,11 @@ class PasswordResetLinkController extends Controller
     {
         $request->validate(['email' => 'required|email']);
 
-        $admin = User::where('email', $request->email)
-            ->where('role', 'admin')
+        $admin = User::where('role', 'admin')
+            ->where(function ($query) use ($request) {
+                $query->where('email', $request->email)
+                    ->orWhere('recovery_email', $request->email);
+            })
             ->first();
 
         if ($admin) {

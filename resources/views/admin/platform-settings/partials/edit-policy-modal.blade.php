@@ -20,7 +20,7 @@
             <button type="button" @click="editPolicyId = null" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
 
-        <form method="POST" action="{{ route('platform-settings.policies.update', $policy) }}">
+        <form method="POST" action="{{ route('admin.platform-settings.policies.update', $policy) }}">
             @csrf
             @method('PUT')
 
