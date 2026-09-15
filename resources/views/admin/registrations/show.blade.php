@@ -1,7 +1,7 @@
 <x-admin-layout>
     <div class="p-4 sm:p-5 lg:p-6">
 
-        <a href="{{ route('registrations.index') }}"
+        <a href="{{ route('admin.registrations.index') }}"
            class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
@@ -21,7 +21,7 @@
                         class="px-5 py-2.5 rounded-lg border border-red-300 text-red-600 text-sm font-semibold hover:bg-red-50 transition">
                         Reject
                     </button>
-                    <form method="POST" action="{{ route('registrations.approve', $user) }}">
+                    <form method="POST" action="{{ route('admin.registrations.approve', $user) }}">
                         @csrf
                         <button type="submit"
                             class="px-5 py-2.5 rounded-lg bg-[#3b1735] text-white text-sm font-semibold hover:bg-[#4d1f45] transition">

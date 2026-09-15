@@ -25,7 +25,7 @@
                 this.customDate = localStorage.getItem('reports_custom_date') || '';
             }
             const params = new URLSearchParams(this.params());
-            window.location = '{{ route('reports.index') }}?' + params;
+            window.location = '{{ route('admin.reports.index') }}?' + params;
         },
         previewMenuOpen: false,
         downloadMenuOpen: false,
@@ -36,7 +36,7 @@
         },
         loadPreview(period) {
             const params = new URLSearchParams(this.rangeParams(period));
-            fetch('{{ route('reports.preview') }}?' + params)
+            fetch('{{ route('admin.reports.preview') }}?' + params)
                 .then(r => r.text())
                 .then(html => {
                     document.getElementById('report-preview').innerHTML = html;
@@ -45,7 +45,7 @@
         },
         downloadUrlFor(period) {
             const params = new URLSearchParams(this.rangeParams(period));
-            return '{{ route('reports.download') }}?' + params;
+            return '{{ route('admin.reports.download') }}?' + params;
         }
     }">
         <div class="mb-6">
@@ -56,13 +56,13 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div class="flex items-center gap-3">
                 <div class="flex bg-white border border-gray-200 rounded-lg p-1">
-                    <a href="{{ route('reports.index', ['view' => 'daily', 'date_filter' => session('last_date_filter', 'today'), 'custom_date' => session('last_custom_date', '')]) }}"
+                    <a href="{{ route('admin.reports.index', ['view' => 'daily', 'date_filter' => session('last_date_filter', 'today'), 'custom_date' => session('last_custom_date', '')]) }}"
                         @class([
                             'px-3 py-1.5 rounded-md text-sm font-medium',
                             'bg-[#3b1735] text-white' => $view === 'daily',
                             'text-gray-600' => $view !== 'daily',
                         ])>Daily</a>
-                    <a href="{{ route('reports.index', ['view' => 'monthly', 'year' => $year]) }}"
+                    <a href="{{ route('admin.reports.index', ['view' => 'monthly', 'year' => $year]) }}"
                         @class([
                             'px-3 py-1.5 rounded-md text-sm font-medium',
                             'bg-[#3b1735] text-white' => $view === 'monthly',

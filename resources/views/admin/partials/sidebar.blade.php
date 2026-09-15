@@ -16,56 +16,57 @@
             <span class="text-sm font-medium">Dashboard</span>
         </a>
 
-        <a href="{{ route('registrations.index') }}" x-target.push="main-content sidebar"
-            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('registrations.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
+        <a href="{{ route('admin.registrations.index') }}" x-target.push="main-content sidebar"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.registrations.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
             <img src="{{ asset('assets/icons/dashboard/registrations-menu.svg') }}" alt="" class="w-5 h-5">
             <span class="text-sm font-medium">Registrations</span>
         </a>
 
-        <a href="{{ route('user-management.index') }}" x-target.push="main-content sidebar"
-            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('user-management.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
+        <a href="{{ route('admin.user-management.index') }}" x-target.push="main-content sidebar"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.user-management.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
             <img src="{{ asset('assets/icons/dashboard/user-management-menu.svg') }}" alt="" class="w-5 h-5">
             <span class="text-sm font-medium">User Management</span>
         </a>
 
-        <a href="{{ route('seller-compliance.overview') }}" x-target.push="main-content sidebar"
-            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('seller-compliance.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
+        <a href="{{ route('admin.seller-compliance.overview') }}" x-target.push="main-content sidebar"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.seller-compliance.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
             <img src="{{ asset('assets/icons/dashboard/seller-compliance-menu.svg') }}" alt="" class="w-5 h-5">
             <span class="text-sm font-medium">Seller Compliance</span>
         </a>
 
-        <a href="{{ route('complaints.index') }}" x-target.push="main-content sidebar"
-            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('complaints.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
+        <a href="{{ route('admin.complaints.index') }}" x-target.push="main-content sidebar"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.complaints.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
             <img src="{{ asset('assets/icons/dashboard/complaints-disputes-menu.svg') }}" alt=""
                 class="w-5 h-5">
             <span class="text-sm font-medium">Complaints and Disputes</span>
         </a>
 
-        <a href="{{ route('commission.index') }}" x-target.push="main-content sidebar"
-            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('commission.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
+        <a href="{{ route('admin.commission.index') }}" x-target.push="main-content sidebar"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.commission.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
             <img src="{{ asset('assets/icons/dashboard/commission-menu.svg') }}" alt="" class="w-5 h-5">
             <span class="text-sm font-medium">Commission</span>
         </a>
 
-        <a href="{{ route('reports.index') }}" x-target.push="main-content sidebar"
-            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('reports.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
+        <a href="{{ route('admin.reports.index') }}" x-target.push="main-content sidebar"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.reports.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
             <img src="{{ asset('assets/icons/dashboard/reports-menu.svg') }}" alt="" class="w-5 h-5">
             <span class="text-sm font-medium">Reports</span>
         </a>
 
-        <a href="{{ route('platform-settings.index') }}" x-target.push="main-content sidebar"
-            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('platform-settings.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
+        <a href="{{ route('admin.platform-settings.index') }}" x-target.push="main-content sidebar"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.platform-settings.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
             <img src="{{ asset('assets/icons/dashboard/platform-settings-menu.svg') }}" alt="" class="w-5 h-5">
             <span class="text-sm font-medium">Platform Settings</span>
         </a>
 
-        <a href="{{ route('messages.index') }}" x-target.push="main-content sidebar"
-            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('messages.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
+        <a href="{{ route('admin.messages.index') }}" x-target.push="main-content sidebar"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.messages.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
             <img src="{{ asset('assets/icons/dashboard/messages-menu.svg') }}" alt="" class="w-5 h-5">
             <span class="text-sm font-medium">Messages</span>
         </a>
 
-        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/5">
+       <a href="{{ route('admin.account-management.index') }}" x-target.push="main-content sidebar"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg {{ request()->routeIs('admin.account-management.*') ? 'bg-white/10' : 'hover:bg-white/5' }}">
             <img src="{{ asset('assets/icons/dashboard/account-management-menu.svg') }}" alt=""
                 class="w-5 h-5">
             <span class="text-sm font-medium">Account Management</span>

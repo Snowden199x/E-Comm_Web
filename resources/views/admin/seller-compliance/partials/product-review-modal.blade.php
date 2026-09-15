@@ -98,7 +98,7 @@
             <button type="button" @click="openProductId = null; warnId = {{ $product->id }}"
                 class="px-4 py-2 rounded-lg border border-orange-300 text-orange-600 text-sm font-medium hover:bg-orange-50">Issue
                 Warning</button>
-            <form method="POST" action="{{ route('seller-compliance.products.approve', $product) }}">
+            <form method="POST" action="{{ route('admin.seller-compliance.products.approve', $product) }}">
                 @csrf
                 <button type="submit"
                     class="px-4 py-2 rounded-lg bg-[#3b1735] text-white text-sm font-medium hover:opacity-90">Approve

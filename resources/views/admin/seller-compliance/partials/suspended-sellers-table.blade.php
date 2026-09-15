@@ -43,7 +43,7 @@
                         @endif
                     </td>
                     <td class="py-3">
-                        <form method="POST" action="{{ route('user-management.activate', $seller) }}">
+                        <form method="POST" action="{{ route('admin.user-management.activate', $seller) }}">
                             @csrf
                             <button type="submit"
                                 class="px-3 py-1.5 rounded-lg border border-green-300 text-green-700 text-xs font-medium hover:bg-green-50">Activate</button>

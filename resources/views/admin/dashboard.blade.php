@@ -119,7 +119,7 @@
                     <div class="bg-white rounded-2xl p-5 shadow-sm overflow-x-auto" x-data="{ openId: null, rejectId: null }">
                         <div class="flex items-center justify-between mb-2">
                             <h3 class="font-bold text-gray-900">Recent Registrations</h3>
-                            <a href="{{ route('registrations.index') }}"
+                            <a href="{{ route('admin.registrations.index') }}"
                                 class="text-sm text-[#3b1735] font-medium hover:underline">View All</a>
                         </div>
 
@@ -159,14 +159,14 @@
 
                                                 @if ($reg->status === 'pending')
                                                     <form method="POST"
-                                                        action="{{ route('registrations.approve', $reg) }}">
+                                                        action="{{ route('admin.registrations.approve', $reg) }}">
                                                         @csrf
                                                         <button type="submit"
                                                             class="text-green-600 hover:text-green-800 font-bold"
                                                             title="Approve">✓</button>
                                                     </form>
                                                     <form method="POST"
-                                                        action="{{ route('registrations.disapprove', $reg) }}">
+                                                        action="{{ route('admin.registrations.disapprove', $reg) }}">
                                                         @csrf
                                                         <button type="button"
                                                             @click="rejectId = {{ $reg->id }}"
@@ -217,7 +217,7 @@
                     <div class="bg-white rounded-2xl p-5 shadow-sm overflow-x-auto">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="font-bold text-gray-900">Recent Complaint</h3>
-                            <a href="{{ route('complaints.index') }}"
+                            <a href="{{ route('admin.complaints.index') }}"
                                 class="text-sm text-[#3b1735] font-medium hover:underline">View All</a>
                         </div>
 
@@ -271,7 +271,7 @@
                 <div class="bg-white rounded-2xl p-5 shadow-sm">
                     <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
                         <h3 class="font-bold text-gray-900">Notifications</h3>
-                        <a href="{{ route('notifications.index') }}"
+                        <a href="{{ route('admin.notifications.index') }}"
                             class="text-sm text-[#3b1735] font-medium hover:underline">View All</a>
                     </div>
                     <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
@@ -296,7 +296,7 @@
                 <div class="bg-white rounded-2xl p-5 shadow-sm">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="font-bold text-gray-900">Pending Registrations</h3>
-                        <a href="{{ route('registrations.index') }}"
+                        <a href="{{ route('admin.registrations.index') }}"
                             class="text-sm text-[#3b1735] font-medium hover:underline">View All</a>
                     </div>
                     <div class="space-y-3">
@@ -333,7 +333,7 @@
                             <p class="text-sm text-gray-300 mb-4">No active announcement yet.</p>
                         @endif
 
-                        <a href="{{ route('platform-settings.index') }}"
+                        <a href="{{ route('admin.platform-settings.index') }}"
                             class="inline-block bg-white text-[#3b1735] text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-100">
                             Manage Announcement
                         </a>

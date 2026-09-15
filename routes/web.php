@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\MessageController;
+use App\Http\Controllers\Admin\AccountManagementController;
 
 use App\Http\Controllers\Auth\UnifiedLoginController;
 use App\Http\Controllers\Auth\EmailOtpController;
@@ -63,9 +64,9 @@ Route::get('/admin', function () {
     return redirect('/admin/login');
 });
 
-Route::prefix('admin')->group(function () {
-Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth:admin', 'verified'])->name('admin.dashboard');
-        Route::middleware('auth:admin')->group(function () {
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth:admin', 'verified'])->name('dashboard');
+        Route::middleware(['auth:admin', 'check.admin.active', 'force.password.change'])->group(function () {
         Route::get('/registrations', [RegistrationController::class, 'index'])->name('registrations.index');
         Route::get('/registrations/table', [RegistrationController::class, 'table'])->name('registrations.table');
         Route::get('/registrations/{user}', [RegistrationController::class, 'show'])->name('registrations.show');
@@ -134,6 +135,24 @@ Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['au
             Route::get('/list', [MessageController::class, 'conversationsList'])->name('list');
             Route::get('/{conversation}/thread', [MessageController::class, 'thread'])->name('thread');
             Route::post('/{conversation}/send', [MessageController::class, 'send'])->name('send');
+        });
+        
+        Route::prefix('account-management')->name('account-management.')->group(function () {
+            Route::get('/', [AccountManagementController::class, 'index'])->name('index');
+            Route::get('/table', [AccountManagementController::class, 'table'])->name('table');
+            Route::get('/force-password', [AccountManagementController::class, 'showForcePassword'])->name('force-password');
+            Route::post('/force-password', [AccountManagementController::class, 'storeForcePassword'])->name('force-password.store');
+            Route::get('/create', [AccountManagementController::class, 'create'])->name('create');
+            Route::post('/', [AccountManagementController::class, 'store'])->name('store');
+            Route::get('/{admin}', [AccountManagementController::class, 'show'])->name('show');
+            Route::put('/{admin}', [AccountManagementController::class, 'update'])->name('update');
+            Route::post('/{admin}/view-temp-password', [AccountManagementController::class, 'viewTempPassword'])->name('view-temp-password');
+            Route::post('/{admin}/suspend', [AccountManagementController::class, 'suspend'])->name('suspend');
+            Route::post('/{admin}/reactivate', [AccountManagementController::class, 'reactivate'])->name('reactivate');
+            Route::post('/{admin}/deactivate', [AccountManagementController::class, 'deactivate'])->name('deactivate');
+            Route::post('/{admin}/send-reset-link', [AccountManagementController::class, 'sendResetLink'])->name('send-reset-link');
+            Route::put('/profile/update', [AccountManagementController::class, 'updateProfile'])->name('profile.update');
+            Route::put('/profile/password', [AccountManagementController::class, 'updatePassword'])->name('profile.password');
         });
     });
 });

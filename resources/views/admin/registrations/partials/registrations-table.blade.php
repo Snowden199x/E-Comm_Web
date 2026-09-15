@@ -27,7 +27,7 @@
                     <td class="py-3 text-gray-600">{{ $reg->phone_number ?? '—' }}</td>
                     <td class="py-3 text-gray-600">{{ $reg->created_at->format('M d, Y') }}</td>
                     <td class="py-3 text-right">
-                        <a href="{{ route('registrations.show', $reg) }}"
+                        <a href="{{ route('admin.registrations.show', $reg) }}"
                             class="inline-block px-4 py-1.5 rounded-full border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50">
                             View
                         </a>

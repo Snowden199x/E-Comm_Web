@@ -3,7 +3,7 @@
      @click.self="deactivateId = null">
     <div class="bg-white rounded-2xl w-full max-w-md" @click.stop>
 
-        <form method="POST" action="{{ route('user-management.deactivate', $user) }}" class="p-6">
+        <form method="POST" action="{{ route('admin.user-management.deactivate', $user) }}" class="p-6">
             @csrf
 
             <div class="flex justify-end">

@@ -7,7 +7,7 @@
         <p class="text-xs text-gray-400 capitalize">{{ $conversation->user->role }}</p>
     </div>
     @if ($conversation->complaint)
-        <a href="{{ route('complaints.show', $conversation->complaint) }}"
+        <a href="{{ route('admin.complaints.show', $conversation->complaint) }}"
             class="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50">
             View Complaint
         </a>
@@ -46,7 +46,7 @@
     @endforeach
 </div>
 
-<form method="POST" action="{{ route('messages.send', $conversation) }}" enctype="multipart/form-data"
+<form method="POST" action="{{ route('admin.messages.send', $conversation) }}" enctype="multipart/form-data"
     class="p-4 border-t border-gray-100 flex items-center gap-2" x-data="{ sending: false }"
     @submit.prevent="
         sending = true;

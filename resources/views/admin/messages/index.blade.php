@@ -4,7 +4,7 @@
         lightboxImage: null,
         openConversation(id) {
             this.activeId = id;
-            fetch('{{ route('messages.thread', ['conversation' => '__ID__']) }}'.replace('__ID__', id))
+            fetch('{{ route('admin.messages.thread', ['conversation' => '__ID__']) }}'.replace('__ID__', id))
                 .then(r => r.text())
                 .then(html => {
                     document.getElementById('thread-wrap').innerHTML = html;
@@ -13,7 +13,7 @@
         },
         refreshList() {
             const params = new URLSearchParams({ search: document.querySelector('[x-model=q]')?.value || '' });
-            fetch('{{ route('messages.list') }}?' + params)
+            fetch('{{ route('admin.messages.list') }}?' + params)
                 .then(r => r.text())
                 .then(html => { document.getElementById('conversation-list').innerHTML = html; });
         }
@@ -30,7 +30,7 @@
                 search() {
                     clearTimeout(this.timer);
                     this.timer = setTimeout(() => {
-                        fetch('{{ route('messages.list') }}?search=' + encodeURIComponent(this.q))
+                        fetch('{{ route('admin.messages.list') }}?search=' + encodeURIComponent(this.q))
                             .then(r => r.text()).then(html => { document.getElementById('conversation-list').innerHTML = html; });
                     }, 250);
                 }

@@ -13,7 +13,7 @@
             <p class="text-sm text-gray-500">The seller will be notified about this warning</p>
         </div>
 
-        <form method="POST" action="{{ route('seller-compliance.products.warn', $product) }}">
+        <form method="POST" action="{{ route('admin.seller-compliance.products.warn', $product) }}">
             @csrf
             <p class="text-sm font-medium text-gray-900 mb-2">Reason for Warning<span class="text-red-500">*</span></p>
             <div class="space-y-2 mb-4">

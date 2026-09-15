@@ -16,7 +16,7 @@
                     @if ($complaint->status !== 'resolved')
                         <div class="flex gap-3 mt-4 pt-4 border-t border-gray-100">
                             @if ($complaint->status === 'open')
-                                <form method="POST" action="{{ route('complaints.update-status', $complaint) }}">
+                                <form method="POST" action="{{ route('admin.complaints.update-status', $complaint) }}">
                                     @csrf
                                     <input type="hidden" name="status" value="in_review">
                                     <button type="submit"
@@ -24,7 +24,7 @@
                                         In Progress</button>
                                 </form>
                             @endif
-                            <form method="POST" action="{{ route('complaints.update-status', $complaint) }}">
+                            <form method="POST" action="{{ route('admin.complaints.update-status', $complaint) }}">
                                 @csrf
                                 <input type="hidden" name="status" value="resolved">
                                 <button type="submit"

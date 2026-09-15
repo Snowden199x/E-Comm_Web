@@ -41,7 +41,7 @@
                 clearTimeout(this.timer);
                 this.timer = setTimeout(() => {
                     const params = new URLSearchParams({ search: this.q, date: this.dateVal, user_type: this.userType, rejected: '{{ $showRejected ? 1 : 0 }}' });
-                    fetch('{{ route('user-management.table') }}?' + params)
+                    fetch('{{ route('admin.user-management.table') }}?' + params)
                         .then(r => r.text()).then(html => { document.getElementById('users-table-wrap').innerHTML = html; });
                 }, 250);
             }
@@ -66,7 +66,7 @@
                     <option value="buyer">Buyers</option>
                 </select>
 
-                <a href="{{ route('user-management.index', array_merge(request()->except('rejected'), ['rejected' => $showRejected ? 0 : 1])) }}"
+                <a href="{{ route('admin.user-management.index', array_merge(request()->except('rejected'), ['rejected' => $showRejected ? 0 : 1])) }}"
                     class="flex items-center gap-2 px-4 py-2.5 rounded-lg border {{ $showRejected ? 'bg-[#3b1735] text-white border-[#3b1735]' : 'border-gray-200 text-gray-700' }} text-sm font-medium whitespace-nowrap">
                     <img src="{{ asset('assets/icons/user-management/document-icon.svg') }}" alt=""
                         class="w-4 h-4 {{ $showRejected ? 'brightness-0 invert' : '' }}">

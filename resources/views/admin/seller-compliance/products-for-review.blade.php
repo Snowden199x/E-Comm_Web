@@ -44,7 +44,7 @@
                 clearTimeout(this.timer);
                 this.timer = setTimeout(() => {
                     const params = new URLSearchParams({ search: this.q, category_id: this.categoryId });
-                    fetch('{{ route('seller-compliance.products-table') }}?' + params)
+                    fetch('{{ route('admin.seller-compliance.products-table') }}?' + params)
                         .then(r => r.text())
                         .then(html => { document.getElementById('products-table-wrap').innerHTML = html; });
                 }, 250);

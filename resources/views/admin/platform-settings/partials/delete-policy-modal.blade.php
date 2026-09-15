@@ -8,7 +8,7 @@
         <h3 class="font-bold text-lg text-gray-900 mb-1">Delete {{ $policy->name }}?</h3>
         <p class="text-sm text-gray-500 mb-5">This action cannot be undone. The policy content and version history will be permanently removed.</p>
 
-        <form method="POST" action="{{ route('platform-settings.policies.destroy', $policy) }}" class="flex gap-3">
+        <form method="POST" action="{{ route('admin.platform-settings.policies.destroy', $policy) }}" class="flex gap-3">
             @csrf
             @method('DELETE')
             <button type="button" @click="deletePolicyId = null" class="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium">Cancel</button>

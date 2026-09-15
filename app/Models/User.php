@@ -17,8 +17,7 @@ use App\Models\Profiles\SellerDetail;
 use App\Models\Profiles\BuyerDetail;
 use App\Models\Profiles\CourierDetail;
 
-#[Fillable(['name', 'email', 'password', 'role', 'status', 'phone_number','rejection_reason', 'rejection_notes', 'suspension_reason', 'suspension_notes', 'suspended_at', 'suspended_until'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable(['name', 'first_name', 'last_name', 'middle_initial', 'email', 'recovery_email', 'password', 'role', 'status', 'phone_number','rejection_reason', 'rejection_notes', 'suspension_reason', 'suspension_notes', 'suspended_at', 'suspended_until', 'is_super_admin', 'must_change_password', 'account_status', 'profile_picture', 'last_login_at', 'temp_password_plain'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -31,7 +30,15 @@ class User extends Authenticatable
             'password' => 'hashed',
             'suspended_at' => 'datetime',
             'suspended_until' => 'datetime',
+            'last_login_at' => 'datetime',
         ];
+    }
+    
+    public function fullName(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => trim($this->first_name.' '.($this->middle_initial ? $this->middle_initial.'. ' : '').$this->last_name),
+        );
     }
     
     public function daysRemaining(): Attribute
@@ -43,6 +50,11 @@ class User extends Authenticatable
         );
     }
     
+    public function routeNotificationForMail($notification = null)
+{
+    return $this->recovery_email ?: $this->email;
+}
+
     public function sellerDetail()
     {
         return $this->hasOne(SellerDetail::class);

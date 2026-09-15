@@ -21,7 +21,7 @@
             search() {
                 clearTimeout(this.timer);
                 this.timer = setTimeout(() => {
-                    fetch('{{ route('seller-compliance.suspended-sellers-table') }}?search=' + encodeURIComponent(this.q))
+                    fetch('{{ route('admin.seller-compliance.suspended-sellers-table') }}?search=' + encodeURIComponent(this.q))
                         .then(r => r.text()).then(html => { document.getElementById('suspended-table-wrap').innerHTML = html; });
                 }, 250);
             }
