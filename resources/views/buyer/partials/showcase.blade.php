@@ -47,8 +47,8 @@
             </div>
           </div>
           <div class="showcase-ctas">
-            <button class="btn btn-ghost" id="showcaseAdd">Add to Cart</button>
-            <a href="#" class="btn btn-primary">Buy Now</a>
+              <a href="{{ route('buyer.login') }}" class="btn btn-ghost">Add to Cart</a>
+              <a href="{{ route('buyer.login') }}" class="btn btn-primary">Buy Now</a>
           </div>
         </div>
       </div>

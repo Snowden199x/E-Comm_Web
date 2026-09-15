@@ -4,23 +4,29 @@
     <div class="hero-blob hero-blob-2"></div>
     <div class="hero-blob hero-blob-3"></div>
 
-    <div class="hero-intro wrap" style="padding:0;">
-      <img src="{{ asset('images/logo/vendo-icon.png') }}" alt="Vendo" class="intro-icon">
-      <span class="brand-word">VENDO</span>
-      <span class="intro-tagline">Buy. Sell. Delivered.</span>
-      <button class="scroll-cue" onclick="document.getElementById('heroContent').scrollIntoView({behavior:'smooth'})" aria-label="Scroll down">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-    </div>
-
-    <div class="hero-grid wrap" id="heroContent" style="padding:0;">
+    <div class="hero-grid wrap">
       <div class="hero-copy reveal-stagger">
         <span class="eyebrow">The buyer marketplace</span>
         <h1>Find What You Love.<br>Vendo It.</h1>
         <p class="lede">Discover products from trusted sellers, shop with ease, and keep track of your order from checkout to your doorstep.</p>
         <div class="hero-ctas">
-          <a href="#featured" class="btn btn-primary">Start Shopping</a>
+          <a href="{{ route('buyer.login') }}" class="btn btn-primary">Start Shopping</a>
           <a href="#categories" class="btn btn-ghost">Explore Categories</a>
+        </div>
+
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-num">10,000+</div>
+            <div class="hero-stat-label">Products listed</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-num">500+</div>
+            <div class="hero-stat-label">Trusted sellers</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-num">Nationwide</div>
+            <div class="hero-stat-label">Delivery coverage</div>
+          </div>
         </div>
       </div>
       <div class="hero-visual reveal">
@@ -32,7 +38,7 @@
         <div class="float-card vc-product">
           <div class="thumb">
             <span class="badge">-20%</span>
-            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4h16v12H4z"/><path d="M8 20h8"/><path d="M4 8h16"/></svg>
+            <img src="{{ asset('images/products/tote-bag.jpg') }}" alt="Woven Tote Bag" loading="lazy" onerror="this.remove()">
           </div>
           <div class="info">
             <div class="name">Woven Tote Bag</div>
