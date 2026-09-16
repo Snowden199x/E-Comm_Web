@@ -15,7 +15,7 @@ class AccountManagementController extends Controller
 {
     public function index(Request $request): View
     {
-        $currentAdmin = Auth::guard('admin')->user();
+$currentAdmin = Auth::guard('admin')->user();
 
         $admins = $currentAdmin->is_super_admin
             ? $this->filteredAdmins($request)
@@ -44,7 +44,7 @@ class AccountManagementController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
+            $query->where(fn($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
         }
 
         if ($request->filled('status') && $request->status !== 'all') {
@@ -87,7 +87,7 @@ class AccountManagementController extends Controller
             'email_username.regex' => 'Username can only contain letters, numbers, dots, dashes, and underscores. The @vendo-ph.app part is fixed and cannot be changed.',
         ]);
 
-        $validated['email'] = strtolower($validated['email_username']).'@vendo-ph.app';
+        $validated['email'] = strtolower($validated['email_username']) . '@vendo-ph.app';
 
         $request->validate([
             'email' => ['unique:users,email'],
@@ -101,7 +101,7 @@ class AccountManagementController extends Controller
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'middle_initial' => $validated['middle_initial'] ?? null,
-            'name' => trim($validated['first_name'].' '.($validated['middle_initial'] ? $validated['middle_initial'].'. ' : '').$validated['last_name']),
+            'name' => trim($validated['first_name'] . ' ' . ($validated['middle_initial'] ? $validated['middle_initial'] . '. ' : '') . $validated['last_name']),
             'phone_number' => $validated['phone_number'] ?? null,
             'email' => $validated['email'],
             'password' => Hash::make($temporaryPassword),
@@ -116,7 +116,6 @@ class AccountManagementController extends Controller
             ->with('confirmation', 'created')
             ->with('generated_email', $validated['email'])
             ->with('generated_password', $temporaryPassword);
-
     }
 
     public function update(Request $request, User $admin): RedirectResponse
@@ -132,7 +131,7 @@ class AccountManagementController extends Controller
         ]);
 
         $admin->update(array_merge($validated, [
-            'name' => trim($validated['first_name'].' '.($validated['middle_initial'] ? $validated['middle_initial'].'. ' : '').$validated['last_name']),
+            'name' => trim($validated['first_name'] . ' ' . ($validated['middle_initial'] ? $validated['middle_initial'] . '. ' : '') . $validated['last_name']),
         ]));
 
         return back()->with('confirmation', 'admin-updated');
@@ -183,7 +182,7 @@ class AccountManagementController extends Controller
             ->route('admin.account-management.index')
             ->with('confirmation', 'admin-deleted');
     }
-    
+
     public function sendResetLink(User $admin): RedirectResponse
     {
         $this->authorizeSuperAdmin();
@@ -211,7 +210,7 @@ class AccountManagementController extends Controller
         ]);
 
         $admin->fill($validated);
-        $admin->name = trim($validated['first_name'].' '.($validated['middle_initial'] ? $validated['middle_initial'].'. ' : '').$validated['last_name']);
+        $admin->name = trim($validated['first_name'] . ' ' . ($validated['middle_initial'] ? $validated['middle_initial'] . '. ' : '') . $validated['last_name']);
 
         if ($request->hasFile('profile_picture')) {
             $admin->profile_picture = $request->file('profile_picture')->store('profile-pictures', 'public');
