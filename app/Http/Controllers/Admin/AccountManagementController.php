@@ -15,20 +15,15 @@ class AccountManagementController extends Controller
 {
     public function index(Request $request): View
     {
-$currentAdmin = Auth::guard('admin')->user();
+        $currentAdmin = Auth::guard('admin')->user();
 
         $admins = $currentAdmin->is_super_admin
             ? $this->filteredAdmins($request)
             : collect();
 
-        $loginSessions = $currentAdmin->loginSessions()
-            ->limit(100)
-            ->get();
+        $loginSessions = $currentAdmin->loginSessions()->limit(100)->get();
 
-        return view(
-            'admin.account-management.index',
-            compact('currentAdmin', 'admins', 'loginSessions')
-        );
+        return view('admin.account-management.index', compact('currentAdmin', 'admins', 'loginSessions'));
     }
 
     public function table(Request $request): View
@@ -40,15 +35,21 @@ $currentAdmin = Auth::guard('admin')->user();
 
     private function filteredAdmins(Request $request)
     {
-        $query = User::where('role', 'admin');
+        $query = User::where('role', 'admin')->where('is_super_admin', false);
+
+        if ($request->status === 'archived') {
+            $query->whereNotNull('archived_at');
+        } else {
+            $query->whereNull('archived_at');
+
+            if ($request->filled('status') && $request->status !== 'all') {
+                $query->where('account_status', $request->status);
+            }
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(fn($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
-        }
-
-        if ($request->filled('status') && $request->status !== 'all') {
-            $query->where('account_status', $request->status);
         }
 
         return $query->latest()->get();
@@ -156,30 +157,41 @@ $currentAdmin = Auth::guard('admin')->user();
         return back()->with('confirmation', 'reactivated');
     }
 
-    public function deactivate(User $admin): RedirectResponse
-    {
-        $this->authorizeSuperAdmin();
-        abort_if($admin->is_super_admin, 403);
-
-        $admin->update(['account_status' => 'deactivated']);
-
-        return back()->with('confirmation', 'deactivated');
-    }
-
     public function destroy(User $admin): RedirectResponse
     {
         $this->authorizeSuperAdmin();
 
-        // Only admin accounts can be deleted
         abort_unless($admin->role === 'admin', 404);
+        abort_if($admin->is_super_admin, 403);
 
-        // A Super Admin cannot be deleted
+        $admin->update(['archived_at' => now()]);
+
+        return redirect()
+            ->route('admin.account-management.index', ['tab' => 'admin-accounts', 'status' => 'archived'])
+            ->with('confirmation', 'admin-archived');
+    }
+
+    public function restore(Request $request, User $admin): RedirectResponse
+    {
+        $this->authorizeSuperAdmin();
+
+        $admin->update(['archived_at' => null, 'account_status' => 'active']);
+
+        return redirect()
+            ->route('admin.account-management.index', ['tab' => 'admin-accounts'])
+            ->with('confirmation', 'admin-restored');
+    }
+
+    public function forceDelete(Request $request, User $admin): RedirectResponse
+    {
+        $this->authorizeSuperAdmin();
+
         abort_if($admin->is_super_admin, 403);
 
         $admin->delete();
 
         return redirect()
-            ->route('admin.account-management.index')
+            ->route('admin.account-management.index', ['tab' => 'admin-accounts'])
             ->with('confirmation', 'admin-deleted');
     }
 
@@ -280,5 +292,28 @@ $currentAdmin = Auth::guard('admin')->user();
     private function authorizeSuperAdmin(): void
     {
         abort_unless(Auth::guard('admin')->user()?->is_super_admin, 403, 'Only the super admin can manage admin accounts.');
+    }
+
+    public function checkStatus(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $admin = Auth::guard('admin')->user();
+
+        if ($admin && ($admin->account_status !== 'active' || $admin->archived_at)) {
+            Auth::guard('admin')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return response()->json(['active' => false]);
+        }
+
+        if (! $admin) {
+            Auth::guard('admin')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return response()->json(['active' => false]);
+        }
+
+        return response()->json(['active' => true]);
     }
 }

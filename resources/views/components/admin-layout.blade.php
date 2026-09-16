@@ -9,6 +9,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
+    <script>
+        setInterval(function() {
+            fetch('{{ route('admin.check-status') }}')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.active) {
+                        window.location.href = '{{ route('admin.login') }}';
+                    }
+                })
+                .catch(() => {});
+        }, 5000);
+    </script>
 </head>
 
 <body class="antialiased bg-[#faf6f0]" x-data="{ sidebarOpen: false, loading: false }" @ajax:before.window="loading = true"
@@ -64,8 +76,9 @@
 
                         <div x-show="open" x-cloak x-transition
                             class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50">
-                            <a href="{{ route('admin.account-management.index') }}" x-target.push="main-content sidebar"
-                                @click="open = false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                            <a href="{{ route('admin.account-management.index') }}"
+                                x-target.push="main-content sidebar" @click="open = false"
+                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                                 Account Settings
                             </a>
                         </div>

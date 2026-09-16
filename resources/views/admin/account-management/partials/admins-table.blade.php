@@ -34,17 +34,17 @@
                 {{-- Account / Online Status --}}
                 <td class="py-3">
 
-                    @if ($admin->account_status === 'suspended')
+                    @if ($admin->archived_at)
+                        <span
+                            class="inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                            Deleted
+                        </span>
+                    @elseif ($admin->account_status === 'suspended')
                         <span
                             class="inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
                             <span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
                             Suspended
-                        </span>
-                    @elseif ($admin->account_status === 'deactivated')
-                        <span
-                            class="inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                            <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-                            Deactivated
                         </span>
                     @elseif ($admin->isOnline())
                         <span
@@ -68,11 +68,77 @@
                 </td>
 
                 <td class="py-3">
-                    <a href="{{ route('admin.account-management.show', $admin) }}" x-target.push="main-content"
-                        class="text-[#3b1735] font-medium hover:underline">
-                        View
-                    </a>
-                </td>
+                    @if ($admin->archived_at)
+                        <div class="flex items-center gap-2 text-xs" x-data="{ confirmAction: null }" x-init="$watch('confirmAction', v => $dispatch('modal-toggle', v !== null))">
+
+                            <button type="button" @click="confirmAction = 'restore'"
+                                class="text-green-600 font-medium hover:underline">Restore</button>
+                            <span class="text-gray-300">|</span>
+                            <button type="button" @click="confirmAction = 'delete-forever'"
+                                class="text-red-600 font-medium hover:underline">Delete Forever</button>
+
+                            <!-- Confirm Restore Modal -->
+                            <div x-show="confirmAction === 'restore'" x-cloak
+                                class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+                                @click.self="confirmAction = null">
+                                <div class="bg-white rounded-2xl p-6 w-full max-w-sm text-left" @click.stop>
+                                    <h3 class="font-bold text-lg text-gray-900 mb-2">Restore this admin?</h3>
+                                    <p class="text-sm text-gray-500 mb-4">
+                                        {{ $admin->name }} will regain access to the Admin Panel.
+                                    </p>
+                                    <div class="flex gap-3">
+                                        <button type="button" @click="confirmAction = null"
+                                            class="flex-1 border border-gray-300 text-gray-700 text-sm font-medium py-2 rounded-lg hover:bg-gray-50">
+                                            Cancel
+                                        </button>
+                                        <form method="POST"
+                                            action="{{ route('admin.account-management.restore', $admin) }}"
+                                            class="flex-1">
+                                            @csrf
+                                            <button type="submit"
+                                                class="w-full bg-green-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-green-700">
+                                                Restore
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Confirm Delete Forever Modal -->
+                            <div x-show="confirmAction === 'delete-forever'" x-cloak
+                                class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+                                @click.self="confirmAction = null">
+                                <div class="bg-white rounded-2xl p-6 w-full max-w-sm text-left" @click.stop>
+                                    <h3 class="font-bold text-lg text-gray-900 mb-2">Permanently delete this admin?</h3>
+                                    <p class="text-sm text-gray-500 mb-4">
+                                        This will permanently delete {{ $admin->name }}. This action cannot be undone.
+                                    </p>
+                                    <div class="flex gap-3">
+                                        <button type="button" @click="confirmAction = null"
+                                            class="flex-1 border border-gray-300 text-gray-700 text-sm font-medium py-2 rounded-lg hover:bg-gray-50">
+                                            Cancel
+                                        </button>
+                                        <form method="POST"
+                                            action="{{ route('admin.account-management.force-delete', $admin) }}"
+                                            class="flex-1">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                class="w-full bg-red-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-red-700">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    @else
+                        <a href="{{ route('admin.account-management.show', $admin) }}" x-target.push="main-content"
+                            class="text-[#3b1735] font-medium hover:underline">
+                            View
+                        </a>
+                    @endif
                 </td>
             </tr>
 

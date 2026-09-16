@@ -18,7 +18,7 @@ use App\Models\Profiles\SellerDetail;
 use App\Models\Profiles\BuyerDetail;
 use App\Models\Profiles\CourierDetail;
 
-#[Fillable(['name', 'first_name', 'last_name', 'middle_initial', 'email', 'recovery_email', 'password', 'role', 'status', 'phone_number','rejection_reason', 'rejection_notes', 'suspension_reason', 'suspension_notes', 'suspended_at', 'suspended_until', 'is_super_admin', 'must_change_password', 'account_status', 'profile_picture', 'last_login_at', 'temp_password_plain'])]
+#[Fillable(['name', 'first_name', 'last_name', 'middle_initial', 'email', 'recovery_email', 'password', 'role', 'status', 'phone_number', 'rejection_reason', 'rejection_notes', 'suspension_reason', 'suspension_notes', 'suspended_at', 'suspended_until', 'is_super_admin', 'must_change_password', 'account_status', 'profile_picture', 'last_login_at', 'temp_password_plain', 'archived_at'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -34,27 +34,27 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
         ];
     }
-    
+
     public function fullName(): Attribute
     {
         return Attribute::make(
-            get: fn () => trim($this->first_name.' '.($this->middle_initial ? $this->middle_initial.'. ' : '').$this->last_name),
+            get: fn() => trim($this->first_name . ' ' . ($this->middle_initial ? $this->middle_initial . '. ' : '') . $this->last_name),
         );
     }
-    
+
     public function daysRemaining(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->suspended_until && $this->suspended_until->isFuture()
+            get: fn() => $this->suspended_until && $this->suspended_until->isFuture()
                 ? (int) ceil(now()->floatDiffInDays($this->suspended_until))
                 : 0,
         );
     }
-    
+
     public function routeNotificationForMail($notification = null)
-{
-    return $this->recovery_email ?: $this->email;
-}
+    {
+        return $this->recovery_email ?: $this->email;
+    }
 
     public function sellerDetail()
     {
@@ -66,7 +66,7 @@ class User extends Authenticatable
         return $this->belongsToMany(Category::class, 'seller_categories');
     }
 
-     public function courierDetail()
+    public function courierDetail()
     {
         return $this->hasOne(CourierDetail::class);
     }
@@ -81,7 +81,7 @@ class User extends Authenticatable
         return $this->hasOne(BuyerDetail::class);
     }
 
-        public function products()
+    public function products()
     {
         return $this->hasMany(Product::class, 'seller_id');
     }
@@ -99,7 +99,7 @@ class User extends Authenticatable
     public function complianceScore(): Attribute
     {
         return Attribute::make(
-            get: fn () => max(0, 100 - ($this->productViolations()->count() * 10)),
+            get: fn() => max(0, 100 - ($this->productViolations()->count() * 10)),
         );
     }
 
@@ -108,7 +108,7 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\Ecommerce\Order::class, 'seller_id');
     }
 
-        public function conversations()
+    public function conversations()
     {
         return $this->hasMany(\App\Models\Communication\Conversation::class);
     }

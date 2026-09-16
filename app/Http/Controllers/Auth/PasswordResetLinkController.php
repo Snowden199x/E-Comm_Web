@@ -27,7 +27,7 @@ class PasswordResetLinkController extends Controller
             })
             ->first();
 
-        if ($admin) {
+        if ($admin && ! empty($admin->recovery_email)) {
             Password::sendResetLink(['email' => $admin->email]);
         }
 
