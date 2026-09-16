@@ -23,7 +23,7 @@
                     <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
             </button>
-            <button class="icon-btn" aria-label="Cart">
+            <a href="{{ route('buyer.login') }}" class="icon-btn" aria-label="Cart">
                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M6 6h15l-1.5 9h-12z" />
@@ -32,14 +32,18 @@
                     <circle cx="17" cy="20" r="1.4" />
                 </svg>
                 <span class="cart-count" id="cartCount">0</span>
-            </button>
-            <a href="{{ route('login') }}" class="login-link">Log in</a> <a href="{{ route('register.choose') }}"
+            </a>
+            <a href="{{ route('buyer.login') }}" class="login-link">Log in</a> <a href="{{ route('register.choose') }}"
                 class="btn btn-primary">Get Started</a>
             <button class="hamburger" id="hamburgerBtn"
                 aria-label="Menu"><span></span><span></span><span></span></button>
         </div>
     </nav>
 </header>
+
+<script>
+    window.vendoLoginUrl = @json(route('buyer.login'));
+</script>
 
 <div class="mobile-panel" id="mobilePanel">
     <a href="#top">Home</a>

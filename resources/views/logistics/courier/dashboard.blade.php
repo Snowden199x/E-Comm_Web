@@ -1,1 +1,0 @@
-<h1>Rider Dashboard - Coming Soon</h1>

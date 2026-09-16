@@ -2,9 +2,8 @@ const reduceMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)').mat
 
 const header = document.getElementById('siteHeader');
 
-// The hero intro fills exactly the first screen (100vh minus the sticky
-// nav), so measure the nav's real rendered height and expose it as a CSS
-// variable the intro's min-height calc() can use.
+// Expose the sticky nav's real rendered height as a CSS variable, in case
+// any section needs to offset against it (e.g. anchor-link scroll targets).
 function setHeaderHeightVar(){
   document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
 }
@@ -42,28 +41,14 @@ searchToggle.addEventListener('click', () => {
   if (searchBox.classList.contains('open')) searchBox.querySelector('input').focus();
 });
 
-// Cart + toast
-let cartCount = 0;
-const cartCountEl = document.getElementById('cartCount');
-const toast = document.getElementById('toast');
-const toastMsg = document.getElementById('toastMsg');
-let toastTimer;
-function addToCart(name){
-  cartCount++;
-  cartCountEl.textContent = cartCount;
-  toastMsg.textContent = name + ' added to cart';
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
-}
+// Cart buttons — guests must log in first
+const loginUrl = window.vendoLoginUrl;
+
 document.querySelectorAll('.addcart-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    addToCart(btn.dataset.name || 'Item');
-    btn.classList.add('added');
-    setTimeout(() => btn.classList.remove('added'), 900);
+    window.location.href = loginUrl;
   });
 });
-document.getElementById('showcaseAdd').addEventListener('click', () => addToCart('Handwoven Market Tote'));
 
 // Product scroller arrows
 const scroller = document.getElementById('productScroller');

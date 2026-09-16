@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Vendo Logistics — Partner With Us</title>
-    <meta name="description" content="Become a Vendo Logistics delivery partner. Flexible schedule, fair earnings, and deliveries matched near you.">
+    <meta name="description" content="Become a Vendo Logistics partner. Handle deliveries for Vendo sellers and buyers at scale.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -33,7 +33,7 @@
     {{-- ─── NAV ─────────────────────────────────────────────────────────── --}}
     <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100">
         <div class="max-w-7xl mx-auto px-6 lg:px-10 h-[72px] flex items-center justify-between">
-            <a href="{{ url('/') }}">
+            <a href="{{ route('logistics.landing') }}">
                 <img src="{{ asset('assets/branding/vendo-logo.svg') }}" alt="Vendo" class="h-8">
             </a>
             <div class="flex items-center gap-3">
@@ -61,11 +61,11 @@
                     Vendo Logistics
                 </span>
                 <h1 class="text-[2.4rem] lg:text-[3rem] font-bold text-white leading-[1.15] mb-5">
-                    Deliver with Vendo.<br>Earn on your own schedule.
+                    Become a Vendo<br>Logistics Provider.
                 </h1>
                 <p class="text-[1rem] text-white/70 leading-relaxed max-w-lg mb-8">
-                    Join our courier network and get paid for every delivery you complete — whether you ride a motorcycle,
-                    drive a tricycle, or run a delivery van. Apply online in minutes and start once you're verified.
+                    Handle deliveries for Vendo's growing network of sellers and buyers. Register your business,
+                    get verified, and start receiving delivery assignments matched to your coverage area.
                 </p>
                 <div class="flex flex-wrap items-center gap-4">
                     <a href="{{ route('logistics.register') }}"
@@ -86,23 +86,23 @@
                             <svg class="w-5 h-5 text-[#e9c98a]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="1" y="6" width="15" height="12" rx="2"/><path d="M16 10h3l3 3v5h-6z"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>
                         </div>
                         <div>
-                            <p class="text-white font-semibold text-[0.9rem]">Delivery matched</p>
-                            <p class="text-white/50 text-[0.75rem]">1.8 km away</p>
+                            <p class="text-white font-semibold text-[0.9rem]">Assignments routed</p>
+                            <p class="text-white/50 text-[0.75rem]">Metro Manila coverage</p>
                         </div>
                     </div>
                     <div class="space-y-3">
                         <div class="flex items-center gap-3 text-white/80 text-[0.82rem]">
                             <span class="w-2 h-2 rounded-full bg-[#e9c98a] shrink-0"></span>
-                            Pick up from seller
+                            Pickup requests from sellers
                         </div>
                         <div class="border-l border-dashed border-white/25 ml-[3px] h-4"></div>
                         <div class="flex items-center gap-3 text-white/80 text-[0.82rem]">
                             <span class="w-2 h-2 rounded-full bg-white/40 shrink-0"></span>
-                            Drop off to buyer
+                            Delivered to buyers
                         </div>
                     </div>
                     <div class="mt-6 pt-5 border-t border-white/10 flex items-center justify-between">
-                        <span class="text-white/50 text-[0.78rem]">Estimated payout</span>
+                        <span class="text-white/50 text-[0.78rem]">Payout basis</span>
                         <span class="text-[#e9c98a] font-semibold text-[0.9rem]">Per completed delivery</span>
                     </div>
                 </div>
@@ -114,17 +114,17 @@
     <section class="max-w-7xl mx-auto px-6 lg:px-10 py-20">
         <div class="max-w-xl mb-12">
             <span class="text-[0.78rem] font-semibold text-[#3b1735] uppercase tracking-wide">Why partner with us</span>
-            <h2 class="text-[1.9rem] font-bold text-gray-900 mt-2">Built around how you already work.</h2>
+            <h2 class="text-[1.9rem] font-bold text-gray-900 mt-2">Built for logistics businesses, not one-off riders.</h2>
         </div>
 
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             @php
                 $benefits = [
-                    ['icon' => 'M12 7v5l3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z', 'title' => 'Flexible schedule', 'desc' => 'Log on whenever it suits you — no fixed shifts, no minimum hours.'],
-                    ['icon' => 'M12 7v10M9 9.5c0-1.4 1.3-2.5 3-2.5s3 1.1 3 2.5-1.3 2-3 2.5-3 1.1-3 2.5 1.3 2.5 3 2.5 3-1.1 3-2.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z', 'title' => 'Fair, transparent earnings', 'desc' => 'Know exactly what you\'ll earn per delivery, with payouts you can track.'],
-                    ['icon' => 'M12 21s-7-6.5-7-11.5A7 7 0 0112 2a7 7 0 017 7.5C19 14.5 12 21 12 21zM12 9.5a2.3 2.3 0 100 4.6 2.3 2.3 0 000-4.6z', 'title' => 'Deliveries near you', 'desc' => 'Get matched with pickups and drop-offs close to where you already are.'],
-                    ['icon' => 'M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z', 'title' => 'Quick, guided sign-up', 'desc' => 'Apply online, upload your documents, and start once you\'re verified.'],
-                    ['icon' => 'M3 21h18M4 21V8l8-5 8 5v13M9 21v-6h6v6', 'title' => 'Any vehicle type welcome', 'desc' => 'Motorcycle, tricycle, sedan, MPV/van, or truck — all are welcome to apply.'],
+                    ['icon' => 'M12 7v5l3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z', 'title' => 'Steady order volume', 'desc' => 'Tap into a growing base of Vendo sellers and buyers who need reliable delivery.'],
+                    ['icon' => 'M12 7v10M9 9.5c0-1.4 1.3-2.5 3-2.5s3 1.1 3 2.5-1.3 2-3 2.5-3 1.1-3 2.5 1.3 2.5 3 2.5 3-1.1 3-2.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z', 'title' => 'Transparent payouts', 'desc' => 'Clear, trackable earnings for every delivery your team completes.'],
+                    ['icon' => 'M12 21s-7-6.5-7-11.5A7 7 0 0112 2a7 7 0 017 7.5C19 14.5 12 21 12 21zM12 9.5a2.3 2.3 0 100 4.6 2.3 2.3 0 000-4.6z', 'title' => 'Assignments by coverage area', 'desc' => 'Get matched with pickups and drop-offs within the area your business serves.'],
+                    ['icon' => 'M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z', 'title' => 'Straightforward onboarding', 'desc' => 'Apply online, submit your business documents, and start once you\'re verified.'],
+                    ['icon' => 'M3 21h18M4 21V8l8-5 8 5v13M9 21v-6h6v6', 'title' => 'Any fleet size welcome', 'desc' => 'Whether you run a few vehicles or a full fleet, your business can apply.'],
                     ['icon' => 'M18 10a6 6 0 10-12 0c0 5 6 11 6 11s6-6 6-11zM12 2v2', 'title' => 'Support when you need it', 'desc' => 'Our team is here to help with onboarding questions and day-to-day concerns.'],
                 ];
             @endphp
@@ -145,16 +145,16 @@
         <div class="max-w-7xl mx-auto px-6 lg:px-10">
             <div class="max-w-xl mb-12">
                 <span class="text-[0.78rem] font-semibold text-[#3b1735] uppercase tracking-wide">Getting started</span>
-                <h2 class="text-[1.9rem] font-bold text-gray-900 mt-2">From application to your first delivery.</h2>
+                <h2 class="text-[1.9rem] font-bold text-gray-900 mt-2">From application to your first assignment.</h2>
             </div>
 
             <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
                 @php
                     $steps = [
-                        ['num' => '01', 'title' => 'Apply online', 'desc' => 'Fill out the registration form with your personal and vehicle details.'],
-                        ['num' => '02', 'title' => 'Submit documents', 'desc' => 'Upload a valid ID, your driver\'s license, and your vehicle\'s OR/CR.'],
+                        ['num' => '01', 'title' => 'Apply online', 'desc' => 'Fill out the registration form with your business and authorized representative details.'],
+                        ['num' => '02', 'title' => 'Submit documents', 'desc' => 'Upload a valid ID and your business permit.'],
                         ['num' => '03', 'title' => 'Get verified', 'desc' => 'Our team reviews your application and notifies you by email.'],
-                        ['num' => '04', 'title' => 'Start delivering', 'desc' => 'Log in, go online, and start accepting deliveries near you.'],
+                        ['num' => '04', 'title' => 'Start operating', 'desc' => 'Log in and start receiving delivery assignments in your coverage area.'],
                     ];
                 @endphp
                 @foreach ($steps as $step)
@@ -183,10 +183,9 @@
             <div class="space-y-3">
                 @php
                     $requirements = [
-                        'A valid government-issued ID',
-                        'A valid driver\'s license',
-                        'Your vehicle\'s OR/CR (Official Receipt / Certificate of Registration)',
-                        'A motorcycle, tricycle, sedan, MPV/van, or truck to deliver with',
+                        'A valid government-issued ID of your authorized representative',
+                        'Your business permit',
+                        'Basic business details — name, complete address, and contact number',
                     ];
                 @endphp
                 @foreach ($requirements as $requirement)
@@ -197,6 +196,36 @@
                         <p class="text-gray-700 text-[0.88rem] leading-snug">{{ $requirement }}</p>
                     </div>
                 @endforeach
+            </div>
+        </div>
+    </section>
+
+    {{-- ─── INDIVIDUAL RIDER CALLOUT ───────────────────────────────────────── --}}
+    <section class="bg-[#faf7f3] py-20">
+        <div class="max-w-7xl mx-auto px-6 lg:px-10">
+            <div class="bg-white border border-gray-100 rounded-3xl p-8 lg:p-12 grid lg:grid-cols-[1fr_auto] gap-10 items-center">
+                <div>
+                    <span class="text-[0.78rem] font-semibold text-[#3b1735] uppercase tracking-wide">Looking to ride, not run a business?</span>
+                    <h2 class="text-[1.6rem] lg:text-[1.8rem] font-bold text-gray-900 mt-2 mb-3">
+                        Vendo Rider is available on our mobile app.
+                    </h2>
+                    <p class="text-gray-500 text-[0.9rem] leading-relaxed max-w-lg mb-6">
+                        This page is for registering a logistics business. If you want to deliver as an individual rider,
+                        download the Vendo Rider app to apply, get verified, and start accepting deliveries.
+                    </p>
+                    <a href="{{ route('logistics.rider-app') }}"
+                       class="inline-flex items-center gap-2 bg-[#3b1735] hover:bg-[#4d1f45] text-white text-[0.88rem] font-semibold rounded-full px-6 py-3 transition-all duration-150 hover:shadow-md">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path stroke-linecap="round" d="M11 18h2"/></svg>
+                        Get the Vendo Rider App
+                    </a>
+                </div>
+
+                <div class="flex flex-col items-center gap-3 justify-self-center">
+                    <div class="bg-white border border-gray-200 rounded-2xl p-3 shadow-sm">
+                        <img src="{{ asset('assets/logistics/rider-app-qr.png') }}" alt="Scan to get the Vendo Rider app" class="w-32 h-32">
+                    </div>
+                    <p class="text-[0.7rem] text-gray-400 text-center max-w-[140px]">Scan to download the Vendo Rider app</p>
+                </div>
             </div>
         </div>
     </section>
@@ -224,7 +253,7 @@
     {{-- ─── FOOTER ──────────────────────────────────────────────────────── --}}
     <footer class="border-t border-gray-100 py-8">
         <div class="max-w-7xl mx-auto px-6 lg:px-10 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <a href="{{ url('/') }}">
+            <a href="{{ route('logistics.landing') }}">
                 <img src="{{ asset('assets/branding/vendo-logo.svg') }}" alt="Vendo" class="h-6 opacity-80">
             </a>
             <p class="text-[0.8rem] text-gray-400">&copy; {{ date('Y') }} Vendo. All rights reserved.</p>

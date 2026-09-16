@@ -44,7 +44,7 @@
             <div class="w-full max-w-[460px]">
 
                 {{-- Back to landing page --}}
-                <a href="{{ url('/') }}" class="inline-flex items-center gap-1.5 text-[0.8rem] font-medium text-gray-500 hover:text-[#3b1735] mb-5 transition">
+                <a href="{{ route('logistics.landing') }}" class="inline-flex items-center gap-1.5 text-[0.8rem] font-medium text-gray-500 hover:text-[#3b1735] mb-5 transition">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                     Back to Landing Page
                 </a>
