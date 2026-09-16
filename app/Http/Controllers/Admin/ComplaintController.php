@@ -39,8 +39,8 @@ class ComplaintController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(fn ($q) => $q->whereHas('complainant', fn ($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
-                ->orWhereHas('respondent', fn ($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")));
+            $query->where(fn($q) => $q->whereHas('complainant', fn($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
+                ->orWhereHas('respondent', fn($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")));
         }
 
         if ($request->filled('type')) {
