@@ -1,9 +1,9 @@
 <x-admin-layout>
     <div class="p-4 sm:p-5 lg:p-6" x-data="{ confirmAction: null }">
 
-        <a href="{{ route('admin.account-management.index') }}" x-target.push="main-content"
+        <a href="{{ route('admin.account-management.index', ['tab' => 'admin-accounts']) }}" x-target.push="main-content"
             class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
-            <span>&lt;</span> Back to Account Management
+            <span>&lt;</span> Back to Admin Accounts
         </a>
 
         @if (session('confirmation'))
@@ -30,6 +30,8 @@
                                 'deactivated' => 'Admin account deactivated.',
                                 'reset-link-sent' => 'Password reset link sent to the admin.',
                                 'admin-deleted' => 'Admin account deleted successfully.',
+                                'admin-archived' => 'Admin account archived.',
+                                'admin-restored' => 'Admin account restored.',
                             ];
                         @endphp
 
@@ -149,13 +151,6 @@
                             </form>
                         @endif
 
-                        @if ($admin->account_status !== 'deactivated')
-                            <button type="button" @click="confirmAction = 'deactivate'"
-                                class="w-full text-sm font-medium text-red-700 border border-red-400 py-2 rounded-lg hover:bg-red-50">
-                                Deactivate Account
-                            </button>
-                        @endif
-
                         <button type="button" @click="confirmAction = 'delete'"
                             class="w-full text-sm font-medium text-red-700 border border-red-400 py-2 rounded-lg hover:bg-red-50">
                             Delete Account
@@ -209,14 +204,20 @@
                                 Pending Setup
                             </span>
                         @else
-                            <span @class([
-                                'inline-block px-2 py-1 rounded-full text-xs font-medium',
-                                'bg-green-100 text-green-700' => $admin->account_status === 'active',
-                                'bg-red-100 text-red-700' => $admin->account_status === 'suspended',
-                                'bg-gray-200 text-gray-600' => $admin->account_status === 'deactivated',
-                            ])>
-                                {{ ucfirst($admin->account_status) }}
-                            </span>
+                            @if ($admin->archived_at)
+                                <span
+                                    class="inline-block px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                                    Deleted
+                                </span>
+                            @else
+                                <span @class([
+                                    'inline-block px-2 py-1 rounded-full text-xs font-medium',
+                                    'bg-green-100 text-green-700' => $admin->account_status === 'active',
+                                    'bg-red-100 text-red-700' => $admin->account_status === 'suspended',
+                                ])>
+                                    {{ ucfirst($admin->account_status) }}
+                                </span>
+                            @endif
                         @endif
                     </div>
 
@@ -282,43 +283,6 @@
             </div>
         </div>
 
-        <!-- Confirm Deactivate Modal -->
-        <div x-show="confirmAction === 'deactivate'" x-cloak
-            class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-            @click.self="confirmAction = null">
-
-            <div class="bg-white rounded-2xl p-6 w-full max-w-sm" @click.stop>
-
-                <h3 class="font-bold text-lg text-gray-900 mb-2">
-                    Deactivate this admin?
-                </h3>
-
-                <p class="text-sm text-gray-500 mb-4">
-                    This permanently disables their access. This action should only be
-                    used for accounts no longer in use.
-                </p>
-
-                <div class="flex gap-3">
-
-                    <button type="button" @click="confirmAction = null"
-                        class="flex-1 w-full border border-gray-300 text-gray-700 text-sm font-medium py-2 rounded-lg hover:bg-gray-50">
-                        Cancel
-                    </button>
-
-                    <form method="POST" action="{{ route('admin.account-management.deactivate', $admin) }}"
-                        class="flex-1 w-full" x-target.push="main-content">
-                        @csrf
-
-                        <button type="submit"
-                            class="w-full bg-red-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-red-700">
-                            Deactivate
-                        </button>
-                    </form>
-
-                </div>
-            </div>
-        </div>
-
         <!-- Confirm Delete Modal -->
         <div x-show="confirmAction === 'delete'" x-cloak
             class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
@@ -331,9 +295,9 @@
                 </h3>
 
                 <p class="text-sm text-gray-500 mb-4">
-                    This will permanently delete
-                    <span class="font-medium text-gray-900">{{ $admin->name }}</span>
-                    and their account. This action cannot be undone.
+                    This will archive
+                    <span class="font-medium text-gray-900">{{ $admin->name }}</span>. They will lose access
+                    immediately, but you can restore or permanently delete them later from the Archived tab.
                 </p>
 
                 <div class="flex gap-3">

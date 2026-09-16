@@ -1,5 +1,9 @@
 <x-admin-layout>
-    <div class="p-4 sm:p-5 lg:p-6" x-data="{ tab: '{{ $errors->any() && old('email_username') !== null ? 'admin-accounts' : 'my-account' }}', showCreateModal: {{ $errors->any() && old('email_username') !== null ? 'true' : 'false' }}, editProfile: false, changePass: false, actionId: null }">
+    <div class="p-4 sm:p-5 lg:p-6" x-data="{ tab: '{{ $errors->any() && old('email_username') !== null ? 'admin-accounts' : request('tab', 'my-account') }}', showCreateModal: {{ $errors->any() && old('email_username') !== null ? 'true' : 'false' }}, editProfile: false, changePass: false, actionId: null }" x-init="$watch('tab', value => {
+        const url = new URL(window.location);
+        url.searchParams.set('tab', value);
+        window.history.replaceState({}, '', url);
+    })">
 
         @if (session('generated_password'))
             <div x-data="{ show: true }" x-show="show" x-cloak
@@ -66,6 +70,8 @@
                         'profile-updated' => 'Profile updated successfully.',
                         'password-updated' => 'Password updated successfully.',
                         'admin-deleted' => 'Admin account deleted successfully.',
+                        'admin-archived' => 'Admin account archived.',
+                        'admin-restored' => 'Admin account restored.',
                     ];
                 @endphp
 
@@ -348,65 +354,62 @@
                     </div>
 
                     <div x-data="{
-                        q: '{{ request('search') }}',
+                        q: '',
                         statusVal: '{{ request('status', 'all') }}',
                         timer: null,
+                        modalOpen: false,
+                        abortController: null,
+                    
+                        fetchTable() {
+                            if (this.abortController) {
+                                this.abortController.abort();
+                            }
+                            this.abortController = new AbortController();
+                    
+                            const params = new URLSearchParams({ search: this.q, status: this.statusVal });
+                            fetch('{{ route('admin.account-management.table') }}?' + params, { signal: this.abortController.signal })
+                                .then(r => r.text())
+                                .then(html => {
+                                    const el = document.getElementById('admins-table-wrap');
+                                    el.innerHTML = html;
+                                    window.Alpine.initTree(el);
+                                })
+                                .catch(err => { if (err.name !== 'AbortError') console.error(err); });
+                        },
                     
                         search() {
                             clearTimeout(this.timer);
+                            this.timer = setTimeout(() => this.fetchTable(), 250);
+                        },
                     
-                            this.timer = setTimeout(() => {
-                    
-                                const params = new URLSearchParams({
-                                    search: this.q,
-                                    status: this.statusVal
-                                });
-                    
-                                fetch('{{ route('admin.account-management.table') }}?' + params)
-                                    .then(r => r.text())
-                                    .then(html => {
-                                        document.getElementById('admins-table-wrap').innerHTML = html;
-                                    });
-                    
-                            }, 250);
-                        }
-                    }" class="flex flex-wrap gap-3 mb-4">
+                        init() {}
+                    }" x-on:modal-toggle.window="modalOpen = $event.detail">
+                        <div class="flex flex-wrap gap-3 mb-4">
 
-                        <input type="text" x-model="q" @input="search" autocomplete="off"
-                            placeholder="Search administrator..."
-                            class="w-64 rounded-lg border border-gray-200 text-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/30">
+                            <input type="text" x-model="q" @input="search" autocomplete="off"
+                                placeholder="Search administrator..."
+                                class="w-64 rounded-lg border border-gray-200 text-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/30">
 
-                        <select x-model="statusVal" @change="search"
-                            class="rounded-lg border border-gray-200 text-sm px-3 py-2">
+                            <select x-model="statusVal" @change="search"
+                                class="w-40 rounded-lg border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/30 focus:border-[#3b1735]">
+                                <option value="all">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="suspended">Suspended</option>
+                            </select>
 
-                            <option value="all">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="suspended">Suspended</option>
-                            <option value="deactivated">Deactivated</option>
+                            <button type="button"
+                                @click="statusVal = (statusVal === 'archived' ? 'all' : 'archived'); search()"
+                                :class="statusVal === 'archived' ? 'bg-[#3b1735] text-white border-[#3b1735]' :
+                                    'border-gray-200 text-gray-700'"
+                                class="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium whitespace-nowrap">
+                                📁 Archived
+                            </button>
 
-                        </select>
+                        </div>
 
-                    </div>
-
-                    <!-- Admin Table + Online/Offline Polling -->
-                    <div id="admins-table-wrap" x-data="{
-                        poll() {
-                    
-                            const params = new URLSearchParams({
-                                search: document.querySelector('[x-model=q]')?.value || '',
-                                status: document.querySelector('[x-model=statusVal]')?.value || 'all'
-                            });
-                    
-                            fetch('{{ route('admin.account-management.table') }}?' + params)
-                                .then(r => r.text())
-                                .then(html => {
-                                    document.getElementById('admins-table-wrap').innerHTML = html;
-                                });
-                    
-                        }
-                    }" x-init="setInterval(() => poll(), 5000)">
-
-                        @include('admin.account-management.partials.admins-table')
+                        <div id="admins-table-wrap">
+                            @include('admin.account-management.partials.admins-table')
+                        </div>
 
                     </div>
 

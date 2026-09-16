@@ -36,6 +36,7 @@ use App\Http\Controllers\Logistics\DashboardController as LogisticsDashboardCont
 | Public / Landing
 |--------------------------------------------------------------------------
 */
+
 Route::get('/', function () {
     return view('home');
 });
@@ -66,7 +67,9 @@ Route::get('/admin', function () {
 
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth:admin', 'verified'])->name('dashboard');
-        Route::middleware(['auth:admin', 'check.admin.active', 'force.password.change'])->group(function () {
+    Route::get('/check-status', [AccountManagementController::class, 'checkStatus'])->middleware('auth:admin')->name('check-status');
+    Route::middleware(['auth:admin', 'check.admin.active', 'force.password.change'])->group(function () {
+
         Route::get('/registrations', [RegistrationController::class, 'index'])->name('registrations.index');
         Route::get('/registrations/table', [RegistrationController::class, 'table'])->name('registrations.table');
         Route::get('/registrations/{user}', [RegistrationController::class, 'show'])->name('registrations.show');
@@ -136,7 +139,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/{conversation}/thread', [MessageController::class, 'thread'])->name('thread');
             Route::post('/{conversation}/send', [MessageController::class, 'send'])->name('send');
         });
-        
+
         Route::prefix('account-management')->name('account-management.')->group(function () {
             Route::get('/', [AccountManagementController::class, 'index'])->name('index');
             Route::get('/table', [AccountManagementController::class, 'table'])->name('table');
@@ -147,12 +150,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::delete('/{admin}', [AccountManagementController::class, 'destroy'])->name('destroy');
             Route::get('/{admin}', [AccountManagementController::class, 'show'])->name('show');
             Route::put('/{admin}', [AccountManagementController::class, 'update'])->name('update');
-            Route::delete('/{admin}', [AccountManagementController::class, 'destroy'])->name('destroy');
             Route::post('/{admin}/view-temp-password', [AccountManagementController::class, 'viewTempPassword'])->name('view-temp-password');
             Route::post('/{admin}/suspend', [AccountManagementController::class, 'suspend'])->name('suspend');
             Route::post('/{admin}/reactivate', [AccountManagementController::class, 'reactivate'])->name('reactivate');
-            Route::post('/{admin}/deactivate', [AccountManagementController::class, 'deactivate'])->name('deactivate');
             Route::post('/{admin}/send-reset-link', [AccountManagementController::class, 'sendResetLink'])->name('send-reset-link');
+            Route::post('/{admin}/restore', [AccountManagementController::class, 'restore'])->name('restore');
+            Route::delete('/{admin}/force-delete', [AccountManagementController::class, 'forceDelete'])->name('force-delete');
             Route::put('/profile/update', [AccountManagementController::class, 'updateProfile'])->name('profile.update');
             Route::put('/profile/password', [AccountManagementController::class, 'updatePassword'])->name('profile.password');
         });
@@ -178,7 +181,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
 
     Route::get('/dashboard', function () {
         return view('coming-soon', ['title' => 'Buyer Dashboard — Coming Soon']);
-    })->middleware('auth')->name('dashboard');});
+    })->middleware('auth')->name('dashboard');
+});
 
 Route::post('/buyer/otp/send', [OtpController::class, 'send']);
 Route::post('/buyer/otp/verify', [OtpController::class, 'verify']);
@@ -189,7 +193,7 @@ Route::post('/buyer/otp/verify', [OtpController::class, 'verify']);
 |--------------------------------------------------------------------------
 */
 Route::prefix('seller')->name('seller.')->group(function () {
- 
+
 
     Route::get('/register', [SellerRegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [SellerRegisteredUserController::class, 'store'])->name('register.store');
@@ -200,7 +204,8 @@ Route::prefix('seller')->name('seller.')->group(function () {
 
     Route::get('/dashboard', function () {
         return view('coming-soon', ['title' => 'Seller Dashboard — Coming Soon']);
-    })->middleware('auth')->name('dashboard');});
+    })->middleware('auth')->name('dashboard');
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -240,4 +245,4 @@ Route::get('/forgot-password', [UserPasswordResetLinkController::class, 'create'
 Route::post('/forgot-password', [UserPasswordResetLinkController::class, 'store'])->name('password.email');
 Route::get('/reset-password/{token}', [UserNewPasswordController::class, 'create'])->name('password.reset');
 Route::post('/reset-password', [UserNewPasswordController::class, 'store'])->name('password.store');
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

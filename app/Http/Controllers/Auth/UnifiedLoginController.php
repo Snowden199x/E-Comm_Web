@@ -31,12 +31,20 @@ class UnifiedLoginController extends Controller
 
         $user = Auth::user();
 
+        if ($user->role === 'admin') {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'Not a valid email for this Login form.',
+            ]);
+        }
+
         if ($user->status !== 'approved') {
             Auth::logout();
 
             $message = match ($user->status) {
                 'pending' => 'Your account is still pending admin approval.',
-                'disapproved' => 'Your registration was not approved. '.($user->rejection_reason ?? ''),
+                'disapproved' => 'Your registration was not approved. ' . ($user->rejection_reason ?? ''),
                 default => 'Your account is not active.',
             };
 

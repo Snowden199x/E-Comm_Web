@@ -6,7 +6,6 @@
 
     <div class="hero-grid wrap">
       <div class="hero-copy reveal-stagger">
-        <span class="eyebrow">The buyer marketplace</span>
         <h1>Find What You Love.<br>Vendo It.</h1>
         <p class="lede">Discover products from trusted sellers, shop with ease, and keep track of your order from checkout to your doorstep.</p>
         <div class="hero-ctas">
