@@ -14,7 +14,7 @@
     @endif
 </div>
 
-<div class="flex-1 overflow-y-auto p-4 space-y-3">
+<div class="flex-1 overflow-y-auto p-4 space-y-3" id="messages-scroll">
     @foreach ($conversation->messages as $message)
         @php $isAdmin = $message->sender_id === auth()->id(); @endphp
         <div class="flex {{ $isAdmin ? 'justify-end' : 'justify-start' }}">
@@ -53,7 +53,12 @@
         const form = $event.target;
         fetch(form.action, { method: 'POST', body: new FormData(form) })
             .then(r => r.text())
-            .then(html => { document.getElementById('thread-wrap').innerHTML = html; sending = false; })
+            .then(html => {
+                document.getElementById('thread-wrap').innerHTML = html;
+                sending = false;
+                const box = document.getElementById('messages-scroll');
+                if (box) box.scrollTop = box.scrollHeight;
+            })
     ">
     @csrf
     <label class="cursor-pointer text-gray-400 hover:text-gray-600">

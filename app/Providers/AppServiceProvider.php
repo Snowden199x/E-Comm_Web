@@ -21,6 +21,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Illuminate\Support\Facades\View::composer('components.buyer-layout', function ($view) {
+            $count = auth()->check()
+                ? \App\Models\Ecommerce\CartItem::where('user_id', auth()->id())->sum('quantity')
+                : 0;
+
+            $view->with('cartCount', $count);
+        });
         // By default, Laravel's "guest" middleware sends an already-logged-in
         // user to '/' (since this app has no named "home"/"dashboard" route).
         // That made things like clicking "Apply Now" or the logistics login
