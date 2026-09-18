@@ -22,6 +22,12 @@ use App\Http\Controllers\Buyer\OtpController;
 use App\Http\Controllers\Buyer\RegisteredBuyerController;
 use App\Http\Controllers\Buyer\AuthenticatedSessionController as BuyerAuthenticatedSessionController;
 use App\Http\Controllers\Buyer\DashboardController as BuyerDashboardController;
+use App\Http\Controllers\Buyer\CategoryController as BuyerCategoryController;
+use App\Http\Controllers\Buyer\ProductController as BuyerProductController;
+use App\Http\Controllers\Buyer\CartController as BuyerCartController;
+use App\Http\Controllers\Buyer\CheckoutController as BuyerCheckoutController;
+use App\Http\Controllers\Buyer\MessageController as BuyerMessageController;
+use App\Http\Controllers\Buyer\OrderController as BuyerOrderController;
 
 use App\Http\Controllers\Seller\RegisteredUserController as SellerRegisteredUserController;
 use App\Http\Controllers\Seller\AuthenticatedSessionController as SellerAuthenticatedSessionController;
@@ -179,9 +185,21 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::post('/login', [BuyerAuthenticatedSessionController::class, 'store'])->name('login.store');
     Route::post('/logout', [BuyerAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
-    Route::get('/dashboard', function () {
-        return view('coming-soon', ['title' => 'Buyer Dashboard — Coming Soon']);
-    })->middleware('auth')->name('dashboard');
+    Route::get('/dashboard', [BuyerDashboardController::class, 'index'])->middleware('auth')->name('dashboard');
+    Route::get('/categories', [BuyerCategoryController::class, 'index'])->middleware('auth')->name('categories');
+    Route::get('/products', [BuyerProductController::class, 'index'])->middleware('auth')->name('products.index');
+    Route::get('/products/{product}', [BuyerProductController::class, 'show'])->middleware('auth')->name('products.show');
+    Route::get('/cart', [BuyerCartController::class, 'index'])->middleware('auth')->name('cart.index');
+    Route::post('/cart', [BuyerCartController::class, 'store'])->middleware('auth')->name('cart.store');
+    Route::patch('/cart/{cartItem}', [BuyerCartController::class, 'update'])->middleware('auth')->name('cart.update');
+    Route::delete('/cart/{cartItem}', [BuyerCartController::class, 'destroy'])->middleware('auth')->name('cart.destroy');
+    Route::get('/checkout', [BuyerCheckoutController::class, 'index'])->middleware('auth')->name('checkout.index');
+    Route::post('/checkout', [BuyerCheckoutController::class, 'store'])->middleware('auth')->name('checkout.store');
+    Route::get('/orders', [BuyerOrderController::class, 'index'])->middleware('auth')->name('orders.index');
+    Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->middleware('auth')->name('orders.show');
+    Route::get('/messages', [BuyerMessageController::class, 'index'])->middleware('auth')->name('messages.index');
+    Route::post('/messages', [BuyerMessageController::class, 'store'])->middleware('auth')->name('messages.store');
+    Route::get('/messages/fetch', [BuyerMessageController::class, 'fetch'])->middleware('auth')->name('messages.fetch');
 });
 
 Route::post('/buyer/otp/send', [OtpController::class, 'send']);

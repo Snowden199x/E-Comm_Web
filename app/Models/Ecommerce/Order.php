@@ -14,6 +14,7 @@ class Order extends Model
         'total_amount',
         'status',
         'payment_mode',
+        'shipping_address',
     ];
 
     public function buyer()
