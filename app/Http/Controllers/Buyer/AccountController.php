@@ -24,39 +24,108 @@ class AccountController extends Controller
             'street' => 'nullable|string|max:255',
             'house_no' => 'nullable|string|max:255',
             'zip_code' => 'nullable|string|max:20',
+            'profile_picture' => 'nullable|image|max:2048',
+            'banner' => 'nullable|image|max:4096',
         ]);
 
-        auth()->user()->update([
+        $userData = [
             'name' => $request->name,
             'phone_number' => $request->phone_number,
-        ]);
+        ];
+
+        if ($request->hasFile('profile_picture')) {
+            $userData['profile_picture'] = $request->file('profile_picture')->store('profile-pictures', 'public');
+        }
+
+        auth()->user()->update($userData);
 
         $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
 
         if ($buyerDetail) {
-            $buyerDetail->update([
+            $detailData = [
                 'street' => $request->street,
                 'house_no' => $request->house_no,
                 'zip_code' => $request->zip_code,
-            ]);
+            ];
+
+            if ($request->hasFile('banner')) {
+                $detailData['banner_path'] = $request->file('banner')->store('buyer-banners', 'public');
+            }
+
+            $buyerDetail->update($detailData);
         }
 
         return back()->with('success', 'Profile updated.');
     }
 
-    public function updatePassword(Request $request)
+    public function uploadProfilePicture(Request $request)
     {
-        $request->validate([
-            'current_password' => 'required',
-            'password' => 'required|min:8|confirmed',
+        $request->validate(['profile_picture' => 'required|image|max:2048']);
+
+        auth()->user()->update([
+            'profile_picture' => $request->file('profile_picture')->store('profile-pictures', 'public'),
         ]);
 
-        if (!Hash::check($request->current_password, auth()->user()->password)) {
-            return back()->withErrors(['current_password' => 'Current password is incorrect.']);
+        return back()->with('success', 'Profile picture updated.');
+    }
+
+    public function uploadBanner(Request $request)
+    {
+        $request->validate(['banner' => 'required|image|max:4096']);
+
+        $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
+
+        if ($buyerDetail) {
+            $buyerDetail->update([
+                'banner_path' => $request->file('banner')->store('buyer-banners', 'public'),
+            ]);
         }
 
-        auth()->user()->update(['password' => Hash::make($request->password)]);
-
-        return back()->with('success', 'Password updated.');
+        return back()->with('success', 'Banner updated.');
     }
+
+    public function removeProfilePicture()
+    {
+        auth()->user()->update(['profile_picture' => null]);
+
+        return back()->with('success', 'Profile picture removed.');
+    }
+
+    public function removeBanner()
+    {
+        $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
+
+        if ($buyerDetail) {
+            $buyerDetail->update(['banner_path' => null]);
+        }
+
+        return back()->with('success', 'Banner removed.');
+    }
+
+    public function updatePassword(Request $request)
+{
+    $request->validate([
+        'current_password' => ['required'],
+        'password' => ['required', 'min:8', 'confirmed'],
+    ], [
+        'current_password.required' => 'Please enter your current password.',
+        'password.required' => 'Please enter a new password.',
+        'password.min' => 'The new password must be at least 8 characters.',
+        'password.confirmed' => 'The password confirmation does not match.',
+    ]);
+
+    if (!Hash::check($request->current_password, auth()->user()->password)) {
+        return back()
+            ->withErrors([
+                'current_password' => 'The current password is incorrect.',
+            ])
+            ->withInput();
+    }
+
+    auth()->user()->update([
+        'password' => Hash::make($request->password),
+    ]);
+
+    return back()->with('password_success', 'Password updated successfully!');
+}
 }   
