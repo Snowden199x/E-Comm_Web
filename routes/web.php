@@ -232,9 +232,15 @@ Route::prefix('seller')->name('seller.')->group(function () {
     Route::post('/login', [SellerAuthenticatedSessionController::class, 'store'])->name('login.store');
     Route::post('/logout', [SellerAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
-    Route::get('/dashboard', function () {
-        return view('coming-soon', ['title' => 'Seller Dashboard — Coming Soon']);
-    })->middleware('auth')->name('dashboard');
+    Route::get('/dashboard', [SellerDashboardController::class, 'index'])
+        ->middleware('auth')
+        ->name('dashboard');
+
+    Route::get('/orders', function () {
+        return view('seller.order-management-orders.index');
+    })
+        ->middleware('auth')
+        ->name('orders.index');
 });
 
 /*
