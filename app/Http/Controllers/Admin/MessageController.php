@@ -29,7 +29,7 @@ class MessageController extends Controller
         return view('admin.messages.partials.conversation-list', compact('conversations', 'activeId'));
     }
 
-    public function thread(Conversation $conversation): View
+        public function thread(Conversation $conversation): View
     {
         $conversation->load(['user', 'complaint', 'messages.sender', 'messages.attachments']);
 
@@ -39,6 +39,29 @@ class MessageController extends Controller
             ->update(['read_at' => now()]);
 
         return view('admin.messages.partials.thread', compact('conversation'));
+    }
+
+    public function fetchMessages(Conversation $conversation)
+    {
+        $conversation->messages()
+            ->whereNull('read_at')
+            ->where('sender_id', '!=', Auth::id())
+            ->update(['read_at' => now()]);
+
+        $messages = $conversation->messages()->with('attachments')->get();
+
+        return response()->json([
+            'messages' => $messages->map(fn ($m) => [
+                'id' => $m->id,
+                'body' => $m->body,
+                'is_mine' => $m->sender_id === Auth::id(),
+                'created_at' => $m->created_at->format('g:i A'),
+                'attachments' => $m->attachments->map(fn ($a) => [
+                    'url' => Storage::url($a->path),
+                    'name' => $a->original_filename,
+                ]),
+            ]),
+        ]);
     }
 
     public function send(Request $request, Conversation $conversation)
@@ -70,9 +93,7 @@ class MessageController extends Controller
 
         $conversation->update(['last_message_at' => now()]);
 
-        $conversation->load(['user', 'complaint', 'messages.sender', 'messages.attachments']);
-
-        return view('admin.messages.partials.thread', compact('conversation'));
+        return response()->json(['success' => true]);
     }
 
     private function filteredConversations(Request $request)

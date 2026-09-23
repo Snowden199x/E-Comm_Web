@@ -3,29 +3,15 @@
         activeId: {{ $activeId ?? 'null' }},
         lightboxImage: null,
         init() {
-            setInterval(() => {
-                this.refreshList();
-                if (this.activeId) this.refreshThread();
-            }, 3000);
+            setInterval(() => this.refreshList(), 3000);
         },
         openConversation(id) {
             this.activeId = id;
-            this.refreshThread();
-        },
-        refreshThread() {
-            const scrollBox = document.getElementById('messages-scroll');
-            const wasNearBottom = !scrollBox || (scrollBox.scrollHeight - scrollBox.scrollTop - scrollBox.clientHeight < 100);
-
-            fetch('{{ route('admin.messages.thread', ['conversation' => '__ID__']) }}'.replace('__ID__', this.activeId))
+            fetch('{{ route('admin.messages.thread', ['conversation' => '__ID__']) }}'.replace('__ID__', id))
                 .then(r => r.text())
                 .then(html => {
                     document.getElementById('thread-wrap').innerHTML = html;
                     this.refreshList();
-
-                    const newScrollBox = document.getElementById('messages-scroll');
-                    if (newScrollBox && wasNearBottom) {
-                        newScrollBox.scrollTop = newScrollBox.scrollHeight;
-                    }
                 });
         },
         refreshList() {

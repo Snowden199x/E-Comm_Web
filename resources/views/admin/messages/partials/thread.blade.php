@@ -14,61 +14,88 @@
     @endif
 </div>
 
-<div class="flex-1 overflow-y-auto p-4 space-y-3" id="messages-scroll">
-    @foreach ($conversation->messages as $message)
-        @php $isAdmin = $message->sender_id === auth()->id(); @endphp
-        <div class="flex {{ $isAdmin ? 'justify-end' : 'justify-start' }}">
-            <div
-                class="max-w-xs {{ $isAdmin ? 'bg-[#3b1735] text-white' : 'bg-gray-100 text-gray-900' }} rounded-2xl px-4 py-2">
-                @if ($message->body)
-                    <p class="text-sm">{{ $message->body }}</p>
-                @endif
-                @foreach ($message->attachments as $attachment)
-                    @php
-                        $ext = strtolower(pathinfo($attachment->path, PATHINFO_EXTENSION));
-                        $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
-                    @endphp
-                    @if ($isImage)
-                        <img src="{{ Storage::url($attachment->path) }}" alt="{{ $attachment->original_filename }}"
-                            class="max-w-full max-h-48 rounded-lg cursor-pointer"
-                            @click="$dispatch('open-lightbox', '{{ Storage::url($attachment->path) }}')">
-                    @else
-                        <a href="{{ Storage::url($attachment->path) }}" target="_blank"
-                            class="text-xs underline block mt-1 {{ $isAdmin ? 'text-purple-200' : 'text-blue-600' }}">
-                            📎 {{ $attachment->original_filename }}
-                        </a>
-                    @endif
-                @endforeach
-                <p class="text-xs mt-1 {{ $isAdmin ? 'text-purple-200' : 'text-gray-400' }}">
-                    {{ $message->created_at->format('g:i A') }}</p>
-            </div>
-        </div>
-    @endforeach
-</div>
+<div class="flex-1 flex flex-col overflow-hidden" x-data="{
+    conversationId: {{ $conversation->id }},
+    messages: [],
+    error: '',
+    init() {
+        this.fetchMessages();
+        this.poll = setInterval(() => this.fetchMessages(), 3000);
+    },
+    fetchMessages() {
+        const box = document.getElementById('messages-scroll');
+        const wasNearBottom = !box || (box.scrollHeight - box.scrollTop - box.clientHeight < 100);
 
-<form method="POST" action="{{ route('admin.messages.send', $conversation) }}" enctype="multipart/form-data"
-    class="p-4 border-t border-gray-100 flex items-center gap-2" x-data="{ sending: false }"
-    @submit.prevent="
-        sending = true;
-        const form = $event.target;
-        fetch(form.action, { method: 'POST', body: new FormData(form) })
-            .then(r => r.text())
-            .then(html => {
-                document.getElementById('thread-wrap').innerHTML = html;
-                sending = false;
-                const box = document.getElementById('messages-scroll');
-                if (box) box.scrollTop = box.scrollHeight;
-            })
-    ">
-    @csrf
-    <label class="cursor-pointer text-gray-400 hover:text-gray-600">
-        <input type="file" name="attachment" class="hidden" @change="$event.target.form.requestSubmit()">
-        📎
-    </label>
-    <input type="text" name="body" placeholder="Type a message..."
-        class="flex-1 px-3 py-2 rounded-full border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]">
-    <button type="submit" :disabled="sending"
-        class="px-4 py-2 rounded-full bg-[#3b1735] text-white text-sm font-medium hover:opacity-90">
-        Send
-    </button>
-</form>
+        fetch('/admin/messages/' + this.conversationId + '/fetch')
+            .then(r => r.json())
+            .then(data => {
+                this.messages = data.messages;
+                this.$nextTick(() => {
+                    const newBox = document.getElementById('messages-scroll');
+                    if (newBox && wasNearBottom) newBox.scrollTop = newBox.scrollHeight;
+                });
+            });
+    },
+    async sendMessage() {
+        this.error = '';
+        const bodyInput = this.$refs.bodyInput;
+        const fileInput = this.$refs.fileInput;
+        if (!bodyInput.value && !fileInput.files.length) return;
+
+        const formData = new FormData();
+        formData.append('body', bodyInput.value);
+        if (fileInput.files.length) formData.append('attachment', fileInput.files[0]);
+
+        const res = await fetch('/admin/messages/' + this.conversationId + '/send', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content },
+            body: formData,
+        });
+
+        if (!res.ok) {
+            this.error = 'Message or attachment is required.';
+            return;
+        }
+
+        bodyInput.value = '';
+        fileInput.value = '';
+        this.fetchMessages();
+    }
+}">
+    <div class="flex-1 overflow-y-auto p-4 space-y-3" id="messages-scroll">
+        <template x-for="message in messages" :key="message.id">
+            <div :class="message.is_mine ? 'flex justify-end' : 'flex justify-start'">
+                <div class="max-w-xs rounded-2xl px-4 py-2" :class="message.is_mine ? 'bg-[#3b1735] text-white' : 'bg-gray-100 text-gray-900'">
+                    <p class="text-sm" x-show="message.body" x-text="message.body"></p>
+                    <template x-for="attachment in message.attachments" :key="attachment.url">
+                        <template x-if="/\.(jpg|jpeg|png|gif|webp)$/i.test(attachment.name)">
+                            <img :src="attachment.url" :alt="attachment.name"
+                                class="max-w-full max-h-48 rounded-lg cursor-pointer"
+                                @click="$dispatch('open-lightbox', attachment.url)">
+                        </template>
+                        <template x-if="!/\.(jpg|jpeg|png|gif|webp)$/i.test(attachment.name)">
+                            <a :href="attachment.url" target="_blank" class="text-xs underline block mt-1"
+                                :class="message.is_mine ? 'text-purple-200' : 'text-blue-600'"
+                                x-text="'📎 ' + attachment.name"></a>
+                        </template>
+                    </template>
+                    <p class="text-xs mt-1" :class="message.is_mine ? 'text-purple-200' : 'text-gray-400'" x-text="message.created_at"></p>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <p x-show="error" x-text="error" class="text-red-600 text-xs px-4 pt-2"></p>
+
+    <div class="p-4 border-t border-gray-100 flex items-center gap-2">
+        <label class="cursor-pointer text-gray-400 hover:text-gray-600">
+            <input type="file" x-ref="fileInput" class="hidden" @change="sendMessage()">
+            📎
+        </label>
+        <input type="text" x-ref="bodyInput" @keydown.enter="sendMessage()" placeholder="Type a message..."
+            class="flex-1 px-3 py-2 rounded-full border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]">
+        <button @click="sendMessage()" class="px-4 py-2 rounded-full bg-[#3b1735] text-white text-sm font-medium hover:opacity-90">
+            Send
+        </button>
+    </div>
+</div>

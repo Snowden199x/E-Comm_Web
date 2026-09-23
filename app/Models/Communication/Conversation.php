@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use App\Models\User;
 use App\Models\Complaints\Complaint;
 
-#[Fillable(['user_id', 'complaint_id', 'last_message_at'])]
+#[Fillable(['user_id', 'complaint_id', 'last_message_at', 'status'])]
 class Conversation extends Model
 {
     protected $casts = ['last_message_at' => 'datetime'];
