@@ -55,6 +55,31 @@ const scroller = document.getElementById('productScroller');
 document.getElementById('scrollLeft').addEventListener('click', () => scroller.scrollBy({left:-270, behavior:'smooth'}));
 document.getElementById('scrollRight').addEventListener('click', () => scroller.scrollBy({left:270, behavior:'smooth'}));
 
+// Category scroller — arrow buttons, edge fades, and disabled state at the ends
+const catScroller = document.getElementById('catScroller');
+const catScrollWrap = catScroller ? catScroller.closest('.cat-scroll-wrap') : null;
+const catScrollLeftBtn = document.getElementById('catScrollLeft');
+const catScrollRightBtn = document.getElementById('catScrollRight');
+if (catScroller) {
+  const updateCatScrollState = () => {
+    const max = catScroller.scrollWidth - catScroller.clientWidth;
+    const x = catScroller.scrollLeft;
+    const atStart = x <= 2;
+    const atEnd = x >= max - 2;
+    if (catScrollWrap) {
+      catScrollWrap.classList.toggle('is-scrolled', !atStart);
+      catScrollWrap.classList.toggle('has-more', !atEnd && max > 0);
+    }
+    if (catScrollLeftBtn) catScrollLeftBtn.disabled = atStart;
+    if (catScrollRightBtn) catScrollRightBtn.disabled = atEnd || max <= 0;
+  };
+  catScrollLeftBtn?.addEventListener('click', () => catScroller.scrollBy({left:-360, behavior:'smooth'}));
+  catScrollRightBtn?.addEventListener('click', () => catScroller.scrollBy({left:360, behavior:'smooth'}));
+  catScroller.addEventListener('scroll', updateCatScrollState, { passive: true });
+  window.addEventListener('resize', updateCatScrollState);
+  updateCatScrollState();
+}
+
 // Showcase gallery thumbs — swap the main photo, with active-state highlight
 const galleryMainImg = document.getElementById('galleryMainImg');
 document.querySelectorAll('.gt').forEach(gt => {
