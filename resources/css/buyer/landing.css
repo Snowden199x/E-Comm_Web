@@ -259,6 +259,26 @@ nav.navbar{
 /* ===== CATEGORIES ===== */
 .section{padding:96px 0;}
 .section.tight{padding-top:0;}
+
+.cat-controls{display:flex;align-items:center;gap:22px;}
+.view-all-link{
+  display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+  font-size:14.5px;font-weight:600;color:var(--purple);
+}
+.view-all-link span{display:inline-block;transition:transform .2s ease;}
+.view-all-link:hover{color:var(--purple-dark);}
+.view-all-link:hover span{transform:translateX(4px);}
+
+.cat-scroll-wrap{position:relative;}
+.cat-scroll-wrap::before,.cat-scroll-wrap::after{
+  content:'';position:absolute;top:0;bottom:15px;width:64px;z-index:1;
+  pointer-events:none;opacity:0;transition:opacity .25s ease;
+}
+.cat-scroll-wrap::before{left:0;background:linear-gradient(90deg,var(--cream),rgba(251,247,242,0));}
+.cat-scroll-wrap::after{right:0;background:linear-gradient(270deg,var(--cream),rgba(251,247,242,0));}
+.cat-scroll-wrap.is-scrolled::before{opacity:1;}
+.cat-scroll-wrap.has-more::after{opacity:1;}
+
 .cat-grid {
   display: flex;
   gap: 18px;
@@ -266,6 +286,7 @@ nav.navbar{
   overflow-y: hidden;
   padding: 5px 2px 15px;
   scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
   scrollbar-width: none;
 }
 
@@ -285,7 +306,7 @@ nav.navbar{
   padding:16px 16px 21px;
   text-align:center;
   transition:transform .3s cubic-bezier(.2,.8,.3,1.2), box-shadow .3s ease, border-color .3s ease;
-  cursor:pointer;overflow:hidden;
+  cursor:pointer;overflow:hidden;scroll-snap-align:start;
 }
 .cat-card:hover{transform:translateY(-8px) scale(1.02);box-shadow:var(--shadow);border-color:transparent;}
 .cat-card .cat-photo{
@@ -293,14 +314,21 @@ nav.navbar{
   display:flex;align-items:center;justify-content:center;overflow:hidden;
   transition:transform .3s ease;
 }
+.cat-card .cat-photo::after{
+  content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(64,33,67,0) 55%,rgba(64,33,67,0.28));
+  opacity:0;transition:opacity .3s ease;
+}
 .cat-card:hover .cat-photo{transform:scale(1.04);}
+.cat-card:hover .cat-photo::after{opacity:1;}
 .cat-card .cat-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .cat-card .cat-photo svg{width:30px;height:30px;position:relative;z-index:0;}
 .cat-card span{
   font-size:15px;
   font-weight:600;
   color:var(--deep);
+  transition:color .2s ease;
 }
+.cat-card:hover span{color:var(--purple);}
 /* ===== FEATURED PRODUCTS ===== */
 .product-scroller{
   display:flex;gap:20px;overflow-x:auto;padding:6px 4px 20px;scroll-snap-type:x proximity;
@@ -347,6 +375,8 @@ nav.navbar{
 .arrow-btns{display:flex;gap:8px;}
 .arrow-btn{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;transition:all .2s ease;}
 .arrow-btn:hover{border-color:var(--purple);color:var(--purple);}
+.arrow-btn:disabled{opacity:.35;cursor:default;}
+.arrow-btn:disabled:hover{border-color:var(--line);color:inherit;}
 
 /* ===== WHY VENDO ===== */
 .why-list{display:flex;flex-direction:column;}
@@ -963,6 +993,21 @@ footer{background:var(--deep);color:rgba(255,255,255,0.75);margin-top:20px;}
   }
 
   .vc-bag{
+    display:none;
+  }
+
+  /* Touch scrolling is enough on mobile — the arrow buttons just take up space */
+  .scroller-controls{
+    flex-wrap:wrap;
+    gap:14px;
+  }
+
+  .cat-controls .arrow-btns{
+    display:none;
+  }
+
+  .cat-scroll-wrap::before,
+  .cat-scroll-wrap::after{
     display:none;
   }
 

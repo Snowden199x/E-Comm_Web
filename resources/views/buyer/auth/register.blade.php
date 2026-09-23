@@ -390,7 +390,7 @@
                     <h1 class="text-[1.25rem] font-bold text-gray-900 tracking-tight leading-tight">
                         Buyer Registration
                     </h1>
-                    <p class="text-[0.72rem] text-gray-500 mt-0.5 font-normal">
+                    <p class="text-[0.85rem] text-gray-500 mt-0.5 font-normal">
                         Create your buyer account.
                     </p>
                 </div>
@@ -412,7 +412,7 @@
                 <div class="flex items-center mt-5 mb-1 w-full max-w-[580px] mx-auto gap-0">
 
                     <div class="shrink-0 w-8">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-[0.72rem] font-semibold leading-none"
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-[0.85rem] font-semibold leading-none"
                             :class="step >= 1 ? 'bg-[#3b1735] text-white' : 'border border-gray-300 bg-white text-gray-400'">
                             1
                         </div>
@@ -425,7 +425,7 @@
                     </div>
 
                     <div class="shrink-0 w-8">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-[0.72rem] font-semibold leading-none"
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-[0.85rem] font-semibold leading-none"
                             :class="step >= 2 ? 'bg-[#3b1735] text-white' : 'border border-gray-300 bg-white text-gray-400'">
                             2
                         </div>
@@ -439,7 +439,7 @@
                     </div>
 
                     <div class="shrink-0 w-8">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-[0.72rem] font-semibold leading-none"
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-[0.85rem] font-semibold leading-none"
                             :class="step >= 3 ? 'bg-[#3b1735] text-white' : 'border border-gray-300 bg-white text-gray-400'">
                             3
                         </div>
@@ -477,7 +477,7 @@
                 <div class="mb-4"></div>
 
                 <div x-show="formError" x-cloak
-                    class="max-w-[580px] mx-auto mb-4 bg-red-50 border border-red-300 text-red-700 text-[0.72rem] rounded-md p-3">
+                    class="max-w-[580px] mx-auto mb-4 bg-red-50 border border-red-300 text-red-700 text-[0.85rem] rounded-md p-3">
                     <span x-text="formError"></span>
                 </div>
 
@@ -499,33 +499,33 @@
                         <div class="grid grid-cols-3 gap-3 mb-3">
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Last Name <span class="text-red-500">*</span>
                                 </label>
 
                                 <input type="text" name="last_name" placeholder="Enter last name"
                                     value="{{ old('last_name') }}"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     First Name <span class="text-red-500">*</span>
                                 </label>
 
                                 <input type="text" name="first_name" placeholder="Enter first name"
                                     value="{{ old('first_name') }}"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Middle Initial
                                 </label>
 
                                 <input type="text" name="middle_initial" placeholder="Enter middle initial"
                                     value="{{ old('middle_initial') }}"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                         </div>
@@ -533,13 +533,13 @@
                         <div class="grid grid-cols-2 gap-3 mb-3">
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Sex <span class="text-red-500">*</span>
                                 </label>
 
                                 <div class="relative">
                                     <select name="sex"
-                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.72rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                         <option value="" disabled selected>Select Sex</option>
                                         <option value="male">Male</option>
                                         <option value="female">Female</option>
@@ -557,7 +557,7 @@
 
                             <div>
                                 <div class="flex items-center justify-between mb-1">
-                                    <label class="text-[0.68rem] font-medium text-gray-700">
+                                    <label class="text-[0.85rem] font-medium text-gray-700">
                                         Email <span class="text-red-500">*</span>
                                     </label>
 
@@ -574,7 +574,7 @@
 
                                 <input type="email" name="email" placeholder="Enter email address"
                                     x-model="email" :readonly="emailVerified" value="{{ old('email') }}"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition"
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition"
                                     :class="emailVerified ? 'bg-gray-50 cursor-not-allowed' : ''">
                             </div>
 
@@ -583,7 +583,7 @@
                         <div class="grid grid-cols-2 gap-3 mb-3">
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Birthday <span class="text-red-500">*</span>
                                 </label>
 
@@ -596,27 +596,27 @@
                                         if (m < 0 || (m === 0 && t.getDate() < b.getDate())) age--;
                                         document.querySelector('[name=age]').value = isNaN(age) ? '' : age;
                                     "
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.72rem] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Age <span class="text-red-500">*</span>
                                 </label>
 
                                 <input type="text" name="age" placeholder="Enter age"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                         </div>
 
                         <div class="mb-3">
-                            <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                            <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                 ID Category <span class="text-red-500">*</span>
                             </label>
 
                             <select name="id_category" x-model="idCategory"
-                                class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.72rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                 <option value="primary">Primary ID (1 ID)</option>
                                 <option value="secondary">Secondary ID (2 IDs required)</option>
                             </select>
@@ -625,12 +625,12 @@
                         <div class="grid grid-cols-2 gap-3 mb-5" x-show="idCategory === 'primary'">
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     ID Type <span class="text-red-500">*</span>
                                 </label>
 
                                 <select name="id_type" :disabled="idCategory !== 'primary'"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.72rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                     <option value="" disabled selected>Select ID Type</option>
                                     <option value="Philippine Passport">Philippine Passport</option>
                                     <option value="PhilSys National ID">PhilSys National ID</option>
@@ -644,12 +644,12 @@
                             </div>
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Upload ID <span class="text-red-500">*</span>
                                 </label>
 
                                 <label
-                                    class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.72rem] px-3 py-2 cursor-pointer hover:bg-gray-50 transition">
+                                    class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.85rem] px-3 py-2 cursor-pointer hover:bg-gray-50 transition">
 
                                     <span id="valid-id-label">Upload ID here</span>
 
@@ -670,12 +670,12 @@
                         <div class="grid grid-cols-2 gap-3 mb-5" x-show="idCategory === 'secondary'" x-cloak>
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     First Secondary ID Type <span class="text-red-500">*</span>
                                 </label>
 
                                 <select name="id_type_1" :disabled="idCategory !== 'secondary'"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.72rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                     <option value="" disabled selected>Select ID Type</option>
                                     <option value="PhilHealth ID">PhilHealth ID</option>
                                     <option value="TIN ID">TIN ID</option>
@@ -688,7 +688,7 @@
                                 </select>
 
                                 <label
-                                    class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.72rem] px-3 py-2 cursor-pointer hover:bg-gray-50 transition mt-2">
+                                    class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.85rem] px-3 py-2 cursor-pointer hover:bg-gray-50 transition mt-2">
 
                                     <span id="valid-id-1-label">Upload ID here</span>
 
@@ -706,12 +706,12 @@
                             </div>
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Second Secondary ID Type <span class="text-red-500">*</span>
                                 </label>
 
                                 <select name="id_type_2" :disabled="idCategory !== 'secondary'"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.72rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                     <option value="" disabled selected>Select ID Type</option>
                                     <option value="PhilHealth ID">PhilHealth ID</option>
                                     <option value="TIN ID">TIN ID</option>
@@ -724,7 +724,7 @@
                                 </select>
 
                                 <label
-                                    class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.72rem] px-3 py-2 cursor-pointer hover:bg-gray-50 transition mt-2">
+                                    class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.85rem] px-3 py-2 cursor-pointer hover:bg-gray-50 transition mt-2">
 
                                     <span id="valid-id-2-label">Upload ID here</span>
 
@@ -756,14 +756,14 @@
                         <div class="grid grid-cols-2 gap-3 mb-1">
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Password <span class="text-red-500">*</span>
                                 </label>
 
                                 <div class="relative">
                                     <input name="password" x-bind:type="showPassword ? 'text' : 'password'"
                                         placeholder="Create a password"
-                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
 
                                     <button type="button" @click="showPassword = !showPassword"
                                         class="absolute inset-y-0 right-0 flex items-center justify-center w-9 text-gray-400 hover:text-gray-600 transition"
@@ -790,7 +790,7 @@
                             </div>
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Confirm Password <span class="text-red-500">*</span>
                                 </label>
 
@@ -798,7 +798,7 @@
                                     <input name="password_confirmation"
                                         x-bind:type="showConfirmPassword ? 'text' : 'password'"
                                         placeholder="Confirm your password"
-                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
 
                                     <button type="button" @click="showConfirmPassword = !showConfirmPassword"
                                         class="absolute inset-y-0 right-0 flex items-center justify-center w-9 text-gray-400 hover:text-gray-600 transition"
@@ -863,13 +863,13 @@
                         <div class="grid grid-cols-3 gap-3 mb-3">
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Province <span class="text-red-500">*</span>
                                 </label>
 
                                 <div class="relative">
                                     <select name="province" id="province-select"
-                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.72rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                         <option value="" disabled selected>Select Province</option>
                                     </select>
 
@@ -884,13 +884,13 @@
                             </div>
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Municipality / City <span class="text-red-500">*</span>
                                 </label>
 
                                 <div class="relative">
                                     <select name="municipality" id="municipality-select" disabled
-                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.72rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                         <option value="" disabled selected>Select Municipality / City</option>
                                     </select>
 
@@ -905,13 +905,13 @@
                             </div>
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Barangay <span class="text-red-500">*</span>
                                 </label>
 
                                 <div class="relative">
                                     <select name="barangay" id="barangay-select" disabled
-                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.72rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                         <option value="" disabled selected>Select Barangay</option>
                                     </select>
 
@@ -930,40 +930,40 @@
                         <div class="grid grid-cols-4 gap-3 mb-8">
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     House No. <span class="text-red-500">*</span>
                                 </label>
 
                                 <input type="text" name="house_no" placeholder="House/Unit No."
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Street <span class="text-red-500">*</span>
                                 </label>
 
                                 <input type="text" name="street"
                                     placeholder="Street, building, subdivision, etc."
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Zip Code <span class="text-red-500">*</span>
                                 </label>
 
                                 <input type="text" name="zip_code" placeholder="Enter zip code"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                             <div>
-                                <label class="block text-[0.68rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
                                     Contact Number <span class="text-red-500">*</span>
                                 </label>
 
                                 <input type="text" name="contact_number" placeholder="09XX XXX XXXX"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.72rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                         </div>
@@ -1041,7 +1041,7 @@
                                         Full Name
                                     </p>
 
-                                    <p class="text-[0.72rem] font-semibold text-gray-800"
+                                    <p class="text-[0.85rem] font-semibold text-gray-800"
                                         x-text="
                                             step && (((document.querySelector('[name=first_name]')?.value || '') + ' ' +
                                             (document.querySelector('[name=middle_initial]')?.value
@@ -1057,7 +1057,7 @@
                                         Phone Number
                                     </p>
 
-                                    <p class="text-[0.72rem] font-semibold text-gray-800"
+                                    <p class="text-[0.85rem] font-semibold text-gray-800"
                                         x-text="step && document.querySelector('[name=contact_number]')?.value || '—'">
                                     </p>
                                 </div>
@@ -1067,7 +1067,7 @@
                                         Province
                                     </p>
 
-                                    <p class="text-[0.72rem] font-semibold text-gray-800"
+                                    <p class="text-[0.85rem] font-semibold text-gray-800"
                                         x-text="step && document.querySelector('[name=province]')?.options[document.querySelector('[name=province]')?.selectedIndex]?.text || '—'">
                                     </p>
                                 </div>
@@ -1077,7 +1077,7 @@
                                         Street / House No.
                                     </p>
 
-                                    <p class="text-[0.72rem] font-semibold text-gray-800"
+                                    <p class="text-[0.85rem] font-semibold text-gray-800"
                                         x-text="
                                             step && (((document.querySelector('[name=house_no]')?.value || '') + ' ' +
                                             (document.querySelector('[name=street]')?.value || '')) || '—')
@@ -1090,7 +1090,7 @@
                                         Sex
                                     </p>
 
-                                    <p class="text-[0.72rem] font-semibold text-gray-800 capitalize"
+                                    <p class="text-[0.85rem] font-semibold text-gray-800 capitalize"
                                         x-text="step && document.querySelector('[name=sex]')?.value || '—'">
                                     </p>
                                 </div>
@@ -1100,7 +1100,7 @@
                                         Birthday
                                     </p>
 
-                                    <p class="text-[0.72rem] font-semibold text-gray-800"
+                                    <p class="text-[0.85rem] font-semibold text-gray-800"
                                         x-text="step && document.querySelector('[name=birthday]')?.value || '—'">
                                     </p>
                                 </div>
@@ -1110,7 +1110,7 @@
                                         Municipality
                                     </p>
 
-                                    <p class="text-[0.72rem] font-semibold text-gray-800"
+                                    <p class="text-[0.85rem] font-semibold text-gray-800"
                                         x-text="step && document.querySelector('[name=municipality]')?.options[document.querySelector('[name=municipality]')?.selectedIndex]?.text || '—'">
                                     </p>
                                 </div>
@@ -1120,7 +1120,7 @@
                                         Zip Code
                                     </p>
 
-                                    <p class="text-[0.72rem] font-semibold text-gray-800"
+                                    <p class="text-[0.85rem] font-semibold text-gray-800"
                                         x-text="step && document.querySelector('[name=zip_code]')?.value || '—'">
                                     </p>
                                 </div>
@@ -1130,7 +1130,7 @@
                                         Email
                                     </p>
 
-                                    <p class="text-[0.72rem] font-semibold text-gray-800 break-all"
+                                    <p class="text-[0.85rem] font-semibold text-gray-800 break-all"
                                         x-text="step && document.querySelector('[name=email]')?.value || '—'">
                                     </p>
                                 </div>
@@ -1140,7 +1140,7 @@
                                         Age
                                     </p>
 
-                                    <p class="text-[0.72rem] font-semibold text-gray-800"
+                                    <p class="text-[0.85rem] font-semibold text-gray-800"
                                         x-text="step && document.querySelector('[name=age]')?.value || '—'">
                                     </p>
                                 </div>
@@ -1150,7 +1150,7 @@
                                         Barangay
                                     </p>
 
-                                    <p class="text-[0.72rem] font-semibold text-gray-800"
+                                    <p class="text-[0.85rem] font-semibold text-gray-800"
                                         x-text="step && document.querySelector('[name=barangay]')?.options[document.querySelector('[name=barangay]')?.selectedIndex]?.text || '—'">
                                     </p>
                                 </div>
@@ -1167,7 +1167,7 @@
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
 
-                                        <span class="text-[0.68rem] text-gray-600 truncate" id="review-valid-id">
+                                        <span class="text-[0.85rem] text-gray-600 truncate" id="review-valid-id">
                                             —
                                         </span>
                                     </div>
@@ -1191,7 +1191,7 @@
                                         Please Review Carefully
                                     </p>
 
-                                    <p class="text-[0.68rem] text-gray-600 leading-relaxed mb-3">
+                                    <p class="text-[0.85rem] text-gray-600 leading-relaxed mb-3">
                                         By submitting this registration, you confirm that all information provided
                                         is
                                         true and correct.<br>
@@ -1205,7 +1205,7 @@
                                         <input type="checkbox" name="agree_terms" x-model="agreeTerms"
                                             class="w-3.5 h-3.5 rounded border-gray-400 text-[#3b1735] focus:ring-[#3b1735]">
 
-                                        <span class="text-[0.68rem] text-gray-600">
+                                        <span class="text-[0.85rem] text-gray-600">
                                             I agree to the
                                             <a href="#" class="text-[#3b1735] font-semibold hover:underline">
                                                 Terms and Conditions

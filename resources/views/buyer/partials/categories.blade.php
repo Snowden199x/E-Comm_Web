@@ -1,24 +1,35 @@
-<section class="categories-section" id="categories">
+<section class="categories-section section" id="categories">
     <div class="wrap">
 
-    <div class="section-heading">
-        <div>
-            <span class="section-kicker">SHOP BY CATEGORY</span>
+    <div class="scroller-controls">
+        <div class="section-head reveal" style="margin-bottom:0;">
+            <span class="eyebrow">Shop by category</span>
             <h2>Find what you need</h2>
         </div>
 
-        <a href="{{ route('buyer.login') }}" class="view-all-link">
-            View All
-            <span>→</span>
-        </a>
+        <div class="cat-controls">
+            <a href="{{ route('buyer.login') }}" class="view-all-link">
+                View All
+                <span>→</span>
+            </a>
+            <div class="arrow-btns">
+                <button class="arrow-btn" id="catScrollLeft" aria-label="Scroll categories left">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <button class="arrow-btn" id="catScrollRight" aria-label="Scroll categories right">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+            </div>
+        </div>
     </div>
 
-    <div class="cat-grid">
+    <div class="cat-scroll-wrap">
+    <div class="cat-grid" id="catScroller">
 
         {{-- 1. Pet Supplies --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/pet-supplies.png') }}"
+                <img src="{{ asset('images/categories/pet-and-supplies.jpg') }}"
                      alt="Pet Supplies">
             </div>
             <span>Pet Supplies</span>
@@ -27,7 +38,7 @@
         {{-- 2. Electronics and Gadgets --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/electronics-gadgets.png') }}"
+                <img src="{{ asset('images/categories/electronics-and-gadgets.jpg') }}"
                      alt="Electronics and Gadgets">
             </div>
             <span>Electronics &amp; Gadgets</span>
@@ -36,7 +47,7 @@
         {{-- 3. Women's Apparel --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/womens-apparel.png') }}"
+                <img src="{{ asset("images/categories/women's-apparel.jpg") }}"
                      alt="Women's Apparel">
             </div>
             <span>Women's Apparel</span>
@@ -45,7 +56,7 @@
         {{-- 4. Men's Apparel --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/mens-apparel.png') }}"
+                <img src="{{ asset("images/categories/men's-apparel.jpg") }}"
                      alt="Men's Apparel">
             </div>
             <span>Men's Apparel</span>
@@ -54,7 +65,7 @@
         {{-- 5. Kids and Baby --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/kids-baby.png') }}"
+                <img src="{{ asset('images/categories/kids-and-baby.jpg') }}"
                      alt="Kids and Baby">
             </div>
             <span>Kids &amp; Baby</span>
@@ -63,7 +74,7 @@
         {{-- 6. Home and Garden --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/home-garden.png') }}"
+                <img src="{{ asset('images/categories/home-and-garden.jpg') }}"
                      alt="Home and Garden">
             </div>
             <span>Home &amp; Garden</span>
@@ -72,7 +83,7 @@
         {{-- 7. Sports and Outdoors --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/sports-outdoors.png') }}"
+                <img src="{{ asset('images/categories/sports-and-outdoor.jpg') }}"
                      alt="Sports and Outdoors">
             </div>
             <span>Sports &amp; Outdoors</span>
@@ -81,7 +92,7 @@
         {{-- 8. Health and Beauty --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/health-beauty.png') }}"
+                <img src="{{ asset('images/categories/health-and-beauty.jpg') }}"
                      alt="Health and Beauty">
             </div>
             <span>Health &amp; Beauty</span>
@@ -90,7 +101,7 @@
         {{-- 9. Books and Media --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/books-media.png') }}"
+                <img src="{{ asset('images/categories/books-and-media.jpg') }}"
                      alt="Books and Media">
             </div>
             <span>Books &amp; Media</span>
@@ -99,7 +110,7 @@
         {{-- 10. Food and Gourmet --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/food-gourmet.png') }}"
+                <img src="{{ asset('images/categories/food-and-gourmet.jpg') }}"
                      alt="Food and Gourmet">
             </div>
             <span>Food &amp; Gourmet</span>
@@ -108,7 +119,7 @@
         {{-- 11. Automotive & Motorcycle --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/automotive-motorcycle.png') }}"
+                <img src="{{ asset('images/categories/automotive-and-motorcycle.jpg') }}"
                      alt="Automotive and Motorcycle">
             </div>
             <span>Automotive &amp; Motorcycle</span>
@@ -117,7 +128,7 @@
         {{-- 12. Furniture and Office Equipment --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/furniture-office.png') }}"
+                <img src="{{ asset('images/categories/furniture-and-office.jpg') }}"
                      alt="Furniture and Office Equipment">
             </div>
             <span>Furniture &amp; Office</span>
@@ -126,7 +137,7 @@
         {{-- 13. Jewelry and Watches --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/jewelry-watches.png') }}"
+                <img src="{{ asset('images/categories/jewelry-and-watches.jpg') }}"
                      alt="Jewelry and Watches">
             </div>
             <span>Jewelry &amp; Watches</span>
@@ -135,13 +146,15 @@
         {{-- 14. Office and School Supplies --}}
         <a href="{{ route('buyer.login') }}" class="cat-card reveal-scale">
             <div class="cat-photo">
-                <img src="{{ asset('assets/images/categories/office-school.png') }}"
+                <img src="{{ asset('images/categories/office-and-school.jpg') }}"
                      alt="Office and School Supplies">
             </div>
             <span>Office &amp; School</span>
         </a>
 
     </div>
+    </div>
+
 </div>
 
 </section>
