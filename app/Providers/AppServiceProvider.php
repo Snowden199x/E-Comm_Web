@@ -21,7 +21,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        \Illuminate\Support\Facades\View::composer('components.buyer-layout', function ($view) {
+        \Illuminate\Support\Facades\View::composer('components.buyer.layout', function ($view) {
             $count = auth()->check()
                 ? \App\Models\Ecommerce\CartItem::where('user_id', auth()->id())->sum('quantity')
                 : 0;
