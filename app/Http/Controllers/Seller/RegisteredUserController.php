@@ -20,7 +20,7 @@ class RegisteredUserController extends Controller
     {
         $categories = Category::whereNull('parent_id')->orderBy('id')->get();
 
-        return view('auth.register-seller', compact('categories'));
+        return view('seller.auth.register', compact('categories'));
     }
 
     public function store(Request $request): JsonResponse

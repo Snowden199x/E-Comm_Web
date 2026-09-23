@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin.layout>
     <div class="p-4 sm:p-5 lg:p-6" x-data="{ previewId: null }">
         <div class="mb-6">
             <h2 class="text-2xl font-bold text-gray-900">Manage Complaints and Disputes</h2>
@@ -167,4 +167,4 @@
             @endforeach
         @endif
     </div>
-</x-admin-layout>
+</x-admin.layout>

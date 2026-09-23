@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin.layout>
     <div class="p-4 sm:p-5 lg:p-6" x-data="{ openProductId: null, rejectId: null, warnId: null, confirmation: @js(session('confirmation')) }">
         <div class="mb-6">
             <h2 class="text-2xl font-bold text-gray-900">Products for Review</h2>
@@ -85,4 +85,4 @@
 
         @include('admin.seller-compliance.partials.confirmation-modal')
     </div>
-</x-admin-layout>
+</x-admin.layout>

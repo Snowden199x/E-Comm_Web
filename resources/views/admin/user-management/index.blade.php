@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin.layout>
     <div class="p-4 sm:p-5 lg:p-6" x-data="{ openId: null, suspendId: null, deactivateId: null, activateId: null }">
 
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-2">
@@ -89,4 +89,4 @@
         @include('admin.user-management.partials.confirmation-modal')
 
     </div>
-</x-admin-layout>
+</x-admin.layout>

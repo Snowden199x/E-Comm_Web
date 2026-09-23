@@ -177,12 +177,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
 */
 Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/register', function () {
-        return view('auth.register-buyer');
+        return view('buyer.auth.register');
     })->name('register');
     Route::post('/register', [RegisteredBuyerController::class, 'store'])->name('register.store');
 
     Route::get('/login', function () {
-        return view('auth.login-buyer');
+        return view('buyer.auth.login');
     })->name('login');
     Route::post('/login', [BuyerAuthenticatedSessionController::class, 'store'])->name('login.store');
     Route::post('/logout', [BuyerAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
@@ -263,7 +263,7 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
     Route::get('/dashboard', [LogisticsDashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/forgot-password', function () {
-        return view('auth.forgot-password-logistics');
+        return view('logistics.auth.forgot-password');
     })->name('password.request');
 
     // Temporary placeholder — individual riders will apply via the Vendo Rider mobile app,

@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin.layout>
     <div class="p-4 sm:p-5 lg:p-6" x-data="{ tab: '{{ $errors->any() && old('email_username') !== null ? 'admin-accounts' : request('tab', 'my-account') }}', showCreateModal: {{ $errors->any() && old('email_username') !== null ? 'true' : 'false' }}, editProfile: false, changePass: false, actionId: null }" x-init="$watch('tab', value => {
         const url = new URL(window.location);
         url.searchParams.set('tab', value);
@@ -679,4 +679,4 @@
         </div>
 
     </div>
-</x-admin-layout>
+</x-admin.layout>

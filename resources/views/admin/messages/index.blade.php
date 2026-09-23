@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin.layout>
     <div class="p-4 sm:p-5 lg:p-6 h-[calc(100vh-89px)] flex flex-col" x-data="{
         activeId: {{ $activeId ?? 'null' }},
         lightboxImage: null,
@@ -82,4 +82,4 @@
                 class="absolute top-4 right-4 text-white text-3xl leading-none">&times;</button>
         </div>
     </div>
-</x-admin-layout>
+</x-admin.layout>

@@ -17,7 +17,7 @@ class RegisteredUserController extends Controller
 {
     public function create(): View
     {
-        return view('auth.register-logistics-center');
+        return view('logistics.auth.register-center');
     }
 
     public function store(Request $request): JsonResponse

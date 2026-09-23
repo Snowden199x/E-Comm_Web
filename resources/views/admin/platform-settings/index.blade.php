@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin.layout>
     <div class="p-4 sm:p-5 lg:p-6" x-data="{ createOpen: false, viewAnnouncementId: null, editAnnouncementId: null, deleteAnnouncementId: null, viewPolicyId: null, editPolicyId: null, deletePolicyId: null, confirmation: @js(session('confirmation')) }">
         <div class="mb-6">
             <h2 class="text-2xl font-bold text-gray-900">Manage Platform Settings</h2>
@@ -206,4 +206,4 @@
             @include('admin.platform-settings.partials.delete-policy-modal', ['policy' => $policy])
         @endforeach
     </div>
-</x-admin-layout>
+</x-admin.layout>

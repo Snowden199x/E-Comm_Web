@@ -17,7 +17,7 @@ class RegisteredUserController extends Controller
 {
     public function create(): View
     {
-        return view('auth.register-buyer');
+        return view('buyer.auth.register');
     }
 
     public function store(Request $request): JsonResponse

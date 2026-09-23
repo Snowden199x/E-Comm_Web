@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin.layout>
     <div class="p-4 sm:p-5 lg:p-6">
         <div class="mb-6">
             <h2 class="text-2xl font-bold text-gray-900">Complaint Details</h2>
@@ -190,4 +190,4 @@
 
         </div>
     </div>
-</x-admin-layout>
+</x-admin.layout>

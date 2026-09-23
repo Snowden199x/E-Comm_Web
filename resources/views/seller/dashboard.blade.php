@@ -1,4 +1,4 @@
-<x-seller-layout title="Seller Dashboard">
+<x-seller.layout title="Seller Dashboard">
 
     {{-- ============ WELCOME ============ --}}
     <section class="sd-welcome">
@@ -268,4 +268,4 @@
         </section>
     </div>
 
-</x-seller-layout>
+</x-seller.layout>

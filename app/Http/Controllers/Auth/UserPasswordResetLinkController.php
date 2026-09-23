@@ -13,7 +13,7 @@ class UserPasswordResetLinkController extends Controller
 {
     public function create(): View
     {
-        return view('auth.forgot-password');
+        return view('buyer.auth.forgot-password');
     }
 
     public function store(Request $request): RedirectResponse

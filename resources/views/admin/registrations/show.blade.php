@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin.layout>
     <div class="p-4 sm:p-5 lg:p-6">
 
         <a href="{{ route('admin.registrations.index') }}"
@@ -44,4 +44,4 @@
         @include('admin.registrations.partials.applicant-details')
 
     </div>
-</x-admin-layout>
+</x-admin.layout>

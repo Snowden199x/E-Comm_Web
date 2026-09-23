@@ -3,12 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Logistics/Sorting Center Registration - Vendo</title>
+    <title>Rider Registration - Vendo</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/shared/app.css', 'resources/js/shared/app.js'])
     <style>
         * { font-family: 'Poppins', sans-serif; }
         [x-cloak] { display: none !important; }
@@ -87,7 +87,7 @@
          x-data="{
             step: 1, showPassword: false, showConfirmPassword: false,
             showVerifyModal: false, showSuccessModal: false,
-            submitting: false, formError: '', idCategory: 'primary',
+            submitting: false, formError: '',
             async submitForm(form) {
                 if (!Alpine.store('registration').otpVerified) {
                     this.formError = 'Please verify your email address before submitting.';
@@ -132,16 +132,16 @@
             <div class="relative z-10 w-full flex flex-col flex-1">
 
                 <div class="flex justify-center w-full mb-8 fade-in-up" style="animation-delay: .05s">
-                    <a href="{{ route('logistics.landing') }}" title="Back to logistics landing page"><img src="{{ asset('assets/branding/log-in-logo.svg') }}" alt="Vendo" class="w-[180px] cursor-pointer transition-transform duration-300 hover:scale-105"></a>
+                    <a href="{{ url('/') }}" title="Back to landing page"><img src="{{ asset('assets/branding/log-in-logo.svg') }}" alt="Vendo" class="w-[180px] cursor-pointer transition-transform duration-300 hover:scale-105"></a>
                 </div>
 
                 <div class="w-full mb-8 fade-in-up" style="animation-delay: .1s">
                     <h2 class="text-white text-[1.5rem] font-bold leading-snug">
-                        Power deliveries<br>with <span class="text-[#c9933a]">Vendo</span>
+                        Deliver with <span class="text-[#c9933a]">Vendo</span>
                     </h2>
                     <div class="w-8 h-[2px] bg-white/40 mt-3 mb-4"></div>
                     <p class="text-white/70 text-[0.9rem] font-light leading-relaxed">
-                        Register your hub, manage the riders who apply under you, and help orders reach their destination faster.
+                        Join a Logistics/Sorting Center's rider network and start earning on your own schedule.
                     </p>
                 </div>
 
@@ -187,8 +187,8 @@
                                 <div class="w-px my-1 transition-colors duration-500" :class="step > 2 ? 'bg-white/60' : 'bg-white/20'" style="height: 40px;"></div>
                             </div>
                             <div class="pb-4">
-                                <p class="text-[0.9rem] leading-tight transition-colors duration-300" :class="step === 2 ? 'text-white font-bold' : (step > 2 ? 'text-white/80 font-semibold' : 'text-white/50 font-semibold')">2. Business Information</p>
-                                <p class="text-white/50 text-[0.8rem] font-light leading-snug mt-0.5">Provide your business details</p>
+                                <p class="text-[0.9rem] leading-tight transition-colors duration-300" :class="step === 2 ? 'text-white font-bold' : (step > 2 ? 'text-white/80 font-semibold' : 'text-white/50 font-semibold')">2. Vehicle Information</p>
+                                <p class="text-white/50 text-[0.8rem] font-light leading-snug mt-0.5">Provide your vehicle details</p>
                             </div>
                         </div>
 
@@ -217,8 +217,8 @@
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                         Back to Landing Page
                     </a>
-                    <h1 class="text-[1.4rem] font-bold text-gray-900 tracking-tight leading-tight">Logistics/Sorting Center Registration</h1>
-                    <p class="text-[0.85rem] text-gray-500 mt-0.5 font-normal">Create your Logistics/Sorting Center account.</p>
+                    <h1 class="text-[1.4rem] font-bold text-gray-900 tracking-tight leading-tight">Rider Registration</h1>
+                    <p class="text-[0.85rem] text-gray-500 mt-0.5 font-normal">Create your rider account.</p>
                 </div>
                 <div class="flex items-center gap-2 mt-1">
                     <span class="text-[0.8rem] text-gray-500 font-normal">Already have an account?</span>
@@ -278,7 +278,7 @@
                     <div class="flex-1"></div>
                     <div class="shrink-0 w-8 relative">
                         <span class="absolute left-1/2 -translate-x-1/2 text-[0.72rem] whitespace-nowrap transition-colors duration-300"
-                              :class="step >= 2 ? 'font-semibold text-[#3b1735]' : 'font-normal text-gray-400'">Business Information</span>
+                              :class="step >= 2 ? 'font-semibold text-[#3b1735]' : 'font-normal text-gray-400'">Vehicle Information</span>
                     </div>
                     <div class="flex-1"></div>
                     <div class="shrink-0 w-8 relative">
@@ -289,10 +289,10 @@
 
                 <div class="mb-4"></div>
 
-                <form method="POST" action="{{ route('logistics.register.store') }}" enctype="multipart/form-data" @submit.prevent="submitForm($el)" class="fade-in-up" style="animation-delay: .16s">
+                <form method="POST" action="{{ route('logistics.rider.register.store') }}" enctype="multipart/form-data" @submit.prevent="submitForm($el)" class="fade-in-up" style="animation-delay: .16s">
                     @csrf
 
-                    {{-- STEP 1: Personal Information + Address + Account Security --}}
+                    {{-- STEP 1: Personal Information + Logistics Center + Address + Account Security --}}
                     <div x-show="step === 1" x-ref="step1"
                          x-transition:enter="transition ease-out duration-300"
                          x-transition:enter-start="opacity-0 translate-y-2"
@@ -371,85 +371,44 @@
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">ID Category <span class="text-red-500">*</span></label>
-                            <select name="id_category" x-model="idCategory"
-                                class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
-                                <option value="primary">Primary ID (1 ID)</option>
-                                <option value="secondary">Secondary ID (2 IDs required)</option>
-                            </select>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3 mb-5" x-show="idCategory === 'primary'">
+                        <div class="grid grid-cols-2 gap-3 mb-5">
                             <div>
-                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">ID Type <span class="text-red-500">*</span></label>
-                                <select name="id_type" :disabled="idCategory !== 'primary'"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
-                                    <option value="" disabled selected>Select ID Type</option>
-                                    <option value="Philippine Passport">Philippine Passport</option>
-                                    <option value="PhilSys National ID">PhilSys National ID</option>
-                                    <option value="Driver's License">Driver's License</option>
-                                    <option value="UMID">UMID</option>
-                                    <option value="SSS ID">SSS ID</option>
-                                    <option value="GSIS ID">GSIS ID</option>
-                                    <option value="PRC ID">PRC ID</option>
-                                    <option value="Postal ID">Postal ID</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Upload ID <span class="text-red-500">*</span></label>
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Valid ID <span class="text-red-500">*</span></label>
                                 <label class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.85rem] px-3 py-2 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all duration-200">
-                                    <span id="valid-id-label">Upload ID here</span>
+                                    <span id="valid-id-label">Upload Valid ID here</span>
                                     <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                                    <input type="file" name="valid_id" id="primary-valid-id" class="hidden" accept="image/*,.pdf" :disabled="idCategory !== 'primary'"
-                                        onchange="document.getElementById('valid-id-label').textContent = this.files[0]?.name || 'Upload ID here'">
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3 mb-5" x-show="idCategory === 'secondary'" x-cloak>
-                            <div>
-                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">First Secondary ID Type <span class="text-red-500">*</span></label>
-                                <select name="id_type_1" :disabled="idCategory !== 'secondary'"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
-                                    <option value="" disabled selected>Select ID Type</option>
-                                    <option value="PhilHealth ID">PhilHealth ID</option>
-                                    <option value="TIN ID">TIN ID</option>
-                                    <option value="Voter's ID/Certification">Voter's ID/Certification</option>
-                                    <option value="NBI Clearance">NBI Clearance</option>
-                                    <option value="Barangay Certification">Barangay Certification</option>
-                                    <option value="Company ID">Company ID</option>
-                                    <option value="School ID">School ID</option>
-                                    <option value="Senior Citizen/PWD ID">Senior Citizen/PWD ID</option>
-                                </select>
-                                <label class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.85rem] px-3 py-2 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 mt-2">
-                                    <span id="valid-id-1-label">Upload ID here</span>
-                                    <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                                    <input type="file" name="valid_id" id="secondary-valid-id-1" class="hidden" accept="image/*,.pdf" :disabled="idCategory !== 'secondary'"
-                                        onchange="document.getElementById('valid-id-1-label').textContent = this.files[0]?.name || 'Upload ID here'">
+                                    <input type="file" name="valid_id" required class="hidden" accept=".jpg,.jpeg,.png,.pdf" onchange="document.getElementById('valid-id-label').textContent = this.files[0]?.name || 'Upload Valid ID here'">
                                 </label>
                                 <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF.</p>
                             </div>
+                        </div>
+
+                        <hr class="border-gray-200 mb-5">
+
+                        <div class="mb-1">
+                            <h2 class="text-[1rem] font-bold text-gray-900 mb-0.5">Logistics / Sorting Center</h2>
+                            <p class="text-[0.8rem] text-gray-500 font-normal mb-4">Choose which Logistics/Sorting Center you're applying to ride for. They'll review and approve your application.</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-3 mb-8">
                             <div>
-                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Second Secondary ID Type <span class="text-red-500">*</span></label>
-                                <select name="id_type_2" :disabled="idCategory !== 'secondary'"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
-                                    <option value="" disabled selected>Select ID Type</option>
-                                    <option value="PhilHealth ID">PhilHealth ID</option>
-                                    <option value="TIN ID">TIN ID</option>
-                                    <option value="Voter's ID/Certification">Voter's ID/Certification</option>
-                                    <option value="NBI Clearance">NBI Clearance</option>
-                                    <option value="Barangay Certification">Barangay Certification</option>
-                                    <option value="Company ID">Company ID</option>
-                                    <option value="School ID">School ID</option>
-                                    <option value="Senior Citizen/PWD ID">Senior Citizen/PWD ID</option>
-                                </select>
-                                <label class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.85rem] px-3 py-2 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 mt-2">
-                                    <span id="valid-id-2-label">Upload ID here</span>
-                                    <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                                    <input type="file" name="valid_id_2" id="secondary-valid-id-2" class="hidden" accept="image/*,.pdf" :disabled="idCategory !== 'secondary'"
-                                        onchange="document.getElementById('valid-id-2-label').textContent = this.files[0]?.name || 'Upload ID here'">
-                                </label>
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Logistics / Sorting Center <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <select name="logistics_center_id" required
+                                        {{ $logisticsCenters->isEmpty() ? 'disabled' : '' }}
+                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed">
+                                        <option value="" disabled selected>{{ $logisticsCenters->isEmpty() ? 'No approved centers available yet' : 'Select a Logistics/Sorting Center' }}</option>
+                                        @foreach ($logisticsCenters as $center)
+                                            <option value="{{ $center->id }}">{{ $center->business_name }} — {{ $center->municipality }}</option>
+                                        @endforeach
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">
+                                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                </div>
+                                @if ($logisticsCenters->isEmpty())
+                                    <p class="text-[0.72rem] text-red-500 mt-1">There are no approved Logistics/Sorting Centers to apply to yet. Please check back later.</p>
+                                @endif
                             </div>
                         </div>
 
@@ -479,7 +438,7 @@
 
                         <div class="mb-1">
                             <h2 class="text-[1rem] font-bold text-gray-900 mb-0.5">Account Security</h2>
-                            <p class="text-[0.8rem] text-gray-500 font-normal mb-4">Set a password to secure your Logistics/Sorting Center account.</p>
+                            <p class="text-[0.8rem] text-gray-500 font-normal mb-4">Set a password to secure your rider account.</p>
                         </div>
 
                         <div class="grid grid-cols-2 gap-3 mb-1">
@@ -510,43 +469,70 @@
                         <p class="text-[0.72rem] text-gray-400 mt-1.5 mb-6 font-normal">Minimum 8 characters, with at least one capital letter, one number, and one special character.</p>
 
                         <div class="flex justify-end">
-                            <button type="button" @click="
-                                if (idCategory === 'primary' && (!document.querySelector('[name=id_type]')?.value || !document.getElementById('primary-valid-id')?.files.length)) { vendoToast('Please select your ID type and upload your ID.'); return; }
-                                if (idCategory === 'secondary' && (!document.querySelector('[name=id_type_1]')?.value || !document.querySelector('[name=id_type_2]')?.value || !document.getElementById('secondary-valid-id-1')?.files.length || !document.getElementById('secondary-valid-id-2')?.files.length)) { vendoToast('Please complete both secondary IDs.'); return; }
-                                if (vendoValidateStep($refs.step1)) step = 2"
+                            <button type="button" @click="if (vendoValidateStep($refs.step1)) step = 2"
                                 class="flex items-center gap-1.5 bg-[#3b1735] hover:bg-[#4d1f45] active:bg-[#2e1229] text-white text-[0.85rem] font-semibold rounded-lg px-5 py-2 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97]">
-                                Next: Business Information
+                                Next: Vehicle Information
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
                             </button>
                         </div>
 
                     </div>
 
-                    {{-- STEP 2: Business Information --}}
+                    {{-- STEP 2: Vehicle Information --}}
                     <div x-show="step === 2" x-cloak x-ref="step2"
                          x-transition:enter="transition ease-out duration-300"
                          x-transition:enter-start="opacity-0 translate-y-2"
                          x-transition:enter-end="opacity-100 translate-y-0">
 
                         <div class="mb-1">
-                            <h2 class="text-[1rem] font-bold text-gray-900 mb-0.5">Business Information</h2>
-                            <p class="text-[0.8rem] text-gray-500 font-normal mb-4">Please provide your Logistics/Sorting Center's business details.</p>
+                            <h2 class="text-[1rem] font-bold text-gray-900 mb-0.5">Vehicle Information</h2>
+                            <p class="text-[0.8rem] text-gray-500 font-normal mb-4">Please provide your vehicle details.</p>
                         </div>
 
                         <div class="grid grid-cols-2 gap-6 mb-8">
                             <div>
-                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Business Name <span class="text-red-500">*</span></label>
-                                <input type="text" name="business_name" required placeholder="Enter business name"
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
+                                <div class="mb-3">
+                                    <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Vehicle Type <span class="text-red-500">*</span></label>
+                                    <div class="relative">
+                                        <select name="vehicle_type" required class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
+                                            <option value="" disabled selected>Select vehicle type</option>
+                                            <option value="Motorcycle">Motorcycle</option>
+                                            <option value="Tricycle">Tricycle</option>
+                                            <option value="Sedan">Sedan</option>
+                                            <option value="MPV/Van">MPV/Van</option>
+                                            <option value="Truck">Truck</option>
+                                        </select>
+                                        <div class="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">
+                                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Plate Number <span class="text-red-500">*</span></label>
+                                    <input type="text" name="plate_number" required placeholder="Enter plate number"
+                                        class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
+                                </div>
                             </div>
+
                             <div>
-                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Business Permit <span class="text-red-500">*</span></label>
-                                <label class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.85rem] px-3 py-2 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all duration-200">
-                                    <span id="business-permit-label">Upload business permit here</span>
-                                    <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                                    <input type="file" name="business_permit" required class="hidden" accept="image/*,.pdf" onchange="document.getElementById('business-permit-label').textContent = this.files[0]?.name || 'Upload business permit here'">
-                                </label>
-                                <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF.</p>
+                                <div class="mb-3">
+                                    <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Driver's License <span class="text-red-500">*</span></label>
+                                    <label class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.85rem] px-3 py-2 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all duration-200">
+                                        <span id="drivers-license-label">Upload driver's license here</span>
+                                        <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                        <input type="file" name="drivers_license" required class="hidden" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" onchange="document.getElementById('drivers-license-label').textContent = this.files[0]?.name || 'Upload driver&#39;s license here'">
+                                    </label>
+                                    <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">OR / CR <span class="text-red-500">*</span></label>
+                                    <label class="flex items-center justify-between w-full rounded-md border border-gray-200 bg-white text-gray-400 text-[0.85rem] px-3 py-2 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all duration-200">
+                                        <span id="or-cr-label">Upload OR/CR here</span>
+                                        <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                        <input type="file" name="or_cr" required class="hidden" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" onchange="document.getElementById('or-cr-label').textContent = this.files[0]?.name || 'Upload OR/CR here'">
+                                    </label>
+                                    <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF. This is your vehicle's Official Receipt / Certificate of Registration.</p>
+                                </div>
                             </div>
                         </div>
 
@@ -573,6 +559,19 @@
                         <div class="mb-4">
                             <h2 class="text-[1rem] font-bold text-gray-900 mb-0.5">Review your Information</h2>
                             <p class="text-[0.8rem] text-gray-500 font-normal">Please review all the details below before submitting your registration.</p>
+                        </div>
+
+                        {{-- Applying To callout --}}
+                        <div class="flex items-center gap-3 bg-[#f6f1f8] border border-[#e2d0e9] rounded-xl p-4 mb-4">
+                            <div class="w-9 h-9 rounded-full bg-[#ede6f0] flex items-center justify-center shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#3b1735]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M4 21V8l8-5 8 5v13M9 21v-6h6v6"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-[0.72rem] text-gray-500 mb-0.5">Applying to ride for</p>
+                                <p class="text-[0.9rem] font-bold text-gray-900" id="review-logistics-center">—</p>
+                            </div>
                         </div>
 
                         {{-- Personal Information Card --}}
@@ -654,7 +653,7 @@
                             </div>
                         </div>
 
-                        {{-- Business Information Card --}}
+                        {{-- Vehicle Information Card --}}
                         <div class="border border-gray-200 rounded-xl p-5 mb-4 transition-shadow duration-300 hover:shadow-sm">
 
                             <div class="flex items-center justify-between mb-4">
@@ -664,7 +663,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M4 21V8l8-5 8 5v13M9 21v-6h6v6"/>
                                         </svg>
                                     </div>
-                                    <span class="text-[0.92rem] font-bold text-gray-900">Business Information</span>
+                                    <span class="text-[0.92rem] font-bold text-gray-900">Vehicle Information</span>
                                 </div>
                                 <button type="button" @click="step = 2"
                                     class="text-[0.85rem] font-semibold text-gray-700 border border-gray-300 rounded-md px-4 py-1 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200">
@@ -672,18 +671,31 @@
                                 </button>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-x-6 gap-y-4">
+                            <div class="grid grid-cols-3 gap-x-6 gap-y-4">
                                 <div>
-                                    <p class="text-[0.72rem] text-gray-400 mb-0.5">Business Name</p>
-                                    <p class="text-[0.85rem] font-semibold text-gray-800" id="review-business-name">—</p>
+                                    <p class="text-[0.72rem] text-gray-400 mb-0.5">Vehicle Type</p>
+                                    <p class="text-[0.85rem] font-semibold text-gray-800" id="review-vehicle-type">—</p>
                                 </div>
                                 <div>
-                                    <p class="text-[0.72rem] text-gray-400 mb-0.5">Business Permit</p>
+                                    <p class="text-[0.72rem] text-gray-400 mb-0.5">Plate Number</p>
+                                    <p class="text-[0.85rem] font-semibold text-gray-800" id="review-plate-number">—</p>
+                                </div>
+                                <div>
+                                    <p class="text-[0.72rem] text-gray-400 mb-0.5">Driver's License</p>
                                     <div class="flex items-center gap-1.5 mt-0.5">
                                         <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                         </svg>
-                                        <span class="text-[0.8rem] text-gray-600 truncate" id="review-business-permit">—</span>
+                                        <span class="text-[0.8rem] text-gray-600 truncate" id="review-drivers-license">—</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-[0.72rem] text-gray-400 mb-0.5">OR / CR</p>
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                        <span class="text-[0.8rem] text-gray-600 truncate" id="review-or-cr">—</span>
                                     </div>
                                 </div>
                             </div>
@@ -699,7 +711,7 @@
                                     <p class="text-[0.9rem] font-bold text-gray-900 mb-1">Please Review Carefully</p>
                                     <p class="text-[0.8rem] text-gray-600 leading-relaxed mb-3">
                                         By submitting this registration, you confirm that all information provided is true and correct.<br>
-                                        Our team will review your application and you will be notified via email once your account is approved.
+                                        Your chosen Logistics/Sorting Center will review your application and you will be notified via email once you're approved.
                                     </p>
                                     <label class="flex items-center gap-2 cursor-pointer">
                                         <input type="checkbox" name="agree_terms" required
@@ -850,7 +862,7 @@
                 <h2 class="text-[1.3rem] font-bold text-gray-900 mb-2">Thank you for Registering</h2>
                 <p class="text-[0.92rem] font-semibold text-gray-700 mb-2">Your registration is pending review</p>
                 <p class="text-[0.9rem] text-gray-400 font-normal leading-relaxed mb-8">
-                    You will receive an email once your account has been approved by the administrator.
+                    You will receive an email once your account has been approved by your chosen Logistics/Sorting Center.
                 </p>
 
                 <a href="{{ route('logistics.login') }}"
