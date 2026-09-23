@@ -207,6 +207,10 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/account', [BuyerAccountController::class, 'index'])->middleware('auth')->name('account.index');
     Route::put('/account', [BuyerAccountController::class, 'update'])->middleware('auth')->name('account.update');
     Route::put('/account/password', [BuyerAccountController::class, 'updatePassword'])->middleware('auth')->name('account.password');
+    Route::post('/account/profile-picture', [BuyerAccountController::class, 'uploadProfilePicture'])->middleware('auth')->name('account.profile-picture.upload');
+    Route::delete('/account/profile-picture', [BuyerAccountController::class, 'removeProfilePicture'])->middleware('auth')->name('account.profile-picture.remove');
+    Route::post('/account/banner', [BuyerAccountController::class, 'uploadBanner'])->middleware('auth')->name('account.banner.upload');
+    Route::delete('/account/banner', [BuyerAccountController::class, 'removeBanner'])->middleware('auth')->name('account.banner.remove');
     Route::get('/messages/fetch', [BuyerMessageController::class, 'fetch'])->middleware('auth')->name('messages.fetch');
 });
 
