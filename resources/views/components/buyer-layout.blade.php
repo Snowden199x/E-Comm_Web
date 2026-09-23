@@ -51,7 +51,8 @@
                             Orders</a>
                         <a href="{{ route('buyer.messages.index') }}"
                             class="block px-4 py-2 text-sm hover:bg-gray-100">Messages</a>
-                        <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100">Account</a>
+                        <a href="{{ route('buyer.account.index') }}"
+                            class="block px-4 py-2 text-sm hover:bg-gray-100">Account</a>
                         <form method="POST" action="{{ route('buyer.logout') }}">
                             @csrf
                             <button class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Logout</button>

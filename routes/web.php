@@ -27,6 +27,7 @@ use App\Http\Controllers\Buyer\ProductController as BuyerProductController;
 use App\Http\Controllers\Buyer\CartController as BuyerCartController;
 use App\Http\Controllers\Buyer\CheckoutController as BuyerCheckoutController;
 use App\Http\Controllers\Buyer\MessageController as BuyerMessageController;
+use App\Http\Controllers\Buyer\AccountController as BuyerAccountController;
 use App\Http\Controllers\Buyer\OrderController as BuyerOrderController;
 
 use App\Http\Controllers\Seller\RegisteredUserController as SellerRegisteredUserController;
@@ -143,6 +144,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/', [MessageController::class, 'index'])->name('index');
             Route::get('/list', [MessageController::class, 'conversationsList'])->name('list');
             Route::get('/{conversation}/thread', [MessageController::class, 'thread'])->name('thread');
+            Route::get('/{conversation}/fetch', [MessageController::class, 'fetchMessages'])->name('fetch');
             Route::post('/{conversation}/send', [MessageController::class, 'send'])->name('send');
         });
 
@@ -198,7 +200,13 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/orders', [BuyerOrderController::class, 'index'])->middleware('auth')->name('orders.index');
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->middleware('auth')->name('orders.show');
     Route::get('/messages', [BuyerMessageController::class, 'index'])->middleware('auth')->name('messages.index');
-    Route::post('/messages', [BuyerMessageController::class, 'store'])->middleware('auth')->name('messages.store');
+    Route::post('/messages/start', [BuyerMessageController::class, 'start'])->middleware('auth')->name('messages.start');
+    Route::post('/messages/{conversation}/close', [BuyerMessageController::class, 'close'])->middleware('auth')->name('messages.close');
+    Route::get('/messages/{conversation}/fetch', [BuyerMessageController::class, 'fetch'])->middleware('auth')->name('messages.fetch');
+    Route::post('/messages/{conversation}', [BuyerMessageController::class, 'store'])->middleware('auth')->name('messages.store');
+    Route::get('/account', [BuyerAccountController::class, 'index'])->middleware('auth')->name('account.index');
+    Route::put('/account', [BuyerAccountController::class, 'update'])->middleware('auth')->name('account.update');
+    Route::put('/account/password', [BuyerAccountController::class, 'updatePassword'])->middleware('auth')->name('account.password');
     Route::get('/messages/fetch', [BuyerMessageController::class, 'fetch'])->middleware('auth')->name('messages.fetch');
 });
 
