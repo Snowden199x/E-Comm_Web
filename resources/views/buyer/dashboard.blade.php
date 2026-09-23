@@ -1,4 +1,4 @@
-<x-buyer-layout>
+<x-buyer.layout>
     <div class="max-w-7xl mx-auto p-4 sm:p-5 lg:p-6">
 
         <!-- Category strip -->
@@ -34,4 +34,4 @@
         </div>
 
     </div>
-</x-buyer-layout>
+</x-buyer.layout>

@@ -1,4 +1,4 @@
-<x-seller-layout title="Orders">
+<x-seller.layout title="Orders">
     @vite('resources/css/seller/order-management-orders.css')
 
     <div class="omo-content">
@@ -305,4 +305,4 @@
 
     @vite('resources/js/seller/order-management-orders/index.js')
 
-</x-seller-layout>
+</x-seller.layout>

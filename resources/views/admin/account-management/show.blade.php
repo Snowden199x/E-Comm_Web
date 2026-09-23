@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin.layout>
     <div class="p-4 sm:p-5 lg:p-6" x-data="{ confirmAction: null }">
 
         <a href="{{ route('admin.account-management.index', ['tab' => 'admin-accounts']) }}" x-target.push="main-content"
@@ -356,4 +356,4 @@
         @endif
 
     </div>
-</x-admin-layout>
+</x-admin.layout>

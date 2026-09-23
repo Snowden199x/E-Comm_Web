@@ -1,4 +1,4 @@
-<x-buyer-layout>
+<x-buyer.layout>
     <div class="max-w-7xl mx-auto p-4 sm:p-5 lg:p-6">
         <div class="bg-white rounded-2xl p-6 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -59,4 +59,4 @@
 
         </div>
     </div>
-</x-buyer-layout>
+</x-buyer.layout>

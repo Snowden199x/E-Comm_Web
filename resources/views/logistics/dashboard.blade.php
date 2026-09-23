@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Logistics Center Dashboard - Vendo</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/shared/app.css', 'resources/js/shared/app.js'])
     <style>* { font-family: 'Poppins', sans-serif; } [x-cloak] { display: none !important; }</style>
 </head>
 <body class="antialiased bg-[#faf6f0] min-h-screen">

@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin.layout>
     <div class="p-4 sm:p-5 lg:p-6">
 
         <div class="mb-6">
@@ -85,4 +85,4 @@
             @include('admin.registrations.partials.registrations-table')
         </div>
     </div>
-</x-admin-layout>
+</x-admin.layout>

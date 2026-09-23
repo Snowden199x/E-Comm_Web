@@ -1,8 +1,5 @@
-import Alpine from 'alpinejs';
-import ajax from '@imacrayon/alpine-ajax';
-
-window.Alpine = Alpine;
-
+// Admin sidebar state — used by components/admin/layout.blade.php
+// and admin/partials/sidebar.blade.php only.
 document.addEventListener('alpine:init', () => {
     Alpine.store('sidebar', {
         // "collapsed" is the pinned state — what the burger button controls
@@ -41,6 +38,3 @@ document.addEventListener('alpine:init', () => {
         },
     });
 });
-
-Alpine.plugin(ajax);
-Alpine.start();

@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin.layout>
     <div class="p-4 sm:p-6 lg:p-7" x-data="{ openId: null, rejectId: null }">
 
         <!-- Greeting -->
@@ -445,4 +445,4 @@
             });
         })();
     </script>
-</x-admin-layout>
+</x-admin.layout>
