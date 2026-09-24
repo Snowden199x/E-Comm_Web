@@ -12,9 +12,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
+    private const MAX_PHOTOS = 6;
+
+    private const MAX_UPLOAD_BYTES = 7 * 1024 * 1024;
+
+    private const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+
     public function index(Request $request)
     {
         $filters = $request->validate([
@@ -75,37 +82,101 @@ class ProductController extends Controller
 
     private function validated(Request $request, bool $creating): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'name' => 'required|string|max:255', 'description' => 'nullable|string|max:5000',
             'price' => 'required|numeric|min:0.01|max:99999999.99|decimal:0,2',
             'category_id' => ['required', 'integer', Rule::in($this->categories($request)->pluck('id')->all())],
-            'brand' => 'nullable|string|max:255', 'colors' => 'nullable|string|max:255', 'sizes' => 'nullable|string|max:255',
+            'brand' => 'nullable|string|max:255',
+            'material' => 'required|string|max:255',
+            'weight' => ['required', 'string', 'max:30', 'regex:/^\d+(?:\.\d{1,2})?\s*(?:g|kg)$/i'],
+            'sizes' => 'nullable|array|max:6', 'sizes.*' => ['string', Rule::in(self::SIZES)],
+            'colors' => 'nullable|array|max:10',
+            'colors.*' => ['string', 'max:30', 'regex:/^[\pL][\pL\s\-]{0,29}$/u'],
             'stock' => $creating ? 'required|integer|min:0|max:1000000' : 'prohibited',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'main_image' => [$creating ? 'required' : 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'gallery_images' => 'nullable|array|max:5',
+            'gallery_images.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'remove_images' => $creating ? 'prohibited' : 'nullable|array|max:6',
+            'remove_images.*' => 'integer|distinct|min:1',
             'expected_revision' => $creating ? 'nullable' : 'required|string',
         ]);
+
+        $uploads = array_filter([$request->file('main_image'), ...($request->file('gallery_images') ?? [])]);
+        if (array_sum(array_map(fn ($file) => $file->getSize(), $uploads)) > self::MAX_UPLOAD_BYTES) {
+            throw ValidationException::withMessages(['gallery_images' => 'All new photos together must be 7 MB or less.']);
+        }
+
+        $sizes = array_values(array_unique($data['sizes'] ?? []));
+        $colors = [];
+        foreach ($data['colors'] ?? [] as $color) {
+            $color = trim(preg_replace('/\s+/u', ' ', $color));
+            if ($color !== '' && ! collect($colors)->contains(fn ($existing) => Str::lower($existing) === Str::lower($color))) {
+                $colors[] = $color;
+            }
+        }
+        if (strlen(implode(', ', $colors)) > 255) {
+            throw ValidationException::withMessages(['colors' => 'The selected colors are too long. Choose fewer colors.']);
+        }
+        if ((float) $data['weight'] <= 0) {
+            throw ValidationException::withMessages(['weight' => 'Enter a weight greater than zero.']);
+        }
+
+        $data['sizes'] = $sizes ? implode(', ', $sizes) : null;
+        $data['colors'] = $colors ? implode(', ', $colors) : null;
+        $data['weight'] = trim(preg_replace('/\s+/u', ' ', $data['weight']));
+        $data['country_of_origin'] = 'Philippines';
+
+        return $data;
+    }
+
+    private function storeUploads(Request $request): array
+    {
+        $paths = [];
+        try {
+            if ($request->hasFile('main_image')) {
+                $paths['main'] = $request->file('main_image')->store('products', 'public');
+                if (! $paths['main']) {
+                    throw new \RuntimeException('Unable to store the main photo.');
+                }
+            }
+            foreach ($request->file('gallery_images', []) as $image) {
+                $path = $image->store('products', 'public');
+                if (! $path) {
+                    throw new \RuntimeException('Unable to store an additional photo.');
+                }
+                $paths['gallery'][] = $path;
+            }
+        } catch (\Throwable $exception) {
+            Storage::disk('public')->delete(array_filter([$paths['main'] ?? null, ...($paths['gallery'] ?? [])]));
+            throw $exception;
+        }
+
+        return $paths;
+    }
+
+    private function uploadedPaths(array $paths): array
+    {
+        return array_values(array_filter([$paths['main'] ?? null, ...($paths['gallery'] ?? [])]));
     }
 
     public function store(Request $request)
     {
         $data = $this->validated($request, true);
-        $path = $request->file('image')?->store('products', 'public');
+        $paths = $this->storeUploads($request);
         try {
-            DB::transaction(function () use ($request, $data, $path) {
+            DB::transaction(function () use ($request, $data, $paths) {
                 $stock = (int) $data['stock'];
-                unset($data['stock'], $data['image'], $data['expected_revision']);
+                unset($data['stock'], $data['main_image'], $data['gallery_images'], $data['remove_images'], $data['expected_revision']);
                 $product = Product::create($data + ['product_code' => 'PRD-'.Str::ulid(), 'seller_id' => $request->user()->id, 'stock' => 0, 'status' => 'for_review']);
                 if ($stock) {
                     app(InventoryService::class)->changeLocked($product, $stock, 'initial', $request->user()->id, reason: 'Opening stock');
                 }
-                if ($path) {
-                    $product->images()->create(['path' => $path, 'sort_order' => 0]);
+                foreach ($this->uploadedPaths($paths) as $position => $path) {
+                    $product->images()->create(['path' => $path, 'sort_order' => $position]);
                 }
             });
         } catch (\Throwable $exception) {
-            if ($path) {
-                Storage::disk('public')->delete($path);
-            }
+            Storage::disk('public')->delete($this->uploadedPaths($paths));
             throw $exception;
         }
 
@@ -116,27 +187,52 @@ class ProductController extends Controller
     {
         Product::where('seller_id', $request->user()->id)->findOrFail($product);
         $data = $this->validated($request, false);
-        $path = $request->file('image')?->store('products', 'public');
+        $paths = $this->storeUploads($request);
         try {
-            DB::transaction(function () use ($request, $product, $data, $path) {
+            $removedPaths = DB::transaction(function () use ($request, $product, $data, $paths) {
                 $record = Product::where('seller_id', $request->user()->id)->lockForUpdate()->findOrFail($product);
                 abort_unless($record->revision === $data['expected_revision'], 409, 'This product changed. Reopen it before editing.');
-                unset($data['image'], $data['expected_revision'], $data['stock']);
+
+                $images = $record->images()->orderBy('id')->get();
+                $removeIds = array_map('intval', $data['remove_images'] ?? []);
+                if (array_diff($removeIds, $images->pluck('id')->all())) {
+                    throw ValidationException::withMessages(['remove_images' => 'One of the selected photos is no longer available.']);
+                }
+                if (isset($paths['main']) && $images->isNotEmpty()) {
+                    $removeIds[] = $images->first()->id;
+                }
+                $removeIds = array_unique($removeIds);
+                $remaining = $images->reject(fn ($image) => in_array($image->id, $removeIds, true))->values();
+                $total = $remaining->count() + count($this->uploadedPaths($paths));
+                if ($total < 1 || $total > self::MAX_PHOTOS) {
+                    throw ValidationException::withMessages(['gallery_images' => 'Keep a main photo and no more than five additional photos.']);
+                }
+
+                unset($data['main_image'], $data['gallery_images'], $data['remove_images'], $data['expected_revision'], $data['stock']);
                 $record->fill($data);
-                if ($record->isDirty() || $path) {
+                if ($record->isDirty() || $removeIds || $this->uploadedPaths($paths)) {
                     $record->fill(['status' => 'for_review', 'rejection_reason' => null, 'rejection_details' => null])->save();
-                    // Preserve prior images; a replacement becomes the first product image.
-                    if ($path) {
-                        $record->images()->create(['path' => $path, 'sort_order' => ((int) $record->images()->min('sort_order')) - 1]);
+                    if ($removeIds) {
+                        $record->images()->whereIn('id', $removeIds)->delete();
+                    }
+                    $position = 0;
+                    if (isset($paths['main'])) {
+                        $record->images()->create(['path' => $paths['main'], 'sort_order' => $position++]);
+                    }
+                    foreach ($remaining as $image) {
+                        $image->update(['sort_order' => $position++]);
+                    }
+                    foreach ($paths['gallery'] ?? [] as $path) {
+                        $record->images()->create(['path' => $path, 'sort_order' => $position++]);
                     }
                 }
-            });
+                return $images->whereIn('id', $removeIds)->pluck('path')->all();
+            }, 3);
         } catch (\Throwable $exception) {
-            if ($path) {
-                Storage::disk('public')->delete($path);
-            }
+            Storage::disk('public')->delete($this->uploadedPaths($paths));
             throw $exception;
         }
+        Storage::disk('public')->delete($removedPaths);
 
         return response()->json(['message' => 'Product saved. Changed listings require admin approval.']);
     }

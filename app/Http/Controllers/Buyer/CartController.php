@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\CartItem;
 use App\Models\Ecommerce\Product;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CartController extends Controller
 {
@@ -25,14 +26,24 @@ class CartController extends Controller
         $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity' => 'nullable|integer|min:1',
-            'color' => 'nullable|string',
-            'size' => 'nullable|string',
+            'color' => 'nullable|string|max:30',
+            'size' => 'nullable|string|max:30',
         ]);
 
         $product = Product::findOrFail($request->product_id);
         $quantity = $request->quantity ?? 1;
 
         abort_unless($product->status === 'approved', 422, 'This product is not currently available.');
+
+        foreach (['color' => 'colors', 'size' => 'sizes'] as $input => $attribute) {
+            $available = array_values(array_filter(array_map('trim', explode(',', $product->{$attribute} ?? ''))));
+            if ($available && ! in_array($request->input($input), $available, true)) {
+                throw ValidationException::withMessages([$input => 'Choose an available '.$input.'.']);
+            }
+            if (! $available && $request->filled($input)) {
+                throw ValidationException::withMessages([$input => 'This product has no '.$input.' options.']);
+            }
+        }
 
         if ($product->stock <= 0) {
             return back()->withErrors(['quantity' => $product->name.' is currently unavailable.']);
