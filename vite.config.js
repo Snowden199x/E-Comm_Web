@@ -19,6 +19,8 @@ export default defineConfig({
                 // Seller
                 "resources/css/seller/seller-dashboard.css",
                 "resources/css/seller/order-management-orders.css",
+                "resources/css/seller/operations.css",
+                "resources/js/seller/operations.js",
                 "resources/js/seller/order-management-orders/index.js",
             ],
             refresh: true,

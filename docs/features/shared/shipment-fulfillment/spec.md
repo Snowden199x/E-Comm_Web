@@ -1,20 +1,9 @@
 # Shipment Fulfillment
 
-**Status:** Partial foundation  
-**Reviewed:** 24 September 2026
+**Status:** Seller workflow implemented; logistics/courier fulfillment remains partial.
 
-## Current behavior
+Orders store a courier reference, stable Vendo tracking reference, optional carrier/ETA details, shipping fee, ERP status and event history. Seller Orders and Shipments use one transaction-backed transition service. Seller can prepare, confirm active-rider handoff and cancel before pickup, with audited stock restoration. Buyer can confirm receipt after delivery.
 
-Orders have courier reference, status vocabulary, status history, and seller handoff actions.
+A shipment currently corresponds to one seller order; split parcels, courier assignment, hub scans, automated ETA/quote integration and courier delivery actions are not implemented. Checkout currently charges item totals only, with shipping fee zero; the seller cannot change buyer charges via tracking edits.
 
-## Gaps and acceptance direction
-
-A shipment/parcel aggregate and complete logistics/courier transitions remain future work.
-
-## Source evidence
-
-`app/Models/Ecommerce/Order.php`, `app/Models/Ecommerce/OrderStatusEvent.php`
-
-## Related documentation
-
-See [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+[Seller Shipments](../../seller/shipments/spec.md) · [Order flow](../../../order-logistics-flow-decisions.md)
