@@ -49,7 +49,13 @@ class RegisteredUserController extends Controller
 
         $email = strtolower($validated['email']);
 
-        if (! Cache::pull('otp_verified:'.$email)) {
+        $verification = $request->session()->get('registration_verification', []);
+
+        if (
+            ($verification['email'] ?? null) !== $email ||
+            ($verification['expires_at'] ?? 0) <= now()->timestamp ||
+            ! Cache::get('otp_verified:'.$email)
+        ) {
             throw ValidationException::withMessages([
                 'email' => 'Please verify your email address before submitting.',
             ]);
@@ -85,6 +91,8 @@ class RegisteredUserController extends Controller
 
         $user->categories()->sync($validated['categories']);
 
+        Cache::forget('otp_verified:'.$email);
+            $request->session()->forget('registration_verification');
         return response()->json([
             'success' => true,
             'message' => 'Registration submitted. Awaiting admin approval.',
