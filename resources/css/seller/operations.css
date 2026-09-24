@@ -112,6 +112,32 @@
 .ops-form :is(input,textarea,select):focus-visible { outline:2px solid #af81ba; outline-offset:1px; }
 .ops-form small { font-size:10px; color:#85798c; }
 .ops-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.ops-field { display:grid; gap:9px; }
+.ops-field-label { font-size:12px; }
+.ops-field-label small { display:block; margin-top:3px; }
+.ops-choice { border:1px solid #d6ccd9; border-radius:8px; padding:10px 12px; }
+.ops-choice summary { cursor:pointer; font-size:12px; font-weight:500; }
+.ops-choice-count { float:right; color:#7d6c83; font-size:10px; font-weight:400; }
+.ops-size-options { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding-top:12px; }
+.ops-form .ops-size-options label { flex-direction:row; align-items:center; gap:7px; padding:8px; border:1px solid #e3dbe6; border-radius:6px; cursor:pointer; }
+.ops-form .ops-size-options input,.ops-form .ops-photo-existing input { width:auto; min-width:auto; accent-color:#613367; padding:0; }
+.ops-color-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.ops-color-chip { display:inline-flex; align-items:center; gap:7px; border:1px solid #c9b7ce; border-radius:18px; background:#f3edf5; padding:4px 8px; font-size:11px; }
+.ops-color-chip button { border:0; background:transparent; color:#63356d; cursor:pointer; font-size:16px; line-height:1; }
+.ops-color-picker { border:1px solid #dfd1e2; border-radius:9px; padding:12px; display:grid; gap:9px; background:#fff; }
+.ops-color-picker[hidden] { display:none; }
+.ops-color-results { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; max-height:150px; overflow:auto; }
+.ops-color-results button { text-align:left; border:1px solid #eee5f0; border-radius:5px; background:#faf7fb; padding:7px; color:#4b3154; cursor:pointer; }
+.ops-color-results button:hover,.ops-color-results button:focus-visible { background:#e9dceb; }
+.ops-photo-field { display:grid; gap:11px; border-top:1px solid #eee7ef; padding-top:16px; }
+.ops-photo-field h3 { font-size:13px; margin:0; }
+.ops-photo-field .ops-caption { margin:0!important; }
+.ops-photo-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.ops-form .ops-photo-existing { display:grid; gap:5px; border:1px solid #ddd3df; padding:6px; border-radius:7px; font-size:10px; }
+.ops-photo-existing img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:5px; }
+.ops-photo-existing span:last-child { display:flex; align-items:center; gap:5px; }
+.ops-photo-existing:has(input:checked) { opacity:.5; }
+.ops-form input[type=file] { font-size:11px; }
 .ops-form .ops-checkbox { flex-direction:row; align-items:flex-start; gap:9px; }
 .ops-checkbox input { width:16px; margin:2px 0 0; accent-color:#613367; }
 .ops-totals { margin:20px 0 0; }

@@ -29,7 +29,10 @@ class Product extends Model
 
     public function getRevisionAttribute(): string
     {
-        return hash('sha256', json_encode($this->getRawOriginal()));
+        $photos = $this->images()->reorder()->orderBy('sort_order')->orderBy('id')
+            ->get(['id', 'path', 'sort_order'])->toArray();
+
+        return hash('sha256', json_encode([$this->getRawOriginal(), $photos]));
     }
 
     public function movements()
