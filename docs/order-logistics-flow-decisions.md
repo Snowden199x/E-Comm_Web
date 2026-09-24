@@ -13,6 +13,7 @@ The `Order` model defines: `placed`, `confirmed`, `preparing`, `ready_for_pickup
 | `confirmed` → `preparing` | Seller | Implemented. |
 | `preparing` → `ready_for_pickup` | Seller | Implemented. |
 | `ready_for_pickup` → `picked_up` | Seller confirms handoff only after a courier is assigned | Implemented with courier assignment precondition; assignment itself is not implemented in this repository. |
+| Cancel before pickup | Seller Shipments | Implemented for confirmed/preparing/ready-for-pickup only; reason, one-time stock restoration, history and notifications. |
 | Sorting scans, hub/linehaul, rider assignment, out-for-delivery | Logistics / courier | Statuses exist, but corresponding operational action routes are not implemented. |
 | `delivered` → `completed` | Buyer confirms receipt | Implemented on buyer order detail for delivered orders. |
 | Failed delivery, return, refund | Logistics/admin policy still needed | Status labels exist; complete exception/refund actions are not implemented. |
@@ -28,3 +29,7 @@ Seller Orders groups map multiple ERP states into UI tabs: New, To Pack, Ready f
 - Decide cancellation cutoffs and refund/payment behavior for COD and any future online payments.
 - Define status-event retention, customer-facing wording, and notifications for each transition.
 - Replace coarse order-level shipping with a shipment/parcel model if split packages or consolidation are required.
+
+## Seller operations implementation
+
+Orders and Shipments now share `SellerOrderWorkflow`. Mark as Shipped means physical pickup by an assigned active courier, not a new status. Tracking metadata is recorded separately from ERP transitions and cannot change courier assignment or buyer charges. See [Shipments](features/seller/shipments/spec.md) and [Products & Inventory](features/seller/products-inventory/spec.md).

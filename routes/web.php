@@ -1,42 +1,42 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\RegistrationController;
-use App\Http\Controllers\Admin\UserManagementController;
-use App\Http\Controllers\Admin\SellerComplianceController;
+use App\Http\Controllers\Admin\AccountManagementController;
+use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Admin\PlatformSettingsController;
-use App\Http\Controllers\Admin\NotificationController;
-use App\Http\Controllers\Admin\CommissionController;
-use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\MessageController;
-use App\Http\Controllers\Admin\AccountManagementController;
-
-use App\Http\Controllers\Auth\UnifiedLoginController;
+use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\PlatformSettingsController;
+use App\Http\Controllers\Admin\RegistrationController;
+use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\SellerComplianceController;
+use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Auth\EmailOtpController;
-use App\Http\Controllers\Auth\UserPasswordResetLinkController;
+use App\Http\Controllers\Auth\UnifiedLoginController;
 use App\Http\Controllers\Auth\UserNewPasswordController;
-
-use App\Http\Controllers\Buyer\OtpController;
-use App\Http\Controllers\Buyer\RegisteredBuyerController;
-use App\Http\Controllers\Buyer\AuthenticatedSessionController as BuyerAuthenticatedSessionController;
-use App\Http\Controllers\Buyer\DashboardController as BuyerDashboardController;
-use App\Http\Controllers\Buyer\CategoryController as BuyerCategoryController;
-use App\Http\Controllers\Buyer\ProductController as BuyerProductController;
-use App\Http\Controllers\Buyer\CartController as BuyerCartController;
-use App\Http\Controllers\Buyer\CheckoutController as BuyerCheckoutController;
-use App\Http\Controllers\Buyer\MessageController as BuyerMessageController;
+use App\Http\Controllers\Auth\UserPasswordResetLinkController;
 use App\Http\Controllers\Buyer\AccountController as BuyerAccountController;
+use App\Http\Controllers\Buyer\AuthenticatedSessionController as BuyerAuthenticatedSessionController;
+use App\Http\Controllers\Buyer\CartController as BuyerCartController;
+use App\Http\Controllers\Buyer\CategoryController as BuyerCategoryController;
+use App\Http\Controllers\Buyer\CheckoutController as BuyerCheckoutController;
+use App\Http\Controllers\Buyer\DashboardController as BuyerDashboardController;
+use App\Http\Controllers\Buyer\MessageController as BuyerMessageController;
 use App\Http\Controllers\Buyer\OrderController as BuyerOrderController;
-
-use App\Http\Controllers\Seller\RegisteredUserController as SellerRegisteredUserController;
+use App\Http\Controllers\Buyer\OtpController;
+use App\Http\Controllers\Buyer\ProductController as BuyerProductController;
+use App\Http\Controllers\Buyer\RegisteredBuyerController;
+use App\Http\Controllers\Logistics\Auth\AuthenticatedSessionController as LogisticsAuthenticatedSessionController;
+use App\Http\Controllers\Logistics\Auth\RegisteredUserController as LogisticsRegisteredUserController;
+use App\Http\Controllers\Logistics\DashboardController as LogisticsDashboardController;
 use App\Http\Controllers\Seller\AuthenticatedSessionController as SellerAuthenticatedSessionController;
 use App\Http\Controllers\Seller\DashboardController as SellerDashboardController;
-
-use App\Http\Controllers\Logistics\Auth\RegisteredUserController as LogisticsRegisteredUserController;
-use App\Http\Controllers\Logistics\Auth\AuthenticatedSessionController as LogisticsAuthenticatedSessionController;
-use App\Http\Controllers\Logistics\DashboardController as LogisticsDashboardController;
+use App\Http\Controllers\Seller\OrderController;
+use App\Http\Controllers\Seller\ProductController;
+use App\Http\Controllers\Seller\RegisteredUserController as SellerRegisteredUserController;
+use App\Http\Controllers\Seller\ShipmentController;
+use App\Http\Middleware\EnsureActiveSeller;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -223,7 +223,6 @@ Route::post('/buyer/otp/verify', [OtpController::class, 'verify']);
 */
 Route::prefix('seller')->name('seller.')->group(function () {
 
-
     Route::get('/register', [SellerRegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [SellerRegisteredUserController::class, 'store'])->name('register.store');
 
@@ -231,12 +230,22 @@ Route::prefix('seller')->name('seller.')->group(function () {
     Route::post('/login', [SellerAuthenticatedSessionController::class, 'store'])->name('login.store');
     Route::post('/logout', [SellerAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
-    Route::middleware(['auth', \App\Http\Middleware\EnsureActiveSeller::class])->group(function () {
+    Route::middleware(['auth', EnsureActiveSeller::class])->group(function () {
         Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
-        Route::get('/orders', [\App\Http\Controllers\Seller\OrderController::class, 'index'])->name('orders.index');
-        Route::get('/orders/{order}/waybill', [\App\Http\Controllers\Seller\OrderController::class, 'waybill'])->whereNumber('order')->name('orders.waybill');
-        Route::get('/orders/{order}', [\App\Http\Controllers\Seller\OrderController::class, 'show'])->whereNumber('order')->name('orders.show');
-        Route::patch('/orders/{order}', [\App\Http\Controllers\Seller\OrderController::class, 'update'])->whereNumber('order')->name('orders.update');
+        Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+        Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+        Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+        Route::get('/products/{product}', [ProductController::class, 'show'])->whereNumber('product')->name('products.show');
+        Route::patch('/products/{product}', [ProductController::class, 'update'])->whereNumber('product')->name('products.update');
+        Route::post('/products/{product}/restock', [ProductController::class, 'restock'])->whereNumber('product')->name('products.restock');
+        Route::get('/shipments', [ShipmentController::class, 'index'])->name('shipments.index');
+        Route::get('/shipments/{order}', [ShipmentController::class, 'show'])->whereNumber('order')->name('shipments.show');
+        Route::patch('/shipments/{order}', [ShipmentController::class, 'update'])->whereNumber('order')->name('shipments.update');
+        Route::patch('/shipments/{order}/tracking', [ShipmentController::class, 'tracking'])->whereNumber('order')->name('shipments.tracking');
+        Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}/waybill', [OrderController::class, 'waybill'])->whereNumber('order')->name('orders.waybill');
+        Route::get('/orders/{order}', [OrderController::class, 'show'])->whereNumber('order')->name('orders.show');
+        Route::patch('/orders/{order}', [OrderController::class, 'update'])->whereNumber('order')->name('orders.update');
     });
 });
 
@@ -278,4 +287,4 @@ Route::get('/forgot-password', [UserPasswordResetLinkController::class, 'create'
 Route::post('/forgot-password', [UserPasswordResetLinkController::class, 'store'])->name('password.email');
 Route::get('/reset-password/{token}', [UserNewPasswordController::class, 'create'])->name('password.reset');
 Route::post('/reset-password', [UserNewPasswordController::class, 'store'])->name('password.store');
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

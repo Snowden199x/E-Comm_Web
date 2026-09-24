@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\CartItem;
+use App\Models\Ecommerce\Product;
 use Illuminate\Http\Request;
 
 class CartController extends Controller
@@ -14,7 +15,7 @@ class CartController extends Controller
             ->where('user_id', auth()->id())
             ->get();
 
-        $totalsByProduct = $cartItems->groupBy('product_id')->map(fn($items) => $items->sum('quantity'));
+        $totalsByProduct = $cartItems->groupBy('product_id')->map(fn ($items) => $items->sum('quantity'));
 
         return view('buyer.cart', compact('cartItems', 'totalsByProduct'));
     }
@@ -28,15 +29,17 @@ class CartController extends Controller
             'size' => 'nullable|string',
         ]);
 
-        $product = \App\Models\Ecommerce\Product::findOrFail($request->product_id);
+        $product = Product::findOrFail($request->product_id);
         $quantity = $request->quantity ?? 1;
 
+        abort_unless($product->status === 'approved', 422, 'This product is not currently available.');
+
         if ($product->stock <= 0) {
-            return back()->withErrors(['quantity' => $product->name . ' is currently unavailable.']);
+            return back()->withErrors(['quantity' => $product->name.' is currently unavailable.']);
         }
 
         if ($quantity > $product->stock) {
-            return back()->withErrors(['quantity' => 'Only ' . $product->stock . ' item(s) left in stock.']);
+            return back()->withErrors(['quantity' => 'Only '.$product->stock.' item(s) left in stock.']);
         }
 
         CartItem::create([
@@ -62,7 +65,7 @@ class CartController extends Controller
             ->sum('quantity');
 
         if (($otherQty + $request->quantity) > $cartItem->product->stock) {
-            return back()->withErrors(['quantity' => 'Only ' . $cartItem->product->stock . ' item(s) left in stock (you have ' . $otherQty . ' of this item elsewhere in cart).']);
+            return back()->withErrors(['quantity' => 'Only '.$cartItem->product->stock.' item(s) left in stock (you have '.$otherQty.' of this item elsewhere in cart).']);
         }
 
         $cartItem->update(['quantity' => $request->quantity]);

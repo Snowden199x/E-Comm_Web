@@ -57,6 +57,14 @@
             <p>{{ $order->shipping_address }}</p>
         </div>
 
+        <section class="bg-white rounded-2xl p-5 shadow-sm mt-4 text-sm text-gray-600">
+            <h3 class="font-semibold text-gray-900 mb-2">Shipment Tracking</h3>
+            <p>Vendo reference: {{ $order->tracking_number }}</p>
+            @if($order->carrier_name)<p>Carrier: {{ $order->carrier_name }}</p>@endif
+            @if($order->carrier_tracking_number)<p>Carrier tracking: {{ $order->carrier_tracking_number }}</p>@endif
+            <p>Estimated delivery: @if($order->estimated_delivery_from && $order->estimated_delivery_to){{ $order->estimated_delivery_from->format('M j, Y') }} – {{ $order->estimated_delivery_to->format('M j, Y') }}@else Not yet scheduled @endif</p>
+        </section>
+
         @if ($order->status === 'delivered')
             <form action="{{ route('buyer.orders.complete', $order) }}" method="POST" class="mt-4">
                 @csrf

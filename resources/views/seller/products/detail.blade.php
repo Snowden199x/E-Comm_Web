@@ -1,0 +1,15 @@
+<div class="ops-product ops-product--large">@include('seller.operations.image',['product'=>$product])<div><h3>{{ $product->name }}</h3><small>SKU: {{ $product->product_code }}</small><span class="ops-badge ops-badge--{{ $product->stock_status }}">{{ \App\Models\Ecommerce\Product::STOCK_LABELS[$product->stock_status] }}</span></div></div>
+<dl class="ops-info"><div><dt>Category</dt><dd>{{ $product->category?->name ?? 'Uncategorized' }}</dd></div><div><dt>Price</dt><dd>₱{{ number_format($product->price,2) }}</dd></div><div><dt>Available stock</dt><dd>{{ number_format($product->stock) }} units</dd></div><div><dt>Listing review</dt><dd>{{ ucfirst(str_replace('_',' ',$product->status)) }}</dd></div></dl>
+@if($product->description)<p class="ops-description">{{ $product->description }}</p>@endif
+@if($product->rejection_reason)<p class="ops-alert">{{ $product->rejection_reason }} {{ $product->rejection_details }}</p>@endif
+<a class="ops-text-link" href="{{ route('seller.products.show',[$product,'mode'=>'edit']) }}" data-panel data-panel-title="Edit Product">Edit product details</a>
+<section class="ops-section"><h3>Restock</h3><form action="{{ route('seller.products.restock',$product) }}" method="POST" data-operation class="ops-form">@csrf
+    <input type="hidden" name="request_key" value="{{ \Illuminate\Support\Str::uuid() }}">
+    <label>Units to add<input type="number" name="quantity" min="1" max="1000000" step="1" required @if($mode==='restock') autofocus @endif></label>
+    <label>Reason / stock reference<textarea name="reason" maxlength="500" rows="2" required placeholder="For example, supplier delivery reference"></textarea></label>
+    <p class="ops-alert" data-form-error role="alert" hidden></p><button class="ops-button ops-button--primary">Add Stock</button>
+</form></section>
+<section class="ops-section"><h3>Stock History</h3><p class="ops-caption">Movements recorded since inventory tracking was enabled.</p>
+    <div class="ops-table-scroll"><table class="ops-table ops-table--small"><thead><tr><th>When / by</th><th>Movement</th><th>Before → after</th></tr></thead><tbody>@forelse($movements as $movement)<tr><td>{{ $movement->created_at->format('M j, Y g:i A') }}<small>{{ $movement->user?->name??'System' }}</small></td><td>{{ ucfirst($movement->type) }}: {{ $movement->quantity>0?'+':'' }}{{ $movement->quantity }}<small>{{ $movement->reason }}</small>@if($movement->order_id)<small>Order #{{ $movement->order_id }}</small>@endif</td><td>{{ $movement->stock_before }} → {{ $movement->stock_after }}</td></tr>@empty<tr><td colspan="3">No recorded stock movements yet.</td></tr>@endforelse</tbody></table></div>
+    <nav class="ops-history-pages" aria-label="Stock history pages">@if($movements->previousPageUrl())<a href="{{ $movements->previousPageUrl() }}" data-panel data-panel-title="Product Details">← Newer</a>@endif @if($movements->nextPageUrl())<a href="{{ $movements->nextPageUrl() }}" data-panel data-panel-title="Product Details">Older →</a>@endif</nav>
+</section>

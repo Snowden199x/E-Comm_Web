@@ -3,17 +3,22 @@
 namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Communication\Notification;
 use App\Models\Ecommerce\CartItem;
 use App\Models\Ecommerce\Order;
+use App\Models\Ecommerce\Product;
+use App\Models\Profiles\BuyerDetail;
+use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CheckoutController extends Controller
 {
     public function index()
     {
         $cartItems = CartItem::with('product')->where('user_id', auth()->id())->get();
-        $buyerDetail = \App\Models\Profiles\BuyerDetail::where('user_id', auth()->id())->first();
+        $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
 
         $defaultAddress = $buyerDetail
             ? trim(implode(', ', array_filter([
@@ -31,67 +36,41 @@ class CheckoutController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'shipping_address' => 'required|string',
-            'payment_mode' => 'required|string',
-        ]);
-
-        $cartItems = CartItem::with('product')->where('user_id', auth()->id())->get();
-
-        abort_if($cartItems->isEmpty(), 400, 'Cart is empty.');
-
-        try {
-            DB::transaction(function () use ($cartItems, $request) {
-                $bySeller = $cartItems->groupBy('product.seller_id');
-
-                // Re-fetch and lock each distinct product row inside the transaction
-                // so two simultaneous checkouts can't both pass the stock check.
-                $lockedProducts = \App\Models\Ecommerce\Product::whereIn('id', $cartItems->pluck('product_id')->unique())
-                    ->lockForUpdate()
-                    ->get()
-                    ->keyBy('id');
-
-                $totalsByProduct = $cartItems->groupBy('product_id');
-
-                foreach ($totalsByProduct as $productId => $items) {
-                    $product = $lockedProducts[$productId];
-                    $totalQty = $items->sum('quantity');
-
-                    if ($totalQty > $product->stock) {
-                        throw new \Exception($product->name . ' only has ' . $product->stock . ' left in stock (you have ' . $totalQty . ' in cart).');
-                    }
+        $request->validate(['shipping_address' => 'required|string|max:2000', 'payment_mode' => 'required|in:cod']);
+        DB::transaction(function () use ($request) {
+            $cartItems = CartItem::where('user_id', $request->user()->id)->orderBy('id')->lockForUpdate()->get();
+            if ($cartItems->isEmpty()) {
+                throw ValidationException::withMessages(['quantity' => 'Your cart is empty.']);
+            }
+            $products = Product::with('seller')->whereIn('id', $cartItems->pluck('product_id'))
+                ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            foreach ($cartItems->groupBy('product_id') as $id => $items) {
+                $product = $products->get($id);
+                if (! $product || $product->status !== 'approved' || $product->seller?->status !== 'approved'
+                    || $product->seller->archived_at || ($product->seller->account_status && $product->seller->account_status !== 'active')) {
+                    throw ValidationException::withMessages(['quantity' => 'A product in your cart is no longer available. Please review your cart.']);
                 }
-
-                foreach ($bySeller as $sellerId => $items) {
-                    $order = Order::create([
-                        'buyer_id' => auth()->id(),
-                        'seller_id' => $sellerId,
-                        'total_amount' => $items->sum(fn($i) => $i->quantity * $i->product->price),
-                        'status' => 'placed',
-                        'payment_mode' => $request->payment_mode,
-                        'shipping_address' => $request->shipping_address,
-                    ]);
-
-                    $order->statusEvents()->create(['user_id' => auth()->id(), 'to_status' => 'placed']);
-                    \App\Models\Communication\Notification::create(['user_id' => $sellerId, 'type' => 'new_order', 'title' => 'New order '.$order->number, 'message' => 'A buyer placed an order. Review it in Orders.', 'link' => route('seller.orders.index', ['order' => $order->id])]);
-                    foreach ($items as $item) {
-                        $order->items()->create([
-                            'product_id' => $item->product_id,
-                            'quantity' => $item->quantity,
-                            'color' => $item->color,
-                            'size' => $item->size,
-                            'price' => $item->product->price,
-                        ]);
-
-                        $lockedProducts[$item->product_id]->decrement('stock', $item->quantity);
-                    }
+                if ($items->sum('quantity') > $product->stock) {
+                    throw ValidationException::withMessages(['quantity' => $product->name.' only has '.$product->stock.' left in stock.']);
                 }
-
-                CartItem::where('user_id', auth()->id())->delete();
-            });
-        } catch (\Exception $e) {
-            return back()->withErrors(['quantity' => $e->getMessage()]);
-        }
+            }
+            foreach ($cartItems->groupBy(fn ($item) => $products[$item->product_id]->seller_id) as $sellerId => $items) {
+                $order = Order::create([
+                    'buyer_id' => $request->user()->id, 'seller_id' => $sellerId,
+                    'total_amount' => $items->sum(fn ($item) => $item->quantity * $products[$item->product_id]->price),
+                    'shipping_fee' => 0, 'status' => 'placed', 'payment_mode' => $request->payment_mode,
+                    'shipping_address' => $request->shipping_address,
+                ]);
+                $order->statusEvents()->create(['user_id' => $request->user()->id, 'to_status' => 'placed']);
+                Notification::create(['user_id' => $sellerId, 'type' => 'new_order', 'title' => 'New order '.$order->number, 'message' => 'A buyer placed an order. Review it in Orders.', 'link' => route('seller.orders.index', ['order' => $order->id])]);
+                foreach ($items as $item) {
+                    $product = $products[$item->product_id];
+                    $order->items()->create(['product_id' => $product->id, 'quantity' => $item->quantity, 'color' => $item->color, 'size' => $item->size, 'price' => $product->price]);
+                    app(InventoryService::class)->changeLocked($product, -$item->quantity, 'checkout', $request->user()->id, $order->id);
+                }
+            }
+            CartItem::whereIn('id', $cartItems->pluck('id'))->where('user_id', $request->user()->id)->delete();
+        }, 3);
 
         return redirect()->route('buyer.orders.index')->with('success', 'Order placed.');
     }

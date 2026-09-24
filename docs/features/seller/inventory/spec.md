@@ -1,20 +1,12 @@
 # Seller Inventory
 
-**Status:** Partial: display only  
-**Reviewed:** 24 September 2026
+**Status:** Implemented stock display, restock and movement history.  
+**Updated:** 24 September 2026
 
-## Current behavior
+The Products & Inventory page reads seller-owned products, supports search/category/stock-status filters and pagination, and shows live inventory cards, category counts, and low-stock alerts. Restock adds a validated positive quantity and reason; a request key prevents duplicate additions. Stock changes from opening stock, restock, checkout and seller cancellation are recorded with actor, order where relevant, before/after quantities and timestamps.
 
-Seller dashboard shows low and out-of-stock product alerts from seller-owned products.
+Low stock is 1–10 units; zero is out of stock and more than 10 is in stock. Product edits do not allow directly replacing stock. Existing products start their movement history from the time tracking is enabled. Direct SQL/manual stock edits remain outside this ledger.
 
-## Gaps and acceptance direction
+Sources: `Seller/ProductController`, `InventoryService`, `InventoryMovement`, `Product`, `SellerOrderWorkflow`, and `Buyer/CheckoutController`.
 
-No seller product CRUD, stock adjustment, stock ledger, or restock action route is present.
-
-## Source evidence
-
-`app/Http/Controllers/Seller/DashboardController.php`, `app/Models/Ecommerce/Product.php`
-
-## Related documentation
-
-See [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+[Full implementation](../products-inventory/spec.md) · [Design functions](../products-inventory/design-functions.md)

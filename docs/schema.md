@@ -31,3 +31,8 @@ This overview is derived from Eloquent models and migrations, not a replacement 
 - Seller decline restores reserved stock under a transaction. Any additional cancel/refund path must be idempotent and audited to prevent duplicate restoration.
 - The order workflow migration changes status from the original limited enum to a wider string to accommodate ERP stages. Validate all status writes against `Order::STATUSES`.
 - Foreign-key cascade/null behavior is defined in migration files; inspect it before deleting or archiving records.
+
+## Seller operations additions (24 September 2026)
+
+- `inventory_movements`: product, nullable actor/order references, type, signed quantity, before/after stock, reason, unique optional request key and timestamps. Opening stock/restock/checkout/cancellation writes are transactional. Legacy balances are preserved; historical movements are not fabricated.
+- `orders`: unique stable `tracking_number`, nullable carrier name/reference and ETA range, `shipping_fee` default zero. Legacy references are backfilled by migration; new references are generated on order creation. ERP order status remains the only fulfillment status source.
