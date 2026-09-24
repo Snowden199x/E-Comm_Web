@@ -10,7 +10,11 @@
     // Simple global error toast, usable from anywhere via vendoToast(msg)
     // ---------------------------------------------------------------
     function vendoToast(message) {
-        window.dispatchEvent(new CustomEvent('vendo-toast', { detail: { message } }));
+        window.dispatchEvent(new CustomEvent('vendo-toast', {
+            detail: {
+                message
+            }
+        }));
     }
 
     // ---------------------------------------------------------------
@@ -44,7 +48,8 @@
                 field.focus();
                 return false;
             }
-            if (field.type !== 'checkbox' && field.type !== 'file' && field.tagName !== 'SELECT' && !String(field.value || '').trim()) {
+            if (field.type !== 'checkbox' && field.type !== 'file' && field.tagName !== 'SELECT' && !String(field
+                    .value || '').trim()) {
                 vendoToast('Please fill in all required fields before continuing.');
                 field.focus();
                 return false;
@@ -117,12 +122,14 @@
         if (!el) return '';
         return el.value || '';
     }
+
     function vendoSelectText(name) {
         const el = document.querySelector(`[name="${name}"]`);
         if (!el || el.selectedIndex < 0) return '';
         const opt = el.options[el.selectedIndex];
         return (opt && !opt.disabled) ? opt.text : '';
     }
+
     function vendoSetText(id, value) {
         const el = document.getElementById(id);
         if (el) el.textContent = value || '—';
@@ -138,7 +145,8 @@
         vendoSetText('review-phone', vendoFieldValue('contact_number'));
         vendoSetText('review-province', vendoFieldValue('province'));
         vendoSetText('review-street', vendoFieldValue('street'));
-        vendoSetText('review-sex', vendoFieldValue('sex') ? vendoFieldValue('sex').replace(/^\w/, c => c.toUpperCase()) : '');
+        vendoSetText('review-sex', vendoFieldValue('sex') ? vendoFieldValue('sex').replace(/^\w/, c => c
+            .toUpperCase()) : '');
         vendoSetText('review-birthday', vendoFieldValue('birthday'));
         vendoSetText('review-municipality', vendoFieldValue('municipality'));
         vendoSetText('review-zip', vendoFieldValue('zip_code'));
@@ -153,7 +161,8 @@
         // Seller-only fields (no-ops on the buyer form, since these elements won't exist there)
         vendoSetText('review-business-name', vendoFieldValue('business_name'));
         const permitLabel = document.getElementById('business-permit-label')?.textContent;
-        vendoSetText('review-business-permit', (permitLabel && permitLabel !== 'Upload business permit here') ? permitLabel : '');
+        vendoSetText('review-business-permit', (permitLabel && permitLabel !== 'Upload business permit here') ?
+            permitLabel : '');
         const checkedCategories = Array.from(document.querySelectorAll('.category-checkbox:checked'))
             .map((el) => el.nextElementSibling?.textContent?.trim())
             .filter(Boolean);
@@ -163,11 +172,189 @@
         vendoSetText('review-vehicle-type', vendoSelectText('vehicle_type'));
         vendoSetText('review-plate-number', vendoFieldValue('plate_number'));
         const licenseLabel = document.getElementById('drivers-license-label')?.textContent;
-        vendoSetText('review-drivers-license', (licenseLabel && licenseLabel !== "Upload driver's license here") ? licenseLabel : '');
+        vendoSetText('review-drivers-license', (licenseLabel && licenseLabel !== "Upload driver's license here") ?
+            licenseLabel : '');
         const orCrLabel = document.getElementById('or-cr-label')?.textContent;
         vendoSetText('review-or-cr', (orCrLabel && orCrLabel !== 'Upload OR/CR here') ? orCrLabel : '');
     }
     window.vendoRefreshRegistrationReview = vendoRefreshRegistrationReview;
+
+    function vendoRestoreSellerDraft(component) {
+        const key = 'vendo.seller.registration.draft';
+        const form = component.$el.querySelector('form');
+        const registration = Alpine.store('registration');
+        const address = Alpine.store('address');
+
+        const verifiedEmail = registration.otpVerified ?
+            registration.email :
+            '';
+
+        const allowedNames = new Set([
+            'last_name', 'first_name', 'middle_initial', 'sex',
+            'email', 'birthday', 'contact_number', 'street',
+            'zip_code', 'business_name', 'id_category', 'id_type',
+            'id_type_1', 'id_type_2', 'categories[]',
+        ]);
+
+        const addressKeys = [
+            'provinceQuery', 'provinceCode',
+            'municipalityQuery', 'municipalityCode',
+            'barangayQuery',
+        ];
+
+        let draft = null;
+
+        try {
+            draft = JSON.parse(sessionStorage.getItem(key) || 'null');
+        } catch (_) {
+            // Registration still works when browser storage is unavailable.
+        }
+
+        if (draft && typeof draft === 'object') {
+            component.idCategory = draft.idCategory === 'secondary' ?
+                'secondary' :
+                'primary';
+
+            for (const field of form.elements) {
+                if (!allowedNames.has(field.name)) continue;
+
+                const value = draft.fields?.[field.name];
+
+                if (field.type === 'checkbox') {
+                    field.checked = Array.isArray(value) &&
+                        value.includes(field.value);
+                } else if (typeof value === 'string') {
+                    field.value = value;
+                }
+            }
+
+            for (const name of addressKeys) {
+                if (typeof draft.address?.[name] === 'string') {
+                    address[name] = draft.address[name];
+                }
+            }
+
+            component.step = [1, 2, 3].includes(draft.step) ?
+                draft.step :
+                1;
+        }
+
+        const emailField = form.querySelector('[name="email"]');
+
+        if (emailField && !emailField.value && verifiedEmail) {
+            emailField.value = verifiedEmail;
+        }
+
+        registration.email = (emailField?.value || '').trim().toLowerCase();
+        registration.otpVerified = Boolean(
+            verifiedEmail &&
+            registration.email === verifiedEmail
+        );
+
+        // An expired verification must be completed again.
+        if (!registration.otpVerified) {
+            component.step = 1;
+        }
+
+        form.querySelector('[name="birthday"]')
+            ?.dispatchEvent(new Event('change', {
+                bubbles: true
+            }));
+
+        // Restore option lists without clearing the saved address.
+        const loadOptions = async (path, property) => {
+            try {
+                const response = await fetch(
+                    `https://psgc.gitlab.io/api/${path}/`
+                );
+
+                if (!response.ok) throw new Error('Address request failed');
+
+                const list = await response.json();
+
+                address[property] = list.sort(
+                    (a, b) => a.name.localeCompare(b.name)
+                );
+            } catch (_) {
+                vendoToast('Could not reload address options. Please try again.');
+            }
+        };
+
+        if (address.provinceCode) {
+            loadOptions(
+                `provinces/${encodeURIComponent(address.provinceCode)}/cities-municipalities`,
+                'municipalities'
+            );
+        }
+
+        if (address.municipalityCode) {
+            loadOptions(
+                `cities-municipalities/${encodeURIComponent(address.municipalityCode)}/barangays`,
+                'barangays'
+            );
+        }
+
+        const save = () => {
+            if (component.showSuccessModal) return;
+
+            const fields = {};
+
+            for (const field of form.elements) {
+                if (!allowedNames.has(field.name)) continue;
+
+                if (field.type === 'checkbox') {
+                    fields[field.name] ??= [];
+
+                    if (field.checked) {
+                        fields[field.name].push(field.value);
+                    }
+                } else {
+                    fields[field.name] = field.value;
+                }
+            }
+
+            try {
+                sessionStorage.setItem(key, JSON.stringify({
+                    step: component.step,
+                    idCategory: component.idCategory,
+                    fields,
+                    address: Object.fromEntries(
+                        addressKeys.map(name => [name, address[name]])
+                    ),
+                }));
+            } catch (_) {
+                // Do not prevent submission when storage is unavailable.
+            }
+        };
+
+        // Save after Alpine has updated its bound values.
+        const scheduleSave = () => component.$nextTick(save);
+
+        form.addEventListener('input', scheduleSave);
+        form.addEventListener('change', scheduleSave);
+        window.addEventListener('otp-verified', scheduleSave);
+        window.addEventListener('pagehide', save);
+
+        component.$watch('step', scheduleSave);
+        component.$watch('idCategory', scheduleSave);
+
+        for (const name of addressKeys) {
+            component.$watch(`$store.address.${name}`, scheduleSave);
+        }
+
+        component.$watch('showSuccessModal', success => {
+            if (!success) return;
+
+            try {
+                sessionStorage.removeItem(key);
+            } catch (_) {}
+        });
+
+        component.$nextTick(() => {
+            vendoRefreshRegistrationReview();
+            save();
+        });
+    }
 
     document.addEventListener('alpine:init', () => {
 
@@ -182,16 +369,25 @@
             toast.message = e.detail.message;
             toast.visible = true;
             clearTimeout(toast.timer);
-            toast.timer = setTimeout(() => { toast.visible = false; }, 5000);
+            toast.timer = setTimeout(() => {
+                toast.visible = false;
+            }, 5000);
         });
 
         // -------------------------------------------------------------
         // Global store: tracks whether the entered email has been
         // verified via the 6-digit OTP flow.
         // -------------------------------------------------------------
+        @php
+            $registrationVerification = session('registration_verification', []);
+            $registrationEmail = $registrationVerification['email'] ?? '';
+
+            $registrationVerified = $registrationEmail !== '' && ($registrationVerification['expires_at'] ?? 0) > now()->timestamp && \Illuminate\Support\Facades\Cache::get('otp_verified:' . $registrationEmail, false);
+        @endphp
+
         Alpine.store('registration', {
-            otpVerified: false,
-            email: '',
+            otpVerified: @json((bool) $registrationVerified),
+            email: @json($registrationVerified ? $registrationEmail : ''),
         });
 
         // -------------------------------------------------------------
@@ -232,23 +428,30 @@
                         list.sort((a, b) => a.name.localeCompare(b.name));
                         this.provinces = list;
                     })
-                    .catch(() => { this.provinces = []; })
-                    .finally(() => { this.loadingProvinces = false; });
+                    .catch(() => {
+                        this.provinces = [];
+                    })
+                    .finally(() => {
+                        this.loadingProvinces = false;
+                    });
             },
 
             filteredProvinces() {
                 const q = this.provinceQuery.trim().toLowerCase();
-                const list = q ? this.provinces.filter((p) => p.name.toLowerCase().includes(q)) : this.provinces;
+                const list = q ? this.provinces.filter((p) => p.name.toLowerCase().includes(q)) : this
+                    .provinces;
                 return list.slice(0, 60);
             },
             filteredMunicipalities() {
                 const q = this.municipalityQuery.trim().toLowerCase();
-                const list = q ? this.municipalities.filter((m) => m.name.toLowerCase().includes(q)) : this.municipalities;
+                const list = q ? this.municipalities.filter((m) => m.name.toLowerCase().includes(q)) :
+                    this.municipalities;
                 return list.slice(0, 60);
             },
             filteredBarangays() {
                 const q = this.barangayQuery.trim().toLowerCase();
-                const list = q ? this.barangays.filter((b) => b.name.toLowerCase().includes(q)) : this.barangays;
+                const list = q ? this.barangays.filter((b) => b.name.toLowerCase().includes(q)) : this
+                    .barangays;
                 return list.slice(0, 60);
             },
 
@@ -270,8 +473,12 @@
                         list.sort((a, b) => a.name.localeCompare(b.name));
                         this.municipalities = list;
                     })
-                    .catch(() => { this.municipalities = []; })
-                    .finally(() => { this.loadingMunicipalities = false; });
+                    .catch(() => {
+                        this.municipalities = [];
+                    })
+                    .finally(() => {
+                        this.loadingMunicipalities = false;
+                    });
             },
 
             selectMunicipality(item) {
@@ -289,8 +496,12 @@
                         list.sort((a, b) => a.name.localeCompare(b.name));
                         this.barangays = list;
                     })
-                    .catch(() => { this.barangays = []; })
-                    .finally(() => { this.loadingBarangays = false; });
+                    .catch(() => {
+                        this.barangays = [];
+                    })
+                    .finally(() => {
+                        this.loadingBarangays = false;
+                    });
             },
 
             selectBarangay(item) {
@@ -303,7 +514,8 @@
             // never be submitted. Also cascades the clear downstream.
             commit(kind) {
                 if (kind === 'province') {
-                    const match = this.provinces.find((p) => p.name.toLowerCase() === this.provinceQuery.trim().toLowerCase());
+                    const match = this.provinces.find((p) => p.name.toLowerCase() === this.provinceQuery
+                        .trim().toLowerCase());
                     if (match) {
                         this.provinceQuery = match.name;
                         this.provinceCode = match.code;
@@ -317,7 +529,8 @@
                         this.barangays = [];
                     }
                 } else if (kind === 'municipality') {
-                    const match = this.municipalities.find((m) => m.name.toLowerCase() === this.municipalityQuery.trim().toLowerCase());
+                    const match = this.municipalities.find((m) => m.name.toLowerCase() === this
+                        .municipalityQuery.trim().toLowerCase());
                     if (match) {
                         this.municipalityQuery = match.name;
                         this.municipalityCode = match.code;
@@ -328,7 +541,8 @@
                         this.barangays = [];
                     }
                 } else if (kind === 'barangay') {
-                    const match = this.barangays.find((b) => b.name.toLowerCase() === this.barangayQuery.trim().toLowerCase());
+                    const match = this.barangays.find((b) => b.name.toLowerCase() === this.barangayQuery
+                        .trim().toLowerCase());
                     this.barangayQuery = match ? match.name : '';
                 }
             },
@@ -362,7 +576,9 @@
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': vendoCsrfToken(),
                         },
-                        body: JSON.stringify({ email: Alpine.store('registration').email }),
+                        body: JSON.stringify({
+                            email: Alpine.store('registration').email
+                        }),
                     });
                     const data = await res.json();
                     if (!res.ok) {
@@ -392,7 +608,10 @@
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': vendoCsrfToken(),
                         },
-                        body: JSON.stringify({ email: Alpine.store('registration').email, code }),
+                        body: JSON.stringify({
+                            email: Alpine.store('registration').email,
+                            code
+                        }),
                     });
                     const data = await res.json();
                     if (res.ok && data.success) {
@@ -421,8 +640,11 @@
                 if (index >= 0 && index <= 5) document.getElementById('otp-' + index)?.focus();
             },
             handlePaste(event) {
-                const text = (event.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
-                text.split('').forEach((char, i) => { this.digits[i] = char; });
+                const text = (event.clipboardData || window.clipboardData).getData('text').replace(
+                    /\D/g, '').slice(0, 6);
+                text.split('').forEach((char, i) => {
+                    this.digits[i] = char;
+                });
                 this.focusAt(Math.min(text.length, 5));
             },
         }));
@@ -436,7 +658,10 @@
         const age = document.querySelector('[name="age"]');
         if (birthday && age) {
             birthday.addEventListener('change', () => {
-                if (!birthday.value) { age.value = ''; return; }
+                if (!birthday.value) {
+                    age.value = '';
+                    return;
+                }
                 const b = new Date(birthday.value);
                 const today = new Date();
                 let years = today.getFullYear() - b.getFullYear();

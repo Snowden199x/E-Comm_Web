@@ -1,391 +1,45 @@
-/**
- * Vendo – Seller / Order Management / Orders
- *
- * Handles:
- * - Order details drawer
- * - Status/search/date filters
- * - Client-side pagination
- */
-
-(function () {
+(() => {
     'use strict';
-
-    /* ---------------------------------------------------------
-       Drawer (view order details)
-       --------------------------------------------------------- */
-    var layout        = document.getElementById('omoLayout');
-    var drawer        = document.getElementById('omoDrawer');
-    var closeBtn      = document.getElementById('omoDrawerClose');
-    var drawerTitle   = document.getElementById('omoDrawerTitle');
-    var drawerOrderId = document.getElementById('omoDrawerOrderId');
-    var drawerCustomer = document.getElementById('omoDrawerCustomer');
-
-    function openDrawer(btn) {
-        var row = btn.closest('tr');
-        var orderId = btn.getAttribute('data-order');
-        var customer = row ? row.getAttribute('data-customer') : null;
-
-        document.querySelectorAll('.omo-view-btn').forEach(function (b) {
-            b.classList.remove('is-active');
-        });
-        btn.classList.add('is-active');
-
-        if (orderId) {
-            drawerTitle.textContent = 'Order #' + orderId;
-            drawerOrderId.textContent = '#' + orderId;
-        }
-        if (customer) {
-            drawerCustomer.textContent = customer;
-        }
-
-        layout.classList.add('is-open');
-        drawer.setAttribute('aria-hidden', 'false');
+    const app=document.getElementById('omoApp'); if(!app)return;
+    const el=id=>document.getElementById(id), initial=JSON.parse(el('omoInitial').textContent);
+    const state={status:'all',search:'',date_from:'',date_to:'',page:1,...initial.filters};
+    let pagination=initial.pagination,currentOrder=null,listSeq=0,drawerSeq=0,saving=false,timer;
+    const showError=(message,id='omoError')=>{const node=el(id);node.textContent=message;node.hidden=!message;};
+    async function api(url,options={}){
+        const response=await fetch(url,{...options,headers:{Accept:'application/json','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,...options.headers}});
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(Object.values(data.errors||{})[0]?.[0]||data.message||'Could not load orders. Please try again.');
+        return data;
     }
-
-    function closeDrawer() {
-        layout.classList.remove('is-open');
-        drawer.setAttribute('aria-hidden', 'true');
-        document.querySelectorAll('.omo-view-btn').forEach(function (b) {
-            b.classList.remove('is-active');
-        });
+    function sync(counts){
+        if(counts)document.querySelectorAll('[data-count]').forEach(node=>node.textContent=Number(counts[node.dataset.count]||0).toLocaleString());
+        document.querySelectorAll('#omoTabs .omo-tab,.omo-status-option').forEach(node=>node.classList.toggle(node.classList.contains('omo-tab')?'is-active':'is-selected',node.dataset.status===state.status));
+        const labels={all:'All status',new:'New',pack:'To Pack',pickup:'Ready for Pickup',pending:'Pending Delivery',completed:'Delivered / Completed',cancelled:'Cancelled',returned:'Returned'};
+        el('omoStatusLabel').textContent=labels[state.status]||labels.all;
+        el('omoResultCount').textContent=`Showing ${pagination.from||0}–${pagination.to||0} out of ${pagination.total} entries`;
+        el('omoPrevPage').disabled=pagination.page<=1;el('omoNextPage').disabled=pagination.page>=pagination.last;
+        const pages=el('omoPagerPages');pages.replaceChildren();
+        for(let page=Math.max(1,pagination.page-2);page<=Math.min(pagination.last,pagination.page+2);page++){const button=document.createElement('button');button.type='button';button.textContent=page;button.classList.toggle('is-active',page===pagination.page);if(page===pagination.page)button.setAttribute('aria-current','page');button.addEventListener('click',()=>{state.page=page;load();});pages.append(button);}
+        document.querySelectorAll('.omo-view-btn').forEach(node=>node.classList.toggle('is-active',Number(node.dataset.id)===currentOrder));
     }
-
-    document.getElementById('omoTableBody').addEventListener('click', function (e) {
-        var btn = e.target.closest('.omo-view-btn');
-        if (!btn) return;
-
-        var isOpen = layout.classList.contains('is-open') && btn.classList.contains('is-active');
-        isOpen ? closeDrawer() : openDrawer(btn);
-    });
-
-    closeBtn.addEventListener('click', closeDrawer);
-    document.getElementById('omoAccept').addEventListener('click', closeDrawer);
-    document.getElementById('omoDecline').addEventListener('click', closeDrawer);
-
-    /* ---------------------------------------------------------
-       Filtering + pagination
-       --------------------------------------------------------- */
-    var rows         = Array.prototype.slice.call(document.querySelectorAll('#omoTableBody tr[data-status]'));
-    var noResults    = document.getElementById('omoNoResults');
-    var resultCount  = document.getElementById('omoResultCount');
-    var tabs         = Array.prototype.slice.call(document.querySelectorAll('#omoTabs .omo-tab'));
-    var statusBtn    = document.getElementById('omoStatusBtn');
-    var statusPanel  = document.getElementById('omoStatusPanel');
-    var statusLabel  = document.getElementById('omoStatusLabel');
-    var statusOptions = Array.prototype.slice.call(document.querySelectorAll('.omo-status-option'));
-    var dateBtn      = document.getElementById('omoDateBtn');
-    var datePanel    = document.getElementById('omoDatePanel');
-    var dateLabel    = document.getElementById('omoDateLabel');
-    var dateFromInput = document.getElementById('omoDateFrom');
-    var dateToInput   = document.getElementById('omoDateTo');
-    var searchInput  = document.getElementById('omoSearchInput');
-
-    var prevPageBtn  = document.getElementById('omoPrevPage');
-    var nextPageBtn  = document.getElementById('omoNextPage');
-    var pagerPages   = document.getElementById('omoPagerPages');
-
-    var PAGE_SIZE = 10;
-    var currentPage = 1;
-    var filteredRows = [];
-
-    var state = {
-        status: 'all',
-        search: '',
-        dateFrom: '',
-        dateTo: ''
-    };
-
-    // Badge counts, computed once from the actual row data.
-    var counts = { new: 0, pack: 0, pickup: 0, pending: 0, completed: 0 };
-    rows.forEach(function (row) {
-        counts[row.getAttribute('data-status')]++;
-    });
-
-    document.querySelectorAll('.omo-tab__badge').forEach(function (el) {
-        el.textContent = counts[el.getAttribute('data-count')] || 0;
-    });
-
-    function rowMatchesFilters(row) {
-        var q = state.search.trim().toLowerCase();
-
-        if (state.status !== 'all' && row.getAttribute('data-status') !== state.status) {
-            return false;
-        }
-
-        if (q) {
-            var customer = (row.getAttribute('data-customer') || '').toLowerCase();
-            var orderId  = (row.getAttribute('data-order') || '').toLowerCase();
-
-            if (customer.indexOf(q) === -1 && orderId.indexOf(q) === -1) {
-                return false;
-            }
-        }
-
-        if (state.dateFrom && row.getAttribute('data-date') < state.dateFrom) {
-            return false;
-        }
-
-        if (state.dateTo && row.getAttribute('data-date') > state.dateTo) {
-            return false;
-        }
-
-        return true;
-    }
-
-    function renderPagination() {
-        var totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
-
-        if (currentPage > totalPages) {
-            currentPage = totalPages;
-        }
-
-        pagerPages.innerHTML = '';
-
-        for (var page = 1; page <= totalPages; page++) {
-            var pageBtn = document.createElement('button');
-            pageBtn.type = 'button';
-            pageBtn.textContent = page;
-            pageBtn.setAttribute('aria-label', 'Page ' + page);
-
-            if (page === currentPage) {
-                pageBtn.classList.add('is-active');
-                pageBtn.setAttribute('aria-current', 'page');
-            }
-
-            pageBtn.addEventListener('click', (function (selectedPage) {
-                return function () {
-                    currentPage = selectedPage;
-                    renderPage();
-                };
-            })(page));
-
-            pagerPages.appendChild(pageBtn);
-        }
-
-        prevPageBtn.disabled = currentPage === 1 || filteredRows.length === 0;
-        nextPageBtn.disabled = currentPage === totalPages || filteredRows.length === 0;
-    }
-
-    function renderPage() {
-        rows.forEach(function (row) {
-            row.style.display = 'none';
-        });
-
-        var start = (currentPage - 1) * PAGE_SIZE;
-        var end = Math.min(start + PAGE_SIZE, filteredRows.length);
-
-        for (var i = start; i < end; i++) {
-            filteredRows[i].style.display = '';
-        }
-
-        noResults.style.display = filteredRows.length === 0 ? '' : 'none';
-
-        if (filteredRows.length === 0) {
-            resultCount.textContent = 'Showing 0 out of ' + rows.length + ' entries';
-        } else {
-            resultCount.textContent =
-                'Showing ' + (start + 1) + '–' + end +
-                ' out of ' + filteredRows.length + ' entries';
-        }
-
-        renderPagination();
-    }
-
-    function applyFilters(resetPage) {
-        filteredRows = rows.filter(rowMatchesFilters);
-
-        if (resetPage !== false) {
-            currentPage = 1;
-        }
-
-        renderPage();
-    }
-
-    // ---- Tabs ----
-    function syncTabsFromStatus() {
-        tabs.forEach(function (t) {
-            t.classList.toggle(
-                'is-active',
-                t.getAttribute('data-status') === state.status
-            );
-        });
-    }
-
-    tabs.forEach(function (tab) {
-        tab.addEventListener('click', function () {
-            state.status = tab.getAttribute('data-status');
-            syncTabsFromStatus();
-            syncStatusDropdownFromStatus();
-            applyFilters(true);
-        });
-    });
-
-    // ---- Status dropdown ----
-    function syncStatusDropdownFromStatus() {
-        var match = statusOptions.filter(function (o) {
-            return o.getAttribute('data-status') === state.status;
-        })[0];
-
-        statusOptions.forEach(function (o) {
-            o.classList.remove('is-selected');
-        });
-
-        if (match) {
-            match.classList.add('is-selected');
-            statusLabel.textContent =
-                state.status === 'all'
-                    ? 'All status'
-                    : match.querySelector('span').textContent;
-        } else {
-            statusLabel.textContent = 'All status';
-        }
-    }
-
-    statusOptions.forEach(function (opt) {
-        opt.addEventListener('click', function () {
-            state.status = opt.getAttribute('data-status');
-            syncStatusDropdownFromStatus();
-            syncTabsFromStatus();
-            closePanel(statusPanel, statusBtn);
-            applyFilters(true);
-        });
-    });
-
-    // ---- Search ----
-    searchInput.addEventListener('input', function (e) {
-        state.search = e.target.value;
-        applyFilters(true);
-    });
-
-    // ---- Date dropdown ----
-    var ANCHOR = '2026-05-20';
-
-    function toISO(d) {
-        return d.getFullYear() + '-' +
-            String(d.getMonth() + 1).padStart(2, '0') + '-' +
-            String(d.getDate()).padStart(2, '0');
-    }
-
-    document.querySelectorAll('.omo-date-preset').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var preset = btn.getAttribute('data-preset');
-            var anchor = new Date(ANCHOR + 'T00:00:00');
-            var from = '', to = '', label = 'All Dates';
-
-            if (preset === 'today') {
-                from = to = ANCHOR;
-                label = 'Today';
-            } else if (preset === '7days') {
-                var weekAgo = new Date(anchor);
-                weekAgo.setDate(weekAgo.getDate() - 6);
-                from = toISO(weekAgo);
-                to = ANCHOR;
-                label = 'Last 7 Days';
-            } else if (preset === 'month') {
-                var first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-                from = toISO(first);
-                to = ANCHOR;
-                label = 'This Month';
-            }
-
-            dateFromInput.value = from;
-            dateToInput.value = to;
-            state.dateFrom = from;
-            state.dateTo = to;
-            dateLabel.textContent = label;
-            closePanel(datePanel, dateBtn);
-            applyFilters(true);
-        });
-    });
-
-    document.getElementById('omoDateApply').addEventListener('click', function () {
-        state.dateFrom = dateFromInput.value || '';
-        state.dateTo = dateToInput.value || '';
-
-        if (state.dateFrom && state.dateTo) {
-            dateLabel.textContent = state.dateFrom + ' – ' + state.dateTo;
-        } else if (state.dateFrom) {
-            dateLabel.textContent = 'From ' + state.dateFrom;
-        } else if (state.dateTo) {
-            dateLabel.textContent = 'Until ' + state.dateTo;
-        } else {
-            dateLabel.textContent = 'All Dates';
-        }
-
-        closePanel(datePanel, dateBtn);
-        applyFilters(true);
-    });
-
-    document.getElementById('omoDateClear').addEventListener('click', function () {
-        dateFromInput.value = '';
-        dateToInput.value = '';
-        state.dateFrom = '';
-        state.dateTo = '';
-        dateLabel.textContent = 'All Dates';
-        applyFilters(true);
-    });
-
-    // ---- Dropdown open/close ----
-    function openPanel(panel, btn) {
-        closeAllPanels();
-        panel.classList.add('is-open');
-        btn.setAttribute('aria-expanded', 'true');
-    }
-
-    function closePanel(panel, btn) {
-        panel.classList.remove('is-open');
-        btn.setAttribute('aria-expanded', 'false');
-    }
-
-    function closeAllPanels() {
-        closePanel(statusPanel, statusBtn);
-        closePanel(datePanel, dateBtn);
-    }
-
-    statusBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-
-        statusPanel.classList.contains('is-open')
-            ? closePanel(statusPanel, statusBtn)
-            : openPanel(statusPanel, statusBtn);
-    });
-
-    dateBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-
-        datePanel.classList.contains('is-open')
-            ? closePanel(datePanel, dateBtn)
-            : openPanel(datePanel, dateBtn);
-    });
-
-    document.addEventListener('click', function (e) {
-        if (!e.target.closest('.omo-filter')) {
-            closeAllPanels();
-        }
-    });
-
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') {
-            closeAllPanels();
-        }
-    });
-
-    // ---- Pagination buttons ----
-    prevPageBtn.addEventListener('click', function () {
-        if (currentPage > 1) {
-            currentPage--;
-            renderPage();
-        }
-    });
-
-    nextPageBtn.addEventListener('click', function () {
-        var totalPages = Math.ceil(filteredRows.length / PAGE_SIZE);
-
-        if (currentPage < totalPages) {
-            currentPage++;
-            renderPage();
-        }
-    });
-
-    applyFilters(true);
+    async function load(){const seq=++listSeq;try{const params=new URLSearchParams(Object.entries(state).filter(([,v])=>v!==''&&v!=null));const data=await api(`${app.dataset.endpoint}?${params}`);if(seq!==listSeq)return;el('omoTableBody').innerHTML=data.html;pagination=data.pagination;sync(data.counts);showError('');history.replaceState(null,'',`${app.dataset.endpoint}?${params}`);}catch(error){if(seq===listSeq)showError(error.message);}}
+    async function openOrder(id){const seq=++drawerSeq;currentOrder=Number(id);el('omoLayout').classList.add('is-open');el('omoDrawer').setAttribute('aria-hidden','false');el('omoDrawer').innerHTML='<div class="omo-drawer__inner"><p class="omo-empty">Loading order…</p></div>';try{const data=await api(`${app.dataset.orderBase}/${id}`);if(seq!==drawerSeq)return;el('omoDrawer').innerHTML=data.html;sync();}catch(error){if(seq===drawerSeq){closeOrder();showError(error.message);}}}
+    function closeOrder(){if(saving)return;drawerSeq++;currentOrder=null;el('omoLayout').classList.remove('is-open');el('omoDrawer').setAttribute('aria-hidden','true');sync();}
+    el('omoTableBody').addEventListener('click',event=>{const btn=event.target.closest('.omo-view-btn');if(btn&&!saving)(currentOrder===Number(btn.dataset.id)?closeOrder():openOrder(btn.dataset.id));});
+    el('omoDrawer').addEventListener('click',event=>{if(event.target.closest('#omoDrawerClose'))closeOrder();});
+    el('omoDrawer').addEventListener('submit',async event=>{if(event.target.id!=='omoActionForm')return;event.preventDefault();if(saving)return;const form=event.target,action=event.submitter?.value;if(!action)return;const body=Object.fromEntries(new FormData(form));body.action=action;if(action==='decline'&&!body.reason?.trim()){showError('Enter a reason before declining this order.','omoActionError');form.elements.reason.focus();return;}saving=true;showError('','omoActionError');const buttons=[...form.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);try{await api(form.dataset.url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});await Promise.all([load(),openOrder(currentOrder)]);}catch(error){showError(error.message,'omoActionError');buttons.forEach(b=>b.disabled=false);}finally{saving=false;}});
+    function closePanels(){[['omoStatusPanel','omoStatusBtn'],['omoDatePanel','omoDateBtn']].forEach(([panel,button])=>{el(panel).classList.remove('is-open');el(button).setAttribute('aria-expanded','false');});}
+    function filter(status){state.status=status||'all';state.page=1;closePanels();sync();load();}
+    document.querySelectorAll('#omoTabs .omo-tab,.omo-status-option,[data-filter]').forEach(btn=>btn.addEventListener('click',()=>filter(btn.dataset.status||btn.dataset.filter)));
+    el('omoSearchInput').value=state.search;el('omoSearchInput').addEventListener('input',event=>{state.search=event.target.value;state.page=1;clearTimeout(timer);timer=setTimeout(load,250);});
+    [['omoStatusPanel','omoStatusBtn'],['omoDatePanel','omoDateBtn']].forEach(([panel,button])=>el(button).addEventListener('click',()=>{const open=!el(panel).classList.contains('is-open');closePanels();el(panel).classList.toggle('is-open',open);el(button).setAttribute('aria-expanded',String(open));}));
+    document.addEventListener('click',event=>{if(!event.target.closest('.omo-filter'))closePanels();});document.addEventListener('keydown',event=>{if(event.key==='Escape'){closePanels();closeOrder();}});
+    const iso=date=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    function setDates(from,to,label){if(from&&to&&from>to){showError('The end date must be on or after the start date.');return;}state.date_from=from;state.date_to=to;state.page=1;el('omoDateFrom').value=from;el('omoDateTo').value=to;el('omoDateLabel').textContent=label||(from||to?`${from||'Any'} – ${to||'Any'}`:'All Dates');closePanels();load();}
+    document.querySelectorAll('.omo-date-preset').forEach(btn=>btn.addEventListener('click',()=>{const today=app.dataset.today,date=new Date(today+'T00:00:00');if(btn.dataset.preset==='today')setDates(today,today,'Today');else if(btn.dataset.preset==='7days'){date.setDate(date.getDate()-6);setDates(iso(date),today,'Last 7 Days');}else if(btn.dataset.preset==='month'){date.setDate(1);setDates(iso(date),today,'This Month');}else setDates('','','All Dates');}));
+    el('omoDateApply').addEventListener('click',()=>setDates(el('omoDateFrom').value,el('omoDateTo').value));el('omoDateClear').addEventListener('click',()=>setDates('','','All Dates'));
+    el('omoPrevPage').addEventListener('click',()=>{if(state.page>1){state.page--;load();}});el('omoNextPage').addEventListener('click',()=>{if(state.page<pagination.last){state.page++;load();}});
+    el('omoDateFrom').value=state.date_from;el('omoDateTo').value=state.date_to;if(state.date_from||state.date_to)el('omoDateLabel').textContent=`${state.date_from||'Any'} – ${state.date_to||'Any'}`;
+    sync(initial.counts);if(initial.filters.order)openOrder(initial.filters.order);
+    setInterval(()=>{if(!document.hidden&&!saving&&!currentOrder)load();},15000);
 })();

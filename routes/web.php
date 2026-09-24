@@ -176,9 +176,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('buyer')->name('buyer.')->group(function () {
-    Route::get('/register', function () {
-        return view('buyer.auth.register');
-    })->name('register');
+    Route::get('/register', [RegisteredBuyerController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredBuyerController::class, 'store'])->name('register.store');
 
     Route::get('/login', function () {
@@ -199,6 +197,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::post('/checkout', [BuyerCheckoutController::class, 'store'])->middleware('auth')->name('checkout.store');
     Route::get('/orders', [BuyerOrderController::class, 'index'])->middleware('auth')->name('orders.index');
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->middleware('auth')->name('orders.show');
+    Route::post('/orders/{order}/complete', [BuyerOrderController::class, 'complete'])->middleware('auth')->whereNumber('order')->name('orders.complete');
     Route::get('/messages', [BuyerMessageController::class, 'index'])->middleware('auth')->name('messages.index');
     Route::post('/messages/start', [BuyerMessageController::class, 'start'])->middleware('auth')->name('messages.start');
     Route::post('/messages/{conversation}/close', [BuyerMessageController::class, 'close'])->middleware('auth')->name('messages.close');
@@ -232,15 +231,13 @@ Route::prefix('seller')->name('seller.')->group(function () {
     Route::post('/login', [SellerAuthenticatedSessionController::class, 'store'])->name('login.store');
     Route::post('/logout', [SellerAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
-    Route::get('/dashboard', [SellerDashboardController::class, 'index'])
-        ->middleware('auth')
-        ->name('dashboard');
-
-    Route::get('/orders', function () {
-        return view('seller.order-management-orders.index');
-    })
-        ->middleware('auth')
-        ->name('orders.index');
+    Route::middleware(['auth', \App\Http\Middleware\EnsureActiveSeller::class])->group(function () {
+        Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/orders', [\App\Http\Controllers\Seller\OrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}/waybill', [\App\Http\Controllers\Seller\OrderController::class, 'waybill'])->whereNumber('order')->name('orders.waybill');
+        Route::get('/orders/{order}', [\App\Http\Controllers\Seller\OrderController::class, 'show'])->whereNumber('order')->name('orders.show');
+        Route::patch('/orders/{order}', [\App\Http\Controllers\Seller\OrderController::class, 'update'])->whereNumber('order')->name('orders.update');
+    });
 });
 
 /*

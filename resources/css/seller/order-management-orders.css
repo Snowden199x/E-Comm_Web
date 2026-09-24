@@ -564,4 +564,4 @@
 
 @media (prefers-reduced-motion: reduce) {
     .omo-drawer, .omo-main { transition: none; }
-}
+}.omo-error{padding:12px;margin:12px 0;border:1px solid #b42318;color:#b42318;border-radius:8px;font-size:13px}.omo-error[hidden]{display:none}.omo-empty{padding:28px;text-align:center;color:#666}.omo-reason{flex-basis:100%;font-size:12px}.omo-reason textarea{display:block;width:100%;min-height:64px;padding:8px;margin-top:6px;border:1px solid #ccc;border-radius:6px;font:inherit;box-sizing:border-box}.omo-drawer__actions{flex-wrap:wrap}.omo-btn:disabled{opacity:.5;cursor:not-allowed}.omo-info-grid dd,.omo-history{overflow-wrap:anywhere}.omo-history{font-size:12px;line-height:1.6;margin:8px 0}.omo-item__img{width:44px;height:44px;object-fit:cover;flex-shrink:0}.omo-pill--cancelled,.omo-pill--returned{color:#a12828;border-color:#d99797}.omo-tabs{overflow-x:auto}

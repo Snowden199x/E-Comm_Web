@@ -67,11 +67,13 @@ class CheckoutController extends Controller
                         'buyer_id' => auth()->id(),
                         'seller_id' => $sellerId,
                         'total_amount' => $items->sum(fn($i) => $i->quantity * $i->product->price),
-                        'status' => 'pending',
+                        'status' => 'placed',
                         'payment_mode' => $request->payment_mode,
                         'shipping_address' => $request->shipping_address,
                     ]);
 
+                    $order->statusEvents()->create(['user_id' => auth()->id(), 'to_status' => 'placed']);
+                    \App\Models\Communication\Notification::create(['user_id' => $sellerId, 'type' => 'new_order', 'title' => 'New order '.$order->number, 'message' => 'A buyer placed an order. Review it in Orders.', 'link' => route('seller.orders.index', ['order' => $order->id])]);
                     foreach ($items as $item) {
                         $order->items()->create([
                             'product_id' => $item->product_id,

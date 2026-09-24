@@ -20,364 +20,268 @@
             display: none !important;
         }
 
-        @keyframes shake {
+        /* ---------------------------------------------------------
+           Ambient animated background (left panel)
+        --------------------------------------------------------- */
+        .blob {
+            position: absolute;
+            border-radius: 9999px;
+            filter: blur(70px);
+            will-change: transform;
+            pointer-events: none;
+        }
+
+        .blob-1 {
+            width: 380px;
+            height: 380px;
+            top: -100px;
+            left: -90px;
+            background: radial-gradient(circle at 30% 30%, rgba(201, 147, 58, 0.5), rgba(201, 147, 58, 0) 70%);
+            animation: blobMove1 17s ease-in-out infinite;
+        }
+
+        .blob-2 {
+            width: 340px;
+            height: 340px;
+            bottom: -120px;
+            right: -100px;
+            background: radial-gradient(circle at 60% 60%, rgba(168, 101, 201, 0.4), rgba(168, 101, 201, 0) 70%);
+            animation: blobMove2 21s ease-in-out infinite;
+        }
+
+        .blob-3 {
+            width: 260px;
+            height: 260px;
+            top: 42%;
+            left: -70px;
+            background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0) 70%);
+            animation: blobMove3 14s ease-in-out infinite;
+        }
+
+        @keyframes blobMove1 {
 
             0%,
             100% {
-                transform: translateX(0);
+                transform: translate(0, 0) scale(1);
             }
 
-            20%,
-            60% {
-                transform: translateX(-4px);
+            33% {
+                transform: translate(45px, 35px) scale(1.15);
             }
 
-            40%,
-            80% {
-                transform: translateX(4px);
+            66% {
+                transform: translate(-25px, 15px) scale(0.9);
             }
         }
 
-        .shake-error {
-            animation: shake 0.4s ease-in-out;
-            border-color: #ef4444 !important;
+        @keyframes blobMove2 {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            40% {
+                transform: translate(-35px, -30px) scale(1.1);
+            }
+
+            70% {
+                transform: translate(20px, -10px) scale(0.95);
+            }
+        }
+
+        @keyframes blobMove3 {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: translate(30px, -20px) scale(1.2);
+                opacity: 0.9;
+            }
+        }
+
+        .aurora-sweep {
+            position: absolute;
+            inset: -50%;
+            background: conic-gradient(from 0deg, transparent 0%, rgba(201, 147, 58, 0.10) 15%, transparent 30%, transparent 60%, rgba(255, 255, 255, 0.05) 75%, transparent 90%);
+            animation: spinSlow 30s linear infinite;
+        }
+
+        @keyframes spinSlow {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ---------------------------------------------------------
+           Entrance animation
+        --------------------------------------------------------- */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            opacity: 0;
+            animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes floatIllustration {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .float-illustration {
+            animation: floatIllustration 5s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .blob, .aurora-sweep, .fade-in-up, .float-illustration { animation: none !important; }
         }
     </style>
 </head>
 
 <body class="antialiased bg-white">
 
-    <div class="min-h-screen flex flex-col lg:flex-row" x-data="{
-        step: 1,
-        showPassword: false,
-        showConfirmPassword: false,
-        showVerifyModal: false,
-        showSuccessModal: false,
-        otpSent: false,
-        otpError: '',
-        idCategory: 'primary',
-        email: '',
-        emailVerified: false,
-        step1Error: '',
-    
-        sendOtp() {
-            const email = document.querySelector('[name=email]').value;
-            if (!email) {
-                this.otpError = 'Enter your email first.';
-                return;
-            }
-    
-            fetch('/buyer/otp/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ||
-                        document.querySelector('input[name=_token]').value
-                },
-                body: JSON.stringify({ email })
-            }).then(() => {
-                this.otpSent = true;
-            });
-        },
-    
-        verifyOtp() {
-            const email = document.querySelector('[name=email]').value;
-            const otp_code = [...document.querySelectorAll('[id^=otp-]')]
-                .map(el => el.value)
-                .join('');
-    
-            fetch('/buyer/otp/verify', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ||
-                            document.querySelector('input[name=_token]').value
-                    },
-                    body: JSON.stringify({ email, otp_code })
-                })
-                .then(res => res.json().then(data => ({
-                    status: res.status,
-                    data
-                })))
-                .then(({ status, data }) => {
-                    if (status !== 200) {
-                        this.otpError = data.message;
-                        return;
-                    }
-    
-                    this.showVerifyModal = false;
-                    this.emailVerified = true;
-                });
-        },
-    
-        shakeField(el) {
-            if (!el) return;
-    
-            el.classList.remove('shake-error');
-            void el.offsetWidth;
-            el.classList.add('shake-error');
-    
-            setTimeout(() => el.classList.remove('shake-error'), 500);
-        },
-    
-        validateStep1() {
-            this.step1Error = '';
-            let valid = true;
-    
-            const required = [
-                'last_name',
-                'first_name',
-                'sex',
-                'email',
-                'birthday',
-                'age',
-                'password',
-                'password_confirmation'
-            ];
-    
-            for (const name of required) {
-                const el = document.querySelector(`[name=${name}]`);
-    
-                if (!el || !el.value) {
-                    this.shakeField(el);
-                    valid = false;
-                }
-            }
-    
-            const pw = document.querySelector('[name=password]');
-            const pwConfirm = document.querySelector('[name=password_confirmation]');
-    
-            if (pw.value && pwConfirm.value && pw.value !== pwConfirm.value) {
-                this.shakeField(pwConfirm);
-                this.step1Error = 'Passwords do not match.';
-                valid = false;
-            }
-    
-            if (this.idCategory === 'primary') {
-                const idType = document.querySelector('[name=id_type]');
-                const validId = document.querySelector('#primary-valid-id');
-    
-                if (!idType || !idType.value) {
-                    this.shakeField(idType);
-                    valid = false;
-                }
-    
-                if (!validId || !validId.files.length) {
-                    this.shakeField(validId);
-                    valid = false;
-                }
-            }
-    
-            if (this.idCategory === 'secondary') {
-                const idType1 = document.querySelector('[name=id_type_1]');
-                const idType2 = document.querySelector('[name=id_type_2]');
-                const validId1 = document.querySelector('#secondary-valid-id-1');
-                const validId2 = document.querySelector('#secondary-valid-id-2');
-    
-                if (!idType1 || !idType1.value) {
-                    this.shakeField(idType1);
-                    valid = false;
-                }
-    
-                if (!idType2 || !idType2.value) {
-                    this.shakeField(idType2);
-                    valid = false;
-                }
-    
-                if (!validId1 || !validId1.files.length) {
-                    this.shakeField(validId1);
-                    valid = false;
-                }
-    
-                if (!validId2 || !validId2.files.length) {
-                    this.shakeField(validId2);
-                    valid = false;
-                }
-            }
-    
-            if (!this.emailVerified) {
-                this.shakeField(document.querySelector('[name=email]'));
-                this.step1Error = 'Please verify your email first.';
-                valid = false;
-            }
-    
-            if (!valid && !this.step1Error) {
-                this.step1Error = 'Please fill in all required fields.';
-            }
-    
-            return valid;
-        },
-    
-        step2Error: '',
-    
-        validateStep2() {
-            this.step2Error = '';
-            let valid = true;
-    
-            const required = [
-                'province',
-                'municipality',
-                'barangay',
-                'house_no',
-                'street',
-                'zip_code',
-                'contact_number'
-            ];
-    
-            for (const name of required) {
-                const el = document.querySelector(`[name=${name}]`);
-    
-                if (!el || !el.value) {
-                    this.shakeField(el);
-                    valid = false;
-                }
-            }
-    
-            if (!valid) {
-                this.step2Error = 'Please fill in all required fields.';
-            }
-    
-            return valid;
-        },
-    
-        agreeTerms: false,
-        step3Error: '',
-    
-        validateStep3() {
-            this.step3Error = '';
-    
-            if (!this.agreeTerms) {
-                this.step3Error = 'Please agree to the Terms and Conditions and Privacy Policy.';
-                return false;
-            }
-    
-            return true;
-        },
-    
-        formError: '',
-        submitting: false,
-    
-        async submitForm(form) {
-            if (!this.validateStep3()) return;
-    
-            this.submitting = true;
-            this.formError = '';
-    
-            try {
-                const res = await fetch(form.action, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content
-                    },
-                    body: new FormData(form),
-                });
-    
-                const data = await res.json().catch(() => ({}));
-    
-                if (res.ok) {
-                    this.showSuccessModal = true;
-                } else if (res.status === 422 && data.errors) {
-                    this.formError = Object.values(data.errors)[0][0];
-                } else {
-                    this.formError = data.message || 'Something went wrong. Please try again.';
-                }
-            } catch (e) {
-                this.formError = 'Network error. Please try again.';
-            }
-    
-            this.submitting = false;
-        }
-    }">
+    <div class="min-h-screen flex flex-col lg:flex-row" x-data="buyerRegistration">
 
-        <div class="hidden lg:flex lg:w-[28%] bg-[#402143] flex-col items-center justify-start px-8 py-10 overflow-y-auto relative"
-            style="background-image: url('{{ asset('assets/icons/registration/left-side-panel/leftside-panel.svg') }}'); background-repeat: no-repeat; background-position: center center; background-size: cover;">
+        {{-- LEFT PANEL --}}
+        <div
+            class="hidden lg:flex lg:w-[28%] relative overflow-y-auto bg-[#402143] flex-col items-start justify-start px-8 py-10">
 
-            <div class="flex justify-center w-full mb-6 relative z-10">
-                <img src="{{ asset('assets/branding/log-in-logo.svg') }}" alt="Vendo" class="w-[180px]">
+            {{-- animated ambient background --}}
+            <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                <div class="aurora-sweep"></div>
+                <div class="blob blob-1"></div>
+                <div class="blob blob-2"></div>
+                <div class="blob blob-3"></div>
             </div>
 
-            <div class="w-full mb-4 relative z-10">
-                <h2 class="text-white text-[1.35rem] font-bold leading-snug">
-                    Shop and discover<br>with <span class="text-[#c9933a]">Vendo</span>
-                </h2>
-                <div class="w-8 h-[2px] bg-white/40 mt-3 mb-4"></div>
-                <p class="text-white/70 text-[0.78rem] font-light leading-relaxed">
-                    Explore products from different sellers, find great deals, and enjoy a convenient shopping
-                    experience delivered right to your doorstep.
-                </p>
-            </div>
+            <div class="relative z-10 w-full flex flex-col flex-1">
 
-            <div class="w-full flex justify-center mb-4 relative z-10">
-                <img src="{{ asset('assets/icons/registration/left-side-panel/house-left-panel.svg') }}"
-                    alt="Shop illustration" class="w-full max-w-[260px]">
-            </div>
+                <div class="flex justify-center w-full mb-8 fade-in-up" style="animation-delay: .05s">
+                    <a href="{{ url('/') }}" title="Back to landing page"><img
+                            src="{{ asset('assets/branding/log-in-logo.svg') }}" alt="Vendo"
+                            class="w-[180px] cursor-pointer transition-transform duration-300 hover:scale-105"></a>
+                </div>
 
-            <div class="w-full mt-2 relative z-10">
-                <p class="text-white text-[0.82rem] font-semibold mb-4">Registration Steps</p>
+                <div class="w-full mb-8 fade-in-up" style="animation-delay: .1s">
+                    <h2 class="text-white text-[1.5rem] font-bold leading-snug">
+                        Shop and discover<br>with <span class="text-[#c9933a]">Vendo</span>
+                    </h2>
+                    <div class="w-8 h-[2px] bg-white/40 mt-3 mb-4"></div>
+                    <p class="text-white/70 text-[0.9rem] font-light leading-relaxed">
+                        Explore products from different sellers, find great deals, and enjoy convenient shopping.
+                    </p>
+                </div>
 
-                <div class="flex flex-col gap-0">
+                <div class="h-[180px] flex items-center justify-center fade-in-up" style="animation-delay: .15s">
+                    <img src="{{ asset('assets/icons/registration/left-side-panel/house-left-panel.svg') }}"
+                        alt="" class="w-full max-w-[180px] opacity-90 float-illustration">
+                </div>
 
-                    <div class="flex items-start gap-3">
-                        <div class="flex flex-col items-center shrink-0">
-                            <div
-                                class="w-6 h-6 rounded-full bg-[#402143] border border-white/40 text-white text-[0.65rem] font-semibold flex items-center justify-center shrink-0">
-                                1
+                <div class="w-full mt-2 fade-in-up" style="animation-delay: .15s">
+                    <p class="text-white text-[0.92rem] font-semibold mb-4">Registration Steps</p>
+                    <div class="flex flex-col gap-0">
+
+                        <div class="flex items-start gap-3 group" :class="step > 1 ? 'cursor-pointer' : ''"
+                            @click="if (step > 1) step = 1">
+                            <div class="flex flex-col items-center shrink-0">
+                                <div class="w-6 h-6 rounded-full text-[0.72rem] font-bold flex items-center justify-center shrink-0 transition-all duration-300"
+                                    :class="[step >= 1 ? 'bg-white text-[#3b1735] border border-white' :
+                                        'bg-[#402143] border border-white/40 text-white', step > 1 ?
+                                        'group-hover:scale-110' : ''
+                                    ]">
+                                    <span x-show="step > 1" x-cloak
+                                        x-transition:enter="transition ease-out duration-200"
+                                        x-transition:enter-start="opacity-0 scale-50"
+                                        x-transition:enter-end="opacity-100 scale-100">&check;</span>
+                                    <span x-show="step <= 1">1</span>
+                                </div>
+                                <div class="w-px my-1 transition-colors duration-500"
+                                    :class="step > 1 ? 'bg-white/60' : 'bg-white/20'" style="height: 32px;"></div>
                             </div>
-                            <div class="w-px bg-white/20 my-1" style="height: 32px;"></div>
-                        </div>
-
-                        <div class="pb-4">
-                            <p class="text-white text-[0.78rem] font-semibold leading-tight">
-                                1. Personal Information
-                            </p>
-                            <p class="text-white/60 text-[0.7rem] font-light leading-snug mt-0.5">
-                                Tell us about yourself
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start gap-3">
-                        <div class="flex flex-col items-center shrink-0">
-                            <div
-                                class="w-6 h-6 rounded-full bg-[#402143] border border-white/20 text-white/40 text-[0.65rem] font-semibold flex items-center justify-center shrink-0">
-                                2
+                            <div class="pb-4">
+                                <p class="text-[0.9rem] leading-tight transition-colors duration-300"
+                                    :class="step === 1 ? 'text-white font-bold' : 'text-white/80 font-semibold'">1.
+                                    Personal Information</p>
+                                <p class="text-white/60 text-[0.8rem] font-light leading-snug mt-0.5">Tell us about
+                                    yourself</p>
                             </div>
-                            <div class="w-px bg-white/20 my-1" style="height: 40px;"></div>
                         </div>
 
-                        <div class="pb-4">
-                            <p class="text-white/70 text-[0.78rem] font-semibold leading-tight">
-                                2. Contact &amp; Address
-                            </p>
-                            <p class="text-white/50 text-[0.7rem] font-light leading-snug mt-0.5">
-                                Tell about your contact and where you live from
-                            </p>
+                        <div class="flex items-start gap-3 group" :class="step > 2 ? 'cursor-pointer' : ''"
+                            @click="if (step > 2) step = 2">
+                            <div class="flex flex-col items-center shrink-0">
+                                <div class="w-6 h-6 rounded-full text-[0.72rem] font-bold flex items-center justify-center shrink-0 transition-all duration-300"
+                                    :class="[step >= 2 ? 'bg-white text-[#3b1735] border border-white' :
+                                        'bg-[#402143] border border-white/20 text-white/40', step > 2 ?
+                                        'group-hover:scale-110' : ''
+                                    ]">
+                                    <span x-show="step > 2" x-cloak
+                                        x-transition:enter="transition ease-out duration-200"
+                                        x-transition:enter-start="opacity-0 scale-50"
+                                        x-transition:enter-end="opacity-100 scale-100">&check;</span>
+                                    <span x-show="step <= 2">2</span>
+                                </div>
+                                <div class="w-px my-1 transition-colors duration-500"
+                                    :class="step > 2 ? 'bg-white/60' : 'bg-white/20'" style="height: 40px;"></div>
+                            </div>
+                            <div class="pb-4">
+                                <p class="text-[0.9rem] leading-tight transition-colors duration-300"
+                                    :class="step === 2 ? 'text-white font-bold' : (step > 2 ? 'text-white/80 font-semibold' :
+                                        'text-white/50 font-semibold')">
+                                    2. Address</p>
+                                <p class="text-white/50 text-[0.8rem] font-light leading-snug mt-0.5">Provide your
+                                    delivery address</p>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="flex items-start gap-3">
-                        <div
-                            class="w-6 h-6 rounded-full bg-[#402143] border border-white/20 text-white/40 text-[0.65rem] font-semibold flex items-center justify-center shrink-0">
-                            3
+                        <div class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-full text-[0.72rem] font-bold flex items-center justify-center shrink-0 transition-all duration-300"
+                                :class="step >= 3 ? 'bg-white text-[#3b1735] border border-white' :
+                                    'bg-[#402143] border border-white/20 text-white/40'">
+                                3</div>
+                            <div>
+                                <p class="text-[0.9rem] leading-tight transition-colors duration-300"
+                                    :class="step === 3 ? 'text-white font-bold' : 'text-white/50 font-semibold'">3.
+                                    Review &amp; Submit</p>
+                                <p class="text-white/50 text-[0.8rem] font-light leading-snug mt-0.5">Review your
+                                    information and submit</p>
+                            </div>
                         </div>
 
-                        <div>
-                            <p class="text-white/70 text-[0.78rem] font-semibold leading-tight">
-                                3. Review &amp; Submit
-                            </p>
-                            <p class="text-white/50 text-[0.7rem] font-light leading-snug mt-0.5">
-                                Review your information and submit
-                            </p>
-                        </div>
                     </div>
                 </div>
             </div>
+
         </div>
 
         <div class="w-full lg:w-[72%] flex flex-col bg-white min-h-screen">
 
-            <div class="flex items-start justify-between px-8 pt-7 pb-2">
+            {{-- Top bar --}}
+            <div class="flex items-start justify-between gap-4 flex-wrap px-4 sm:px-8 pt-7 pb-2 fade-in-up" style="animation-delay: .05s">
                 <div>
                     <a href="{{ url('/') }}"
                         class="inline-flex items-center gap-1 text-[0.75rem] font-medium text-gray-400 hover:text-[#3b1735] mb-1.5 transition-all duration-200 hover:-translate-x-0.5">
@@ -387,35 +291,32 @@
                         </svg>
                         Back to Landing Page
                     </a>
-                    <h1 class="text-[1.25rem] font-bold text-gray-900 tracking-tight leading-tight">
-                        Buyer Registration
+                    <h1 class="text-[1.4rem] font-bold text-gray-900 tracking-tight leading-tight">Buyer Registration
                     </h1>
-                    <p class="text-[0.85rem] text-gray-500 mt-0.5 font-normal">
-                        Create your buyer account.
-                    </p>
+                    <p class="text-[0.85rem] text-gray-500 mt-0.5 font-normal">Create your buyer account.</p>
                 </div>
-
                 <div class="flex items-center gap-2 mt-1">
-                    <span class="text-[0.7rem] text-gray-500 font-normal">
-                        Already have an account?
-                    </span>
-
+                    <span class="text-[0.8rem] text-gray-500 font-normal">Already have an account?</span>
                     <a href="{{ route('buyer.login') }}"
-                        class="text-[0.7rem] font-medium text-gray-700 border border-gray-400 rounded-md px-3.5 py-1 hover:bg-gray-50 transition">
+                        class="text-[0.85rem] font-semibold text-gray-700 border border-gray-400 rounded-md px-3.5 py-1 hover:bg-gray-50 hover:border-gray-500 transition-all duration-200">
                         Login
                     </a>
                 </div>
             </div>
 
-            <div class="flex-1 px-8 pb-8 overflow-y-auto">
+            {{-- Scrollable content --}}
+            <div class="flex-1 px-4 sm:px-8 pb-8 overflow-y-auto">
 
-                <div class="flex items-center mt-5 mb-1 w-full max-w-[580px] mx-auto gap-0">
+                {{-- Step Indicator (click a completed step's circle to jump back to it) --}}
+                <div class="flex items-center mt-5 mb-1 w-full max-w-[580px] mx-auto gap-0 fade-in-up"
+                    style="animation-delay: .1s">
 
                     <div class="shrink-0 w-8">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-[0.85rem] font-semibold leading-none"
-                            :class="step >= 1 ? 'bg-[#3b1735] text-white' : 'border border-gray-300 bg-white text-gray-400'">
-                            1
-                        </div>
+                        <button type="button" @click="if (step > 1) step = 1"
+                            :class="step >= 1 ? 'bg-[#3b1735] text-white' : 'border border-gray-300 bg-white text-gray-400'"
+                            :style="step > 1 ? 'cursor:pointer' : 'cursor:default'"
+                            class="w-8 h-8 rounded-full flex items-center justify-center text-[0.85rem] font-semibold leading-none transition-all duration-300 hover:enabled:scale-110"
+                            :disabled="step <= 1">1</button>
                     </div>
 
                     <div class="flex-1 flex h-px shrink">
@@ -425,10 +326,11 @@
                     </div>
 
                     <div class="shrink-0 w-8">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-[0.85rem] font-semibold leading-none"
-                            :class="step >= 2 ? 'bg-[#3b1735] text-white' : 'border border-gray-300 bg-white text-gray-400'">
-                            2
-                        </div>
+                        <button type="button" @click="if (step > 2) step = 2"
+                            :class="step >= 2 ? 'bg-[#3b1735] text-white' : 'border border-gray-300 bg-white text-gray-400'"
+                            :style="step > 2 ? 'cursor:pointer' : 'cursor:default'"
+                            class="w-8 h-8 rounded-full flex items-center justify-center text-[0.85rem] font-semibold leading-none transition-all duration-300 hover:enabled:scale-110"
+                            :disabled="step <= 2">2</button>
                     </div>
 
                     <div class="flex-1 flex h-px shrink">
@@ -439,53 +341,49 @@
                     </div>
 
                     <div class="shrink-0 w-8">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-[0.85rem] font-semibold leading-none"
-                            :class="step >= 3 ? 'bg-[#3b1735] text-white' : 'border border-gray-300 bg-white text-gray-400'">
-                            3
-                        </div>
+                        <button type="button" disabled
+                            :class="step >= 3 ? 'bg-[#3b1735] text-white' : 'border border-gray-300 bg-white text-gray-400'"
+                            class="w-8 h-8 rounded-full flex items-center justify-center text-[0.85rem] font-semibold leading-none cursor-default transition-colors duration-300">3</button>
                     </div>
 
                 </div>
 
-                <div class="relative flex w-full max-w-[580px] mx-auto mb-6 mt-1.5">
+                {{-- Step labels --}}
+                <div class="relative flex w-full max-w-[580px] mx-auto mb-6 mt-1.5 fade-in-up"
+                    style="animation-delay: .12s">
                     <div class="shrink-0 w-8 relative">
-                        <span class="absolute left-1/2 -translate-x-1/2 text-[0.62rem] whitespace-nowrap"
-                            :class="step >= 1 ? 'font-semibold text-[#3b1735]' : 'font-normal text-gray-400'">
-                            Personal Information
-                        </span>
+                        <span
+                            class="absolute left-1/2 -translate-x-1/2 text-[0.72rem] whitespace-nowrap transition-colors duration-300"
+                            :class="step >= 1 ? 'font-semibold text-[#3b1735]' : 'font-normal text-gray-400'">Personal
+                            Information</span>
                     </div>
-
                     <div class="flex-1"></div>
-
                     <div class="shrink-0 w-8 relative">
-                        <span class="absolute left-1/2 -translate-x-1/2 text-[0.62rem] whitespace-nowrap"
-                            :class="step >= 2 ? 'font-semibold text-[#3b1735]' : 'font-normal text-gray-400'">
-                            Contact &amp; Address
-                        </span>
+                        <span
+                            class="absolute left-1/2 -translate-x-1/2 text-[0.72rem] whitespace-nowrap transition-colors duration-300"
+                            :class="step >= 2 ? 'font-semibold text-[#3b1735]' : 'font-normal text-gray-400'">Address</span>
                     </div>
-
                     <div class="flex-1"></div>
-
                     <div class="shrink-0 w-8 relative">
-                        <span class="absolute left-1/2 -translate-x-1/2 text-[0.62rem] whitespace-nowrap"
-                            :class="step >= 3 ? 'font-semibold text-[#3b1735]' : 'font-normal text-gray-400'">
-                            Review &amp; Submit
-                        </span>
+                        <span
+                            class="absolute left-1/2 -translate-x-1/2 text-[0.72rem] whitespace-nowrap transition-colors duration-300"
+                            :class="step >= 3 ? 'font-semibold text-[#3b1735]' : 'font-normal text-gray-400'">Review
+                            &amp; Submit</span>
                     </div>
                 </div>
 
                 <div class="mb-4"></div>
 
-                <div x-show="formError" x-cloak
-                    class="max-w-[580px] mx-auto mb-4 bg-red-50 border border-red-300 text-red-700 text-[0.85rem] rounded-md p-3">
-                    <span x-text="formError"></span>
-                </div>
-
                 <form method="POST" action="{{ route('buyer.register.store') }}" enctype="multipart/form-data"
-                    @submit.prevent="submitForm($el)">
+                    novalidate x-ref="form" @submit.prevent="submitForm($el)">
                     @csrf
+                    <p x-show="formError" x-cloak x-text="formError" role="alert"
+                        class="mb-4 border border-red-300 rounded-lg p-3 text-sm text-red-700"></p>
+                    <p x-show="draftRestored" x-cloak class="mb-4 text-sm text-gray-600">
+                        Your progress was restored. Re-enter your password and select your ID files again before submitting.
+                    </p>
 
-                    <div x-show="step === 1">
+                    <div x-ref="step1" x-show="step === 1">
 
                         <div class="mb-1">
                             <h2 class="text-[0.88rem] font-bold text-gray-900 mb-0.5">
@@ -496,30 +394,30 @@
                             </p>
                         </div>
 
-                        <div class="grid grid-cols-3 gap-3 mb-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Last Name <span class="text-red-500">*</span>
                                 </label>
 
-                                <input type="text" name="last_name" placeholder="Enter last name"
+                                <input type="text" name="last_name" required placeholder="Enter last name"
                                     value="{{ old('last_name') }}"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     First Name <span class="text-red-500">*</span>
                                 </label>
 
-                                <input type="text" name="first_name" placeholder="Enter first name"
+                                <input type="text" name="first_name" required placeholder="Enter first name"
                                     value="{{ old('first_name') }}"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Middle Initial
                                 </label>
 
@@ -530,15 +428,15 @@
 
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Sex <span class="text-red-500">*</span>
                                 </label>
 
                                 <div class="relative">
-                                    <select name="sex"
+                                    <select name="sex" required
                                         class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                         <option value="" disabled selected>Select Sex</option>
                                         <option value="male">Male</option>
@@ -561,7 +459,7 @@
                                         Email <span class="text-red-500">*</span>
                                     </label>
 
-                                    <button type="button" @click="sendOtp(); showVerifyModal = true"
+                                    <button type="button" @click="openOtp()"
                                         x-show="email.length > 0 && !emailVerified"
                                         class="text-[0.65rem] font-semibold text-[#3b1735] hover:underline">
                                         Verify
@@ -572,22 +470,22 @@
                                     </span>
                                 </div>
 
-                                <input type="email" name="email" placeholder="Enter email address"
-                                    x-model="email" :readonly="emailVerified" value="{{ old('email') }}"
+                                <input type="email" name="email" required placeholder="Enter email address"
+                                    x-model="email" @input="emailVerified = false" value="{{ old('email') }}"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition"
-                                    :class="emailVerified ? 'bg-gray-50 cursor-not-allowed' : ''">
+                                    >
                             </div>
 
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Birthday <span class="text-red-500">*</span>
                                 </label>
 
-                                <input type="date" name="birthday" value="{{ old('birthday') }}"
+                                <input type="date" name="birthday" required max="{{ now()->subDay()->toDateString() }}" value="{{ old('birthday') }}"
                                     onchange="
                                         const b = new Date(this.value);
                                         const t = new Date();
@@ -600,36 +498,36 @@
                             </div>
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Age <span class="text-red-500">*</span>
                                 </label>
 
-                                <input type="text" name="age" placeholder="Enter age"
+                                <input type="text" name="age" readonly placeholder="Enter age"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                         </div>
 
                         <div class="mb-3">
-                            <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                            <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                 ID Category <span class="text-red-500">*</span>
                             </label>
 
-                            <select name="id_category" x-model="idCategory"
+                            <select name="id_category" required x-model="idCategory"
                                 class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                 <option value="primary">Primary ID (1 ID)</option>
                                 <option value="secondary">Secondary ID (2 IDs required)</option>
                             </select>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3 mb-5" x-show="idCategory === 'primary'">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5" x-show="idCategory === 'primary'">
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     ID Type <span class="text-red-500">*</span>
                                 </label>
 
-                                <select name="id_type" :disabled="idCategory !== 'primary'"
+                                <select name="id_type" :required="idCategory === 'primary'" :disabled="idCategory !== 'primary'"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                     <option value="" disabled selected>Select ID Type</option>
                                     <option value="Philippine Passport">Philippine Passport</option>
@@ -644,7 +542,7 @@
                             </div>
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Upload ID <span class="text-red-500">*</span>
                                 </label>
 
@@ -659,7 +557,7 @@
                                             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                     </svg>
 
-                                    <input type="file" name="valid_id" id="primary-valid-id" class="hidden"
+                                    <input type="file" name="valid_id" id="primary-valid-id" :required="idCategory === 'primary'" class="hidden"
                                         accept="image/*,.pdf" :disabled="idCategory !== 'primary'"
                                         onchange="document.getElementById('valid-id-label').textContent = this.files[0]?.name || 'Upload ID here'">
                                 </label>
@@ -667,14 +565,14 @@
 
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3 mb-5" x-show="idCategory === 'secondary'" x-cloak>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5" x-show="idCategory === 'secondary'" x-cloak>
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     First Secondary ID Type <span class="text-red-500">*</span>
                                 </label>
 
-                                <select name="id_type_1" :disabled="idCategory !== 'secondary'"
+                                <select name="id_type_1" :required="idCategory === 'secondary'" :disabled="idCategory !== 'secondary'"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                     <option value="" disabled selected>Select ID Type</option>
                                     <option value="PhilHealth ID">PhilHealth ID</option>
@@ -698,7 +596,7 @@
                                             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                     </svg>
 
-                                    <input type="file" name="valid_id" id="secondary-valid-id-1" class="hidden"
+                                    <input type="file" name="valid_id" id="secondary-valid-id-1" :required="idCategory === 'secondary'" class="hidden"
                                         accept="image/*,.pdf" :disabled="idCategory !== 'secondary'"
                                         onchange="document.getElementById('valid-id-1-label').textContent = this.files[0]?.name || 'Upload ID here'">
                                 </label>
@@ -706,11 +604,11 @@
                             </div>
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Second Secondary ID Type <span class="text-red-500">*</span>
                                 </label>
 
-                                <select name="id_type_2" :disabled="idCategory !== 'secondary'"
+                                <select name="id_type_2" :required="idCategory === 'secondary'" :disabled="idCategory !== 'secondary'"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                     <option value="" disabled selected>Select ID Type</option>
                                     <option value="PhilHealth ID">PhilHealth ID</option>
@@ -734,7 +632,7 @@
                                             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                     </svg>
 
-                                    <input type="file" name="valid_id_2" id="secondary-valid-id-2" class="hidden"
+                                    <input type="file" name="valid_id_2" id="secondary-valid-id-2" :required="idCategory === 'secondary'" class="hidden"
                                         accept="image/*,.pdf" :disabled="idCategory !== 'secondary'"
                                         onchange="document.getElementById('valid-id-2-label').textContent = this.files[0]?.name || 'Upload ID here'">
                                 </label>
@@ -753,15 +651,15 @@
                             </p>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3 mb-1">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-1">
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Password <span class="text-red-500">*</span>
                                 </label>
 
                                 <div class="relative">
-                                    <input name="password" x-bind:type="showPassword ? 'text' : 'password'"
+                                    <input name="password" required minlength="8" x-bind:type="showPassword ? 'text' : 'password'"
                                         placeholder="Create a password"
                                         class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
 
@@ -790,12 +688,12 @@
                             </div>
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Confirm Password <span class="text-red-500">*</span>
                                 </label>
 
                                 <div class="relative">
-                                    <input name="password_confirmation"
+                                    <input name="password_confirmation" required
                                         x-bind:type="showConfirmPassword ? 'text' : 'password'"
                                         placeholder="Confirm your password"
                                         class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
@@ -827,11 +725,11 @@
                         </div>
 
                         <p class="text-[0.62rem] text-gray-400 mt-1.5 mb-6 font-normal">
-                            Minimum 8 characters with letters and numbers.
+                            Minimum 8 characters, including uppercase and lowercase letters, a number, and a symbol.
                         </p>
 
                         <div class="flex justify-end">
-                            <button type="button" @click="if (validateStep1()) step = 2"
+                            <button type="button" @click="goNext(1)"
                                 class="flex items-center gap-1.5 bg-[#3b1735] hover:bg-[#4d1f45] active:bg-[#2e1229] text-white text-[0.75rem] font-semibold rounded-lg px-5 py-2 transition-colors duration-150">
                                 Next: Contact &amp; Address
 
@@ -848,7 +746,7 @@
 
                     </div>
 
-                    <div x-show="step === 2" x-cloak>
+                    <div x-ref="step2" x-show="step === 2" x-cloak>
 
                         <div class="mb-1">
                             <h2 class="text-[0.88rem] font-bold text-gray-900 mb-0.5">
@@ -860,15 +758,15 @@
                             </p>
                         </div>
 
-                        <div class="grid grid-cols-3 gap-3 mb-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Province <span class="text-red-500">*</span>
                                 </label>
 
                                 <div class="relative">
-                                    <select name="province" id="province-select"
+                                    <select name="province" required id="province-select"
                                         class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                         <option value="" disabled selected>Select Province</option>
                                     </select>
@@ -884,12 +782,12 @@
                             </div>
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Municipality / City <span class="text-red-500">*</span>
                                 </label>
 
                                 <div class="relative">
-                                    <select name="municipality" id="municipality-select" disabled
+                                    <select name="municipality" required id="municipality-select" disabled
                                         class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                         <option value="" disabled selected>Select Municipality / City</option>
                                     </select>
@@ -905,12 +803,12 @@
                             </div>
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Barangay <span class="text-red-500">*</span>
                                 </label>
 
                                 <div class="relative">
-                                    <select name="barangay" id="barangay-select" disabled
+                                    <select name="barangay" required id="barangay-select" disabled
                                         class="w-full rounded-md border border-gray-200 bg-white text-gray-500 text-[0.85rem] px-3 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                                         <option value="" disabled selected>Select Barangay</option>
                                     </select>
@@ -927,42 +825,33 @@
 
                         </div>
 
-                        <div class="grid grid-cols-4 gap-3 mb-8">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
 
-                            <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
-                                    House No. <span class="text-red-500">*</span>
+<div>
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
+                                    Street / House No. <span class="text-red-500">*</span>
                                 </label>
 
-                                <input type="text" name="house_no" placeholder="House/Unit No."
+                                <input type="text" name="street" required
+                                    placeholder="House/Unit No., street, building, subdivision, etc."
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
-                                    Street <span class="text-red-500">*</span>
-                                </label>
-
-                                <input type="text" name="street"
-                                    placeholder="Street, building, subdivision, etc."
-                                    class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
-                            </div>
-
-                            <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Zip Code <span class="text-red-500">*</span>
                                 </label>
 
-                                <input type="text" name="zip_code" placeholder="Enter zip code"
+                                <input type="text" name="zip_code" required placeholder="Enter zip code"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
                             <div>
-                                <label class="block text-[0.85rem] font-medium text-gray-700 mb-1">
+                                <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">
                                     Contact Number <span class="text-red-500">*</span>
                                 </label>
 
-                                <input type="text" name="contact_number" placeholder="09XX XXX XXXX"
+                                <input type="text" name="contact_number" required inputmode="numeric" pattern="[0-9]{10,15}" maxlength="15" placeholder="09XX XXX XXXX"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
@@ -975,7 +864,7 @@
                                 Back
                             </button>
 
-                            <button type="button" @click="if (validateStep2()) step = 3"
+                            <button type="button" @click="goNext(2)"
                                 class="flex items-center gap-1.5 bg-[#3b1735] hover:bg-[#4d1f45] active:bg-[#2e1229] text-white text-[0.75rem] font-semibold rounded-lg px-5 py-2 transition-colors duration-150">
                                 Next: Review &amp; Submit
 
@@ -993,7 +882,7 @@
 
                     </div>
 
-                    <div x-show="step === 3" x-cloak>
+                    <div x-ref="step3" x-show="step === 3" x-cloak>
 
                         <div class="mb-4">
                             <h2 class="text-[0.88rem] font-bold text-gray-900 mb-0.5">
@@ -1034,7 +923,7 @@
 
                             </div>
 
-                            <div class="grid grid-cols-4 gap-x-6 gap-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
 
                                 <div>
                                     <p class="text-[0.62rem] text-gray-400 mb-0.5">
@@ -1043,7 +932,7 @@
 
                                     <p class="text-[0.85rem] font-semibold text-gray-800"
                                         x-text="
-                                            step && (((document.querySelector('[name=first_name]')?.value || '') + ' ' +
+                                            reviewVersion && (((document.querySelector('[name=first_name]')?.value || '') + ' ' +
                                             (document.querySelector('[name=middle_initial]')?.value
                                                 ? document.querySelector('[name=middle_initial]').value + '. '
                                                 : '') +
@@ -1058,7 +947,7 @@
                                     </p>
 
                                     <p class="text-[0.85rem] font-semibold text-gray-800"
-                                        x-text="step && document.querySelector('[name=contact_number]')?.value || '—'">
+                                        x-text="reviewVersion && document.querySelector('[name=contact_number]')?.value || '—'">
                                     </p>
                                 </div>
 
@@ -1068,7 +957,7 @@
                                     </p>
 
                                     <p class="text-[0.85rem] font-semibold text-gray-800"
-                                        x-text="step && document.querySelector('[name=province]')?.options[document.querySelector('[name=province]')?.selectedIndex]?.text || '—'">
+                                        x-text="reviewVersion && document.querySelector('[name=province]')?.options[document.querySelector('[name=province]')?.selectedIndex]?.text || '—'">
                                     </p>
                                 </div>
 
@@ -1079,8 +968,7 @@
 
                                     <p class="text-[0.85rem] font-semibold text-gray-800"
                                         x-text="
-                                            step && (((document.querySelector('[name=house_no]')?.value || '') + ' ' +
-                                            (document.querySelector('[name=street]')?.value || '')) || '—')
+                                            reviewVersion && (document.querySelector('[name=street]')?.value || '—')
                                         ">
                                     </p>
                                 </div>
@@ -1091,7 +979,7 @@
                                     </p>
 
                                     <p class="text-[0.85rem] font-semibold text-gray-800 capitalize"
-                                        x-text="step && document.querySelector('[name=sex]')?.value || '—'">
+                                        x-text="reviewVersion && document.querySelector('[name=sex]')?.value || '—'">
                                     </p>
                                 </div>
 
@@ -1101,7 +989,7 @@
                                     </p>
 
                                     <p class="text-[0.85rem] font-semibold text-gray-800"
-                                        x-text="step && document.querySelector('[name=birthday]')?.value || '—'">
+                                        x-text="reviewVersion && document.querySelector('[name=birthday]')?.value || '—'">
                                     </p>
                                 </div>
 
@@ -1111,7 +999,7 @@
                                     </p>
 
                                     <p class="text-[0.85rem] font-semibold text-gray-800"
-                                        x-text="step && document.querySelector('[name=municipality]')?.options[document.querySelector('[name=municipality]')?.selectedIndex]?.text || '—'">
+                                        x-text="reviewVersion && document.querySelector('[name=municipality]')?.options[document.querySelector('[name=municipality]')?.selectedIndex]?.text || '—'">
                                     </p>
                                 </div>
 
@@ -1121,7 +1009,7 @@
                                     </p>
 
                                     <p class="text-[0.85rem] font-semibold text-gray-800"
-                                        x-text="step && document.querySelector('[name=zip_code]')?.value || '—'">
+                                        x-text="reviewVersion && document.querySelector('[name=zip_code]')?.value || '—'">
                                     </p>
                                 </div>
 
@@ -1131,7 +1019,7 @@
                                     </p>
 
                                     <p class="text-[0.85rem] font-semibold text-gray-800 break-all"
-                                        x-text="step && document.querySelector('[name=email]')?.value || '—'">
+                                        x-text="reviewVersion && document.querySelector('[name=email]')?.value || '—'">
                                     </p>
                                 </div>
 
@@ -1141,7 +1029,7 @@
                                     </p>
 
                                     <p class="text-[0.85rem] font-semibold text-gray-800"
-                                        x-text="step && document.querySelector('[name=age]')?.value || '—'">
+                                        x-text="reviewVersion && document.querySelector('[name=age]')?.value || '—'">
                                     </p>
                                 </div>
 
@@ -1151,7 +1039,7 @@
                                     </p>
 
                                     <p class="text-[0.85rem] font-semibold text-gray-800"
-                                        x-text="step && document.querySelector('[name=barangay]')?.options[document.querySelector('[name=barangay]')?.selectedIndex]?.text || '—'">
+                                        x-text="reviewVersion && document.querySelector('[name=barangay]')?.options[document.querySelector('[name=barangay]')?.selectedIndex]?.text || '—'">
                                     </p>
                                 </div>
 
@@ -1167,7 +1055,7 @@
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
 
-                                        <span class="text-[0.85rem] text-gray-600 truncate" id="review-valid-id">
+                                        <span class="text-[0.85rem] text-gray-600 truncate" id="review-valid-id" x-text="reviewFiles">
                                             —
                                         </span>
                                     </div>
@@ -1202,7 +1090,7 @@
 
                                     <label class="flex items-center gap-2 cursor-pointer">
 
-                                        <input type="checkbox" name="agree_terms" x-model="agreeTerms"
+                                        <input type="checkbox" name="agree_terms" required x-model="agreeTerms"
                                             class="w-3.5 h-3.5 rounded border-gray-400 text-[#3b1735] focus:ring-[#3b1735]">
 
                                         <span class="text-[0.85rem] text-gray-600">
@@ -1273,27 +1161,27 @@
                 </h2>
 
                 <p class="text-[0.82rem] text-gray-400 font-normal mb-7 leading-relaxed">
-                    We've sent a 6-digit code to your email.<br>
+                    <span x-text="sending ? 'Sending your code…' : (otpSent ? 'We sent a 6-digit code to your email.' : 'Request a code to verify your email.')"></span><br>
                     <span class="text-[0.7rem] text-gray-400">
                         Can't find it? Check your Spam or Junk folder.
                     </span>
                 </p>
 
-                <div class="flex justify-center gap-3 mb-6" x-data="otpInput()"
+                <div class="flex justify-center gap-1.5 sm:gap-3 mb-6"
                     @paste.prevent="handlePaste($event)">
 
                     <template x-for="(digit, index) in digits" :key="index">
                         <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]"
                             x-model="digits[index]" :id="'otp-' + index" @input="onInput(index, $event)"
-                            @keydown.backspace="onBackspace(index, $event)" @keydown.left="focusAt(index - 1)"
+                            @keydown.backspace="onBackspace(index)" @keydown.left="focusAt(index - 1)"
                             @keydown.right="focusAt(index + 1)"
-                            class="w-12 h-14 rounded-xl border border-gray-300 text-center text-[1.1rem] font-semibold text-gray-900 focus:outline-none focus:border-[#3b1735] focus:ring-2 focus:ring-[#3b1735]/20 transition">
+                            class="w-9 sm:w-12 h-12 sm:h-14 rounded-xl border border-gray-300 text-center text-[1.1rem] font-semibold text-gray-900 focus:outline-none focus:border-[#3b1735] focus:ring-2 focus:ring-[#3b1735]/20 transition">
                     </template>
 
                 </div>
 
                 <div class="flex justify-center mb-7">
-                    <button type="button"
+                    <button type="button" @click="sendOtp()" :disabled="sending || verifying"
                         class="flex items-center gap-1.5 text-[0.78rem] font-semibold text-[#c0392b] hover:underline">
 
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
@@ -1306,7 +1194,7 @@
                     </button>
                 </div>
 
-                <button type="button" @click="verifyOtp()"
+                <button type="button" @click="verifyOtp()" :disabled="sending || verifying"
                     class="w-full bg-[#3b1735] hover:bg-[#4d1f45] text-white text-[0.9rem] font-bold rounded-full py-3.5 transition-colors duration-150">
                     Verify Email
                 </button>
@@ -1351,155 +1239,7 @@
 
     </div>
 
-    <script>
-        document.addEventListener('alpine:init', () => {
-
-            Alpine.effect(() => {
-                const primaryInput = document.getElementById('primary-valid-id');
-                const secondaryInput = document.getElementById('secondary-valid-id-1');
-                const reviewEl = document.getElementById('review-valid-id');
-
-                if (!reviewEl) return;
-
-                if (primaryInput && primaryInput.files.length) {
-                    reviewEl.textContent = primaryInput.files[0].name;
-                } else if (secondaryInput && secondaryInput.files.length) {
-                    reviewEl.textContent = secondaryInput.files[0].name;
-                } else {
-                    reviewEl.textContent = '—';
-                }
-            });
-
-            Alpine.data('otpInput', () => ({
-                digits: ['', '', '', '', '', ''],
-
-                onInput(index, event) {
-                    const val = event.target.value.replace(/\D/g, '');
-
-                    this.digits[index] = val ? val[0] : '';
-
-                    if (val && index < 5) {
-                        this.focusAt(index + 1);
-                    }
-                },
-
-                onBackspace(index, event) {
-                    if (!this.digits[index] && index > 0) {
-                        this.focusAt(index - 1);
-                    }
-                },
-
-                focusAt(index) {
-                    if (index >= 0 && index <= 5) {
-                        document.getElementById('otp-' + index)?.focus();
-                    }
-                },
-
-                handlePaste(event) {
-                    const text = (event.clipboardData || window.clipboardData)
-                        .getData('text')
-                        .replace(/\D/g, '')
-                        .slice(0, 6);
-
-                    text.split('').forEach((char, i) => {
-                        this.digits[i] = char;
-                    });
-
-                    this.focusAt(Math.min(text.length, 5));
-                }
-            }));
-        });
-    </script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-
-            const provinceSelect = document.getElementById('province-select');
-            const municipalitySelect = document.getElementById('municipality-select');
-            const barangaySelect = document.getElementById('barangay-select');
-
-            fetch('https://psgc.gitlab.io/api/provinces/')
-                .then(res => res.json())
-                .then(provinces => {
-
-                    provinces.sort((a, b) => a.name.localeCompare(b.name));
-
-                    provinces.forEach(p => {
-                        const opt = document.createElement('option');
-
-                        opt.value = p.name;
-                        opt.textContent = p.name;
-                        opt.dataset.code = p.code;
-
-                        provinceSelect.appendChild(opt);
-                    });
-                });
-
-            provinceSelect.addEventListener('change', () => {
-
-                const code =
-                    provinceSelect.options[provinceSelect.selectedIndex].dataset.code;
-
-                municipalitySelect.innerHTML =
-                    '<option value="" disabled selected>Select Municipality / City</option>';
-
-                barangaySelect.innerHTML =
-                    '<option value="" disabled selected>Select Barangay</option>';
-
-                barangaySelect.disabled = true;
-                municipalitySelect.disabled = true;
-
-                fetch(`https://psgc.gitlab.io/api/provinces/${code}/cities-municipalities/`)
-                    .then(res => res.json())
-                    .then(cities => {
-
-                        cities.sort((a, b) => a.name.localeCompare(b.name));
-
-                        cities.forEach(c => {
-
-                            const opt = document.createElement('option');
-
-                            opt.value = c.name;
-                            opt.textContent = c.name;
-                            opt.dataset.code = c.code;
-
-                            municipalitySelect.appendChild(opt);
-                        });
-
-                        municipalitySelect.disabled = false;
-                    });
-            });
-
-            municipalitySelect.addEventListener('change', () => {
-
-                const code =
-                    municipalitySelect.options[municipalitySelect.selectedIndex].dataset.code;
-
-                barangaySelect.innerHTML =
-                    '<option value="" disabled selected>Select Barangay</option>';
-
-                fetch(`https://psgc.gitlab.io/api/cities-municipalities/${code}/barangays/`)
-                    .then(res => res.json())
-                    .then(barangays => {
-
-                        barangays.sort((a, b) => a.name.localeCompare(b.name));
-
-                        barangays.forEach(b => {
-
-                            const opt = document.createElement('option');
-
-                            opt.value = b.name;
-                            opt.textContent = b.name;
-
-                            barangaySelect.appendChild(opt);
-                        });
-
-                        barangaySelect.disabled = false;
-                    });
-            });
-        });
-    </script>
-
+    <script type="application/json" id="buyer-registration-config">@json($registrationVerification)</script>
+    @include('buyer.auth.registration-scripts')
 </body>
-
 </html>

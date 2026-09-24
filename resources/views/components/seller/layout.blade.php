@@ -1,8 +1,7 @@
 @props(['title' => 'Seller Dashboard'])
 
 @php
-    // Hardcoded for now – replace with auth()->user() once the backend is wired up.
-    $sellerName = 'Juan Dela Cruz';
+    $sellerName = auth()->user()->name;
     $sellerRole = 'Seller';
     $icon = fn (string $file) => asset('assets/icons/seller/' . $file);
 @endphp
@@ -27,7 +26,7 @@
          The hamburger button in the topbar pins it open (adds .sd-sidebar-pinned
          to <body>), which also pushes the main content over instead of overlaying it. --}}
     <aside class="sd-sidebar" id="sdSidebar">
-        <a href="#" class="sd-brand" aria-label="Vendo home">
+        <a href="{{ route('seller.dashboard') }}" class="sd-brand" aria-label="Vendo home">
             <img src="{{ asset('images/logo/vendo-icon.png') }}" alt="Vendo" class="sd-brand__icon">
             <img src="{{ asset('assets/branding/log-in-logo.svg') }}" alt="Vendo – Buy. Sell. Delivered." class="sd-brand__full">
         </a>
@@ -59,7 +58,7 @@
                 </a>
                 <a href="#" class="sd-nav__item sd-nav__item--sub" title="Completed Orders">
                     <img src="{{ $icon('completed-orders-icon.png') }}" alt="">
-                    <span>Completed Orders</span>
+                    <span>Delivered Orders</span>
                 </a>
                 <a href="#" class="sd-nav__item sd-nav__item--sub" title="Feedback">
                     <img src="{{ $icon('feedback-icon.png') }}" alt="">

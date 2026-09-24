@@ -163,6 +163,9 @@
 
     <div class="min-h-screen flex flex-col lg:flex-row" x-data="{
         step: 1,
+        init() {
+            this.$nextTick(() => vendoRestoreSellerDraft(this));
+        },
         showPassword: false,
         showConfirmPassword: false,
         showVerifyModal: false,
@@ -171,6 +174,42 @@
         formError: '',
         idCategory: 'primary',
         async submitForm(form) {
+            if (this.submitting) return;
+    
+            this.formError = '';
+    
+            const invalidField = Array.from(form.elements).find(
+                field => field.willValidate && !field.validity.valid
+            );
+    
+            if (invalidField) {
+                if (this.$refs.step1.contains(invalidField)) {
+                    this.step = 1;
+                } else if (this.$refs.step2.contains(invalidField)) {
+                    this.step = 2;
+                } else {
+                    this.step = 3;
+                }
+    
+                const fieldName = (invalidField.name || 'required field')
+                    .replaceAll('_', ' ');
+    
+                this.formError = invalidField.type === 'file' ?
+                    `Please select your ${fieldName} again. Uploaded files are cleared after refresh.` :
+                    `Please check ${fieldName}: ${invalidField.validationMessage}`;
+    
+                vendoToast(this.formError);
+    
+                await this.$nextTick();
+    
+                if (invalidField.getClientRects().length) {
+                    invalidField.focus();
+                    invalidField.reportValidity();
+                }
+    
+                return;
+            }
+    
             if (!Alpine.store('registration').otpVerified) {
                 this.formError = 'Please verify your email address before submitting.';
                 return;
@@ -413,7 +452,7 @@
                 <div class="mb-4"></div>
 
                 <form method="POST" action="{{ route('seller.register.store') }}" enctype="multipart/form-data"
-                    @submit.prevent="submitForm($el)" class="fade-in-up" style="animation-delay: .16s">
+                    novalidate @submit.prevent="submitForm($el)" class="fade-in-up" style="animation-delay: .16s">
                     @csrf
 
                     {{-- STEP 1: Personal Information + Address + Account Security --}}

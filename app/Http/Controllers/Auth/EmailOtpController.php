@@ -97,7 +97,14 @@ class EmailOtpController extends Controller
         }
 
         Cache::forget('otp:'.$email);
-        Cache::put('otp_verified:'.$email, true, now()->addMinutes(30));
+        $expiresAt = now()->addMinutes(30);
+
+        Cache::put('otp_verified:'.$email, true, $expiresAt);
+
+        $request->session()->put('registration_verification', [
+            'email' => $email,
+            'expires_at' => $expiresAt->timestamp,
+        ]);
 
         return response()->json([
             'success' => true,

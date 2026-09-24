@@ -3,16 +3,16 @@
         <h2 class="text-2xl font-bold text-gray-900 mb-2">Order #{{ $order->id }}</h2>
 
         @php
-            $steps = ['pending', 'to_ship', 'in_transit', 'out_for_delivery', 'delivered'];
+            $steps = ['placed','confirmed','preparing','ready_for_pickup','picked_up','at_sorting_center','sorted','assigned_to_rider','out_for_delivery','delivered','completed'];
             $currentIndex = array_search($order->status, $steps);
-            $isTerminalIssue = in_array($order->status, ['cancelled', 'returned']);
+            $isTerminalIssue = in_array($order->status, ['cancelled', 'returned', 'delivery_failed']);
         @endphp
 
         @if ($isTerminalIssue)
             <span class="inline-block text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 capitalize mb-6">{{ $order->status }}</span>
         @else
-            <div class="bg-white rounded-2xl p-5 shadow-sm mb-4">
-                <div class="flex items-center">
+            <div class="bg-white rounded-2xl p-5 shadow-sm mb-4 overflow-x-auto">
+                <div class="flex items-center min-w-[980px]">
                     @foreach ($steps as $i => $step)
                         <div class="flex-1 flex flex-col items-center relative">
                             <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold z-10
@@ -31,6 +31,14 @@
             </div>
         @endif
 
+        @if (session('success'))<p class="mb-4 text-green-700">{{ session('success') }}</p>@endif
+        @if ($order->statusEvents->isNotEmpty())
+            <div class="bg-white rounded-2xl p-5 shadow-sm mb-4"><h3 class="font-semibold mb-2">Order updates</h3>
+                @foreach ($order->statusEvents as $event)
+                    <p class="text-sm mb-2"><strong>{{ \App\Models\Ecommerce\Order::STATUSES[$event->to_status] ?? $event->to_status }}</strong> · {{ $event->created_at->format('M j, Y g:i A') }}<br>{{ $event->note }}</p>
+                @endforeach
+            </div>
+        @endif
         <div class="bg-white rounded-2xl p-5 shadow-sm">
             @foreach ($order->items as $item)
                 <div class="flex justify-between text-sm py-2 border-b last:border-0">

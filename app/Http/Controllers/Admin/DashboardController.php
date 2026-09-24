@@ -26,7 +26,7 @@ class DashboardController extends Controller
             'gross_sales' => Order::where('status', '!=', 'cancelled')->sum('total_amount'),
             'total_orders' => Order::count(),
             'average_order_value' => Order::where('status', '!=', 'cancelled')->avg('total_amount') ?? 0,
-            'completed_orders' => Order::where('status', 'delivered')->count(),
+            'completed_orders' => Order::whereIn('status', ['delivered','completed'])->count(),
             'return_refund' => Order::where('status', 'returned')->count(),
         ];
 
