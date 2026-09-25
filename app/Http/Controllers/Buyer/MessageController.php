@@ -5,39 +5,49 @@ namespace App\Http\Controllers\Buyer;
 use App\Http\Controllers\Controller;
 use App\Models\Communication\Conversation;
 use App\Models\Communication\Message;
+use App\Models\Communication\Notification;
+use App\Models\Communication\MarketplaceConversation;
 use Illuminate\Http\Request;
 
 class MessageController extends Controller
 {
     public function index()
     {
-        $conversation = Conversation::where('user_id', auth()->id())->first();
+        $conversation = Conversation::where('user_id', auth()->id())->whereNull('complaint_id')->latest('id')->first();
+        $sellerConversations = $this->sellerConversations(auth()->id());
 
-        return view('buyer.messages', compact('conversation'));
+        return view('buyer.messages', compact('conversation', 'sellerConversations'));
+    }
+
+    public function sellerList()
+    {
+        return view('buyer.messages.partials.seller-list', [
+            'sellerConversations' => $this->sellerConversations(auth()->id()),
+        ]);
+    }
+
+    private function sellerConversations(int $buyerId)
+    {
+        return MarketplaceConversation::query()->where('buyer_id', $buyerId)
+            ->with(['seller:id,name', 'order:id', 'latestMessage'])
+            ->withCount(['messages as unread_count' => fn ($query) => $query
+                ->where('sender_id', '!=', $buyerId)->whereNull('read_at')])
+            ->orderByDesc('last_message_at')->get();
     }
 
     public function start(Request $request)
     {
-        $request->validate(['reason' => 'required|string']);
+        abort_unless($request->user()?->role === 'buyer', 403);
+        $validated = $request->validate(['reason' => ['required', 'in:General Inquiry,Raise a Concern,Other']]);
+        $active = Conversation::query()->where('user_id', $request->user()->id)
+            ->whereNull('complaint_id')->where('status', 'open')->latest('id')->first();
+        if ($active) return redirect()->route('buyer.messages.index');
 
-        $conversation = Conversation::updateOrCreate(
-            ['user_id' => auth()->id()],
-            ['status' => 'open']
-        );
-
-        Message::create([
-            'conversation_id' => $conversation->id,
-            'sender_id' => auth()->id(),
-            'body' => $request->reason,
-        ]);
-
-        Message::create([
-            'conversation_id' => $conversation->id,
-            'sender_id' => null,
-            'body' => 'Thanks for reaching out! An admin will respond shortly.',
-        ]);
-
+        $conversation = Conversation::create(['user_id' => $request->user()->id, 'status' => 'open']);
+        $conversation->messages()->create(['sender_id' => $request->user()->id, 'body' => $validated['reason']]);
+        $conversation->messages()->create(['sender_id' => null, 'body' => 'Thanks for contacting Vendo Support. We received your '.$validated['reason'].' request. Our team will reply here.']);
         $conversation->update(['last_message_at' => now()]);
+        Notification::create(['user_id' => null, 'type' => 'support_message', 'title' => 'New buyer support message', 'message' => 'A buyer sent a support message.', 'link' => route('admin.messages.index', ['conversation' => $conversation->id])]);
 
         return redirect()->route('buyer.messages.index');
     }
@@ -102,6 +112,7 @@ class MessageController extends Controller
         }
 
         $conversation->update(['last_message_at' => now()]);
+        Notification::create(['user_id' => null, 'type' => 'support_message', 'title' => 'New buyer support message', 'message' => 'A buyer sent a support message.', 'link' => route('admin.messages.index', ['conversation' => $conversation->id])]);
 
         return back();
     }

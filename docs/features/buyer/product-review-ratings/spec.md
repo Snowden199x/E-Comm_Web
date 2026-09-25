@@ -1,6 +1,6 @@
 # Buyer Product Reviews and Ratings
 
-**Status:** Planned; documentation only as of 24 September 2026. No review model, migration, route or buyer review form currently exists.  
+**Status:** Implemented for buyer review submission and public product review display.
 **Backend contract:** [Seller Feedback Management](../../seller/review-management/spec.md).
 
 ## Buyer journey to implement

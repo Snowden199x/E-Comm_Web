@@ -7,6 +7,8 @@ export default defineConfig({
             input: [
                 // Shared bootstrap (Tailwind base + Alpine init) — every role's pages load this
                 "resources/css/shared/app.css",
+                "resources/css/shared/marketplace-chat.css",
+                "resources/css/shared/user-report.css",
                 "resources/js/shared/app.js",
 
                 // Admin
@@ -20,6 +22,7 @@ export default defineConfig({
                 "resources/css/seller/seller-dashboard.css",
                 "resources/css/seller/order-management-orders.css",
                 "resources/css/seller/operations.css",
+                "resources/css/seller/workspace.css",
                 "resources/js/seller/operations.js",
                 "resources/js/seller/order-management-orders/index.js",
             ],

@@ -1,6 +1,27 @@
 <x-buyer.layout>
-    <div class="max-w-3xl mx-auto p-4 sm:p-5 lg:p-6">
+    <div class="max-w-5xl mx-auto p-4 sm:p-5 lg:p-6">
+        <script>
+        (() => {
+            async function updateSellerChats() {
+                if (document.hidden) return;
+                try {
+                    const response = await fetch(@json(route('buyer.messages.seller-list')), {headers: {'Accept': 'text/html'}});
+                    if (response.ok) document.getElementById('buyerSellerChats').innerHTML = await response.text();
+                } catch (_) {}
+            }
+            setInterval(updateSellerChats, 1500);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) updateSellerChats(); });
+        })();
+        </script>
         <h2 class="text-2xl font-bold text-gray-900 mb-6">Messages</h2>
+
+        <section class="mb-6 rounded-2xl bg-white p-5 shadow-sm" aria-label="Seller conversations">
+            <h3 class="mb-1 text-base font-semibold text-gray-900">Seller chats</h3>
+            <p class="mb-4 text-xs text-gray-500">Questions about your orders stay with the seller for that order.</p>
+            <div id="buyerSellerChats">@include('buyer.messages.partials.seller-list')</div>
+        </section>
+
+        <h3 class="mb-3 text-base font-semibold text-gray-900">Vendo Support</h3>
 
         @if (!$conversation || $conversation->status === 'closed')
             <div class="bg-white rounded-2xl shadow-sm p-8 text-center">
@@ -33,11 +54,14 @@
                 body: '',
                 error: '',
                 lightbox: null,
+                fetching: false,
                 init() {
                     this.fetchMessages();
-                    setInterval(() => this.fetchMessages(), 3000);
+                    setInterval(() => { if (!document.hidden) this.fetchMessages(); }, 1000);
                 },
                 fetchMessages() {
+                    if (this.fetching) return;
+                    this.fetching = true;
                     const el = this.$refs.scrollBox;
                     const wasNearBottom = !el || (el.scrollHeight - el.scrollTop - el.clientHeight < 100);
             
@@ -48,7 +72,9 @@
                             this.$nextTick(() => {
                                 if (wasNearBottom) el.scrollTop = el.scrollHeight;
                             });
-                        });
+                        })
+                        .catch(() => {})
+                        .finally(() => { this.fetching = false; });
                 },
                 async send() {
                     this.error = '';
@@ -74,7 +100,7 @@
                     fileInput.value = '';
                     this.fetchMessages();
                 }
-            }">
+            }" @message-deleted.window="fetchMessages()">
                 <div class="flex items-center justify-between p-4 border-b">
                     <p class="text-sm font-medium text-gray-900">Vendo Support</p>
                     <form action="{{ route('buyer.messages.close', $conversation) }}" method="POST"
@@ -105,6 +131,7 @@
                                             x-text="'📎 ' + attachment.name"></a>
                                     </template>
                                 </template>
+                                <button x-show="message.is_mine" type="button" class="mt-2 inline-flex rounded-md border border-white/60 px-2 py-1 text-xs font-semibold text-white" :data-delete-message="'/buyer/messages/' + conversationId + '/messages/' + message.id">Delete message</button>
                             </div>
                         </div>
                     </template>

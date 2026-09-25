@@ -1,7 +1,7 @@
 # Seller Feedback Management — backend implementation contract
 
-**Status:** Planned; documentation only as of 24 September 2026.  
-**Functional requirements:** [Feedback functions](functions.md). No review model, migration, routes, or seller Feedback page exists in the current code.
+**Status:** Implemented for the seller and buyer web flows, with admin moderation.
+**Functional requirements:** [Feedback functions](functions.md).
 
 ## Product and actor rules
 
@@ -17,7 +17,7 @@ Create `product_review_replies` with unique `product_review_id`, `seller_id`, re
 
 The order-item/product links are authoritative. If product deletion is added later, retain a reviewable product/line snapshot (name, SKU, image) before allowing deletion so historic review and seller order pages do not break. In the current code products have no seller delete endpoint.
 
-## Planned routes and permissions
+## Routes and permissions
 
 | Route | Purpose and guard |
 |---|---|

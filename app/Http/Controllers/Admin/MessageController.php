@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Communication\Conversation;
 use App\Models\Communication\Message;
 use App\Models\Communication\MessageAttachment;
+use App\Models\Communication\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class MessageController extends Controller
@@ -35,7 +35,7 @@ class MessageController extends Controller
 
         $conversation->messages()
             ->whereNull('read_at')
-            ->where('sender_id', '!=', Auth::id())
+            ->where('sender_id', '!=', Auth::guard('admin')->id())
             ->update(['read_at' => now()]);
 
         return view('admin.messages.partials.thread', compact('conversation'));
@@ -45,7 +45,7 @@ class MessageController extends Controller
     {
         $conversation->messages()
             ->whereNull('read_at')
-            ->where('sender_id', '!=', Auth::id())
+            ->where('sender_id', '!=', Auth::guard('admin')->id())
             ->update(['read_at' => now()]);
 
         $messages = $conversation->messages()->with('attachments')->get();
@@ -54,10 +54,10 @@ class MessageController extends Controller
             'messages' => $messages->map(fn ($m) => [
                 'id' => $m->id,
                 'body' => $m->body,
-                'is_mine' => $m->sender_id === Auth::id(),
+                'is_mine' => $m->sender_id === Auth::guard('admin')->id(),
                 'created_at' => $m->created_at->format('g:i A'),
                 'attachments' => $m->attachments->map(fn ($a) => [
-                    'url' => Storage::url($a->path),
+                    'url' => route('messages.attachments.show', $a),
                     'name' => $a->original_filename,
                 ]),
             ]),
@@ -77,7 +77,7 @@ class MessageController extends Controller
 
         $message = Message::create([
             'conversation_id' => $conversation->id,
-            'sender_id' => Auth::id(),
+            'sender_id' => Auth::guard('admin')->id(),
             'body' => $request->body,
         ]);
 
@@ -93,6 +93,17 @@ class MessageController extends Controller
 
         $conversation->update(['last_message_at' => now()]);
 
+        if (in_array($conversation->user?->role, ['seller', 'buyer'], true)) {
+            Notification::create([
+                'user_id' => $conversation->user_id,
+                'type' => 'support_reply',
+                'title' => 'New reply from Vendo Support',
+                'message' => 'Your support conversation has a new reply.',
+                'link' => $conversation->user->role === 'seller'
+                    ? route('seller.messages.index') : route('buyer.messages.index'),
+            ]);
+        }
+
         return response()->json(['success' => true]);
     }
 
@@ -100,7 +111,7 @@ class MessageController extends Controller
     {
         $query = Conversation::with(['user', 'latestMessage'])
             ->withCount(['messages as unread_count' => function ($q) {
-                $q->whereNull('read_at')->where('sender_id', '!=', Auth::id());
+                $q->whereNull('read_at')->where('sender_id', '!=', Auth::guard('admin')->id());
             }]);
 
         if ($request->filled('search')) {

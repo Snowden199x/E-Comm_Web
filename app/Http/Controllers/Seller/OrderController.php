@@ -61,6 +61,10 @@ class OrderController extends Controller
     {
         $order = $this->ownedOrder($request, $order);
 
+        if (! $request->expectsJson()) {
+            return redirect()->route('seller.orders.index', ['order' => $order->id]);
+        }
+
         return response()->json(['html' => view('seller.order-management-orders.drawer', compact('order'))->render()]);
     }
 

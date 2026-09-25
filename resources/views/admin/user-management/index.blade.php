@@ -89,4 +89,5 @@
         @include('admin.user-management.partials.confirmation-modal')
 
     </div>
+@include('shared.live-revision', ['endpoint' => route('admin.live', 'accounts'), 'mode' => 'reload'])
 </x-admin.layout>

@@ -85,4 +85,5 @@
 
         @include('admin.seller-compliance.partials.confirmation-modal')
     </div>
+@include('shared.live-revision', ['endpoint' => route('admin.live', 'products'), 'mode' => 'reload'])
 </x-admin.layout>

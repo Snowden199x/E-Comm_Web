@@ -3,6 +3,7 @@
 namespace App\Models\Ecommerce;
 
 use App\Models\User;
+use App\Models\Communication\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -31,12 +32,82 @@ class Order extends Model
 
     public const SHIPMENT_LABELS = ['to_ship' => 'To Ship', 'in_transit' => 'In Transit', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled', 'returned' => 'Returned'];
 
-    protected $casts = ['shipping_fee' => 'decimal:2', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date'];
+    protected $casts = ['shipping_fee' => 'decimal:2', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date', 'delivered_at' => 'datetime'];
 
     protected static function booted(): void
     {
         static::creating(function (Order $order) {
             $order->tracking_number ??= 'VND-'.Str::ulid();
+        });
+
+        static::saving(function (Order $order) {
+            if ($order->isDirty('status') && $order->status === 'delivered') {
+                $order->delivered_at = now();
+            }
+        });
+        static::updated(function (Order $order) {
+            if (! $order->wasChanged('status') || ! in_array($order->status, [
+                'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider',
+                'out_for_delivery', 'delivered', 'completed', 'delivery_failed', 'returned',
+            ], true)) {
+                return;
+            }
+
+            Notification::create([
+                'user_id' => $order->seller_id,
+                'type' => 'shipment_update',
+                'title' => 'Order '.$order->number.' updated',
+                'message' => 'Status changed to '.$order->status_label.'.',
+                'link' => in_array($order->status, self::SALES_STATUSES, true)
+                    ? route('seller.completed-orders.show', $order)
+                    : route('seller.shipments.show', $order),
+            ]);
+            if (in_array($order->status, [
+                'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery',
+                'delivered', 'completed', 'delivery_failed', 'returned',
+            ], true)) {
+                Notification::create([
+                    'user_id' => $order->buyer_id,
+                    'type' => 'order_update',
+                    'title' => $order->number.': '.$order->status_label,
+                    'message' => 'Your order status has been updated.',
+                    'link' => route('buyer.orders.show', $order),
+                ]);
+            }
+        });
+
+        static::updated(function (Order $order) {
+            if (! $order->wasChanged('status')) {
+                return;
+            }
+
+            $conversation = $order->marketplaceConversation;
+            if (! $conversation) {
+                return;
+            }
+
+            $messages = [
+                'confirmed' => 'The seller confirmed your order.',
+                'preparing' => 'The seller is preparing your order.',
+                'ready_for_pickup' => 'Your order is ready for courier pickup.',
+                'picked_up' => 'The courier picked up your order.',
+                'at_sorting_center' => 'Your order arrived at a sorting center.',
+                'sorted' => 'Your order has been sorted for the next delivery step.',
+                'assigned_to_rider' => 'A rider has been assigned to your order.',
+                'out_for_delivery' => 'Your package is out for delivery.',
+                'delivered' => 'Your order was marked as delivered. Check the order details if you need help.',
+                'completed' => 'Your order is complete.',
+                'delivery_failed' => 'The delivery attempt was unsuccessful. Check the order details for updates.',
+                'returned' => 'Your order was returned.',
+                'cancelled' => 'Your order was cancelled.',
+            ];
+
+            $conversation->messages()->create([
+                'sender_id' => null,
+                'shared_order_id' => $order->id,
+                'body' => $messages[$order->status] ?? 'Order #'.$order->number.' is now '.$order->status_label.'.',
+            ]);
+            $conversation->update(['last_message_at' => now()]);
         });
     }
 
@@ -113,5 +184,15 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(ProductReview::class);
+    }
+
+    public function marketplaceConversation()
+    {
+        return $this->hasOne(\App\Models\Communication\MarketplaceConversation::class);
     }
 }

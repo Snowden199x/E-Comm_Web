@@ -21,4 +21,5 @@
 
         <div class="mt-6">{{ $products->links() }}</div>
     </div>
+@include('shared.live-revision', ['endpoint' => route('buyer.live', 'catalog'), 'mode' => 'reload'])
 </x-buyer.layout>

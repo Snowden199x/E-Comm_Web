@@ -1,5 +1,6 @@
 /* Seller Products & Inventory and Shipments share the existing Vendo shell. */
 .ops-page { --ops-plum:#512258; --ops-border:#e1dce2; --ops-soft:#e5dfe6; font-size:13px; }
+.ops-stars { color:#e7a817; white-space:nowrap; }
 .ops-page-head { display:flex; align-items:center; justify-content:space-between; gap:20px; margin:10px 0 28px; }
 .ops-page h1 { font-size:25px; line-height:1.35; letter-spacing:-.6px; }
 .ops-page-head p { color:#68626b; margin-top:5px; }
@@ -81,7 +82,7 @@
 .ops-donut small { font-size:9px; color:#8f8593; }
 .ops-chart-key { display:flex; gap:14px; flex-wrap:wrap; flex:1; }
 .ops-chart-key li { font-size:10px; }
-.ops-chart-key a { display:flex; gap:5px; }
+.ops-chart-key a,.ops-chart-key li>span { display:flex; gap:5px; }
 .ops-chart-key i { display:block; width:6px; height:6px; border-radius:50%; margin-top:5px; }
 .ops-chart-key strong,.ops-chart-key small { display:block; }
 .ops-chart-key small { color:#877e8c; }

@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Ecommerce\Product;
 use App\Models\Compliance\ProductViolation;
 use App\Models\Compliance\ProductWarning;
+use App\Models\Communication\Notification;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -91,7 +92,13 @@ class SellerComplianceController extends Controller
 
     public function approve(Product $product): RedirectResponse
     {
+        $previousStatus = $product->status;
         $product->update(['status' => 'approved']);
+        if ($previousStatus !== 'approved') {
+            Notification::create(['user_id' => $product->seller_id, 'type' => 'product_approved',
+                'title' => 'Product approved', 'message' => $product->name.' is approved for sale.',
+                'link' => route('seller.products.show', $product)]);
+        }
 
         return back()->with('confirmation', 'product_approved');
     }
@@ -108,6 +115,9 @@ class SellerComplianceController extends Controller
             'rejection_reason' => $request->reason,
             'rejection_details' => $request->details,
         ]);
+        Notification::create(['user_id' => $product->seller_id, 'type' => 'product_rejected',
+            'title' => 'Product rejected', 'message' => $product->name.': '.$request->reason,
+            'link' => route('seller.products.show', $product)]);
 
         ProductViolation::create([
             'product_id' => $product->id,
@@ -136,6 +146,9 @@ class SellerComplianceController extends Controller
         ]);
 
         $product->update(['status' => 'warned']);
+        Notification::create(['user_id' => $product->seller_id, 'type' => 'product_warning',
+            'title' => 'Product warning', 'message' => $product->name.': '.$request->reason,
+            'link' => route('seller.products.show', $product)]);
 
         $seller = $product->seller;
 

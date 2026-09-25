@@ -38,6 +38,7 @@
         /* One shared easing so every panel, pill and label moves the same way */
         .ease-vendo { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
 
+        .admin-bell-menu[hidden] { display: none; }
         .thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
         .thin-scroll::-webkit-scrollbar-thumb { background: #e2dbe4; border-radius: 999px; }
         .thin-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -54,7 +55,12 @@
 <body class="h-full antialiased bg-[#FBF7F2] text-[#2B1730]" x-data="{ loading: false }"
     @ajax:before.window="loading = true" @ajax:after.window="loading = false">
 
-    @php $admin = Auth::guard('admin')->user(); @endphp
+    @php
+        $admin = Auth::guard('admin')->user();
+        $adminNotificationCount = \App\Models\Communication\Notification::whereNull('user_id')->whereNull('read_at')->count();
+        $latestAdminNotificationId = \App\Models\Communication\Notification::whereNull('user_id')->max('id') ?? 0;
+        $recentAdminNotifications = \App\Models\Communication\Notification::whereNull('user_id')->latest()->limit(5)->get();
+    @endphp
 
     <div class="flex h-full overflow-hidden">
 
@@ -78,13 +84,17 @@
 
                 <div class="flex items-center gap-3 sm:gap-5">
 
-                    <a href="{{ route('admin.notifications.index') }}" x-target.push="main-content sidebar"
-                        class="w-10 h-10 rounded-full flex items-center justify-center
-                               hover:bg-[#f1e9f1] transition-colors duration-200 ease-vendo"
-                        aria-label="Notifications">
-                        <img src="{{ asset('assets/icons/dashboard/notifications-icon.svg') }}" alt=""
-                            class="w-6 h-6">
-                    </a>
+                    <div class="relative" id="adminBellWrap">
+                        <button type="button" id="adminBellButton" aria-label="Notifications" aria-controls="adminBellMenu" aria-expanded="false"
+                            class="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[#f1e9f1]">
+                            <img src="{{ asset('assets/icons/dashboard/notifications-icon.svg') }}" alt="" class="h-6 w-6">
+                            <span id="adminNotificationCount" class="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 text-[10px] text-white" @if(!$adminNotificationCount) hidden @endif>{{ $adminNotificationCount }}</span>
+                        </button>
+                        <div id="adminBellMenu" class="admin-bell-menu absolute right-0 top-full z-50 mt-2 w-[min(350px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-gray-100 bg-white text-gray-900 shadow-xl" hidden>
+                            <div class="flex items-center justify-between border-b px-4 py-3"><strong class="text-sm">Notifications</strong><a href="{{ route('admin.notifications.index') }}" class="text-xs font-semibold text-[#5b2963]">View all</a></div>
+                            <div id="adminBellList" class="max-h-[min(60dvh,430px)] overflow-y-auto">@include('admin.notifications.recent', ['notifications' => $recentAdminNotifications])</div>
+                        </div>
+                    </div>
 
                     <div class="relative" x-data="{ open: false }">
                         <button type="button" @click="open = !open" @click.outside="open = false"
@@ -148,6 +158,53 @@
         </div>
     </div>
 
+<script>
+        (() => {
+            const bellWrap = document.getElementById('adminBellWrap');
+            const bellButton = document.getElementById('adminBellButton');
+            const bellMenu = document.getElementById('adminBellMenu');
+            const closeBell = () => { bellMenu.hidden = true; bellButton.setAttribute('aria-expanded', 'false'); };
+            bellButton.addEventListener('click', () => {
+                const opening = bellMenu.hidden;
+                bellMenu.hidden = !opening;
+                bellButton.setAttribute('aria-expanded', String(opening));
+            });
+            document.addEventListener('click', event => { if (!bellWrap.contains(event.target)) closeBell(); });
+            document.addEventListener('keydown', event => { if (event.key === 'Escape' && !bellMenu.hidden) { closeBell(); bellButton.focus(); } });
+            let latestId = @json($latestAdminNotificationId);
+            let audio;
+            function sound() {
+                try {
+                    audio ||= new (window.AudioContext || window.webkitAudioContext)();
+                    audio.resume();
+                    const oscillator = audio.createOscillator();
+                    const gain = audio.createGain();
+                    oscillator.frequency.value = 880;
+                    gain.gain.setValueAtTime(0.07, audio.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.16);
+                    oscillator.connect(gain).connect(audio.destination);
+                    oscillator.start(); oscillator.stop(audio.currentTime + 0.17);
+                } catch (_) {}
+            }
+            async function refreshAdminNotifications() {
+                if (document.hidden) return;
+                try {
+                    const response = await fetch(@json(route('admin.notifications.recent')), {headers: {'Accept': 'application/json'}});
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    const badge = document.getElementById('adminNotificationCount');
+                    if (badge) { badge.hidden = !data.unread_count; badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count; }
+                    if (data.html) document.getElementById('adminBellList').innerHTML = data.html;
+                    if (data.latest_id > latestId) sound();
+                    latestId = Math.max(latestId, data.latest_id);
+                } catch (_) {}
+            }
+            setInterval(refreshAdminNotifications, 3000);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAdminNotifications(); });
+        })();
+    </script>
+    @include('shared.message-delete-dialog')
+    @include('shared.live-revision-script')
 </body>
 
 </html>

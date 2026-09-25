@@ -34,4 +34,5 @@
         </div>
     </section>
     @include('seller.operations.drawer')
+@include('shared.live-revision', ['endpoint' => route('seller.live', 'shipments'), 'mode' => 'reload'])
 </x-seller.layout>

@@ -2,6 +2,8 @@
     <div class="max-w-3xl mx-auto p-4 sm:p-5 lg:p-6">
         <h2 class="text-2xl font-bold text-gray-900 mb-6">Checkout</h2>
 
+        @error('checkout_revision')<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ $message }}</div>@enderror
+
         @error('quantity')
             <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 mb-4">
                 {{ $message }}
@@ -24,6 +26,7 @@
         <form action="{{ route('buyer.checkout.store') }}" method="POST"
             class="bg-white rounded-2xl p-5 shadow-sm space-y-4">
             @csrf
+            <input type="hidden" name="checkout_revision" value="{{ $checkoutRevision }}">
             <div>
                 <label class="text-sm font-medium text-gray-700">Delivery Address</label>
                 <textarea name="shipping_address" rows="3" required class="w-full border rounded-lg mt-1 p-2 text-sm">{{ old('shipping_address', $defaultAddress) }}</textarea>
@@ -41,4 +44,5 @@
             </button>
         </form>
     </div>
+@include('shared.live-revision', ['endpoint' => route('buyer.live', 'cart'), 'mode' => 'notice'])
 </x-buyer.layout>

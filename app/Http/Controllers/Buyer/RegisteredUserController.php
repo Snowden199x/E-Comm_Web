@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Communication\Notification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -71,6 +72,8 @@ class RegisteredUserController extends Controller
             'street' => $validated['street'],
             'zip_code' => $validated['zip_code'],
         ]);
+
+        Notification::create(['user_id' => null, 'type' => 'new_buyer_registration', 'title' => 'New buyer registration', 'message' => 'A buyer account is awaiting review.', 'link' => route('admin.registrations.index')]);
 
         return response()->json([
             'success' => true,

@@ -17,7 +17,8 @@ class CheckoutController extends Controller
 {
     public function index()
     {
-        $cartItems = CartItem::with('product')->where('user_id', auth()->id())->get();
+        $cartItems = CartItem::with('product')->where('user_id', auth()->id())->orderBy('id')->get();
+        $checkoutRevision = $this->revision($cartItems, $cartItems->mapWithKeys(fn ($item) => [$item->product_id => $item->product]));
         $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
 
         $defaultAddress = $buyerDetail
@@ -31,12 +32,12 @@ class CheckoutController extends Controller
             ])))
             : '';
 
-        return view('buyer.checkout', compact('cartItems', 'defaultAddress'));
+        return view('buyer.checkout', compact('cartItems', 'defaultAddress', 'checkoutRevision'));
     }
 
     public function store(Request $request)
     {
-        $request->validate(['shipping_address' => 'required|string|max:2000', 'payment_mode' => 'required|in:cod']);
+        $request->validate(['shipping_address' => 'required|string|max:2000', 'payment_mode' => 'required|in:cod', 'checkout_revision' => ['required', 'regex:/^[a-f0-9]{64}$/']]);
         DB::transaction(function () use ($request) {
             $cartItems = CartItem::where('user_id', $request->user()->id)->orderBy('id')->lockForUpdate()->get();
             if ($cartItems->isEmpty()) {
@@ -54,6 +55,19 @@ class CheckoutController extends Controller
                     throw ValidationException::withMessages(['quantity' => $product->name.' only has '.$product->stock.' left in stock.']);
                 }
             }
+            if (! hash_equals($this->revision($cartItems, $products), $request->input('checkout_revision'))) {
+                throw ValidationException::withMessages(['checkout_revision' => 'An item or price changed while you were checking out. Review your updated cart before placing the order.']);
+            }
+            foreach ($cartItems as $item) {
+                $product = $products[$item->product_id];
+                foreach (['color' => 'colors', 'size' => 'sizes'] as $choice => $field) {
+                    $available = array_values(array_filter(array_map('trim', explode(',', $product->{$field} ?? ''))));
+                    if (($available && ! in_array($item->{$choice}, $available, true))
+                        || (! $available && trim((string) $item->{$choice}) !== '')) {
+                        throw ValidationException::withMessages(['checkout_revision' => 'An item option changed. Review your updated cart before placing the order.']);
+                    }
+                }
+            }
             foreach ($cartItems->groupBy(fn ($item) => $products[$item->product_id]->seller_id) as $sellerId => $items) {
                 $order = Order::create([
                     'buyer_id' => $request->user()->id, 'seller_id' => $sellerId,
@@ -62,7 +76,8 @@ class CheckoutController extends Controller
                     'shipping_address' => $request->shipping_address,
                 ]);
                 $order->statusEvents()->create(['user_id' => $request->user()->id, 'to_status' => 'placed']);
-                Notification::create(['user_id' => $sellerId, 'type' => 'new_order', 'title' => 'New order '.$order->number, 'message' => 'A buyer placed an order. Review it in Orders.', 'link' => route('seller.orders.index', ['order' => $order->id])]);
+                Notification::create(['user_id' => $sellerId, 'type' => 'new_order', 'title' => 'New order '.$order->number, 'message' => 'A buyer placed an order. Review it in Orders.', 'link' => route('seller.orders.show', $order)]);
+                Notification::create(['user_id' => null, 'type' => 'new_order', 'title' => 'New order '.$order->number, 'message' => 'A buyer placed an order with a seller.', 'link' => route('admin.dashboard')]);
                 foreach ($items as $item) {
                     $product = $products[$item->product_id];
                     $order->items()->create(['product_id' => $product->id, 'quantity' => $item->quantity, 'color' => $item->color, 'size' => $item->size, 'price' => $product->price]);
@@ -73,5 +88,17 @@ class CheckoutController extends Controller
         }, 3);
 
         return redirect()->route('buyer.orders.index')->with('success', 'Order placed.');
+    }
+
+    private function revision($cartItems, $products): string
+    {
+        return hash('sha256', json_encode($cartItems->map(function ($item) use ($products) {
+            $product = $products->get($item->product_id);
+            return [
+                $item->id, $item->product_id, $item->quantity, $item->color, $item->size,
+                $product?->price, $product?->stock, $product?->status,
+                $product?->colors, $product?->sizes, $product?->seller_id,
+            ];
+        })->all()));
     }
 }

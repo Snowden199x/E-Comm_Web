@@ -41,9 +41,9 @@
             <img src="{{ asset('assets/icons/seller/icon-4.png') }}" alt="" class="sd-stat__icon">
             <div>
                 <p class="sd-stat__label">Average Rating</p>
-                <p class="sd-stat__value">—</p>
-                <p class="sd-stat__stars" aria-label="No rating data">☆☆☆☆☆</p>
-                <p class="sd-stat__meta">Ratings not available yet</p>
+                <p class="sd-stat__value">{{ $stats['average_rating'] === null ? '—' : number_format($stats['average_rating'], 1) }}</p>
+                <p class="sd-stat__stars" aria-label="{{ $stats['average_rating'] === null ? 'No reviews' : $stats['average_rating'].' out of 5 stars' }}">{{ $stats['average_rating'] === null ? '☆☆☆☆☆' : str_repeat('★', (int) round($stats['average_rating'])).str_repeat('☆', 5 - (int) round($stats['average_rating'])) }}</p>
+                <p class="sd-stat__meta">{{ number_format($stats['review_count']) }} published reviews</p>
             </div>
         </div>
     </section>
@@ -55,22 +55,9 @@
         <section class="sd-card sd-card--chart">
             <h2 class="sd-card__title">Sales Overview</h2>
 
-            @php
-                $salesMax = max(100, ceil(max(array_column($chart, 'sales')) / 100) * 100);
-                $ordersMax = max(5, ceil(max(array_column($chart, 'orders')) / 5) * 5);
-            @endphp
-            <p class="sd-chart-note">{{ now()->format('F Y') }} · Sales from delivered and completed orders.</p>
-            <svg class="sd-chart" viewBox="0 0 540 250" role="img" aria-label="Sales and orders for {{ now()->format('F Y') }}">
-                <circle cx="118" cy="12" r="7" fill="#3E1E52"/><text x="132" y="16" class="sd-chart__legend">Sales</text>
-                <circle cx="208" cy="12" r="7" fill="#C0603F"/><text x="222" y="16" class="sd-chart__legend">Orders</text>
-                @for ($i=0;$i<=5;$i++)<text x="48" y="{{ 44+$i*33.2 }}" text-anchor="end" class="sd-chart__axis">{{ number_format($salesMax*(5-$i)/5) }}</text><text x="488" y="{{ 44+$i*33.2 }}" class="sd-chart__axis">{{ number_format($ordersMax*(5-$i)/5) }}</text>@endfor
-                @foreach (['orders'=>[$ordersMax,'#C0603F','gradOrders'],'sales'=>[$salesMax,'#3E1E52','gradSales']] as $metric=>[$max,$color,$gradient])
-                    @php $coords=collect($chart)->map(fn($row,$i)=>[60+($i*410/max(1,count($chart)-1)),206-($row[$metric]/$max*166),$row]);$points=$coords->map(fn($v)=>round($v[0],2).','.round($v[1],2))->implode(' ');$lastX=$coords->last()[0]; @endphp
-                    <polygon fill="none" stroke="{{ $color }}" points="{{ $points }}"/><polyline fill="none" stroke="{{ $color }}" stroke-width="1.6" points="{{ $points }}"/>
-                    @foreach ($coords as [$x,$y,$row])<circle cx="{{ $x }}" cy="{{ $y }}" r="2.5" fill="{{ $color }}"><title>{{ $row['label'] }}: {{ $metric==='sales'?'₱':'' }}{{ number_format($row[$metric],2) }}</title></circle>@endforeach
-                @endforeach
-                @foreach ($chart as $i=>$row)@if($i===0||$i===count($chart)-1||$i%max(1,(int)ceil(count($chart)/6))===0)<text x="{{ 60+($i*410/max(1,count($chart)-1)) }}" y="240" text-anchor="middle" class="sd-chart__axis">{{ $row['label'] }}</text>@endif @endforeach
-            </svg>
+            <div class="sd-chart-legend"><span><i class="sd-chart-legend__sales"></i>Sales</span><span><i class="sd-chart-legend__orders"></i>Orders</span></div>
+            <p class="sd-chart-note">Last 6 weeks · Sales from delivered and completed orders.</p>
+            <div class="sd-chart-canvas"><canvas id="sellerSalesOverviewChart" role="img" aria-label="Seller sales and orders over the last six weeks"></canvas></div>
         </section>
 
         {{-- Recent Orders --}}
@@ -134,7 +121,7 @@
         <section class="sd-card sd-card--inventory">
             <header class="sd-card__head">
                 <h2 class="sd-card__title">Inventory Alerts</h2>
-
+                <a href="{{ route('seller.products.index', ['stock_status' => 'alerts']) }}" class="sd-link">View all</a>
             </header>
 
             <h3 class="sd-inv__group">Low Stock</h3>
@@ -159,16 +146,48 @@
         {{-- Notification --}}
         <section class="sd-card sd-card--notif">
             <header class="sd-card__head">
-                <h2 class="sd-card__title">Notification</h2>
+                <h2 class="sd-card__title">Notifications</h2>
+                <a href="{{ route('seller.notifications.index') }}" class="sd-link">View all</a>
             </header>
 
-            <ul class="sd-notif">
-                @if ($stats['pending_orders'])<li><div><p class="sd-notif__title"><a href="{{ route('seller.orders.index',['status'=>'new']) }}">{{ $stats['pending_orders'] }} new order(s) awaiting acceptance</a></p><p class="sd-notif__desc">Review and prepare your orders.</p></div></li>@endif
-                @foreach ($notifications as $notification)<li><div><p class="sd-notif__title">{{ $notification->title }}</p><p class="sd-notif__desc">{{ $notification->message }}</p><p class="sd-notif__date">{{ $notification->created_at->format('M j, Y') }}</p></div></li>@endforeach
-                @foreach ($announcements as $announcement)<li><div><p class="sd-notif__title">{{ $announcement->title }}</p><p class="sd-notif__desc">{{ $announcement->message }}</p><p class="sd-notif__date">{{ $announcement->created_at->format('M j, Y') }}</p></div></li>@endforeach
-                @if (!$stats['pending_orders'] && $notifications->isEmpty() && $announcements->isEmpty())<li>No notifications yet.</li>@endif
+            <ul class="sd-notif" id="sdDashboardNotifications" aria-label="Recent notifications">
+                @include('seller.notifications.dashboard')
             </ul>
         </section>
     </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+(() => {
+    const canvas = document.getElementById('sellerSalesOverviewChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+    const fill = (color, alpha) => {
+        const gradient = canvas.getContext('2d').createLinearGradient(0, 0, 0, 260);
+        gradient.addColorStop(0, color + alpha);
+        gradient.addColorStop(1, color + '05');
+        return gradient;
+    };
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: @json(array_column($chart, 'label')),
+            datasets: [
+                {label: 'Sales', data: @json(array_column($chart, 'sales')), borderColor: '#4A2A52', backgroundColor: fill('#8B6E95', '66'), borderWidth: 2, fill: true, tension: .35, pointRadius: 3, pointBackgroundColor: '#4A2A52', pointBorderWidth: 0, yAxisID: 'y'},
+                {label: 'Orders', data: @json(array_column($chart, 'orders')), borderColor: '#C97B5F', backgroundColor: fill('#E0916F', '55'), borderWidth: 2, fill: true, tension: .35, pointRadius: 3, pointBackgroundColor: '#C97B5F', pointBorderWidth: 0, yAxisID: 'y1'}
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+            animation: {duration: 900, easing: 'easeOutQuart'},
+            plugins: {legend: {display: false}, tooltip: {backgroundColor: '#2B1730', padding: 10, cornerRadius: 10, displayColors: true, boxPadding: 4}},
+            scales: {
+                x: {grid: {display: false}, border: {display: false}, ticks: {color: '#9CA3AF', font: {size: 11}, maxRotation: 0, autoSkip: true, maxTicksLimit: 7}},
+                y: {type: 'linear', position: 'left', beginAtZero: true, border: {display: false}, grid: {color: '#F1ECF1'}, ticks: {color: '#9CA3AF', font: {size: 11}, callback: value => value >= 1000 ? value / 1000 + 'k' : value}},
+                y1: {type: 'linear', position: 'right', beginAtZero: true, border: {display: false}, grid: {drawOnChartArea: false}, ticks: {color: '#9CA3AF', font: {size: 11}}}
+            }
+        }
+    });
+})();
+</script>
+@include('shared.live-revision', ['endpoint' => route('seller.live', 'dashboard'), 'mode' => 'reload'])
 </x-seller.layout>

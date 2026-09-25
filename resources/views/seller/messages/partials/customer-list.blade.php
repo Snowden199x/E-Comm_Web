@@ -1,0 +1,4 @@
+                @if($customerConversations->isNotEmpty())<p class="sw-inbox__group">Customers</p>@endif
+                @foreach($customerConversations as $customerChat)
+                    <a class="sw-inbox__entry" href="{{ route('seller.marketplace-messages.show', $customerChat) }}"><span class="sw-inbox__initial">{{ strtoupper(mb_substr($customerChat->buyer?->name ?? '?', 0, 1)) }}</span><span><strong>{{ $customerChat->buyer?->name ?? 'Buyer unavailable' }} @if($customerChat->unread_count)<em class="sw-inbox__unread">{{ $customerChat->unread_count }}</em>@endif</strong><small>{{ $customerChat->order ? 'Order #'.$customerChat->order->number : 'Shop inquiry' }} · {{ $customerChat->latestMessage?->body ?: ($customerChat->latestMessage?->shared_order_id ? 'Order shared' : 'Photo') }}</small></span></a>
+                @endforeach

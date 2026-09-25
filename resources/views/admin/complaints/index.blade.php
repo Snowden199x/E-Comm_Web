@@ -1,8 +1,8 @@
 <x-admin.layout>
     <div class="p-4 sm:p-5 lg:p-6" x-data="{ previewId: null }">
-        <div class="mb-6">
-            <h2 class="text-2xl font-bold text-gray-900">Manage Complaints and Disputes</h2>
-            <p class="text-gray-500">Review complaint details and coordinate with buyer, seller, and courier</p>
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <div><h2 class="text-2xl font-bold text-gray-900">Complaints and Account Reports</h2>
+                <p class="text-gray-500">Review order complaints and account reports from buyers and sellers</p></div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
@@ -65,7 +65,7 @@
                         <img src="{{ asset('assets/icons/user-management/search-icon.svg') }}" alt=""
                             class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 opacity-50">
                         <input type="text" x-model="q" @input="search" autocomplete="off"
-                            placeholder="Search seller name or email..."
+                            placeholder="Search name or email..."
                             class="w-full pl-10 pr-4 py-2.5 rounded-full border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]">
                     </div>
 
@@ -88,6 +88,12 @@
         'Payment Issue' => ['#315A8A', '#DCE8F5'],
         'Refund Issue' => ['#4C5C8A', '#E1E6F5'],
         'Seller Issue' => ['#8A3F3F', '#F2DADA'],
+        'Misleading listing' => ['#7A4E00', '#F7E9C6'],
+        'Seller harassment' => ['#7A3F72', '#EEDDF0'],
+        'Suspected fraud' => ['#A33A3A', '#F8DADA'],
+        'Bogus order' => ['#9A4A00', '#FCE8D2'],
+        'Abusive messages' => ['#7A3F72', '#EEDDF0'],
+        'Repeated cancellations' => ['#9A4A00', '#FCE8D2'],
         'Delivery Delay' => ['#A35C00', '#F9E2C7'],
         'Delivery Issue' => ['#365F70', '#DCECEF'],
         'Courier Issue' => ['#596B3D', '#E4ECD7'],
@@ -140,18 +146,9 @@
                     <select x-model="typeFilter" @change="search"
                         class="px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]">
                         <option value="">All types</option>
-                        <option value="Item Not Received">Item Not Received</option>
-                        <option value="Wrong Item Received">Wrong Item Received</option>
-                        <option value="Damaged Item">Damaged Item</option>
-                        <option value="Missing Item">Missing Item</option>
-                        <option value="Item Not as Described">Item Not as Described</option>
-                        <option value="Payment Issue">Payment Issue</option>
-                        <option value="Refund Issue">Refund Issue</option>
-                        <option value="Seller Issue">Seller Issue</option>
-                        <option value="Delivery Delay">Delivery Delay</option>
-                        <option value="Delivery Issue">Delivery Issue</option>
-                        <option value="Courier Issue">Courier Issue</option>
-                        <option value="Other">Other</option>
+                        @foreach($types as $type)
+                            <option value="{{ $type }}">{{ $type }}</option>
+                        @endforeach
                     </select>
                 </div>
             </div>
@@ -167,4 +164,5 @@
             @endforeach
         @endif
     </div>
+@include('shared.live-revision', ['endpoint' => route('admin.live', 'cases'), 'mode' => 'reload'])
 </x-admin.layout>

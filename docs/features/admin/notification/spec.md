@@ -1,20 +1,12 @@
 # Admin Notifications
 
-**Status:** Partial  
-**Reviewed:** 24 September 2026
+**Status:** Implemented for in-app platform events; browser verification pending.
+**Reviewed:** 25 September 2026
 
-## Current behavior
+Admin notifications use records with `user_id = null`. Buyer- and seller-targeted notifications are excluded from the admin dashboard, bell and inbox. New buyer and seller registrations and incoming support messages create admin records.
 
-Admin notification listing and shared notification records are present.
+The bell shows the unread count and refreshes while the page is open. A new item triggers a short sound after the browser allows audio. The inbox shows newest items first, supports All and Unread filters, and lets an admin open, mark one read, or mark all read. Opening an item follows only an internal admin path; invalid links return to the inbox.
 
-## Gaps and acceptance direction
+All admins currently share the same platform notification read state because the table has no admin recipient column. Personal admin notification preferences and external delivery channels are not implemented.
 
-A notification preference center, unread/read lifecycle, and reliable delivery channels are not established by the current route/model snapshot.
-
-## Source evidence
-
-`app/Http/Controllers/Admin/NotificationController.php`, `app/Models/Communication/Notification.php`
-
-## Related documentation
-
-See [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+**Code:** `app/Http/Controllers/Admin/NotificationController.php`, `resources/views/admin/notifications/index.blade.php`, `resources/views/components/admin/layout.blade.php`.

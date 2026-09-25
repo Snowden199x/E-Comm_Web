@@ -85,4 +85,5 @@
             @include('admin.registrations.partials.registrations-table')
         </div>
     </div>
+@include('shared.live-revision', ['endpoint' => route('admin.live', 'accounts'), 'mode' => 'reload'])
 </x-admin.layout>

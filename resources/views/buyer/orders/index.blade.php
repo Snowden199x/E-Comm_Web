@@ -17,4 +17,5 @@
             @endforelse
         </div>
     </div>
+@include('shared.live-revision', ['endpoint' => route('buyer.live', 'orders'), 'mode' => 'reload'])
 </x-buyer.layout>

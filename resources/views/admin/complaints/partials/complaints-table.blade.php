@@ -17,12 +17,12 @@
                         CMP-{{ $complaint->created_at->format('Y') }}-{{ str_pad($complaint->id, 5, '0', STR_PAD_LEFT) }}
                     </td>
                     <td class="py-3 text-gray-600">
-                        <p>{{ $complaint->complainant->name }}<span class="text-xs text-gray-400"> (Buyer)</span></p>
+                        <p>{{ $complaint->complainant->name }}<span class="text-xs text-gray-400"> ({{ ucfirst($complaint->complainant->role) }})</span></p>
                         <p class="font-semibold text-gray-900">{{ $complaint->respondent->name }}<span
-                                class="text-xs text-gray-400 font-normal"> (Seller)</span></p>
+                                class="text-xs text-gray-400 font-normal"> ({{ ucfirst($complaint->respondent->role) }})</span></p>
                     </td>
-                    <td class="py-3">@include('admin.complaints.partials.type-badge')</td>
-                    <td class="py-3">@include('admin.complaints.partials.status-badge')</td>
+                    <td class="py-3">@include('admin.complaints.partials.type-badge')@if($complaint->kind === 'user_report')<small class="mt-1 block text-gray-500">Account report</small>@endif</td>
+                    <td class="py-3">@include('admin.complaints.partials.status-badge')@if($complaint->decision)<small class="mt-1 block font-semibold text-gray-600">{{ ucfirst($complaint->decision) }}</small>@endif</td>
                     <td class="py-3 text-gray-600">{{ $complaint->created_at->format('M d, Y g:i A') }}</td>
                 </tr>
             @empty

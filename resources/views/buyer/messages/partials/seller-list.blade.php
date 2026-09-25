@@ -1,0 +1,6 @@
+            @forelse($sellerConversations as $sellerChat)
+                <a href="{{ $sellerChat->order_id ? route('buyer.marketplace-messages.show', $sellerChat->order_id) : route('buyer.marketplace-messages.seller.show', $sellerChat->seller_id) }}" class="mb-2 flex items-center justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 hover:border-[#7d5381] hover:bg-[#fcf8fc]">
+                    <span class="min-w-0"><strong class="block truncate text-sm text-gray-900">{{ $sellerChat->seller?->name ?? 'Seller unavailable' }}</strong><small class="block truncate text-xs text-gray-500">{{ $sellerChat->order ? 'Order #'.$sellerChat->order->number : 'Shop inquiry' }} · {{ $sellerChat->latestMessage?->body ?: ($sellerChat->latestMessage?->shared_order_id ? 'Order shared' : 'Photo') }}</small></span>
+                    @if($sellerChat->unread_count)<span class="rounded-full bg-[#7b3d7e] px-2 py-1 text-xs font-semibold text-white">{{ $sellerChat->unread_count }} new</span>@endif
+                </a>
+            @empty<p class="text-sm text-gray-500">No seller chats yet. Open an order and choose “Ask about item” to start one.</p>@endforelse

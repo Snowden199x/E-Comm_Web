@@ -445,4 +445,5 @@
             });
         })();
     </script>
+@include('shared.live-revision', ['endpoint' => route('admin.live', 'dashboard'), 'mode' => 'reload'])
 </x-admin.layout>
