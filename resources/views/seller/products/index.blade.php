@@ -10,7 +10,7 @@
         <form method="GET" action="{{ route('seller.products.index') }}" class="ops-filters">
             <label class="ops-search"><span class="ops-sr-only">Search products</span><input type="search" name="search" value="{{ $filters['search']??'' }}" placeholder="Search products or SKU…" maxlength="100"></label>
             <label><span class="ops-sr-only">Category</span><select name="category"><option value="">All categories</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected(($filters['category']??'')==$category->id)>{{ $category->name }}</option>@endforeach</select></label>
-            <label><span class="ops-sr-only">Stock status</span><select name="stock_status"><option value="">All stock statuses</option>@foreach(\App\Models\Ecommerce\Product::STOCK_LABELS as $key=>$label)<option value="{{ $key }}" @selected(($filters['stock_status']??'')===$key)>{{ $label }}</option>@endforeach</select></label>
+            <label><span class="ops-sr-only">Stock status</span><select name="stock_status"><option value="">All stock statuses</option><option value="alerts" @selected(($filters['stock_status']??'')==='alerts')>Inventory alerts</option>@foreach(\App\Models\Ecommerce\Product::STOCK_LABELS as $key=>$label)<option value="{{ $key }}" @selected(($filters['stock_status']??'')===$key)>{{ $label }}</option>@endforeach</select></label>
             <button class="ops-button" type="submit">Apply</button>@if(request()->query())<a class="ops-text-link" href="{{ route('seller.products.index') }}">Clear</a>@endif
         </form>
         @if($errors->any())<p class="ops-alert" role="alert">{{ $errors->first() }}</p>@endif
@@ -39,4 +39,5 @@
         <dialog id="opsCategories" class="ops-modal" aria-labelledby="opsCategoryTitle"><header class="ops-card-head"><h2 id="opsCategoryTitle">Product Categories</h2><button type="button" data-close-dialog aria-label="Close categories">×</button></header>@forelse($categories as $category)<a class="ops-list-row" href="{{ route('seller.products.index',['category'=>$category->id]) }}"><span>{{ $category->name }}</span><small>{{ $category->products_count }} products</small><span>›</span></a>@empty<p class="ops-muted">No products assigned to a category yet.</p>@endforelse</dialog>
     </section>
     @include('seller.operations.drawer')
+@include('shared.live-revision', ['endpoint' => route('seller.live', 'products'), 'mode' => 'reload'])
 </x-seller.layout>

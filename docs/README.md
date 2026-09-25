@@ -1,6 +1,6 @@
 # Vendo Project Documentation
 
-This documentation describes the Laravel web application as it exists in the repository, checked on **24 September 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
+This documentation describes the Laravel web application as it exists in the repository, checked on **25 September 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
 
 ## Start here
 
@@ -9,6 +9,7 @@ This documentation describes the Laravel web application as it exists in the rep
 - [Feature implementation guide](feature-implementation-guide.md) — how a feature moves from UI through routes, authorization, database, and tests.
 - [Architecture](architecture.md) and [schema](schema.md) — current technical structure and data relationships.
 - [Order and logistics flow decisions](order-logistics-flow-decisions.md) — current order states and ownership boundaries.
+- [25 September progress](logs/PROGRESS-2026-09-25.md) — messaging, notification and inventory updates.
 - [Future plan](future-plan.md) — remaining web scope and the planned mobile integration seam.
 
 ## Domains

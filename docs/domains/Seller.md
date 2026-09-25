@@ -12,12 +12,22 @@ Seller registration is OTP-gated and stores seller detail, identity/permit paths
 
 [Products & Inventory](../features/seller/products-inventory/spec.md) is connected to seller product records, admin review, stock/status filters, categories, audited restocks and stock history. [Shipments](../features/seller/shipments/spec.md) reads the same ERP orders as Orders, with tracking metadata, real summaries, customer/item details, pre-pickup cancellation and assigned-rider handoff.
 
-## Next seller screens documented
+## Delivered orders and feedback
 
-[Completed Orders](../features/seller/completed-orders/spec.md) is planned as a seller-scoped read-only view of orders currently `delivered` or `completed`. Its functional requirements cover cards, filters, delivery performance, top products and details; the backend contract defines delivery timestamps, revenue and completion-rate calculations. [Feedback Management](../features/seller/review-management/spec.md) is planned around verified product reviews created by buyers after confirming receipt, with seller replies and admin moderation. Both screens are documentation only; their sidebar links still have no working destinations.
+[Delivered Orders](../features/seller/completed-orders/spec.md) is a seller-scoped read-only view of orders currently `delivered` or `completed`, with delivery metrics, filters, top products and order details. [Feedback Management](../features/seller/review-management/spec.md) handles verified product reviews created by buyers after confirming receipt, seller replies and admin moderation.
+
+## Seller workspace
+
+- [Reports](../features/seller/generate-report/spec.md) shows seller-scoped delivery-period summaries with matching preview and PDF download for today, this week, this month and this year.
+- [Messages](../features/seller/chat-messaging/spec.md) provides a Vendo Support inbox. Customer conversations still require a buyer/seller participant model and a buyer companion flow.
+- [Account Management](../features/seller/account-management/spec.md) lets sellers update contact details, a shop description, profile photo, banner and password. Approved business details remain read-only.
+- [Notifications](../features/seller/notification/spec.md) provides the bell, unread state and inbox for seller activity.
+- The shared seller header remains visible while scrolling. Its bell and message shortcut open the corresponding seller pages.
+
+These pages and routes have been added; seller-side manual verification is still pending.
 
 ## Remaining gaps
 
-Logistics courier assignment and downstream sorting/delivery actions are not yet implemented. Product deletion/bulk import, configurable inventory thresholds, shipping quotes, seller reports, reviews, messages and account-management workflows remain separate work. Completed Orders needs a reliable recorded delivery time and actual delivered orders from the logistics flow. No external carrier API is connected; shipment metadata is manually recorded from carrier details.
+Logistics courier assignment and downstream sorting/delivery actions are not yet implemented. Product deletion/bulk import, configurable inventory thresholds, shipping quotes and buyer-to-seller messaging remain separate work. Delivered Orders uses recorded delivery timestamps; only orders with an actual `delivered` or `completed` status appear. No external carrier API is connected; shipment metadata is manually recorded from carrier details.
 
 See [order flow](../order-logistics-flow-decisions.md) for ownership of transitions.

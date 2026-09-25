@@ -18,11 +18,17 @@
     conversationId: {{ $conversation->id }},
     messages: [],
     error: '',
+    fetching: false,
     init() {
         this.fetchMessages();
-        this.poll = setInterval(() => this.fetchMessages(), 3000);
+        this.poll = setInterval(() => {
+            if (!this.$el.isConnected) { clearInterval(this.poll); return; }
+            if (!document.hidden) this.fetchMessages();
+        }, 1000);
     },
     fetchMessages() {
+        if (this.fetching) return;
+        this.fetching = true;
         const box = document.getElementById('messages-scroll');
         const wasNearBottom = !box || (box.scrollHeight - box.scrollTop - box.clientHeight < 100);
 
@@ -34,7 +40,9 @@
                     const newBox = document.getElementById('messages-scroll');
                     if (newBox && wasNearBottom) newBox.scrollTop = newBox.scrollHeight;
                 });
-            });
+            })
+            .catch(() => {})
+            .finally(() => { this.fetching = false; });
     },
     async sendMessage() {
         this.error = '';
@@ -61,7 +69,7 @@
         fileInput.value = '';
         this.fetchMessages();
     }
-}">
+}" @message-deleted.window="fetchMessages()">
     <div class="flex-1 overflow-y-auto p-4 space-y-3" id="messages-scroll">
         <template x-for="message in messages" :key="message.id">
             <div :class="message.is_mine ? 'flex justify-end' : 'flex justify-start'">
@@ -80,6 +88,7 @@
                         </template>
                     </template>
                     <p class="text-xs mt-1" :class="message.is_mine ? 'text-purple-200' : 'text-gray-400'" x-text="message.created_at"></p>
+                    <button x-show="message.is_mine" type="button" class="mt-2 inline-flex rounded-md border border-white/60 px-2 py-1 text-xs font-semibold text-white" :data-delete-message="'/admin/messages/' + conversationId + '/messages/' + message.id">Delete message</button>
                 </div>
             </div>
         </template>

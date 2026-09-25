@@ -7,9 +7,11 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
-#[Fillable(['order_id', 'complainant_id', 'respondent_id', 'type', 'description', 'status'])]
+#[Fillable(['order_id', 'complainant_id', 'respondent_id', 'type', 'kind', 'description', 'status', 'decision', 'reviewed_by', 'reviewed_at'])]
 class Complaint extends Model
 {
+    protected $casts = ['reviewed_at' => 'datetime'];
+
     public function order()
     {
         return $this->belongsTo(Order::class);
@@ -49,6 +51,12 @@ class Complaint extends Model
             'Delivery Delay' => ['border' => '#A35C00', 'bg' => '#F9E2C7'],
             'Delivery Issue' => ['border' => '#365F70', 'bg' => '#DCECEF'],
             'Courier Issue' => ['border' => '#596B3D', 'bg' => '#E4ECD7'],
+            'Suspected fraud' => ['border' => '#A33A3A', 'bg' => '#F8DADA'],
+            'Bogus order' => ['border' => '#9A4A00', 'bg' => '#FCE8D2'],
+            'Abusive messages' => ['border' => '#7A3F72', 'bg' => '#EEDDF0'],
+            'Misleading listing' => ['border' => '#7A4E00', 'bg' => '#F7E9C6'],
+            'Seller harassment' => ['border' => '#7A3F72', 'bg' => '#EEDDF0'],
+            'Repeated cancellations' => ['border' => '#9A4A00', 'bg' => '#FCE8D2'],
         ];
 
         return $map[$this->type] ?? ['border' => '#666666', 'bg' => '#E9E9E9'];

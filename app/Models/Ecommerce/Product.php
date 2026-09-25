@@ -5,6 +5,7 @@ namespace App\Models\Ecommerce;
 use App\Models\Category;
 use App\Models\Compliance\ProductViolation;
 use App\Models\Compliance\ProductWarning;
+use App\Models\Communication\Notification;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +22,32 @@ class Product extends Model
     public const STOCK_LABELS = ['in_stock' => 'In Stock', 'low_stock' => 'Low Stock', 'out_of_stock' => 'Out of Stock'];
 
     protected $casts = ['price' => 'decimal:2', 'stock' => 'integer'];
+
+    protected static function booted(): void
+    {
+        static::updated(function (Product $product) {
+            if (! $product->wasChanged('stock')) {
+                return;
+            }
+            $before = (int) $product->getOriginal('stock');
+            $after = (int) $product->stock;
+            if ($after === 0 && $before > 0) {
+                $label = 'Out of stock';
+            } elseif ($after > 0 && $after <= self::LOW_STOCK_THRESHOLD && $before > self::LOW_STOCK_THRESHOLD) {
+                $label = 'Low stock';
+            } else {
+                return;
+            }
+
+            Notification::create([
+                'user_id' => $product->seller_id,
+                'type' => 'inventory_alert',
+                'title' => $label.': '.$product->name,
+                'message' => $after.' units remain. Check Products & Inventory.',
+                'link' => route('seller.products.show', $product),
+            ]);
+        });
+    }
 
     public function getStockStatusAttribute(): string
     {
@@ -63,5 +90,15 @@ class Product extends Model
     public function violations()
     {
         return $this->hasMany(ProductViolation::class);
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(ProductReview::class);
+    }
+
+    public function publishedReviews()
+    {
+        return $this->reviews()->where('visibility', 'published');
     }
 }

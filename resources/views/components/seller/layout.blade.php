@@ -4,6 +4,8 @@
     $sellerName = auth()->user()->name;
     $sellerRole = 'Seller';
     $icon = fn (string $file) => asset('assets/icons/seller/' . $file);
+    $recentNotifications = \App\Models\Communication\Notification::query()->where('user_id', auth()->id())->latest()->limit(10)->get();
+    $unreadNotifications = \App\Models\Communication\Notification::query()->where('user_id', auth()->id())->whereNull('read_at')->count();
 @endphp
 
 <!DOCTYPE html>
@@ -19,7 +21,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     @vite('resources/css/seller/seller-dashboard.css')
 </head>
-<body class="sd-body @if(request()->routeIs('seller.products.*', 'seller.shipments.*')) sd-sidebar-pinned @endif">
+<body class="sd-body @if(request()->routeIs('seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.feedback.*', 'seller.reports.*', 'seller.messages.*', 'seller.marketplace-messages.*', 'seller.account.*', 'seller.notifications.*')) sd-sidebar-pinned @endif">
 
     {{-- ============ SIDEBAR ============ --}}
     {{-- Rests collapsed (icons only). Hovering expands it as an overlay.
@@ -37,13 +39,13 @@
                 <span>Dashboard</span>
             </a>
 
-            <button type="button" class="sd-nav__item sd-nav__toggle @if(request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*')) is-active @endif" id="orderMenuToggle" aria-expanded="{{ request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*') ? 'true' : 'false' }}" aria-controls="orderSubmenu" title="Order Management">
+            <button type="button" class="sd-nav__item sd-nav__toggle @if(request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.feedback.*')) is-active @endif" id="orderMenuToggle" aria-expanded="{{ request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.feedback.*') ? 'true' : 'false' }}" aria-controls="orderSubmenu" title="Order Management">
                 <img src="{{ $icon('Ordermanagement-icon.png') }}" alt="">
                 <span>Order Management</span>
                 <svg class="sd-nav__chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
             </button>
 
-            <div class="sd-submenu @if(!request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*')) is-closed @endif" id="orderSubmenu">
+            <div class="sd-submenu @if(!request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.feedback.*')) is-closed @endif" id="orderSubmenu">
                 <a href="{{ route('seller.orders.index') }}" class="sd-nav__item sd-nav__item--sub @if(request()->routeIs('seller.orders.index')) is-active @endif" @if(request()->routeIs('seller.orders.index')) aria-current="page" @endif title="Orders">
                     <img src="{{ $icon('orders-icon.png') }}" alt="">
                     <span>Orders</span>
@@ -56,25 +58,25 @@
                     <img src="{{ $icon('shipments-icon.png') }}" alt="">
                     <span>Shipments</span>
                 </a>
-                <a href="#" class="sd-nav__item sd-nav__item--sub" title="Completed Orders">
+                <a href="{{ route('seller.completed-orders.index') }}" class="sd-nav__item sd-nav__item--sub @if(request()->routeIs('seller.completed-orders.*')) is-active @endif" @if(request()->routeIs('seller.completed-orders.*')) aria-current="page" @endif title="Delivered Orders">
                     <img src="{{ $icon('completed-orders-icon.png') }}" alt="">
                     <span>Delivered Orders</span>
                 </a>
-                <a href="#" class="sd-nav__item sd-nav__item--sub" title="Feedback">
+                <a href="{{ route('seller.feedback.index') }}" class="sd-nav__item sd-nav__item--sub @if(request()->routeIs('seller.feedback.*')) is-active @endif" @if(request()->routeIs('seller.feedback.*')) aria-current="page" @endif title="Feedback">
                     <img src="{{ $icon('feedback-icon.png') }}" alt="">
                     <span>Feedback</span>
                 </a>
             </div>
 
-            <a href="#" class="sd-nav__item" title="Reports">
+            <a href="{{ route('seller.reports.index') }}" class="sd-nav__item @if(request()->routeIs('seller.reports.*')) is-active @endif" @if(request()->routeIs('seller.reports.*')) aria-current="page" @endif title="Reports">
                 <img src="{{ $icon('reports-icon.png') }}" alt="">
                 <span>Reports</span>
             </a>
-            <a href="#" class="sd-nav__item" title="Messages">
+            <a href="{{ route('seller.messages.index') }}" class="sd-nav__item @if(request()->routeIs('seller.messages.*', 'seller.marketplace-messages.*')) is-active @endif" @if(request()->routeIs('seller.messages.*', 'seller.marketplace-messages.*')) aria-current="page" @endif title="Messages">
                 <img src="{{ $icon('messages-icon.png') }}" alt="">
                 <span>Messages</span>
             </a>
-            <a href="#" class="sd-nav__item" title="Account Management">
+            <a href="{{ route('seller.account.index') }}" class="sd-nav__item @if(request()->routeIs('seller.account.*')) is-active @endif" @if(request()->routeIs('seller.account.*')) aria-current="page" @endif title="Account Management">
                 <img src="{{ $icon('account-management-icon.png') }}" alt="">
                 <span>Account Management</span>
             </a>
@@ -99,19 +101,29 @@
             </button>
 
             <div class="sd-topbar__right">
-                <button type="button" class="sd-topbar__bell" aria-label="Notifications">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
-                </button>
-
-                <div class="sd-user">
-                    <svg class="sd-user__avatar" viewBox="0 0 40 40" width="30" height="30" aria-hidden="true">
+                <div class="sd-bell-wrap" id="sdBellWrap">
+                    <button type="button" class="sd-topbar__bell" id="sdBellBtn" aria-label="Notifications" aria-controls="sdBellMenu" aria-expanded="false">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+                        <span class="sd-bell-count" id="sdBellCount" @if(!$unreadNotifications) hidden @endif>{{ $unreadNotifications > 99 ? '99+' : $unreadNotifications }}</span>
+                    </button>
+                    <div class="sd-bell-menu" id="sdBellMenu" hidden><div class="sd-bell-menu__head"><strong>Notifications</strong><a href="{{ route('seller.notifications.index') }}">View all</a></div><div id="sdBellList">@include('seller.notifications.recent', ['notifications' => $recentNotifications])</div></div>
+                </div>
+                <div class="sd-user-wrap" id="sdUserWrap">
+                    <button type="button" class="sd-user" id="sdUserBtn" aria-label="Account menu" aria-controls="sdUserMenu" aria-expanded="false">
+                    @if(auth()->user()->profile_picture)<img class="sd-user__avatar sd-user__avatar--photo" src="{{ \Illuminate\Support\Facades\Storage::url(auth()->user()->profile_picture) }}" alt="">
+                    @else<svg class="sd-user__avatar" viewBox="0 0 40 40" width="30" height="30" aria-hidden="true">
                         <circle cx="20" cy="20" r="18.5" fill="none" stroke="currentColor" stroke-width="2.4"/>
                         <circle cx="20" cy="15.5" r="5.6" fill="currentColor"/>
                         <path d="M8.5 31c1.6-5 6-7.4 11.5-7.4S29.900 26 31.500 31A17 17 0 0120 37a17 17 0 01-11.500-6z" fill="currentColor"/>
-                    </svg>
+                    </svg>@endif
                     <div class="sd-user__text">
                         <strong>{{ $sellerName }}</strong>
                         <span>{{ $sellerRole }}</span>
+                    </div>
+                    </button>
+                    <div class="sd-user-menu" id="sdUserMenu" hidden>
+                        <a href="{{ route('seller.account.index') }}">Account Management</a>
+                        <form method="POST" action="{{ route('seller.logout') }}">@csrf<button type="submit">Logout</button></form>
                     </div>
                 </div>
             </div>
@@ -146,7 +158,86 @@
             // Keep aria-expanded / is-closed in sync with the server-rendered
             // active state above, in case CSS/markup order ever drifts.
             submenu.classList.toggle('is-closed', toggle.getAttribute('aria-expanded') !== 'true');
+
+            var bellWrap = document.getElementById('sdBellWrap');
+            var bellButton = document.getElementById('sdBellBtn');
+            var bellMenu = document.getElementById('sdBellMenu');
+            var closeBell = function () { bellMenu.hidden = true; bellButton.setAttribute('aria-expanded', 'false'); };
+            var userWrap = document.getElementById('sdUserWrap');
+            var userButton = document.getElementById('sdUserBtn');
+            var userMenu = document.getElementById('sdUserMenu');
+            var closeUser = function () { userMenu.hidden = true; userButton.setAttribute('aria-expanded', 'false'); };
+            bellButton.addEventListener('click', function () {
+                var opening = bellMenu.hidden;
+                closeUser();
+                bellMenu.hidden = !opening;
+                bellButton.setAttribute('aria-expanded', String(opening));
+            });
+            userButton.addEventListener('click', function () {
+                var opening = userMenu.hidden;
+                closeBell();
+                userMenu.hidden = !opening;
+                userButton.setAttribute('aria-expanded', String(opening));
+            });
+            document.addEventListener('click', function (event) {
+                if (!bellWrap.contains(event.target)) closeBell();
+                if (!userWrap.contains(event.target)) closeUser();
+            });
+            document.addEventListener('keydown', function (event) {
+                if (event.key !== 'Escape') return;
+                if (!bellMenu.hidden) { closeBell(); bellButton.focus(); }
+                if (!userMenu.hidden) { closeUser(); userButton.focus(); }
+            });
+            var latestNotificationId = {{ $recentNotifications->first()?->id ?? 0 }};
+            var audioContext;
+            var unlockAudio = function () {
+                try {
+                    audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+                    if (audioContext.state === 'suspended') audioContext.resume();
+                } catch (_) {}
+            };
+            document.addEventListener('pointerdown', unlockAudio, { once: true });
+            document.addEventListener('keydown', unlockAudio, { once: true });
+            var playNotification = function () {
+                unlockAudio();
+                if (!audioContext || audioContext.state !== 'running') return;
+                [740, 980].forEach(function (frequency, index) {
+                    var oscillator = audioContext.createOscillator();
+                    var gain = audioContext.createGain();
+                    var start = audioContext.currentTime + index * .13;
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = frequency;
+                    gain.gain.setValueAtTime(.0001, start);
+                    gain.gain.exponentialRampToValueAtTime(.085, start + .02);
+                    gain.gain.exponentialRampToValueAtTime(.0001, start + .22);
+                    oscillator.connect(gain).connect(audioContext.destination);
+                    oscillator.start(start);
+                    oscillator.stop(start + .23);
+                });
+            };
+            var refreshBell = async function () {
+                if (document.hidden) return;
+                try {
+                    var response = await fetch(@json(route('seller.notifications.recent')), {headers: {'Accept': 'application/json'}});
+                    if (!response.ok) return;
+                    var data = await response.json();
+                    var latestCount = Number(data.unread_count) || 0;
+                    var latestId = Number(data.latest_id) || 0;
+                    if (latestId > latestNotificationId) playNotification();
+                    latestNotificationId = Math.max(latestNotificationId, latestId);
+                    var badge = document.getElementById('sdBellCount');
+                    badge.hidden = !latestCount;
+                    badge.textContent = latestCount > 99 ? '99+' : latestCount;
+                    document.getElementById('sdBellList').innerHTML = data.html;
+                    var dashboardList = document.getElementById('sdDashboardNotifications');
+                    if (dashboardList) dashboardList.innerHTML = data.dashboard_html;
+                } catch (_) {}
+            };
+            window.setInterval(refreshBell, 3000);
+            document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshBell(); });
         })();
     </script>
+    @include('shared.message-delete-dialog')
+    @include('shared.live-revision-script')
 </body>
 </html>

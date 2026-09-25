@@ -3,7 +3,7 @@
         activeId: {{ $activeId ?? 'null' }},
         lightboxImage: null,
         init() {
-            setInterval(() => this.refreshList(), 3000);
+            setInterval(() => { if (!document.hidden) this.refreshList(); }, 1500);
         },
         openConversation(id) {
             this.activeId = id;

@@ -26,7 +26,7 @@ class ProductController extends Controller
     {
         $filters = $request->validate([
             'search' => 'nullable|string|max:100', 'category' => 'nullable|integer',
-            'stock_status' => ['nullable', Rule::in(['in_stock', 'low_stock', 'out_of_stock'])],
+            'stock_status' => ['nullable', Rule::in(['in_stock', 'low_stock', 'out_of_stock', 'alerts'])],
             'page' => 'nullable|integer|min:1',
         ]);
         $base = Product::where('seller_id', $request->user()->id);
@@ -46,6 +46,7 @@ class ProductController extends Controller
             $query->where('category_id', $filters['category']);
         }
         match ($filters['stock_status'] ?? '') {
+            'alerts' => $query->where('status', 'approved')->where('stock', '<=', Product::LOW_STOCK_THRESHOLD),
             'in_stock' => $query->where('stock', '>', Product::LOW_STOCK_THRESHOLD),
             'low_stock' => $query->whereBetween('stock', [1, Product::LOW_STOCK_THRESHOLD]),
             'out_of_stock' => $query->where('stock', 0), default => null,

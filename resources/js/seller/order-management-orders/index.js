@@ -3,7 +3,7 @@
     const app=document.getElementById('omoApp'); if(!app)return;
     const el=id=>document.getElementById(id), initial=JSON.parse(el('omoInitial').textContent);
     const state={status:'all',search:'',date_from:'',date_to:'',page:1,...initial.filters};
-    let pagination=initial.pagination,currentOrder=null,listSeq=0,drawerSeq=0,saving=false,timer;
+    let pagination=initial.pagination,currentOrder=null,drawerHtml=null,listSeq=0,drawerSeq=0,saving=false,timer;
     const showError=(message,id='omoError')=>{const node=el(id);node.textContent=message;node.hidden=!message;};
     async function api(url,options={}){
         const response=await fetch(url,{...options,headers:{Accept:'application/json','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,...options.headers}});
@@ -23,8 +23,8 @@
         document.querySelectorAll('.omo-view-btn').forEach(node=>node.classList.toggle('is-active',Number(node.dataset.id)===currentOrder));
     }
     async function load(){const seq=++listSeq;try{const params=new URLSearchParams(Object.entries(state).filter(([,v])=>v!==''&&v!=null));const data=await api(`${app.dataset.endpoint}?${params}`);if(seq!==listSeq)return;el('omoTableBody').innerHTML=data.html;pagination=data.pagination;sync(data.counts);showError('');history.replaceState(null,'',`${app.dataset.endpoint}?${params}`);}catch(error){if(seq===listSeq)showError(error.message);}}
-    async function openOrder(id){const seq=++drawerSeq;currentOrder=Number(id);el('omoLayout').classList.add('is-open');el('omoDrawer').setAttribute('aria-hidden','false');el('omoDrawer').innerHTML='<div class="omo-drawer__inner"><p class="omo-empty">Loading order…</p></div>';try{const data=await api(`${app.dataset.orderBase}/${id}`);if(seq!==drawerSeq)return;el('omoDrawer').innerHTML=data.html;sync();}catch(error){if(seq===drawerSeq){closeOrder();showError(error.message);}}}
-    function closeOrder(){if(saving)return;drawerSeq++;currentOrder=null;el('omoLayout').classList.remove('is-open');el('omoDrawer').setAttribute('aria-hidden','true');sync();}
+    async function openOrder(id){const seq=++drawerSeq;currentOrder=Number(id);el('omoLayout').classList.add('is-open');el('omoDrawer').setAttribute('aria-hidden','false');el('omoDrawer').innerHTML='<div class="omo-drawer__inner"><p class="omo-empty">Loading order…</p></div>';try{const data=await api(`${app.dataset.orderBase}/${id}`);if(seq!==drawerSeq)return;el('omoDrawer').innerHTML=data.html;drawerHtml=data.html;sync();}catch(error){if(seq===drawerSeq){closeOrder();showError(error.message);}}}
+    function closeOrder(){if(saving)return;drawerSeq++;currentOrder=null;drawerHtml=null;el('omoLayout').classList.remove('is-open');el('omoDrawer').setAttribute('aria-hidden','true');sync();}
     el('omoTableBody').addEventListener('click',event=>{const btn=event.target.closest('.omo-view-btn');if(btn&&!saving)(currentOrder===Number(btn.dataset.id)?closeOrder():openOrder(btn.dataset.id));});
     el('omoDrawer').addEventListener('click',event=>{if(event.target.closest('#omoDrawerClose'))closeOrder();});
     el('omoDrawer').addEventListener('submit',async event=>{if(event.target.id!=='omoActionForm')return;event.preventDefault();if(saving)return;const form=event.target,action=event.submitter?.value;if(!action)return;const body=Object.fromEntries(new FormData(form));body.action=action;if(action==='decline'&&!body.reason?.trim()){showError('Enter a reason before declining this order.','omoActionError');form.elements.reason.focus();return;}saving=true;showError('','omoActionError');const buttons=[...form.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);try{await api(form.dataset.url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});await Promise.all([load(),openOrder(currentOrder)]);}catch(error){showError(error.message,'omoActionError');buttons.forEach(b=>b.disabled=false);}finally{saving=false;}});
@@ -41,5 +41,19 @@
     el('omoPrevPage').addEventListener('click',()=>{if(state.page>1){state.page--;load();}});el('omoNextPage').addEventListener('click',()=>{if(state.page<pagination.last){state.page++;load();}});
     el('omoDateFrom').value=state.date_from;el('omoDateTo').value=state.date_to;if(state.date_from||state.date_to)el('omoDateLabel').textContent=`${state.date_from||'Any'} – ${state.date_to||'Any'}`;
     sync(initial.counts);if(initial.filters.order)openOrder(initial.filters.order);
-    setInterval(()=>{if(!document.hidden&&!saving&&!currentOrder)load();},15000);
+    setInterval(async()=>{
+        if(document.hidden||saving)return;
+        await load();
+        if(!currentOrder)return;
+        const focused=document.activeElement;
+        if(focused&&focused.closest('#omoDrawer')&&focused.matches('input,textarea,select'))return;
+        try{
+            const data=await api(app.dataset.orderBase+'/'+currentOrder);
+            if(data.html!==drawerHtml){
+                el('omoDrawer').innerHTML=data.html;
+                drawerHtml=data.html;
+                sync();
+            }
+        }catch(error){showError(error.message);}
+    },3000);
 })();

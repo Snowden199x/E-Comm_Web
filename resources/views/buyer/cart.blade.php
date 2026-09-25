@@ -49,4 +49,5 @@
             </a>
         @endif
     </div>
+@include('shared.live-revision', ['endpoint' => route('buyer.live', 'cart'), 'mode' => 'notice'])
 </x-buyer.layout>

@@ -18,3 +18,6 @@ Confirm participant authorization, attachment handling, moderation, and complain
 ## Related documentation
 
 See [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+## 25 September 2026 update
+
+Open support threads refresh about once per second while visible. The conversation list refreshes separately so new buyer and seller support messages appear without reloading. Incoming support messages also create an admin notification. This uses short requests on the current Laravel server; broadcast infrastructure is not configured.

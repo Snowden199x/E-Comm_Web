@@ -1,6 +1,6 @@
 # Seller Completed Orders — backend implementation contract
 
-**Status:** Planned; documentation only as of 24 September 2026.  
+**Status:** Implemented in the seller web app.
 **Functional requirements:** [Completed Orders functions](functions.md).  
 **Scope:** One existing `orders` row represents one seller order/shipment. This page is a read-only seller view of delivery outcomes and does not create a second completed-order table.
 
@@ -9,9 +9,9 @@
 - `App\Models\Ecommerce\Order` already has seller/buyer/courier relations, items, `statusEvents`, `tracking_number`, carrier fields, `shipping_fee`, and `SALES_STATUSES = ['delivered', 'completed']`.
 - `GET /seller/shipments/{order}` already provides seller-owned shipment detail. Buyer `POST /buyer/orders/{order}/complete` makes `delivered → completed`; logistics/courier delivery recording is not yet implemented.
 - `orders.total_amount` currently holds the product subtotal, and COD checkout initializes `shipping_fee` to zero. `order_items.price` snapshots the sale price.
-- The seller layout currently has a Completed Orders `#` link. Replace that link when the page exists; do not add another source of order state.
+- The seller layout links to the seller-scoped Delivered Orders page; the existing `orders` records remain the source of order state.
 
-## Routes, controller, and permissions to add
+## Routes, controller, and permissions
 
 | Method/path | Responsibility |
 |---|---|

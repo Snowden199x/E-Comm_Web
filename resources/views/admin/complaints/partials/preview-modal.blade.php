@@ -1,9 +1,9 @@
 <div x-show="previewId === {{ $complaint->id }}" x-cloak
     class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     @click.self="previewId = null">
-    <div class="bg-white rounded-2xl p-6 w-full max-w-lg relative" @click.stop>
+    <div class="bg-white rounded-2xl p-6 w-full max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto min-w-0 relative" @click.stop>
         <div class="flex items-center justify-between mb-4">
-            <h3 class="font-bold text-lg text-gray-900">Complaint Preview</h3>
+            <h3 class="font-bold text-lg text-gray-900">{{ $complaint->kind === 'user_report' ? 'Account Report Preview' : 'Complaint Preview' }}</h3>
             <button type="button" @click="previewId = null"
                 class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
@@ -13,8 +13,8 @@
             @include('admin.complaints.partials.status-badge')
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-5 text-sm">
-            <div class="space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-5 text-sm min-w-0">
+            <div class="space-y-3 min-w-0">
                 <div>
                     <p class="text-gray-400 text-xs mb-1">Complaint Type</p>
                     @include('admin.complaints.partials.type-badge')
@@ -31,9 +31,9 @@
                     </p>
                 </div>
             </div>
-            <div>
+            <div class="min-w-0">
                 <p class="text-gray-400 text-xs mb-1">Description</p>
-                <p class="text-gray-800 font-medium mb-3">{{ $complaint->description }}</p>
+                <p class="text-gray-800 font-medium mb-3 whitespace-pre-wrap [overflow-wrap:anywhere]">{{ $complaint->description }}</p>
                 <p class="text-gray-400 text-xs mb-2">Parties Involved</p>
                 <div class="space-y-2">
                     <div class="flex items-center gap-2">
@@ -42,7 +42,7 @@
                             {{ strtoupper(substr($complaint->complainant->name, 0, 1)) }}
                         </div>
                         <div>
-                            <p class="text-xs text-gray-400 leading-none">Buyer</p>
+                            <p class="text-xs text-gray-400 leading-none">{{ ucfirst($complaint->complainant->role) }} · Reporter</p>
                             <p class="text-xs font-medium text-gray-900">{{ $complaint->complainant->name }}</p>
                         </div>
                     </div>
@@ -52,7 +52,7 @@
                             {{ strtoupper(substr($complaint->respondent->name, 0, 1)) }}
                         </div>
                         <div>
-                            <p class="text-xs text-gray-400 leading-none">Seller</p>
+                            <p class="text-xs text-gray-400 leading-none">{{ ucfirst($complaint->respondent->role) }} · Reported account</p>
                             <p class="text-xs font-medium text-gray-900">{{ $complaint->respondent->name }}</p>
                         </div>
                     </div>

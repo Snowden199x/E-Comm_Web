@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
+use App\Models\Communication\Notification;
 use App\Models\User;
 use App\Services\SellerOrderWorkflow;
 use Illuminate\Http\Request;
@@ -98,6 +99,7 @@ class ShipmentController extends Controller
             if ($record->isDirty()) {
                 $record->save();
                 $record->statusEvents()->create(['user_id' => $request->user()->id, 'from_status' => $record->status, 'to_status' => $record->status, 'note' => 'Shipment tracking details updated.']);
+                Notification::create(['user_id' => $record->buyer_id, 'type' => 'tracking_update', 'title' => $record->number.': tracking updated', 'message' => 'The seller updated the shipment tracking details for your order.', 'link' => route('buyer.orders.show', $record)]);
             }
         });
 

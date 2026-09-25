@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\User;
+use App\Models\Communication\Notification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -93,6 +94,8 @@ class RegisteredUserController extends Controller
 
         Cache::forget('otp_verified:'.$email);
             $request->session()->forget('registration_verification');
+        Notification::create(['user_id' => null, 'type' => 'new_seller_registration', 'title' => 'New seller registration', 'message' => 'A seller account is awaiting review.', 'link' => route('admin.registrations.index')]);
+
         return response()->json([
             'success' => true,
             'message' => 'Registration submitted. Awaiting admin approval.',
