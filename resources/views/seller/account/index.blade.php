@@ -1,7 +1,7 @@
 <x-seller.layout title="Account Management">
     @vite('resources/css/seller/workspace.css')
     <section class="sw-page">
-        <header class="sw-heading"><div><h1>Account Management</h1><p>Keep your shop profile and contact information up to date.</p></div></header>
+        <header class="sw-heading"><div><h1>Account Management</h1><p>Keep your shop profile and contact information up to date.</p></div><a href="#accountPolicies" class="sw-button sw-button--outline">Policies</a></header>
         @if(session('success'))<p class="sw-notice" role="status">{{ session('success') }}</p>@endif
         @if($errors->any())<p class="sw-error" role="alert">{{ $errors->first() }}</p>@endif
 
@@ -33,6 +33,7 @@
                 <a class="sw-button sw-button--outline" href="{{ route('seller.messages.index') }}">Contact support</a>
             </section>
         </div>
+        <x-account-policies :policies="$policies" />
         <section class="sw-card sw-security"><h2>Change password</h2><form class="sw-form" method="POST" action="{{ route('seller.account.password') }}">@csrf @method('PATCH')<label>Current password<input type="password" name="current_password" autocomplete="current-password" required></label><label>New password<input type="password" name="password" autocomplete="new-password" required></label><label>Confirm new password<input type="password" name="password_confirmation" autocomplete="new-password" required></label><p class="sw-muted">Use at least 8 characters with upper and lower case letters, a number and a symbol.</p><button class="sw-button" type="submit">Update password</button></form></section>
     </section>
     <script>

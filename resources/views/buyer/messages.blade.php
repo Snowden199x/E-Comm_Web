@@ -26,6 +26,7 @@
         @if (!$conversation || $conversation->status === 'closed')
             <div class="bg-white rounded-2xl shadow-sm p-8 text-center">
                 <p class="text-gray-500 mb-6">Start a new conversation with Vendo support.</p>
+                @if($conversation)<button type="button" class="mb-5 text-xs font-semibold text-red-700 hover:underline" data-delete-conversation="{{ route('buyer.messages.conversation.delete', $conversation) }}" data-delete-redirect="{{ route('buyer.messages.index') }}">Delete previous conversation</button>@endif
                 <div class="flex flex-col gap-3 max-w-sm mx-auto">
                     <form action="{{ route('buyer.messages.start') }}" method="POST">
                         @csrf
@@ -66,7 +67,7 @@
                     const wasNearBottom = !el || (el.scrollHeight - el.scrollTop - el.clientHeight < 100);
             
                     fetch('/buyer/messages/' + this.conversationId + '/fetch')
-                        .then(res => res.json())
+                        .then(res => { if (res.status === 404) { location.assign(@json(route('buyer.messages.index'))); throw new Error('Conversation deleted'); } return res.json(); })
                         .then(data => {
                             this.messages = data.messages;
                             this.$nextTick(() => {
@@ -100,14 +101,14 @@
                     fileInput.value = '';
                     this.fetchMessages();
                 }
-            }" @message-deleted.window="fetchMessages()">
+            }">
                 <div class="flex items-center justify-between p-4 border-b">
                     <p class="text-sm font-medium text-gray-900">Vendo Support</p>
-                    <form action="{{ route('buyer.messages.close', $conversation) }}" method="POST"
+                    <div class="flex items-center gap-3"><button type="button" class="text-xs font-semibold text-red-700 hover:underline" data-delete-conversation="{{ route('buyer.messages.conversation.delete', $conversation) }}" data-delete-redirect="{{ route('buyer.messages.index') }}">Delete conversation</button><form action="{{ route('buyer.messages.close', $conversation) }}" method="POST"
                         onsubmit="return confirm('End this conversation?')">
                         @csrf
-                        <button class="text-xs text-red-600 hover:underline">End Conversation</button>
-                    </form>
+                        <button class="text-xs text-gray-600 hover:underline">End Conversation</button>
+                    </form></div>
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4 space-y-3" x-ref="scrollBox">
@@ -131,7 +132,6 @@
                                             x-text="'📎 ' + attachment.name"></a>
                                     </template>
                                 </template>
-                                <button x-show="message.is_mine" type="button" class="mt-2 inline-flex rounded-md border border-white/60 px-2 py-1 text-xs font-semibold text-white" :data-delete-message="'/buyer/messages/' + conversationId + '/messages/' + message.id">Delete message</button>
                             </div>
                         </div>
                     </template>

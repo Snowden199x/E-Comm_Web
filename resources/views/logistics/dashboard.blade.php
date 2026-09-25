@@ -11,13 +11,14 @@
 <body class="antialiased bg-[#faf6f0] min-h-screen">
 
     <header class="bg-white border-b border-gray-100 sticky top-0 z-20">
-        <div class="max-w-6xl mx-auto px-6 h-[68px] flex items-center justify-between">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 min-h-[68px] py-3 flex flex-wrap gap-3 items-center justify-between">
             <div class="flex items-center gap-3">
                 <img src="{{ asset('assets/branding/vendo-logo.svg') }}" alt="Vendo" class="h-7">
                 <span class="h-5 w-px bg-gray-200"></span>
                 <span class="text-[0.85rem] font-semibold text-gray-600">Logistics Center Portal</span>
             </div>
-            <div class="flex items-center gap-4">
+            <div class="flex flex-wrap items-center justify-end gap-3">
+                <a href="{{ route('logistics.account.index') }}" class="text-[0.8rem] font-semibold text-[#5c2864] hover:underline">Account Management</a>
                 <div class="text-right hidden sm:block">
                     <p class="text-[0.85rem] font-semibold text-gray-900">{{ $center->business_name ?? 'Your Center' }}</p>
                     <p class="text-[0.72rem] text-gray-400">{{ auth()->user()->email }}</p>

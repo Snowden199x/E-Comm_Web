@@ -26,7 +26,10 @@
             <a href="{{ route('seller.buyers.show', $partner) }}" class="mc-order-link">View buyer profile ↗</a>
         @endif
         <p class="mc-context__help">Only you and the other party can read this chat. {{ $isBuyer ? 'You can share an order in the chat when you need help with it.' : 'Order details shared by the buyer appear in the chat.' }}</p>
-        <button type="button" class="mc-report-button" data-report-open>Report this {{ $isBuyer ? 'seller' : 'buyer' }}</button>
+        <div class="mc-context__actions">
+            @if($conversation)<button type="button" class="mc-delete-conversation" data-delete-conversation="{{ route('marketplace-conversations.delete', $conversation) }}" data-delete-redirect="{{ route($isBuyer ? 'buyer.messages.index' : 'seller.messages.index') }}">Delete conversation</button>@endif
+            <button type="button" class="mc-report-button" data-report-open>Report this {{ $isBuyer ? 'seller' : 'buyer' }}</button>
+        </div>
     </aside>
     <section class="mc-thread" aria-label="Conversation with {{ $partner?->name ?? 'account' }}">
         <header class="mc-thread__head">
@@ -57,7 +60,6 @@
                         </a>
                     @endif
                     @if($message->body)<p>{{ $message->body }}</p>@endif
-                    @if($message->sender_id === auth()->id())<button type="button" class="mc-message__delete" data-delete-message="{{ route('marketplace-messages.delete', $message) }}" aria-label="Delete message">Delete message</button>@endif
                     @if($message->attachment_path)<a href="{{ route('marketplace-messages.attachment', $message) }}" target="_blank" rel="noopener"><img src="{{ route('marketplace-messages.attachment', $message) }}" alt="Photo attached to message" loading="lazy"></a>@endif
                 </div>
             @empty<p class="mc-empty" id="mcEmpty">{{ $isBuyer ? 'Send a message or share an order with the seller.' : 'No messages yet.' }}</p>@endforelse
@@ -115,6 +117,7 @@
         loading = true;
         try {
             const response = await fetch(box.dataset.fetch + '?after=' + lastId, {headers: {'Accept': 'application/json'}});
+            if (response.status === 404) { location.assign(@json(route($isBuyer ? 'buyer.messages.index' : 'seller.messages.index'))); return; }
             if (!response.ok) return;
             const data = await response.json();
             const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 100;
@@ -135,12 +138,6 @@
                 if (message.shared_order) row.append(orderCard(message.shared_order, message.system));
                 if (message.body) { const body = document.createElement('p'); body.textContent = message.body; row.append(body); }
                 if (message.attachment_url) { const link = document.createElement('a'); const image = document.createElement('img'); link.href = message.attachment_url; link.target = '_blank'; link.rel = 'noopener'; image.src = message.attachment_url; image.alt = 'Photo attached to message'; link.append(image); row.append(link); }
-                if (message.mine) {
-                    const remove = document.createElement('button');
-                    remove.type = 'button'; remove.className = 'mc-message__delete'; remove.textContent = 'Delete message';
-                    remove.dataset.deleteMessage = @json(url('/marketplace-messages')) + '/' + message.id;
-                    row.append(remove);
-                }
                 box.append(row); lastId = message.id;
             });
             if (nearBottom) box.scrollTop = box.scrollHeight;

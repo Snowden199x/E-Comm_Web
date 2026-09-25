@@ -170,7 +170,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/{conversation}/thread', [MessageController::class, 'thread'])->name('thread');
             Route::get('/{conversation}/fetch', [MessageController::class, 'fetchMessages'])->name('fetch');
             Route::post('/{conversation}/send', [MessageController::class, 'send'])->name('send');
-            Route::delete('/{conversation}/messages/{message}', [\App\Http\Controllers\MessageDeletionController::class, 'support'])->whereNumber(['conversation', 'message'])->name('delete');
+            Route::delete('/{conversation}', [\App\Http\Controllers\MessageDeletionController::class, 'supportConversation'])->whereNumber('conversation')->name('conversation.delete');
         });
 
         Route::prefix('account-management')->name('account-management.')->group(function () {
@@ -238,7 +238,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::post('/messages/{conversation}/close', [BuyerMessageController::class, 'close'])->middleware('auth')->name('messages.close');
     Route::get('/messages/{conversation}/fetch', [BuyerMessageController::class, 'fetch'])->middleware('auth')->name('messages.fetch');
     Route::post('/messages/{conversation}', [BuyerMessageController::class, 'store'])->middleware('auth')->name('messages.store');
-    Route::delete('/messages/{conversation}/messages/{message}', [\App\Http\Controllers\MessageDeletionController::class, 'support'])->middleware('auth')->whereNumber(['conversation', 'message'])->name('messages.delete');
+    Route::delete('/messages/{conversation}', [\App\Http\Controllers\MessageDeletionController::class, 'supportConversation'])->middleware('auth')->whereNumber('conversation')->name('messages.conversation.delete');
     Route::get('/account', [BuyerAccountController::class, 'index'])->middleware('auth')->name('account.index');
     Route::put('/account', [BuyerAccountController::class, 'update'])->middleware('auth')->name('account.update');
     Route::put('/account/password', [BuyerAccountController::class, 'updatePassword'])->middleware('auth')->name('account.password');
@@ -306,7 +306,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::post('/messages/start', [SellerMessageController::class, 'start'])->middleware('throttle:20,1')->name('messages.start');
         Route::get('/messages/{conversation}/fetch', [SellerMessageController::class, 'fetch'])->whereNumber('conversation')->name('messages.fetch');
         Route::post('/messages/{conversation}', [SellerMessageController::class, 'store'])->middleware('throttle:20,1')->whereNumber('conversation')->name('messages.store');
-        Route::delete('/messages/{conversation}/messages/{message}', [\App\Http\Controllers\MessageDeletionController::class, 'support'])->whereNumber(['conversation', 'message'])->name('messages.delete');
+        Route::delete('/messages/{conversation}', [\App\Http\Controllers\MessageDeletionController::class, 'supportConversation'])->whereNumber('conversation')->name('messages.conversation.delete');
         Route::post('/messages/{conversation}/close', [SellerMessageController::class, 'close'])->whereNumber('conversation')->name('messages.close');
         Route::post('/messages/{conversation}/reopen', [SellerMessageController::class, 'reopen'])->whereNumber('conversation')->name('messages.reopen');
         Route::get('/buyers/{buyer}', [SellerBuyerProfileController::class, 'show'])->whereNumber('buyer')->name('buyers.show');
@@ -349,6 +349,7 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
     Route::post('/logout', [LogisticsAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
     Route::get('/dashboard', [LogisticsDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/account', [\App\Http\Controllers\Logistics\AccountController::class, 'index'])->middleware('auth')->name('account.index');
 
     Route::get('/forgot-password', function () {
         return view('logistics.auth.forgot-password');
@@ -371,5 +372,5 @@ Route::get('/reset-password/{token}', [UserNewPasswordController::class, 'create
 Route::post('/reset-password', [UserNewPasswordController::class, 'store'])->name('password.store');
 require __DIR__.'/auth.php';
 
-Route::delete('/marketplace-messages/{message}', [\App\Http\Controllers\MessageDeletionController::class, 'marketplace'])
-    ->middleware('auth')->whereNumber('message')->name('marketplace-messages.delete');
+Route::delete('/marketplace-conversations/{conversation}', [\App\Http\Controllers\MessageDeletionController::class, 'marketplaceConversation'])
+    ->middleware('auth')->whereNumber('conversation')->name('marketplace-conversations.delete');

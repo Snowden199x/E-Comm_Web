@@ -12,7 +12,7 @@
             </aside>
             <section class="sw-inbox__thread" aria-label="Vendo Support conversation">
                 <header class="sw-inbox__thread-head"><div><strong>Vendo Support</strong><small>Account and order help</small></div>
-                    @if($conversation?->status === 'open')<form method="POST" action="{{ route('seller.messages.close', $conversation) }}">@csrf<button class="sw-text-button" type="submit">Close conversation</button></form>@endif
+                    @if($conversation)<div class="sw-inbox__head-actions"><button type="button" class="sw-text-button" data-delete-conversation="{{ route('seller.messages.conversation.delete', $conversation) }}" data-delete-redirect="{{ route('seller.messages.index') }}">Delete conversation</button>@if($conversation->status === 'open')<form method="POST" action="{{ route('seller.messages.close', $conversation) }}">@csrf<button class="sw-text-button" type="submit">Close conversation</button></form>@endif</div>@endif
                 </header>
                 @if($conversation?->status === 'open')
                     <div class="sw-inbox__history" id="swMessages" data-fetch="{{ route('seller.messages.fetch', $conversation) }}" aria-live="polite"></div>
@@ -71,12 +71,6 @@
                 link.href = item.url; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Attachment: ' + item.name;
                 row.append(link);
             });
-            if (message.mine) {
-                const remove = document.createElement('button');
-                remove.type = 'button'; remove.className = 'sw-message__delete'; remove.textContent = 'Delete message';
-                remove.dataset.deleteMessage = @json(url('/seller/messages')) + '/' + @json($conversation->id) + '/messages/' + message.id;
-                row.append(remove);
-            }
             box.append(row);
         };
         async function load() {
@@ -85,6 +79,7 @@
             try {
                 const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 100;
                 const response = await fetch(box.dataset.fetch + '?after=' + lastId, {headers: {'Accept': 'application/json'}});
+                if (response.status === 404) { location.assign(@json(route('seller.messages.index'))); return; }
                 if (!response.ok) return;
                 const data = await response.json();
                 if (data.active_ids) {
