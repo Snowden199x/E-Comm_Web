@@ -14,7 +14,9 @@ class AccountController extends Controller
     {
         $seller = $request->user()->load(['sellerDetail', 'categories']);
 
-        return view('seller.account.index', compact('seller'));
+        $policies = \App\Models\Communication\PlatformPolicy::availableForRole('seller');
+
+        return view('seller.account.index', compact('seller', 'policies'));
     }
 
     public function update(Request $request)

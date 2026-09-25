@@ -1,6 +1,6 @@
 <x-buyer.layout>
     <div class="max-w-2xl mx-auto p-4 sm:p-5 lg:p-6">
-        <h2 class="text-2xl font-bold text-gray-900 mb-6">Account</h2>
+        <div class="mb-6 flex items-center justify-between gap-3"><h2 class="text-2xl font-bold text-gray-900">Account</h2><a href="#accountPolicies" class="rounded-lg border border-[#d8c8dc] bg-white px-3 py-2 text-sm font-medium text-[#5c2864] hover:bg-[#f8f1f9]">Policies</a></div>
 
         @if (session('success'))
             <div class="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg p-3 mb-4">
@@ -145,6 +145,8 @@
                 </button>
             </form>
         </div>
+
+        <x-account-policies :policies="$policies" />
 
         <div class="bg-white rounded-2xl p-5 shadow-sm">
             <h3 class="font-bold text-gray-900 mb-4">Change Password</h3>

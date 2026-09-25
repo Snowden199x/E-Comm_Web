@@ -11,9 +11,11 @@ class AccountController extends Controller
 {
     public function index()
     {
+        abort_unless(auth()->user()->role === 'buyer', 403);
+        $policies = \App\Models\Communication\PlatformPolicy::availableForRole('buyer');
         $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
 
-        return view('buyer.account', compact('buyerDetail'));
+        return view('buyer.account', compact('buyerDetail', 'policies'));
     }
 
     public function update(Request $request)

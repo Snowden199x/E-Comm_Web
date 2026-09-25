@@ -12,7 +12,10 @@
 .mc-item { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #ece4ed; font-size: 11px; }
 .mc-item small { flex: none; color: #837589; }
 .mc-context__help { margin-top: 24px; color: #837589; font-size: 11px; line-height: 1.6; }
-.mc-report-button { flex: none; width: 100%; margin-top: auto; padding: 11px 14px; border: 1px solid #d8c8dc; border-radius: 9px; background: #fff; color: #5c2864; font: inherit; font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
+.mc-context__actions { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+.mc-delete-conversation { width: 100%; padding: 10px 14px; border: 1px solid #e0bec3; border-radius: 9px; background: #fff; color: #a33349; font: inherit; font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
+.mc-delete-conversation:hover, .mc-delete-conversation:focus-visible { background: #fff2f4; border-color: #bd6977; }
+.mc-report-button { flex: none; width: 100%; padding: 11px 14px; border: 1px solid #d8c8dc; border-radius: 9px; background: #fff; color: #5c2864; font: inherit; font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
 .mc-context__help + .mc-report-button { margin-top: auto; }
 .mc-report-button:hover, .mc-report-button:focus-visible { border-color: #704278; background: #f6edf7; }
 .mc-thread { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
@@ -100,5 +103,3 @@
     .mc-composer { padding: 10px 12px; }
 }
 .mc-order-card__tracking { display: block; padding: 0 12px 10px; color: #756c78; font-size: 10px; overflow-wrap: anywhere; }
-
-.mc-message__delete{display:inline-flex;margin-top:9px;padding:5px 9px;border:1px solid #9d7ca3;border-radius:7px;background:transparent;color:#5c2864;font-size:11px;font-weight:600;cursor:pointer}.mc-message.is-mine .mc-message__delete{border-color:rgba(255,255,255,.7);background:rgba(255,255,255,.13);color:#fff}.mc-message__delete:hover{filter:brightness(1.15)}

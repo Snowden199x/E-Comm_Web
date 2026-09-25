@@ -6,6 +6,7 @@
         <p class="font-medium text-gray-900">{{ $conversation->user->name }}</p>
         <p class="text-xs text-gray-400 capitalize">{{ $conversation->user->role }}</p>
     </div>
+    <button type="button" class="text-xs font-semibold text-red-700 hover:underline" data-delete-conversation="{{ route('admin.messages.conversation.delete', $conversation) }}" data-delete-redirect="{{ route('admin.messages.index') }}">Delete conversation</button>
     @if ($conversation->complaint)
         <a href="{{ route('admin.complaints.show', $conversation->complaint) }}"
             class="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-50">
@@ -33,7 +34,7 @@
         const wasNearBottom = !box || (box.scrollHeight - box.scrollTop - box.clientHeight < 100);
 
         fetch('/admin/messages/' + this.conversationId + '/fetch')
-            .then(r => r.json())
+            .then(r => { if (r.status === 404) { location.assign(@json(route('admin.messages.index'))); throw new Error('Conversation deleted'); } return r.json(); })
             .then(data => {
                 this.messages = data.messages;
                 this.$nextTick(() => {
@@ -69,7 +70,7 @@
         fileInput.value = '';
         this.fetchMessages();
     }
-}" @message-deleted.window="fetchMessages()">
+}">
     <div class="flex-1 overflow-y-auto p-4 space-y-3" id="messages-scroll">
         <template x-for="message in messages" :key="message.id">
             <div :class="message.is_mine ? 'flex justify-end' : 'flex justify-start'">
@@ -88,7 +89,6 @@
                         </template>
                     </template>
                     <p class="text-xs mt-1" :class="message.is_mine ? 'text-purple-200' : 'text-gray-400'" x-text="message.created_at"></p>
-                    <button x-show="message.is_mine" type="button" class="mt-2 inline-flex rounded-md border border-white/60 px-2 py-1 text-xs font-semibold text-white" :data-delete-message="'/admin/messages/' + conversationId + '/messages/' + message.id">Delete message</button>
                 </div>
             </div>
         </template>

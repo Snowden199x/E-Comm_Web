@@ -4,7 +4,7 @@
 .vendo-notice-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .vendo-notice-title{font-size:18px;font-weight:700;margin:0}.vendo-notice-date{font-size:12px;color:#6b6470;margin:4px 0 0}
 .vendo-notice-close{font-size:24px;line-height:1;color:#6b6470;text-decoration:none;padding:4px 8px;border-radius:8px}
-.vendo-notice-body,.vendo-notice-policy-body{white-space:pre-line;overflow-wrap:anywhere;font-size:14px;line-height:1.6;color:#514956}
+.vendo-notice-body{white-space:pre-line;overflow-wrap:anywhere;font-size:14px;line-height:1.6;color:#514956}
 .vendo-notice-body{margin-top:20px}.vendo-notice-policy{margin-top:20px;border:1px solid #e5dce8;border-radius:12px;padding:16px}
 .vendo-notice-policy-title{font-weight:600}.vendo-notice-policy-body{margin-top:12px}.vendo-notice-footer{display:flex;justify-content:flex-end;margin-top:24px}
 .vendo-notice-button{background:#52245b;color:#fff;border-radius:8px;padding:9px 16px;font-size:14px;font-weight:600;text-decoration:none}
@@ -20,7 +20,7 @@
             @if($policy)
                 <div class="vendo-notice-policy">
                     <h3 class="vendo-notice-policy-title">{{ $policy->name }} · Version {{ $policy->version }}</h3>
-                    <div class="vendo-notice-policy-body">{{ strip_tags($policy->content ?? '') }}</div>
+                    <x-policy-content class="vendo-notice-policy-body" :content="$policy->content" />
                 </div>
             @endif
             <div class="vendo-notice-footer"><a href="{{ route($notificationSide.'.notifications.index') }}" class="vendo-notice-button">Close</a></div>

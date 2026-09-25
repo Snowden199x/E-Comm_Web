@@ -10,9 +10,9 @@
             <button type="button" @click="viewPolicyId = null" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
 
-        <div class="prose prose-sm max-w-none text-gray-800">
+        <div class="min-w-0">
             @if ($policy->content)
-                {!! $policy->content !!}
+                <x-policy-content :content="$policy->content" />
             @else
                 <p class="text-gray-400 italic">No content yet.</p>
             @endif
