@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Logistics;
 
 use App\Http\Controllers\Controller;
 use App\Models\Profiles\CourierDetail;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -37,8 +39,11 @@ class DashboardController extends Controller
     public function approveRider(CourierDetail $courierDetail): RedirectResponse
     {
         $this->authorizeRider($courierDetail);
-
-        $courierDetail->user->update(['status' => 'approved']);
+        DB::transaction(function () use ($courierDetail) {
+            $user = User::query()->lockForUpdate()->findOrFail($courierDetail->user_id);
+            abort_unless($user->status === 'pending', 409, 'This application has already been reviewed.');
+            $user->update(['status' => 'approved']);
+        }, 3);
 
         return back()->with('confirmation', 'approved');
     }
@@ -52,11 +57,15 @@ class DashboardController extends Controller
             'additional_details' => 'nullable|string|max:500',
         ]);
 
-        $courierDetail->user->update([
-            'status' => 'disapproved',
-            'rejection_reason' => $request->reason,
-            'rejection_notes' => $request->additional_details,
-        ]);
+        DB::transaction(function () use ($request, $courierDetail) {
+            $user = User::query()->lockForUpdate()->findOrFail($courierDetail->user_id);
+            abort_unless($user->status === 'pending', 409, 'This application has already been reviewed.');
+            $user->update([
+                'status' => 'disapproved',
+                'rejection_reason' => $request->reason,
+                'rejection_notes' => $request->additional_details,
+            ]);
+        }, 3);
 
         return back()->with('confirmation', 'rejected');
     }
@@ -64,7 +73,8 @@ class DashboardController extends Controller
     private function authorizeRider(CourierDetail $courierDetail): void
     {
         abort_unless(
-            $courierDetail->logistics_center_id === optional(Auth::user()->logisticsCenterDetail)->id,
+            $courierDetail->logistics_center_id === Auth::user()->logisticsCenterDetail->id
+                && $courierDetail->user?->role === 'courier',
             403
         );
     }

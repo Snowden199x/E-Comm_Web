@@ -23,6 +23,8 @@ export default defineConfig({
                 "resources/css/seller/order-management-orders.css",
                 "resources/css/seller/operations.css",
                 "resources/css/seller/workspace.css",
+                "resources/css/seller/shipping-label.css",
+                "resources/css/logistics/workspace.css",
                 "resources/js/seller/operations.js",
                 "resources/js/seller/order-management-orders/index.js",
             ],

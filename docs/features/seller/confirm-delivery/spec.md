@@ -1,20 +1,8 @@
 # Confirm Pickup Handover
 
-**Status:** Partial / seller confirms courier pickup  
-**Reviewed:** 24 September 2026
+**Status:** Rider pickup scan backend implemented; rider client pending
+**Reviewed:** 26 September 2026
 
-## Current behavior
+Seller can prepare an order through `ready_for_pickup` and can cancel before physical pickup. Seller cannot move it to `picked_up`. The origin logistics center assigns an approved rider; the assigned rider's QR/barcode scan through the versioned API verifies the rider/center assignment and moves the order to `picked_up`. The future rider client still needs to perform the camera scan. Buyer confirms receipt only after delivery, whose completion action is not yet implemented.
 
-Seller can mark ready order picked up only if a courier assignment exists.
-
-## Gaps and acceptance direction
-
-Assignment flow is absent; the seller should not be the authority for delivery completion. Buyer confirms delivered order completion.
-
-## Source evidence
-
-`app/Http/Controllers/Seller/OrderController.php`, `app/Http/Controllers/Buyer/OrderController.php`
-
-## Related documentation
-
-See [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+Source: `app/Services/SellerOrderWorkflow.php`, `app/Http/Controllers/Seller/OrderController.php`, `app/Http/Controllers/Seller/ShipmentController.php`.

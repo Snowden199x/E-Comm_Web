@@ -1,5 +1,7 @@
 # Feature Implementation Guide
 
+**Current owner workflow:** Codex implements and documents changes; the project owner writes and runs tests. See [AGENTS.md](../AGENTS.md). The testing steps below describe acceptance coverage for the owner, not a Codex task unless the owner explicitly requests it.
+
 ## Use one source of truth
 
 Write the user-visible flow first, then make the route, controller/service, model, migration, view, and tests agree with it. For multi-role workflows, identify the owner of each action and define legal state transitions explicitly. Do not infer permissions from hidden buttons.
@@ -10,8 +12,8 @@ Write the user-visible flow first, then make the route, controller/service, mode
 2. **Data:** add or update migration and model relationships/casts; preserve existing rows with a deliberate backfill.
 3. **Server:** add named routes and request validation; scope queries to the current actor; use transactions/row locks for competing inventory or order operations.
 4. **UI:** preserve approved design, show loading/empty/error/success states, use named routes, and avoid dead `#` actions.
-5. **Tests:** cover normal flow, invalid transition, unauthenticated/wrong role, cross-tenant resource access, and failure rollback where relevant.
-6. **Verification:** run focused tests, build frontend assets, render the view, and manually try the flow with local demo data.
+5. **Owner tests:** cover normal flow, invalid transition, unauthenticated/wrong role, cross-tenant resource access, and failure rollback where relevant.
+6. **Owner verification:** run focused tests, build frontend assets, render the view, and manually try the flow with local demo data.
 7. **Docs:** update the feature spec, domain overview, status matrix, schema/flow docs when applicable, and future-plan dependencies.
 
 ## Vendo-specific rules

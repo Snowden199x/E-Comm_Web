@@ -16,6 +16,8 @@ This overview is derived from Eloquent models and migrations, not a replacement 
 - `orders` belongs to buyer and seller, optionally references a courier, and stores total, payment mode, shipping address, and workflow status. One buyer checkout can create separate orders for each seller.
 - `order_items` snapshots product reference, quantity, selected variation, and price.
 - `order_status_events` records status changes, actor, optional note, and event time; it is the basis for the order timeline.
+- `orders.logistics_center_id` is the origin center; `destination_logistics_center_id` is the destination hub. `courier_id` and `delivery_courier_id` hold pickup and delivery riders. Structured shipping province/city codes and names are snapshotted at checkout; legacy rows remain null. `order_logistics_assignments` records rider assignments and hub send actions; status transitions remain in `order_status_events`.
+- `personal_access_tokens` holds expiring Sanctum rider bearer tokens. `order_scan_events` records the assigned rider, verified center, scan type, from/to statuses, unique per-order retry UUID, and server time. Both tables use additive 26 September migrations that the owner must run.
 
 ## Platform operations
 

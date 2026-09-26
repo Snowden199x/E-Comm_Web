@@ -1,7 +1,8 @@
 <div class="flex items-center gap-3 p-4 border-b border-gray-100">
-    <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+    @if($conversation->user?->profile_picture)<img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($conversation->user->profile_picture) }}" alt="" class="h-10 w-10 rounded-full object-cover">
+    @else<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
         {{ strtoupper(substr($conversation->user->name, 0, 1)) }}
-    </div>
+    </div>@endif
     <div class="flex-1">
         <p class="font-medium text-gray-900">{{ $conversation->user->name }}</p>
         <p class="text-xs text-gray-400 capitalize">{{ $conversation->user->role }}</p>
@@ -34,7 +35,7 @@
         const wasNearBottom = !box || (box.scrollHeight - box.scrollTop - box.clientHeight < 100);
 
         fetch('/admin/messages/' + this.conversationId + '/fetch')
-            .then(r => { if (r.status === 404) { location.assign(@json(route('admin.messages.index'))); throw new Error('Conversation deleted'); } return r.json(); })
+            .then(r => { if (r.status === 404) { location.assign('{{ route('admin.messages.index') }}'); throw new Error('Conversation deleted'); } return r.json(); })
             .then(data => {
                 this.messages = data.messages;
                 this.$nextTick(() => {
@@ -73,7 +74,8 @@
 }">
     <div class="flex-1 overflow-y-auto p-4 space-y-3" id="messages-scroll">
         <template x-for="message in messages" :key="message.id">
-            <div :class="message.is_mine ? 'flex justify-end' : 'flex justify-start'">
+            <div class="flex items-end gap-2" :class="message.is_mine ? 'justify-end' : 'justify-start'">
+                <span x-show="!message.is_mine" class="h-8 w-8 shrink-0"><img x-show="message.avatar" :src="message.avatar" alt="" class="h-8 w-8 rounded-full object-cover"><span x-show="!message.avatar" class="grid h-8 w-8 place-items-center rounded-full bg-gray-200 text-xs" x-text="message.initial"></span></span>
                 <div class="max-w-xs rounded-2xl px-4 py-2" :class="message.is_mine ? 'bg-[#3b1735] text-white' : 'bg-gray-100 text-gray-900'">
                     <p class="text-sm" x-show="message.body" x-text="message.body"></p>
                     <template x-for="attachment in message.attachments" :key="attachment.url">
@@ -90,6 +92,7 @@
                     </template>
                     <p class="text-xs mt-1" :class="message.is_mine ? 'text-purple-200' : 'text-gray-400'" x-text="message.created_at"></p>
                 </div>
+                <span x-show="message.is_mine" class="h-8 w-8 shrink-0"><img x-show="message.avatar" :src="message.avatar" alt="" class="h-8 w-8 rounded-full object-cover"><span x-show="!message.avatar" class="grid h-8 w-8 place-items-center rounded-full bg-gray-200 text-xs" x-text="message.initial"></span></span>
             </div>
         </template>
     </div>

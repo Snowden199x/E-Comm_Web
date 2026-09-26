@@ -13,8 +13,6 @@
 .mc-item small { flex: none; color: #837589; }
 .mc-context__help { margin-top: 24px; color: #837589; font-size: 11px; line-height: 1.6; }
 .mc-context__actions { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
-.mc-delete-conversation { width: 100%; padding: 10px 14px; border: 1px solid #e0bec3; border-radius: 9px; background: #fff; color: #a33349; font: inherit; font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
-.mc-delete-conversation:hover, .mc-delete-conversation:focus-visible { background: #fff2f4; border-color: #bd6977; }
 .mc-report-button { flex: none; width: 100%; padding: 11px 14px; border: 1px solid #d8c8dc; border-radius: 9px; background: #fff; color: #5c2864; font: inherit; font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
 .mc-context__help + .mc-report-button { margin-top: auto; }
 .mc-report-button:hover, .mc-report-button:focus-visible { border-color: #704278; background: #f6edf7; }
@@ -25,6 +23,10 @@
 .mc-thread__head small { color: #827589; font-size: 10px; }
 .mc-avatar { display: grid; place-items: center; width: 37px; height: 37px; border-radius: 50%; background: #704278; color: #fff; font-weight: 700; }
 .mc-history { display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto; padding: 20px; }
+.mc-message-row { display: flex; align-items: flex-end; justify-content: flex-start; gap: 8px; }
+.mc-message-row.is-mine { justify-content: flex-end; }
+.mc-message-row.is-system { justify-content: center; }
+.mc-message-avatar { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 50%; background: #e9ddec; color: #593062; font-size: 12px; object-fit: cover; }
 .mc-empty { margin: auto; color: #8b7d8f; font-size: 12px; text-align: center; }
 .mc-message { align-self: flex-start; max-width: min(76%, 540px); padding: 10px 13px; border-radius: 13px 13px 13px 4px; background: #f2ebf4; overflow-wrap: anywhere; }
 .mc-message.is-mine { align-self: flex-end; border-radius: 13px 13px 4px 13px; background: #5c2864; color: #fff; }

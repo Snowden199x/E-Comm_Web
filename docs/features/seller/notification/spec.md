@@ -10,6 +10,8 @@ Checkout creates a targeted `new_order` notification. Buyer review submission cr
 
 The bell stays in the pinned seller header. It shows an unread badge when needed and opens a compact list of recent notifications. **View all** opens a paginated inbox with All and Unread filters. Opening a notification marks it read and follows its destination. Sellers can also mark one item or all items read. The badge refreshes while the page is open.
 
+In the bell menu, **Mark all as read** sits beside **View all** with the same link-style hover treatment.
+
 Each notification should link to the relevant seller-owned order, product, review or message. The destination must be an internal route the seller is authorized to open. A deleted or inaccessible record should leave a readable notification and route safely to the relevant list. Do not accept an arbitrary external URL from notification data.
 
 ## Event coverage

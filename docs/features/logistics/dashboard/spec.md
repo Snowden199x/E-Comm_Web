@@ -1,15 +1,15 @@
 # Logistics Center Dashboard
 
 **Status:** Partial  
-**Reviewed:** 24 September 2026
+**Reviewed:** 26 September 2026
 
 ## Current behavior
 
-Lists center-associated pending riders and counts pending/approved/rejected applications.
+Authenticated, approved, active logistics centers with a profile can list their own pending riders and counts of pending/approved/rejected applications. The Rider Management page exposes center-scoped approve/reject actions for pending applications. It now uses the shared responsive Logistics sidebar; see [navigation](../navigation/spec.md).
 
 ## Gaps and acceptance direction
 
-Dashboard route currently lacks explicit authentication middleware; add center-role ownership checks to every access.
+Incoming Parcel Management, Parcel Sorting, and Delivery assignments link to stage-filtered center dispatch pages. Manual hub send/receipt and the assigned rider scan API are available; truck manifests and delivery completion are still unavailable. Verification-document URLs still use public storage and need a private-document migration.
 
 ## Source evidence
 

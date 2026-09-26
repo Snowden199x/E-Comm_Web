@@ -1,42 +1,8 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Logistics Center Dashboard - Vendo</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    @vite(['resources/css/shared/app.css', 'resources/js/shared/app.js'])
-    <style>* { font-family: 'Poppins', sans-serif; } [x-cloak] { display: none !important; }</style>
-</head>
-<body class="antialiased bg-[#faf6f0] min-h-screen">
-
-    <header class="bg-white border-b border-gray-100 sticky top-0 z-20">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 min-h-[68px] py-3 flex flex-wrap gap-3 items-center justify-between">
-            <div class="flex items-center gap-3">
-                <img src="{{ asset('assets/branding/vendo-logo.svg') }}" alt="Vendo" class="h-7">
-                <span class="h-5 w-px bg-gray-200"></span>
-                <span class="text-[0.85rem] font-semibold text-gray-600">Logistics Center Portal</span>
-            </div>
-            <div class="flex flex-wrap items-center justify-end gap-3">
-                <a href="{{ route('logistics.account.index') }}" class="text-[0.8rem] font-semibold text-[#5c2864] hover:underline">Account Management</a>
-                <div class="text-right hidden sm:block">
-                    <p class="text-[0.85rem] font-semibold text-gray-900">{{ $center->business_name ?? 'Your Center' }}</p>
-                    <p class="text-[0.72rem] text-gray-400">{{ auth()->user()->email }}</p>
-                </div>
-                <form method="POST" action="{{ route('logistics.logout') }}">
-                    @csrf
-                    <button type="submit" class="text-[0.8rem] font-semibold text-gray-500 border border-gray-300 rounded-md px-3.5 py-1.5 hover:bg-gray-50 transition">
-                        Logout
-                    </button>
-                </form>
-            </div>
-        </div>
-    </header>
-
-    <main class="max-w-6xl mx-auto px-6 py-8">
+<x-logistics.layout title="Rider Management">
+    <div class="lg-page max-w-6xl mx-auto px-6 py-8">
 
         <div class="mb-6">
-            <h1 class="text-[1.5rem] font-bold text-gray-900">Rider Applications</h1>
+            <h2 class="text-[1.5rem] font-bold text-gray-900">Rider Management</h2>
             <p class="text-gray-500 text-[0.9rem]">Review and decide on riders who've applied to ride under your center.</p>
         </div>
 
@@ -219,7 +185,5 @@
             @endif
         </div>
 
-    </main>
-
-</body>
-</html>
+    </div>
+</x-logistics.layout>

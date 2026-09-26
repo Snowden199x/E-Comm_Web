@@ -6,11 +6,11 @@ Sellers register their identity and business, select categories, await admin app
 
 ## Implemented scope
 
-Seller registration is OTP-gated and stores seller detail, identity/permit paths, and selected categories. Dashboard data is seller-scoped and includes orders, delivered sales, recent orders, top products, low/out-of-stock alerts, notifications, announcements, and an unavailable rating state until reviews exist. Orders supports ERP status tabs, search/date filters, order details/history/waybill, accepting or declining, preparing, ready-for-pickup, and confirming a pickup after a courier is assigned.
+Seller registration is OTP-gated and stores seller detail, identity/permit paths, and selected categories. Dashboard data is seller-scoped and includes orders, delivered sales, recent orders, top products, low/out-of-stock alerts, notifications, announcements, and an unavailable rating state until reviews exist. Orders supports ERP status tabs, search/date filters, order details/history, origin-logistics-branded shipping label printing, accepting or declining, preparing, and ready-for-pickup. Pickup is recorded by the assigned rider's scan, not a seller action.
 
 ## Products, inventory and shipments
 
-[Products & Inventory](../features/seller/products-inventory/spec.md) is connected to seller product records, admin review, stock/status filters, categories, audited restocks and stock history. [Shipments](../features/seller/shipments/spec.md) reads the same ERP orders as Orders, with tracking metadata, real summaries, customer/item details, pre-pickup cancellation and assigned-rider handoff.
+[Products & Inventory](../features/seller/products-inventory/spec.md) is connected to seller product records, admin review, stock/status filters, categories, audited restocks and stock history. [Shipments](../features/seller/shipments/spec.md) reads the same ERP orders as Orders, with tracking metadata, real summaries, customer/item details and pre-pickup cancellation. Seller actions stop at ready for pickup; the versioned rider scan backend updates the seller notification and timeline, while the mobile client remains future work.
 
 ## Delivered orders and feedback
 
@@ -28,6 +28,6 @@ These pages and routes have been added; seller-side manual verification is still
 
 ## Remaining gaps
 
-Logistics courier assignment and downstream sorting/delivery actions are not yet implemented. Product deletion/bulk import, configurable inventory thresholds, shipping quotes and buyer-to-seller messaging remain separate work. Delivered Orders uses recorded delivery timestamps; only orders with an actual `delivered` or `completed` status appear. No external carrier API is connected; shipment metadata is manually recorded from carrier details.
+Logistics rider assignment, manual sorting and hub handoffs are implemented. Delivery completion, proof and exceptions are not. Product deletion/bulk import, configurable inventory thresholds, shipping quotes and buyer-to-seller messaging remain separate work. Delivered Orders uses recorded delivery timestamps; only orders with an actual `delivered` or `completed` status appear. No external carrier API is connected; shipment metadata is manually recorded from carrier details.
 
 See [order flow](../order-logistics-flow-decisions.md) for ownership of transitions.

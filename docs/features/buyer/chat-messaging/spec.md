@@ -12,3 +12,7 @@ The buyer notification bell and inbox show order updates, seller chat replies, r
 ## 25 September 2026 update
 
 Order references in buyer–seller chat display the first available product photo in both existing and newly received messages. Open chats refresh about once per second while visible, and the seller chat list updates without page reload. Buyer support replies use the same visible-tab refresh cadence.
+
+## 26 September 2026 update
+
+The Vendo Support thread now renders its Alpine behavior inside the page instead of exposing script text. A support message can be sent asynchronously with text or an attachment; invalid empty sends return a validation response. Existing profile photos appear beside messages and in the seller conversation list, with initials when no photo exists. Buyers can end a support conversation but cannot delete support or buyer–seller conversation history. The notification bell offers **Mark all as read** next to **View all**.

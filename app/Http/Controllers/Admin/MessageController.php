@@ -9,6 +9,7 @@ use App\Models\Communication\MessageAttachment;
 use App\Models\Communication\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class MessageController extends Controller
@@ -48,13 +49,15 @@ class MessageController extends Controller
             ->where('sender_id', '!=', Auth::guard('admin')->id())
             ->update(['read_at' => now()]);
 
-        $messages = $conversation->messages()->with('attachments')->get();
+        $messages = $conversation->messages()->with('attachments', 'sender')->get();
 
         return response()->json([
             'messages' => $messages->map(fn ($m) => [
                 'id' => $m->id,
                 'body' => $m->body,
                 'is_mine' => $m->sender_id === Auth::guard('admin')->id(),
+                'avatar' => $m->sender?->profile_picture ? Storage::disk('public')->url($m->sender->profile_picture) : null,
+                'initial' => mb_strtoupper(mb_substr($m->sender?->name ?? 'V', 0, 1)),
                 'created_at' => $m->created_at->format('g:i A'),
                 'attachments' => $m->attachments->map(fn ($a) => [
                     'url' => route('messages.attachments.show', $a),

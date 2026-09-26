@@ -8,6 +8,7 @@ use App\Models\Communication\Message;
 use App\Models\Communication\Notification;
 use App\Models\Communication\MarketplaceConversation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class MessageController extends Controller
 {
@@ -32,7 +33,7 @@ class MessageController extends Controller
     private function customerConversations(int $sellerId)
     {
         return MarketplaceConversation::query()->where('seller_id', $sellerId)
-            ->with(['buyer:id,name', 'order:id', 'latestMessage'])
+            ->with(['buyer:id,name,profile_picture', 'order:id', 'latestMessage'])
             ->withCount(['messages as unread_count' => fn ($query) => $query
                 ->where('sender_id', '!=', $sellerId)->whereNull('read_at')])
             ->orderByDesc('last_message_at')->get();
@@ -60,7 +61,7 @@ class MessageController extends Controller
         $validated = $request->validate(['after' => ['nullable', 'integer', 'min:0']]);
         $conversation->messages()->whereNull('read_at')
             ->where('sender_id', '!=', $request->user()->id)->update(['read_at' => now()]);
-        $messages = $conversation->messages()->with(['sender:id,name,role', 'attachments'])
+        $messages = $conversation->messages()->with(['sender:id,name,role,profile_picture', 'attachments'])
             ->when($validated['after'] ?? null, fn ($query, $id) => $query->where('id', '>', $id))
             ->orderBy('id')->limit(100)->get();
 
@@ -73,6 +74,8 @@ class MessageController extends Controller
                 'mine' => $message->sender_id === $request->user()->id,
                 'sender' => $message->sender_id === $request->user()->id ? 'You' : 'Vendo Support',
                 'system' => $message->sender_id === null,
+                'avatar' => $message->sender?->profile_picture ? Storage::disk('public')->url($message->sender->profile_picture) : null,
+                'initial' => mb_strtoupper(mb_substr($message->sender?->name ?? 'V', 0, 1)),
                 'time' => $message->created_at->format('M j, g:i A'),
                 'attachments' => $message->attachments->map(fn ($attachment) => [
                     'name' => $attachment->original_filename,

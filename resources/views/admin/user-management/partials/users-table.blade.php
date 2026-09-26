@@ -21,7 +21,7 @@
                             <span class="text-gray-900">{{ $u->name }}</span>
                         </div>
                     </td>
-                    <td class="py-3 text-gray-600 capitalize">{{ $u->role }}</td>
+                    <td class="py-3 text-gray-600">{{ $u->role === 'logistics_center' ? 'Logistics Center' : ucfirst($u->role) }}</td>
                     <td class="py-3 text-gray-600">{{ $u->email }}</td>
                     <td class="py-3 text-gray-600">{{ $u->phone_number ?? '—' }}</td>
                     <td class="py-3 text-gray-600">{{ $u->created_at->format('M d, Y') }}</td>

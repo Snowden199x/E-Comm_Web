@@ -35,6 +35,7 @@ use App\Http\Controllers\Buyer\RegisteredBuyerController;
 use App\Http\Controllers\Logistics\Auth\AuthenticatedSessionController as LogisticsAuthenticatedSessionController;
 use App\Http\Controllers\Logistics\Auth\RegisteredUserController as LogisticsRegisteredUserController;
 use App\Http\Controllers\Logistics\DashboardController as LogisticsDashboardController;
+use App\Http\Controllers\Logistics\DispatchController as LogisticsDispatchController;
 use App\Http\Controllers\Seller\AuthenticatedSessionController as SellerAuthenticatedSessionController;
 use App\Http\Controllers\Seller\DashboardController as SellerDashboardController;
 use App\Http\Controllers\Seller\CompletedOrdersController;
@@ -49,6 +50,7 @@ use App\Http\Controllers\Seller\AccountController as SellerAccountController;
 use App\Http\Controllers\Seller\BuyerProfileController as SellerBuyerProfileController;
 use App\Http\Controllers\Seller\NotificationController as SellerNotificationController;
 use App\Http\Middleware\EnsureActiveSeller;
+use App\Http\Middleware\EnsureActiveLogisticsCenter;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -238,7 +240,6 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::post('/messages/{conversation}/close', [BuyerMessageController::class, 'close'])->middleware('auth')->name('messages.close');
     Route::get('/messages/{conversation}/fetch', [BuyerMessageController::class, 'fetch'])->middleware('auth')->name('messages.fetch');
     Route::post('/messages/{conversation}', [BuyerMessageController::class, 'store'])->middleware('auth')->name('messages.store');
-    Route::delete('/messages/{conversation}', [\App\Http\Controllers\MessageDeletionController::class, 'supportConversation'])->middleware('auth')->whereNumber('conversation')->name('messages.conversation.delete');
     Route::get('/account', [BuyerAccountController::class, 'index'])->middleware('auth')->name('account.index');
     Route::put('/account', [BuyerAccountController::class, 'update'])->middleware('auth')->name('account.update');
     Route::put('/account/password', [BuyerAccountController::class, 'updatePassword'])->middleware('auth')->name('account.password');
@@ -306,7 +307,6 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::post('/messages/start', [SellerMessageController::class, 'start'])->middleware('throttle:20,1')->name('messages.start');
         Route::get('/messages/{conversation}/fetch', [SellerMessageController::class, 'fetch'])->whereNumber('conversation')->name('messages.fetch');
         Route::post('/messages/{conversation}', [SellerMessageController::class, 'store'])->middleware('throttle:20,1')->whereNumber('conversation')->name('messages.store');
-        Route::delete('/messages/{conversation}', [\App\Http\Controllers\MessageDeletionController::class, 'supportConversation'])->whereNumber('conversation')->name('messages.conversation.delete');
         Route::post('/messages/{conversation}/close', [SellerMessageController::class, 'close'])->whereNumber('conversation')->name('messages.close');
         Route::post('/messages/{conversation}/reopen', [SellerMessageController::class, 'reopen'])->whereNumber('conversation')->name('messages.reopen');
         Route::get('/buyers/{buyer}', [SellerBuyerProfileController::class, 'show'])->whereNumber('buyer')->name('buyers.show');
@@ -348,8 +348,33 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
     Route::post('/login', [LogisticsAuthenticatedSessionController::class, 'store'])->name('login.store');
     Route::post('/logout', [LogisticsAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
-    Route::get('/dashboard', [LogisticsDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/account', [\App\Http\Controllers\Logistics\AccountController::class, 'index'])->middleware('auth')->name('account.index');
+    Route::middleware(['auth', EnsureActiveLogisticsCenter::class])->group(function () {
+        Route::get('/dashboard', [LogisticsDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/incoming-parcels', [LogisticsDispatchController::class, 'index'])->defaults('lane', 'incoming')->name('incoming-parcels');
+        Route::get('/parcel-sorting', [LogisticsDispatchController::class, 'index'])->defaults('lane', 'sorting')->name('parcel-sorting');
+        Route::get('/delivery-assignments', [LogisticsDispatchController::class, 'index'])->defaults('lane', 'delivery')->name('delivery-assignments');
+        Route::get('/delivery-monitoring', fn () => view('logistics.placeholder', ['title' => 'Delivery Monitoring']))->name('delivery-monitoring');
+        Route::get('/reports', fn () => view('logistics.placeholder', ['title' => 'Reports']))->name('reports');
+        Route::get('/messages', fn () => view('logistics.placeholder', ['title' => 'Messages']))->name('messages');
+        Route::get('/account', [\App\Http\Controllers\Logistics\AccountController::class, 'index'])->name('account.index');
+        Route::post('/riders/{courierDetail}/approve', [LogisticsDashboardController::class, 'approveRider'])
+            ->whereNumber('courierDetail')->name('riders.approve');
+        Route::post('/riders/{courierDetail}/reject', [LogisticsDashboardController::class, 'rejectRider'])
+            ->whereNumber('courierDetail')->name('riders.reject');
+        Route::get('/dispatch', [LogisticsDispatchController::class, 'index'])->name('dispatch.index');
+        Route::post('/dispatch/{order}/courier', [LogisticsDispatchController::class, 'assignCourier'])
+            ->whereNumber('order')->name('dispatch.courier');
+        Route::post('/dispatch/{order}/arrive', [LogisticsDispatchController::class, 'markArrived'])
+            ->whereNumber('order')->name('dispatch.arrive');
+        Route::post('/dispatch/{order}/sort', [LogisticsDispatchController::class, 'markSorted'])
+            ->whereNumber('order')->name('dispatch.sort');
+        Route::post('/dispatch/{order}/send-to-hub', [LogisticsDispatchController::class, 'sendToHub'])
+            ->whereNumber('order')->name('dispatch.send-to-hub');
+        Route::post('/dispatch/{order}/receive', [LogisticsDispatchController::class, 'receiveAtHub'])
+            ->whereNumber('order')->name('dispatch.receive');
+        Route::post('/dispatch/{order}/delivery-rider', [LogisticsDispatchController::class, 'assignDeliveryCourier'])
+            ->whereNumber('order')->name('dispatch.delivery-rider');
+    });
 
     Route::get('/forgot-password', function () {
         return view('logistics.auth.forgot-password');
@@ -371,6 +396,3 @@ Route::post('/forgot-password', [UserPasswordResetLinkController::class, 'store'
 Route::get('/reset-password/{token}', [UserNewPasswordController::class, 'create'])->name('password.reset');
 Route::post('/reset-password', [UserNewPasswordController::class, 'store'])->name('password.store');
 require __DIR__.'/auth.php';
-
-Route::delete('/marketplace-conversations/{conversation}', [\App\Http\Controllers\MessageDeletionController::class, 'marketplaceConversation'])
-    ->middleware('auth')->whereNumber('conversation')->name('marketplace-conversations.delete');

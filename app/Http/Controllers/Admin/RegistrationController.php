@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use App\Mail\AccountApprovedMail;
 use Illuminate\Support\Facades\Mail;
+use App\Services\OrderRoutingService;
 
 class RegistrationController extends Controller
 {
@@ -60,9 +61,14 @@ class RegistrationController extends Controller
         return view('admin.registrations.show', compact('user'));
     }
 
-    public function approve(User $user): RedirectResponse
+    public function approve(User $user, OrderRoutingService $routing): RedirectResponse
 {
+    abort_unless(in_array($user->role, ['seller', 'buyer', 'logistics_center'], true) && $user->status === 'pending', 403);
     $user->update(['status' => 'approved']);
+
+    if ($user->role === 'logistics_center') {
+        $routing->routeUnresolvedReady();
+    }
 
     Mail::to($user->email)->send(new AccountApprovedMail($user));
 

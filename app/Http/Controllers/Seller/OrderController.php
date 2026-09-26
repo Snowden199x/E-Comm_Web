@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
 use App\Services\SellerOrderWorkflow;
+use App\Services\ShippingLabelCodeGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -68,18 +69,20 @@ class OrderController extends Controller
         return response()->json(['html' => view('seller.order-management-orders.drawer', compact('order'))->render()]);
     }
 
-    public function waybill(Request $request, int $order)
+    public function waybill(Request $request, int $order, ShippingLabelCodeGenerator $codes)
     {
         $order = $this->ownedOrder($request, $order);
-        abort_if(in_array($order->status, ['placed', 'cancelled', 'returned']), 409);
+        abort_unless($order->canPrintShippingLabel(), 409, 'Mark the order ready for pickup and wait for the pickup logistics assignment before printing.');
+        $order->load(['logisticsCenter', 'destinationLogisticsCenter']);
         $seller = $request->user()->load('sellerDetail');
+        $labelCodes = $codes->forTrackingNumber($order->tracking_number);
 
-        return view('seller.order-management-orders.waybill', compact('order', 'seller'));
+        return view('seller.order-management-orders.waybill', compact('order', 'seller', 'labelCodes'));
     }
 
     public function update(Request $request, int $order)
     {
-        $data = $request->validate(['action' => ['required', Rule::in(['accept', 'decline', 'prepare', 'ready', 'pickup'])], 'expected_status' => ['required', Rule::in(array_keys(Order::STATUSES))], 'reason' => 'required_if:action,decline|nullable|string|max:500']);
+        $data = $request->validate(['action' => ['required', Rule::in(['accept', 'decline', 'prepare', 'ready'])], 'expected_status' => ['required', Rule::in(array_keys(Order::STATUSES))], 'reason' => 'required_if:action,decline|nullable|string|max:500']);
         app(SellerOrderWorkflow::class)->transition($request->user(), $order, $data['action'], $data['expected_status'], $data['reason'] ?? null);
 
         return response()->json(['message' => 'Order updated.']);

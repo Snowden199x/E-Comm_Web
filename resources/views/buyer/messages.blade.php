@@ -26,7 +26,6 @@
         @if (!$conversation || $conversation->status === 'closed')
             <div class="bg-white rounded-2xl shadow-sm p-8 text-center">
                 <p class="text-gray-500 mb-6">Start a new conversation with Vendo support.</p>
-                @if($conversation)<button type="button" class="mb-5 text-xs font-semibold text-red-700 hover:underline" data-delete-conversation="{{ route('buyer.messages.conversation.delete', $conversation) }}" data-delete-redirect="{{ route('buyer.messages.index') }}">Delete previous conversation</button>@endif
                 <div class="flex flex-col gap-3 max-w-sm mx-auto">
                     <form action="{{ route('buyer.messages.start') }}" method="POST">
                         @csrf
@@ -49,62 +48,10 @@
                 </div>
             </div>
         @elseif ($conversation && $conversation->status === 'open')
-            <div class="bg-white rounded-2xl shadow-sm flex flex-col h-[500px]" x-data="{
-                conversationId: {{ $conversation->id }},
-                messages: [],
-                body: '',
-                error: '',
-                lightbox: null,
-                fetching: false,
-                init() {
-                    this.fetchMessages();
-                    setInterval(() => { if (!document.hidden) this.fetchMessages(); }, 1000);
-                },
-                fetchMessages() {
-                    if (this.fetching) return;
-                    this.fetching = true;
-                    const el = this.$refs.scrollBox;
-                    const wasNearBottom = !el || (el.scrollHeight - el.scrollTop - el.clientHeight < 100);
-            
-                    fetch('/buyer/messages/' + this.conversationId + '/fetch')
-                        .then(res => { if (res.status === 404) { location.assign(@json(route('buyer.messages.index'))); throw new Error('Conversation deleted'); } return res.json(); })
-                        .then(data => {
-                            this.messages = data.messages;
-                            this.$nextTick(() => {
-                                if (wasNearBottom) el.scrollTop = el.scrollHeight;
-                            });
-                        })
-                        .catch(() => {})
-                        .finally(() => { this.fetching = false; });
-                },
-                async send() {
-                    this.error = '';
-                    const fileInput = this.$refs.fileInput;
-                    if (!this.body && !fileInput.files.length) return;
-            
-                    const formData = new FormData();
-                    formData.append('body', this.body);
-                    if (fileInput.files.length) formData.append('attachment', fileInput.files[0]);
-            
-                    const res = await fetch('/buyer/messages/' + this.conversationId, {
-                        method: 'POST',
-                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content },
-                        body: formData,
-                    });
-            
-                    if (!res.ok) {
-                        this.error = 'Type a message or attach a file.';
-                        return;
-                    }
-            
-                    this.body = '';
-                    fileInput.value = '';
-                    this.fetchMessages();
-                }
-            }">
+            <div class="bg-white rounded-2xl shadow-sm flex flex-col h-[500px]" x-data="buyerSupportChat()">
                 <div class="flex items-center justify-between p-4 border-b">
                     <p class="text-sm font-medium text-gray-900">Vendo Support</p>
-                    <div class="flex items-center gap-3"><button type="button" class="text-xs font-semibold text-red-700 hover:underline" data-delete-conversation="{{ route('buyer.messages.conversation.delete', $conversation) }}" data-delete-redirect="{{ route('buyer.messages.index') }}">Delete conversation</button><form action="{{ route('buyer.messages.close', $conversation) }}" method="POST"
+                    <div class="flex items-center gap-3"><form action="{{ route('buyer.messages.close', $conversation) }}" method="POST"
                         onsubmit="return confirm('End this conversation?')">
                         @csrf
                         <button class="text-xs text-gray-600 hover:underline">End Conversation</button>
@@ -113,9 +60,8 @@
 
                 <div class="flex-1 overflow-y-auto p-4 space-y-3" x-ref="scrollBox">
                     <template x-for="message in messages" :key="message.id">
-                        <div
-                            :class="message.is_mine ? 'flex justify-end' : (message.is_system ? 'flex justify-center' :
-                                'flex justify-start')">
+                        <div class="flex items-end gap-2" :class="message.is_mine ? 'justify-end' : (message.is_system ? 'justify-center' : 'justify-start')">
+                            <span x-show="!message.is_system && !message.is_mine" class="h-8 w-8 shrink-0"><img x-show="message.avatar" :src="message.avatar" alt="" class="h-8 w-8 rounded-full object-cover"><span x-show="!message.avatar" class="grid h-8 w-8 place-items-center rounded-full bg-gray-200 text-xs" x-text="message.initial"></span></span>
                             <div class="max-w-xs rounded-2xl px-4 py-2"
                                 :class="message.is_system ? 'bg-yellow-50 text-yellow-700 text-xs italic' : (message
                                     .is_mine ? 'bg-[#3b1735] text-white' : 'bg-gray-100 text-gray-800')">
@@ -133,6 +79,7 @@
                                     </template>
                                 </template>
                             </div>
+                            <span x-show="message.is_mine" class="h-8 w-8 shrink-0"><img x-show="message.avatar" :src="message.avatar" alt="" class="h-8 w-8 rounded-full object-cover"><span x-show="!message.avatar" class="grid h-8 w-8 place-items-center rounded-full bg-gray-200 text-xs" x-text="message.initial"></span></span>
                         </div>
                     </template>
                 </div>
@@ -161,4 +108,51 @@
             </div>
         @endif
     </div>
+    @if($conversation?->status === 'open')
+    <script>
+    function buyerSupportChat() {
+        return {
+            messages: [], body: '', error: '', lightbox: null, fetching: false,
+            init() {
+                this.fetchMessages();
+                this.poll = setInterval(() => {
+                    if (!this.$el.isConnected) { clearInterval(this.poll); return; }
+                    if (!document.hidden) this.fetchMessages();
+                }, 1000);
+            },
+            async fetchMessages() {
+                if (this.fetching) return;
+                this.fetching = true;
+                const box = this.$refs.scrollBox;
+                const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 100;
+                try {
+                    const response = await fetch(@json(route('buyer.messages.fetch', $conversation)));
+                    if (response.status === 404) { location.assign(@json(route('buyer.messages.index'))); return; }
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    if (data.status !== 'open') { location.reload(); return; }
+                    this.messages = data.messages;
+                    this.$nextTick(() => { if (nearBottom) box.scrollTop = box.scrollHeight; });
+                } catch (_) {} finally { this.fetching = false; }
+            },
+            async send() {
+                this.error = '';
+                const fileInput = this.$refs.fileInput;
+                if (!this.body.trim() && !fileInput.files.length) return;
+                const formData = new FormData();
+                formData.append('body', this.body);
+                if (fileInput.files.length) formData.append('attachment', fileInput.files[0]);
+                try {
+                    const response = await fetch(@json(route('buyer.messages.store', $conversation)), {
+                        method: 'POST', body: formData,
+                        headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content},
+                    });
+                    if (!response.ok) { this.error = 'Message could not be sent. Check the text or attachment and try again.'; return; }
+                    this.body = ''; fileInput.value = ''; this.fetchMessages();
+                } catch (_) { this.error = 'Connection lost. Please try again.'; }
+            },
+        };
+    }
+    </script>
+    @endif
 </x-buyer.layout>

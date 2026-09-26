@@ -91,11 +91,14 @@
 .sw-inbox__thread { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .sw-inbox__thread-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #ece4ec; }
 .sw-inbox__head-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
-.sw-inbox__head-actions [data-delete-conversation] { color: #a33349; }
 .sw-inbox__thread-head strong, .sw-inbox__thread-head small { display: block; }
 .sw-inbox__thread-head small { color: #817985; font-size: 10px; }
 .sw-inbox__history { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 18px; background: #fff; }
 .sw-message { align-self: flex-start; max-width: min(80%, 500px); padding: 10px 13px; border-radius: 12px 12px 12px 3px; background: #f3edf4; overflow-wrap: anywhere; }
+.sw-message-line { display: flex; align-items: flex-end; gap: 8px; justify-content: flex-start; }
+.sw-message-line.is-mine { justify-content: flex-end; }
+.sw-message-line.is-system { justify-content: center; }
+.sw-message-avatar { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 50%; background: #e9ddec; color: #593062; font-size: 12px; object-fit: cover; }
 .sw-message.is-mine { align-self: flex-end; border-radius: 12px 12px 3px 12px; background: #5b2963; color: #fff; }
 .sw-message small { display: block; opacity: .76; font-size: 9px; }
 .sw-message p { margin-top: 5px; white-space: pre-wrap; font-size: 12px; line-height: 1.5; }

@@ -1,5 +1,5 @@
 @php
-    $details = $user->sellerDetail ?? $user->buyerDetail;
+    $details = $user->sellerDetail ?? $user->buyerDetail ?? $user->logisticsCenterDetail;
 @endphp
 
 <div x-show="openId === {{ $user->id }}" x-cloak
@@ -54,12 +54,13 @@
                             class="w-4 h-4">
                         <span class="text-gray-700">{{ $user->phone_number ?? '—' }}</span>
                     </div>
-                    @if ($user->role === 'seller' && $user->sellerDetail)
+                    @if (($user->role === 'seller' && $user->sellerDetail) || ($user->role === 'logistics_center' && $user->logisticsCenterDetail))
                         <div class="flex items-center gap-2">
                             <img src="{{ asset('assets/icons/user-management/user-business-name-icon.svg') }}"
                                 alt="" class="w-4 h-4">
-                            <span class="text-gray-700">{{ $user->sellerDetail->business_name }}</span>
+                            <span class="text-gray-700">{{ $details->business_name }}</span>
                         </div>
+                        @if ($user->role === 'seller')
                         <div class="flex items-start gap-2">
                             <img src="{{ asset('assets/icons/user-management/business-information-icon.svg') }}"
                                 alt="" class="w-4 h-4 mt-0.5">
@@ -72,6 +73,7 @@
                                 @endforeach
                             </div>
                         </div>
+                        @endif
                     @endif
                     <div class="flex items-center gap-2">
                         <img src="{{ asset('assets/icons/user-management/user-date-applied-icon.svg') }}"
@@ -230,7 +232,7 @@
                         </div>
                     </div>
 
-                    @if ($user->role === 'seller')
+                    @if ($user->role === 'seller' || $user->role === 'logistics_center')
                         <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                             <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
                                 <img src="{{ asset('assets/icons/user-management/business-information-icon.svg') }}"
@@ -240,19 +242,23 @@
                             <div class="space-y-3 text-sm">
                                 <div class="flex gap-6"><span class="text-gray-500 w-32 flex-shrink-0">Business
                                         Name</span><span
-                                        class="font-medium text-gray-900">{{ $user->sellerDetail->business_name }}</span>
+                                        class="font-medium text-gray-900">{{ $details->business_name }}</span>
                                 </div>
+                                @if ($user->role === 'seller')
                                 <div class="flex gap-6"><span class="text-gray-500 w-32 flex-shrink-0">Category</span>
                                     <span
                                         class="font-medium text-gray-900">{{ $user->categories->pluck('name')->join(', ') }}</span>
                                 </div>
+                                @endif
+                                @if ($user->role === 'seller')
                                 <div class="flex gap-6 items-center">
                                     <span class="text-gray-500 w-32 flex-shrink-0">Business Permit</span>
-                                    <a href="{{ Storage::url($user->sellerDetail->business_permit_path) }}"
+                                    <a href="{{ Storage::url($details->business_permit_path) }}"
                                         target="_blank"
                                         class="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50">View
                                         File</a>
                                 </div>
+                                @endif
                             </div>
                         </div>
                     @endif

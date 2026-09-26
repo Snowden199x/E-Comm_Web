@@ -1,11 +1,13 @@
 # Admin Messaging
 
 **Status:** Implemented basic conversation operations  
-**Reviewed:** 24 September 2026
+**Reviewed:** 26 September 2026
 
 ## Current behavior
 
 Admin can list conversations, fetch a thread, fetch updates, and send messages; shared message/attachment records exist.
+
+Admin can delete a support conversation and its stored attachments from the support thread. Buyer and seller support deletion routes are absent. Threads and conversation lists show available profile photos with initials as a fallback. The notification bell offers **Mark all as read** next to **View all**.
 
 ## Gaps and acceptance direction
 

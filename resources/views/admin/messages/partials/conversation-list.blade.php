@@ -2,9 +2,10 @@
     <button type="button" @click="openConversation({{ $conversation->id }})"
         :class="activeId === {{ $conversation->id }} ? 'bg-purple-50' : 'hover:bg-gray-50'"
         class="w-full text-left p-4 border-b border-gray-100 flex items-start gap-3">
-        <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600 flex-shrink-0">
+        @if($conversation->user?->profile_picture)<img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($conversation->user->profile_picture) }}" alt="" class="h-10 w-10 flex-shrink-0 rounded-full object-cover">
+        @else<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600 flex-shrink-0">
             {{ strtoupper(substr($conversation->user->name, 0, 1)) }}
-        </div>
+        </div>@endif
         <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between">
                 <p class="text-sm font-medium text-gray-900 truncate">{{ $conversation->user->name }}</p>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\OrderRoutingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -16,9 +17,10 @@ class UserManagementController extends Controller
         $users = $this->filteredUsers($request, $showRejected);
 
         $stats = [
-            'total_users' => User::whereIn('role', ['seller', 'buyer'])->count(),
+            'total_users' => User::whereIn('role', ['seller', 'buyer', 'logistics_center'])->count(),
             'sellers' => User::where('role', 'seller')->count(),
             'buyers' => User::where('role', 'buyer')->count(),
+            'logistics_centers' => User::where('role', 'logistics_center')->count(),
         ];
 
         return view('admin.user-management.index', compact('users', 'stats', 'showRejected'));
@@ -34,7 +36,7 @@ class UserManagementController extends Controller
 
     private function filteredUsers(Request $request, bool $showRejected)
     {
-        $query = User::whereIn('role', ['seller', 'buyer']);
+        $query = User::whereIn('role', ['seller', 'buyer', 'logistics_center']);
 
         if ($showRejected) {
             $query->where('status', 'disapproved');
@@ -47,7 +49,7 @@ class UserManagementController extends Controller
             $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
         }
 
-        if ($request->filled('user_type') && $request->user_type !== 'all') {
+        if (in_array($request->input('user_type'), ['seller', 'buyer', 'logistics_center'], true)) {
             $query->where('role', $request->user_type);
         }
 
@@ -55,7 +57,7 @@ class UserManagementController extends Controller
             $query->whereDate('created_at', $request->date);
         }
 
-        return $query->with(['sellerDetail', 'buyerDetail', 'categories'])
+        return $query->with(['sellerDetail', 'buyerDetail', 'logisticsCenterDetail', 'categories'])
             ->latest()
             ->paginate(8)
             ->withQueryString();
@@ -63,6 +65,7 @@ class UserManagementController extends Controller
 
     public function suspend(Request $request, User $user): RedirectResponse
     {
+        $this->authorizeManagedAccount($user, ['approved']);
         $request->validate([
             'reasons' => 'required|array|min:1',
             'reasons.*' => 'string',
@@ -82,17 +85,28 @@ class UserManagementController extends Controller
 
     public function deactivate(User $user): RedirectResponse
     {
+        $this->authorizeManagedAccount($user, ['approved']);
         $user->update(['status' => 'deactivated']);
 
         return back()->with('confirmation', 'deactivated');
     }
 
-    public function activate(User $user): RedirectResponse
+    public function activate(User $user, OrderRoutingService $routing): RedirectResponse
     {
+        $this->authorizeManagedAccount($user, ['suspended', 'deactivated']);
         $wasSuspended = $user->status === 'suspended';
 
         $user->update(['status' => 'approved']);
+        if ($user->role === 'logistics_center') {
+            $routing->routeUnresolvedReady();
+        }
 
         return back()->with('confirmation', $wasSuspended ? 'suspension_lifted' : 'activated');
+    }
+
+    private function authorizeManagedAccount(User $user, array $statuses): void
+    {
+        abort_unless(in_array($user->role, ['seller', 'buyer', 'logistics_center'], true)
+            && in_array($user->status, $statuses, true), 403);
     }
 }

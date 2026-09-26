@@ -261,12 +261,14 @@ class MarketplaceMessageController extends Controller
         $validated = $request->validate(['after' => ['nullable', 'integer', 'min:0']]);
         $this->markIncomingRead($conversation, $request->user()->id);
         $messages = $conversation->messages()->reorder()->where('id', '>', $validated['after'] ?? 0)
-            ->with(['item.product:id,name', 'sharedOrder.items.product.images'])->orderBy('id')->limit(100)->get();
+            ->with(['sender:id,name,profile_picture', 'item.product:id,name', 'sharedOrder.items.product.images'])->orderBy('id')->limit(100)->get();
 
         return response()->json(['active_ids' => $conversation->messages()->pluck('id'), 'messages' => $messages->map(fn (MarketplaceMessage $message) => [
             'id' => $message->id,
             'mine' => $message->sender_id === $request->user()->id,
             'system' => $message->sender_id === null,
+            'avatar' => $message->sender?->profile_picture ? Storage::disk('public')->url($message->sender->profile_picture) : null,
+            'initial' => mb_strtoupper(mb_substr($message->sender?->name ?? 'V', 0, 1)),
             'body' => $message->body,
             'item' => $message->item?->product?->name,
             'time' => $message->created_at->format('M j, g:i A'),
@@ -303,7 +305,7 @@ class MarketplaceMessageController extends Controller
     private function threadData(?Order $order, ?MarketplaceConversation $conversation, string $side, User $seller, $availableOrders = null, $selectedItem = null): array
     {
         $messages = $conversation
-            ? $conversation->messages()->reorder()->with(['item.product:id,name', 'sharedOrder.items.product.images'])->latest('id')->limit(50)->get()->reverse()->values()
+            ? $conversation->messages()->reorder()->with(['sender:id,name,profile_picture', 'item.product:id,name', 'sharedOrder.items.product.images'])->latest('id')->limit(50)->get()->reverse()->values()
             : collect();
         $availableOrders ??= collect();
 
