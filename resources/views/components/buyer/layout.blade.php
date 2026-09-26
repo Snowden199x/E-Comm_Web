@@ -13,6 +13,8 @@
     <title>{{ $title }}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @vite(['resources/css/shared/app.css', 'resources/js/shared/app.js'])
+    <link rel="stylesheet" href="{{ asset('assets/css/notification-actions.css') }}">
+    @if(request()->routeIs('buyer.cart.index'))<link rel="stylesheet" href="{{ asset('assets/css/cart.css') }}">@endif
 </head>
 
 <body class="bg-gray-50">
@@ -51,7 +53,7 @@
                         <span id="buyerBellCount" class="absolute -right-1 -top-1 rounded-full bg-[#e8c874] px-1 text-[10px] font-bold leading-4 text-[#3b1735]" @if(!$buyerUnreadNotifications) hidden @endif>{{ $buyerUnreadNotifications > 99 ? '99+' : $buyerUnreadNotifications }}</span>
                     </button>
                     <div id="buyerBellMenu" class="absolute right-0 z-50 mt-3 max-h-[70vh] w-80 max-w-[calc(100vw-24px)] overflow-y-auto rounded-xl border border-gray-100 bg-white text-gray-900 shadow-xl sm:w-[350px]" hidden>
-                        <div class="flex items-center justify-between border-b px-4 py-3"><strong class="text-sm">Notifications</strong><a href="{{ route('buyer.notifications.index') }}" class="text-xs font-semibold text-[#5b2963]">View all</a></div>
+                        <div class="flex items-center justify-between border-b px-4 py-3"><strong class="text-sm">Notifications</strong><div class="notification-menu-actions"><form method="POST" action="{{ route('buyer.notifications.read-all') }}">@csrf<button type="submit">Mark all as read</button></form><a href="{{ route('buyer.notifications.index') }}">View all</a></div></div>
                         <div id="buyerBellList">@include('buyer.notifications.recent', ['notifications' => $recentBuyerNotifications])</div>
                     </div>
                 </div>
@@ -146,7 +148,6 @@
         document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
     })();
     </script>
-    @include('shared.message-delete-dialog')
     @include('shared.live-revision-script')
 </body>
 

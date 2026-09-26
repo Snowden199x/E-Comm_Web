@@ -12,7 +12,7 @@ class CartController extends Controller
 {
     public function index()
     {
-        $cartItems = CartItem::with('product.images')
+        $cartItems = CartItem::with('product.images', 'product.seller.sellerDetail')
             ->where('user_id', auth()->id())
             ->get();
 

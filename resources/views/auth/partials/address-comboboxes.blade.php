@@ -24,22 +24,18 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    const locations = @js(app(\App\Services\LocationCatalog::class)->all());
     const provinceSelect = document.getElementById('province-select');
     const municipalitySelect = document.getElementById('municipality-select');
     const barangaySelect = document.getElementById('barangay-select');
 
-    fetch('https://psgc.gitlab.io/api/provinces/')
-        .then(res => res.json())
-        .then(provinces => {
-            provinces.sort((a, b) => a.name.localeCompare(b.name));
-            provinces.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.name;
-                opt.textContent = p.name;
-                opt.dataset.code = p.code;
-                provinceSelect.appendChild(opt);
-            });
-        });
+    Object.entries(locations).forEach(([code, province]) => {
+        const opt = document.createElement('option');
+        opt.value = province.name;
+        opt.textContent = province.name;
+        opt.dataset.code = code;
+        provinceSelect.appendChild(opt);
+    });
 
     provinceSelect.addEventListener('change', () => {
         const code = provinceSelect.options[provinceSelect.selectedIndex].dataset.code;
@@ -48,19 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
         barangaySelect.disabled = true;
         municipalitySelect.disabled = true;
 
-        fetch(`https://psgc.gitlab.io/api/provinces/${code}/cities-municipalities/`)
-            .then(res => res.json())
-            .then(cities => {
-                cities.sort((a, b) => a.name.localeCompare(b.name));
-                cities.forEach(c => {
-                    const opt = document.createElement('option');
-                    opt.value = c.name;
-                    opt.textContent = c.name;
-                    opt.dataset.code = c.code;
-                    municipalitySelect.appendChild(opt);
-                });
-                municipalitySelect.disabled = false;
-            });
+        Object.entries(locations[code]?.cities ?? {}).forEach(([cityCode, name]) => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            opt.dataset.code = cityCode;
+            municipalitySelect.appendChild(opt);
+        });
+        municipalitySelect.disabled = false;
     });
 
     municipalitySelect.addEventListener('change', () => {

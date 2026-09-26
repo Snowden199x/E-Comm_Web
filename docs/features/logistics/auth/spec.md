@@ -1,15 +1,15 @@
 # Logistics Center Authentication
 
 **Status:** Partial  
-**Reviewed:** 24 September 2026
+**Reviewed:** 26 September 2026
 
 ## Current behavior
 
-Center registration uses email OTP, saves business/profile documents, and awaits admin approval. Shared logistics login accepts approved center/courier roles.
+Center registration uses email OTP, saves business/profile documents, and awaits admin approval. The dashboard, account page, and rider review actions require an authenticated, approved, active logistics-center account with a center profile. Shared logistics login accepts approved center/courier roles.
 
 ## Gaps and acceptance direction
 
-Add correct guard/middleware to dashboard/action routes. Courier login currently redirects to an undefined named route.
+Courier login currently redirects to an undefined named route. The rider app and its authentication contract remain future work.
 
 ## Source evidence
 

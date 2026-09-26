@@ -78,13 +78,13 @@ class LiveRevisionController extends Controller
         $rows = match ($scope) {
             'dashboard' => [$orders(), $products(), $cases(),
                 DB::table('users')->whereIn('role', ['buyer', 'seller'])->orderBy('id')->get(['id', 'role', 'status', 'updated_at']),
-                DB::table('notifications')->whereNull('user_id')->orderBy('id')->get(['id', 'read_at']),
+                DB::table('notifications')->whereNull('user_id')->where('type', '!=', 'new_order')->orderBy('id')->get(['id', 'read_at']),
                 DB::table('announcements')->orderBy('id')->get(['id', 'status', 'updated_at'])],
             'cases' => $cases(),
             'accounts' => DB::table('users')->whereIn('role', ['buyer', 'seller'])->orderBy('id')
                 ->get(['id', 'role', 'status', 'account_status', 'updated_at']),
             'products' => [$products(), DB::table('product_images')->orderBy('id')->get(['id', 'product_id', 'path', 'sort_order'])],
-            'notifications' => DB::table('notifications')->whereNull('user_id')->orderBy('id')->get(['id', 'read_at']),
+            'notifications' => DB::table('notifications')->whereNull('user_id')->where('type', '!=', 'new_order')->orderBy('id')->get(['id', 'read_at']),
         };
         return $this->respond($rows);
     }

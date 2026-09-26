@@ -48,7 +48,7 @@ The drawer shows a To ship example. Available actions for in-transit, delivered,
 These were the design questions. Their implemented resolution is in the [implementation spec](spec.md); the following records the original comparison:
 
 - **To Ship / In Transit:** These display labels must be mapped to the existing ERP states. Do not add a `shipped` state just because the button uses that label.
-- **Mark as Shipped:** Existing Seller Orders separates preparation, ready-for-pickup, and actual pickup. Its `pickup` action moves `ready_for_pickup` to `picked_up` only with an assigned courier. Decide whether this design action represents that handoff; it must not silently skip preparation, assignment, or custody confirmation.
+- **Mark as Shipped:** Seller actions stop at `ready_for_pickup`. The assigned pickup rider's future QR/barcode scan will move the order to `picked_up`; a seller shipping button must not bypass custody confirmation.
 - **Cancel Shipment:** Existing seller decline only cancels a `placed` order and restores stock. That behavior does not establish a policy for canceling a shipment later in fulfillment. Determine whether this action cancels an order, a dispatch booking, or a shipment; then define stock/payment effects and notifications.
 - **Courier and tracking:** The screenshots name a carrier company. Current `orders.courier_id` refers to a courier user. Carrier company, individual rider, tracking number, and ETA are different data concepts; their source/relationship remains to be defined. A sample carrier name does not mean an external carrier integration exists.
 - **Shipping fee:** The drawer displays a shipping charge. Current checkout totals are item totals; shipping quotation and shipment charge persistence are not yet implemented.
@@ -62,7 +62,7 @@ These were the design questions. Their implemented resolution is in the [impleme
 
 ## Current implementation and related docs
 
-Seller Shipments routes now serve live lists, details, persisted tracking metadata, pre-pickup cancellation and pickup handoff. Orders and Shipments share the same transition service. Courier assignment and downstream logistics operations remain future work. See the [implementation spec](spec.md).
+Seller Shipments routes serve live lists, details, persisted tracking metadata and pre-pickup cancellation. Orders and Shipments share the same transition service. Logistics dispatch now assigns pickup and delivery riders and records manual hub handoffs; rider scans and delivery execution remain future work. See the [implementation spec](spec.md).
 
 - [Seller domain](../../../domains/Seller.md)
 - [Seller order management](../order-management/spec.md)

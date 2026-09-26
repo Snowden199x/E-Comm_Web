@@ -20,6 +20,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     @vite('resources/css/seller/seller-dashboard.css')
+    <link rel="stylesheet" href="{{ asset('assets/css/notification-actions.css') }}">
 </head>
 <body class="sd-body @if(request()->routeIs('seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.feedback.*', 'seller.reports.*', 'seller.messages.*', 'seller.marketplace-messages.*', 'seller.account.*', 'seller.notifications.*')) sd-sidebar-pinned @endif">
 
@@ -106,7 +107,7 @@
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
                         <span class="sd-bell-count" id="sdBellCount" @if(!$unreadNotifications) hidden @endif>{{ $unreadNotifications > 99 ? '99+' : $unreadNotifications }}</span>
                     </button>
-                    <div class="sd-bell-menu" id="sdBellMenu" hidden><div class="sd-bell-menu__head"><strong>Notifications</strong><a href="{{ route('seller.notifications.index') }}">View all</a></div><div id="sdBellList">@include('seller.notifications.recent', ['notifications' => $recentNotifications])</div></div>
+                    <div class="sd-bell-menu" id="sdBellMenu" hidden><div class="sd-bell-menu__head"><strong>Notifications</strong><div class="notification-menu-actions"><form method="POST" action="{{ route('seller.notifications.read-all') }}">@csrf<button type="submit">Mark all as read</button></form><a href="{{ route('seller.notifications.index') }}">View all</a></div></div><div id="sdBellList">@include('seller.notifications.recent', ['notifications' => $recentNotifications])</div></div>
                 </div>
                 <div class="sd-user-wrap" id="sdUserWrap">
                     <button type="button" class="sd-user" id="sdUserBtn" aria-label="Account menu" aria-controls="sdUserMenu" aria-expanded="false">
@@ -237,7 +238,6 @@
             document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshBell(); });
         })();
     </script>
-    @include('shared.message-delete-dialog')
     @include('shared.live-revision-script')
 </body>
 </html>

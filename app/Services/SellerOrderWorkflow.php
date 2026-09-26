@@ -19,19 +19,12 @@ class SellerOrderWorkflow
                 'decline' => [['placed'], 'cancelled'],
                 'prepare' => [['confirmed'], 'preparing'],
                 'ready' => [['preparing'], 'ready_for_pickup'],
-                'pickup' => [['ready_for_pickup'], 'picked_up'],
                 'cancel_shipment' => [['confirmed', 'preparing', 'ready_for_pickup'], 'cancelled'],
             ];
             abort_unless(isset($transitions[$action]), 422, 'Unknown order action.');
             [$allowed, $to] = $transitions[$action];
             $from = $order->status;
             abort_unless($from === $expectedStatus && in_array($from, $allowed, true), 409, 'This order has changed or the action is unavailable. Reload its details.');
-            if ($to === 'picked_up') {
-                $rider = $order->courier;
-                abort_unless($rider && $rider->role === 'courier' && $rider->status === 'approved'
-                    && ! $rider->archived_at && (! $rider->account_status || $rider->account_status === 'active'),
-                    422, 'An active rider must be assigned by logistics before confirming pickup.');
-            }
             if ($to === 'cancelled') {
                 abort_unless(trim($reason ?? '') !== '', 422, 'Enter a cancellation reason.');
                 $quantities = $order->items()->get()->groupBy('product_id')->map(fn ($items) => $items->sum('quantity'));
@@ -41,6 +34,9 @@ class SellerOrderWorkflow
                 }
             }
             $order->update(['status' => $to]);
+            if ($to === 'ready_for_pickup') {
+                app(OrderRoutingService::class)->route($order);
+            }
             $order->statusEvents()->create(['user_id' => $seller->id, 'from_status' => $from, 'to_status' => $to, 'note' => $to === 'cancelled' ? $reason : null]);
             Notification::create([
                 'user_id' => $order->buyer_id, 'type' => 'order_update',

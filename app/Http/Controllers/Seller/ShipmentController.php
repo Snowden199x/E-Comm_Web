@@ -71,14 +71,13 @@ class ShipmentController extends Controller
     public function update(Request $request, int $order)
     {
         $data = $request->validate([
-            'action' => ['required', Rule::in(['ship', 'cancel'])],
+            'action' => ['required', Rule::in(['cancel'])],
             'expected_status' => ['required', Rule::in(array_keys(Order::STATUSES))],
             'reason' => 'required_if:action,cancel|nullable|string|max:500',
-            'handoff_confirmed' => 'accepted_if:action,ship',
         ]);
-        app(SellerOrderWorkflow::class)->transition($request->user(), $order, $data['action'] === 'ship' ? 'pickup' : 'cancel_shipment', $data['expected_status'], $data['reason'] ?? null);
+        app(SellerOrderWorkflow::class)->transition($request->user(), $order, 'cancel_shipment', $data['expected_status'], $data['reason'] ?? null);
 
-        return response()->json(['message' => $data['action'] === 'ship' ? 'Pickup confirmed. The shipment is now in transit.' : 'Shipment cancelled. Reserved stock has been restored.']);
+        return response()->json(['message' => 'Shipment cancelled. Reserved stock has been restored.']);
     }
 
     public function tracking(Request $request, int $order)

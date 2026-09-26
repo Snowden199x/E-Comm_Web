@@ -27,7 +27,6 @@
         @endif
         <p class="mc-context__help">Only you and the other party can read this chat. {{ $isBuyer ? 'You can share an order in the chat when you need help with it.' : 'Order details shared by the buyer appear in the chat.' }}</p>
         <div class="mc-context__actions">
-            @if($conversation)<button type="button" class="mc-delete-conversation" data-delete-conversation="{{ route('marketplace-conversations.delete', $conversation) }}" data-delete-redirect="{{ route($isBuyer ? 'buyer.messages.index' : 'seller.messages.index') }}">Delete conversation</button>@endif
             <button type="button" class="mc-report-button" data-report-open>Report this {{ $isBuyer ? 'seller' : 'buyer' }}</button>
         </div>
     </aside>
@@ -44,7 +43,11 @@
         <p class="mc-error" id="mcError" role="alert" @if(!$errors->any()) hidden @endif>{{ $errors->first() }}</p>
         <div class="mc-history" id="mcHistory" @if($fetchRoute) data-fetch="{{ $fetchRoute }}" @endif aria-live="polite">
             @forelse($messages as $message)
-                <div class="mc-message @if($message->sender_id === null) is-system @elseif($message->sender_id === auth()->id()) is-mine @endif" data-message-id="{{ $message->id }}">
+                <div class="mc-message-row @if($message->sender_id === null) is-system @elseif($message->sender_id === auth()->id()) is-mine @endif" data-message-id="{{ $message->id }}">
+                    @if($message->sender_id !== null && $message->sender_id !== auth()->id())
+                        @if($message->sender?->profile_picture)<img class="mc-message-avatar" src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($message->sender->profile_picture) }}" alt="">@else<span class="mc-message-avatar">{{ mb_strtoupper(mb_substr($message->sender?->name ?? '?', 0, 1)) }}</span>@endif
+                    @endif
+                <div class="mc-message @if($message->sender_id === null) is-system @elseif($message->sender_id === auth()->id()) is-mine @endif">
                     <small>{{ $message->sender_id === null ? 'Vendo' : ($message->sender_id === auth()->id() ? 'You' : ($partner?->name ?? 'Other party')) }} · {{ $message->created_at->format('M j, g:i A') }}</small>
                     @if($message->item)<span class="mc-message__item">About: {{ $message->item->product?->name ?? 'Order item' }}</span>@endif
                     @if($message->sharedOrder)
@@ -61,6 +64,10 @@
                     @endif
                     @if($message->body)<p>{{ $message->body }}</p>@endif
                     @if($message->attachment_path)<a href="{{ route('marketplace-messages.attachment', $message) }}" target="_blank" rel="noopener"><img src="{{ route('marketplace-messages.attachment', $message) }}" alt="Photo attached to message" loading="lazy"></a>@endif
+                </div>
+                    @if($message->sender_id === auth()->id())
+                        @if($message->sender?->profile_picture)<img class="mc-message-avatar" src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($message->sender->profile_picture) }}" alt="">@else<span class="mc-message-avatar">{{ mb_strtoupper(mb_substr($message->sender?->name ?? '?', 0, 1)) }}</span>@endif
+                    @endif
                 </div>
             @empty<p class="mc-empty" id="mcEmpty">{{ $isBuyer ? 'Send a message or share an order with the seller.' : 'No messages yet.' }}</p>@endforelse
         </div>
@@ -129,8 +136,14 @@
             }
             data.messages.forEach(message => {
                 document.getElementById('mcEmpty')?.remove();
+                const line = document.createElement('div');
+                line.className = 'mc-message-row' + (message.system ? ' is-system' : (message.mine ? ' is-mine' : '')); line.dataset.messageId = message.id;
                 const row = document.createElement('div');
-                row.className = 'mc-message' + (message.system ? ' is-system' : (message.mine ? ' is-mine' : '')); row.dataset.messageId = message.id;
+                row.className = 'mc-message' + (message.system ? ' is-system' : (message.mine ? ' is-mine' : ''));
+                const avatar = document.createElement(message.avatar ? 'img' : 'span');
+                avatar.className = 'mc-message-avatar';
+                if (message.avatar) { avatar.src = message.avatar; avatar.alt = ''; }
+                else avatar.textContent = message.initial;
                 const meta = document.createElement('small');
                 meta.textContent = (message.system ? 'Vendo' : (message.mine ? 'You' : @json($partner?->name ?? 'Other party'))) + ' · ' + message.time;
                 row.append(meta);
@@ -138,7 +151,10 @@
                 if (message.shared_order) row.append(orderCard(message.shared_order, message.system));
                 if (message.body) { const body = document.createElement('p'); body.textContent = message.body; row.append(body); }
                 if (message.attachment_url) { const link = document.createElement('a'); const image = document.createElement('img'); link.href = message.attachment_url; link.target = '_blank'; link.rel = 'noopener'; image.src = message.attachment_url; image.alt = 'Photo attached to message'; link.append(image); row.append(link); }
-                box.append(row); lastId = message.id;
+                if (!message.system && !message.mine) line.append(avatar);
+                line.append(row);
+                if (message.mine) line.append(avatar);
+                box.append(line); lastId = message.id;
             });
             if (nearBottom) box.scrollTop = box.scrollHeight;
         } catch (_) {} finally { loading = false; }

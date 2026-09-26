@@ -6,7 +6,7 @@ Buyers register, discover products, maintain a cart, place seller-specific order
 
 ## Implemented journey
 
-Registration collects profile/address/ID data and requires an email OTP proof stored in the current session and a verified database record. Checkout validates cart stock under row locks, groups items by seller into separate orders, decrements stock transactionally, clears the cart, and creates an initial order event. Buyers can list/view their orders and confirm receipt after delivery. Product/category pages, account editing, cart operations, and messaging routes are present.
+Registration collects profile/address/ID data and requires an email OTP proof stored in the current session and a verified database record. The cart groups items by store and lets buyers select individual items or whole stores for checkout. Checkout validates selected cart rows and stock under row locks, groups selected items by seller into separate orders, decrements stock transactionally, removes only purchased cart rows, and creates an initial order event. Buyers can list/view their orders and confirm receipt after delivery. Product/category pages, account editing, cart operations, and messaging routes are present.
 
 ## Boundaries and gaps
 

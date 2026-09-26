@@ -1,20 +1,10 @@
 # User Management
 
-**Status:** Implemented for buyer/seller accounts  
-**Reviewed:** 24 September 2026
+**Status:** Implemented for buyer, seller and logistics-center accounts
+**Reviewed:** 26 September 2026
 
-## Current behavior
+The Admin User Management list and counts include approved, suspended, deactivated, and rejected buyer, seller, and logistics-center accounts. Search, date and role filters can find logistics centers. The profile dialog shows their business and address data. Admin can suspend, deactivate, or reactivate these roles with server-side role/status checks. New logistics-center approval remains in Admin Registrations. Filter navigation reloads the page so the selected user's profile/action dialogs match the visible results.
 
-Lists approved/suspended/deactivated and rejected buyer/seller users with search/type/date filters; supports suspend for seven days, deactivate, and activate.
+Rider and admin accounts are outside this screen. Account audit history and private verification-document downloads remain open.
 
-## Gaps and acceptance direction
-
-Current listing query excludes logistics centers/couriers/admins; document that scope or expand it deliberately. Add audit history and boundary tests.
-
-## Source evidence
-
-`app/Http/Controllers/Admin/UserManagementController.php`, `resources/views/admin/user-management/`
-
-## Related documentation
-
-See [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+Source: `app/Http/Controllers/Admin/UserManagementController.php`, `resources/views/admin/user-management/`.

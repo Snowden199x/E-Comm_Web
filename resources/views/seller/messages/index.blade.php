@@ -12,7 +12,7 @@
             </aside>
             <section class="sw-inbox__thread" aria-label="Vendo Support conversation">
                 <header class="sw-inbox__thread-head"><div><strong>Vendo Support</strong><small>Account and order help</small></div>
-                    @if($conversation)<div class="sw-inbox__head-actions"><button type="button" class="sw-text-button" data-delete-conversation="{{ route('seller.messages.conversation.delete', $conversation) }}" data-delete-redirect="{{ route('seller.messages.index') }}">Delete conversation</button>@if($conversation->status === 'open')<form method="POST" action="{{ route('seller.messages.close', $conversation) }}">@csrf<button class="sw-text-button" type="submit">Close conversation</button></form>@endif</div>@endif
+                    @if($conversation?->status === 'open')<div class="sw-inbox__head-actions"><form method="POST" action="{{ route('seller.messages.close', $conversation) }}">@csrf<button class="sw-text-button" type="submit">End conversation</button></form></div>@endif
                 </header>
                 @if($conversation?->status === 'open')
                     <div class="sw-inbox__history" id="swMessages" data-fetch="{{ route('seller.messages.fetch', $conversation) }}" aria-live="polite"></div>
@@ -59,9 +59,15 @@
         let lastId = 0;
         let loading = false;
         const addMessage = message => {
+            const line = document.createElement('div');
+            line.className = 'sw-message-line' + (message.mine ? ' is-mine' : '') + (message.system ? ' is-system' : '');
+            line.dataset.messageId = message.id;
             const row = document.createElement('div');
             row.className = 'sw-message' + (message.system ? ' is-system' : (message.mine ? ' is-mine' : ''));
-            row.dataset.messageId = message.id;
+            const avatar = document.createElement(message.avatar ? 'img' : 'span');
+            avatar.className = 'sw-message-avatar';
+            if (message.avatar) { avatar.src = message.avatar; avatar.alt = ''; }
+            else avatar.textContent = message.initial;
             const meta = document.createElement('small');
             meta.textContent = message.sender + ' · ' + message.time;
             row.append(meta);
@@ -71,7 +77,10 @@
                 link.href = item.url; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Attachment: ' + item.name;
                 row.append(link);
             });
-            box.append(row);
+            if (!message.system && !message.mine) line.append(avatar);
+            line.append(row);
+            if (message.mine) line.append(avatar);
+            box.append(line);
         };
         async function load() {
             if (loading || document.hidden) return;

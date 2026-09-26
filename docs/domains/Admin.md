@@ -8,7 +8,7 @@ Platform staff review registrations and catalog compliance, manage accounts and 
 
 - Dashboard aggregates orders/sales/users, six-week charts, pending registrations, recent notices, registrations, and complaints.
 - Registration review filters pending buyers, sellers, and logistics centers; detail, approval email, and rejection reason/notes are supported.
-- User management filters buyer/seller accounts and supports suspend, deactivate, and reactivate.
+- User management filters buyer, seller, and logistics-center accounts and supports suspend, deactivate, and reactivate. New logistics-center approval remains in Registrations.
 - Seller compliance covers product review, warning/violation lists, seller suspension workflows, and product approve/reject/warn actions.
 - Complaints, category commission settings, reports/PDF download, platform policies, announcements, notification listing, chat, and admin account management have controllers/views.
 

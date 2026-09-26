@@ -13,6 +13,7 @@
         rel="stylesheet">
 
     @vite(['resources/css/shared/app.css', 'resources/js/admin/sidebar.js', 'resources/js/shared/app.js'])
+    <link rel="stylesheet" href="{{ asset('assets/css/notification-actions.css') }}">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet">
@@ -57,9 +58,9 @@
 
     @php
         $admin = Auth::guard('admin')->user();
-        $adminNotificationCount = \App\Models\Communication\Notification::whereNull('user_id')->whereNull('read_at')->count();
-        $latestAdminNotificationId = \App\Models\Communication\Notification::whereNull('user_id')->max('id') ?? 0;
-        $recentAdminNotifications = \App\Models\Communication\Notification::whereNull('user_id')->latest()->limit(5)->get();
+        $adminNotificationCount = \App\Models\Communication\Notification::whereNull('user_id')->where('type', '!=', 'new_order')->whereNull('read_at')->count();
+        $latestAdminNotificationId = \App\Models\Communication\Notification::whereNull('user_id')->where('type', '!=', 'new_order')->max('id') ?? 0;
+        $recentAdminNotifications = \App\Models\Communication\Notification::whereNull('user_id')->where('type', '!=', 'new_order')->latest()->limit(5)->get();
     @endphp
 
     <div class="flex h-full overflow-hidden">
@@ -91,7 +92,7 @@
                             <span id="adminNotificationCount" class="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 text-[10px] text-white" @if(!$adminNotificationCount) hidden @endif>{{ $adminNotificationCount }}</span>
                         </button>
                         <div id="adminBellMenu" class="admin-bell-menu absolute right-0 top-full z-50 mt-2 w-[min(350px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-gray-100 bg-white text-gray-900 shadow-xl" hidden>
-                            <div class="flex items-center justify-between border-b px-4 py-3"><strong class="text-sm">Notifications</strong><a href="{{ route('admin.notifications.index') }}" class="text-xs font-semibold text-[#5b2963]">View all</a></div>
+                            <div class="flex items-center justify-between border-b px-4 py-3"><strong class="text-sm">Notifications</strong><div class="notification-menu-actions"><form method="POST" action="{{ route('admin.notifications.read-all') }}">@csrf<button type="submit">Mark all as read</button></form><a href="{{ route('admin.notifications.index') }}">View all</a></div></div>
                             <div id="adminBellList" class="max-h-[min(60dvh,430px)] overflow-y-auto">@include('admin.notifications.recent', ['notifications' => $recentAdminNotifications])</div>
                         </div>
                     </div>

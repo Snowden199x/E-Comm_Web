@@ -12,7 +12,7 @@ class NotificationController extends Controller
 {
     private function adminNotifications()
     {
-        return Notification::query()->whereNull('user_id');
+        return Notification::query()->whereNull('user_id')->where('type', '!=', 'new_order');
     }
 
     public function index(Request $request): View

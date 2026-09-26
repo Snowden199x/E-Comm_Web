@@ -8,7 +8,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
             <div class="bg-purple-50 border-2 border-[#3b1735] rounded-2xl p-4 flex items-center gap-3">
                 <img src="{{ asset('assets/icons/dashboard/total-users-icon.svg') }}" alt="" class="w-10 h-10">
                 <div>
@@ -30,6 +30,13 @@
                     <p class="text-xl font-bold text-gray-900">{{ number_format($stats['buyers']) }}</p>
                 </div>
             </div>
+            <div class="bg-purple-50 border-2 border-[#3b1735] rounded-2xl p-4 flex items-center gap-3">
+                <span aria-hidden="true" class="flex h-10 w-10 items-center justify-center rounded-full bg-[#3b1735] text-lg font-bold text-white">L</span>
+                <div>
+                    <p class="text-xs text-gray-600">Logistics Centers</p>
+                    <p class="text-xl font-bold text-gray-900">{{ number_format($stats['logistics_centers']) }}</p>
+                </div>
+            </div>
         </div>
 
         <div x-data="{
@@ -41,8 +48,7 @@
                 clearTimeout(this.timer);
                 this.timer = setTimeout(() => {
                     const params = new URLSearchParams({ search: this.q, date: this.dateVal, user_type: this.userType, rejected: '{{ $showRejected ? 1 : 0 }}' });
-                    fetch('{{ route('admin.user-management.table') }}?' + params)
-                        .then(r => r.text()).then(html => { document.getElementById('users-table-wrap').innerHTML = html; });
+                    window.location.assign('{{ route('admin.user-management.index') }}?' + params);
                 }, 250);
             }
         }" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -50,7 +56,7 @@
                 <img src="{{ asset('assets/icons/user-management/search-icon.svg') }}" alt=""
                     class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-50">
                 <input type="text" x-model="q" @input="search" autocomplete="off"
-                    placeholder="Search seller name or email..."
+                    placeholder="Search name or email..."
                     class="w-full pl-9 pr-4 py-2.5 rounded-full border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]">
             </div>
 
@@ -64,6 +70,7 @@
                     <option value="all">All Users</option>
                     <option value="seller">Sellers</option>
                     <option value="buyer">Buyers</option>
+                    <option value="logistics_center">Logistics Centers</option>
                 </select>
 
                 <a href="{{ route('admin.user-management.index', array_merge(request()->except('rejected'), ['rejected' => $showRejected ? 0 : 1])) }}"

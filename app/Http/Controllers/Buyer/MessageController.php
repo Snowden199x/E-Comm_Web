@@ -8,6 +8,8 @@ use App\Models\Communication\Message;
 use App\Models\Communication\Notification;
 use App\Models\Communication\MarketplaceConversation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class MessageController extends Controller
 {
@@ -29,7 +31,7 @@ class MessageController extends Controller
     private function sellerConversations(int $buyerId)
     {
         return MarketplaceConversation::query()->where('buyer_id', $buyerId)
-            ->with(['seller:id,name', 'order:id', 'latestMessage'])
+            ->with(['seller:id,name,profile_picture', 'order:id', 'latestMessage'])
             ->withCount(['messages as unread_count' => fn ($query) => $query
                 ->where('sender_id', '!=', $buyerId)->whereNull('read_at')])
             ->orderByDesc('last_message_at')->get();
@@ -65,7 +67,7 @@ class MessageController extends Controller
     {
         abort_unless($conversation->user_id === auth()->id(), 403);
 
-        $conversation->load('messages.attachments');
+        $conversation->load('messages.attachments', 'messages.sender');
 
         return response()->json([
             'status' => $conversation->status,
@@ -74,6 +76,8 @@ class MessageController extends Controller
                 'body' => $m->body,
                 'is_mine' => $m->sender_id === auth()->id(),
                 'is_system' => is_null($m->sender_id),
+                'avatar' => $m->sender?->profile_picture ? Storage::disk('public')->url($m->sender->profile_picture) : null,
+                'initial' => mb_strtoupper(mb_substr($m->sender?->name ?? 'V', 0, 1)),
                 'attachments' => $m->attachments->map(fn ($a) => [
                     'url' => asset('storage/' . $a->path),
                     'name' => $a->original_filename,
@@ -92,8 +96,8 @@ class MessageController extends Controller
             'attachment' => 'nullable|file|max:5120',
         ]);
 
-        if (!$request->body && !$request->hasFile('attachment')) {
-            return back()->withErrors(['body' => 'Type a message or attach a file.']);
+        if (! $request->filled('body') && ! $request->hasFile('attachment')) {
+            throw ValidationException::withMessages(['body' => 'Type a message or attach a file.']);
         }
 
         $message = Message::create([
@@ -114,6 +118,6 @@ class MessageController extends Controller
         $conversation->update(['last_message_at' => now()]);
         Notification::create(['user_id' => null, 'type' => 'support_message', 'title' => 'New buyer support message', 'message' => 'A buyer sent a support message.', 'link' => route('admin.messages.index', ['conversation' => $conversation->id])]);
 
-        return back();
+        return $request->expectsJson() ? response()->json(['success' => true]) : back();
     }
 }

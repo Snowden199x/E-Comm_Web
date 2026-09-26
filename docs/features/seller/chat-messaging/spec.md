@@ -12,3 +12,7 @@ Seller Messages also keeps its separate Vendo Support conversation with admin. I
 ## 25 September 2026 update
 
 Shared order cards show a product photo when the order has one. The buyer chat list and open Vendo Support thread refresh without page reload. Incoming seller support messages create an admin notification. These updates use short requests; a WebSocket service is not installed.
+
+## 26 September 2026 update
+
+The support and buyer–seller message views show existing profile photos when available, falling back to initials. Sellers can end/reopen support conversations but cannot delete support or buyer–seller conversation history. The notification bell offers **Mark all as read** next to **View all**.

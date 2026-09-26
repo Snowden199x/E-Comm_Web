@@ -59,7 +59,7 @@ class DashboardController extends Controller
         ];
 
         // Latest Notifications
-        $notifications = Notification::whereNull('user_id')->latest()->take(5)->get();
+        $notifications = Notification::whereNull('user_id')->where('type', '!=', 'new_order')->latest()->take(5)->get();
 
         // Recent Registrations
         $recentRegistrations = User::with(['sellerDetail', 'buyerDetail', 'categories'])

@@ -1,5 +1,7 @@
 # Development Workspace and Task Planning Guide
 
+For Codex work, follow the repository [AGENTS.md](../AGENTS.md): every code change gets a same-day docs log, and the project owner handles testing unless they explicitly delegate it.
+
 ## Repository snapshot
 
 Vendo is a Laravel web application using Blade views, Eloquent models, Laravel migrations, and Vite-managed JavaScript/CSS. Current route groups serve Admin, Buyer, Seller, and Logistics Center experiences. A Courier role and profile model exist, but a courier-facing web or mobile workflow is not implemented yet.
@@ -12,7 +14,7 @@ Vendo is a Laravel web application using Blade views, Eloquent models, Laravel m
 4. Run `php artisan migrate` against the intended local database. This is additive schema work; do not use `migrate:fresh` against a database containing data you need.
 5. Use separate terminals for `php artisan serve` and `npm run dev`, or build assets with `npm run build`.
 6. Create an admin through the project’s documented local process or seeder; create seller demo data with `php artisan db:seed --class=SellerDemoSeeder` only in a local/testing environment. That seeder creates a new randomized demo batch on each run.
-7. Run focused tests with `php artisan test`. Frontend checks currently include `tests/Frontend/buyer-registration.test.cjs`.
+7. The project owner runs focused tests with `php artisan test`. Frontend checks currently include `tests/Frontend/buyer-registration.test.cjs`.
 
 The actual credential names and service settings belong in local environment configuration and must not be copied into this guide.
 
@@ -30,6 +32,6 @@ The actual credential names and service settings belong in local environment con
 - Authorization is enforced server-side and resources are scoped to their owner/tenant.
 - Database changes have forward and rollback migrations where practical.
 - Sensitive files are stored outside public paths and validated.
-- Happy-path and important ownership/invalid-transition cases are tested.
-- Assets build, views render, and the affected flow has been checked locally.
+- The project owner tests happy-path and important ownership/invalid-transition cases.
+- The project owner checks assets, rendered views, and the affected local flow.
 - Feature spec and domain status are updated; risks and external dependencies are recorded.

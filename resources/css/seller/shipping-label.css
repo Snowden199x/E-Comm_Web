@@ -1,0 +1,137 @@
+@page {
+    size: 4in 6in;
+    margin: 0;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: #e8e5e1;
+    color: #111;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.print-toolbar {
+    width: 4in;
+    margin: 18px auto 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+}
+
+.print-toolbar button {
+    border: 0;
+    border-radius: 5px;
+    background: #3b1735;
+    color: white;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    padding: 9px 14px;
+}
+
+.print-toolbar button:focus-visible { outline: 3px solid #8d5b8b; outline-offset: 2px; }
+
+.shipping-label {
+    width: 4in;
+    min-height: 6in;
+    margin: 0 auto 24px;
+    padding: 3mm;
+    background: white;
+    border: 1px solid #111;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+}
+
+.label-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 3mm;
+    min-height: 14mm;
+    border-bottom: 2px solid #111;
+}
+
+.brand { display: block; font-size: 23px; letter-spacing: .02em; line-height: 1; overflow-wrap: anywhere; }
+.brand-subtitle { display: block; margin-top: 3px; font-size: 9px; font-weight: 700; letter-spacing: .16em; }
+.service-block { text-align: right; }
+.service-block strong { display: block; font-size: 21px; line-height: 1; }
+.service-block span { display: block; margin-top: 4px; font-size: 10px; font-weight: 700; }
+
+.route-block {
+    display: grid;
+    grid-template-columns: 1fr 12px 1fr;
+    align-items: center;
+    gap: 2mm;
+    min-height: 20mm;
+    border-bottom: 1px solid #111;
+}
+
+.route-block > div { min-width: 0; }
+.route-block strong { display: block; font-size: 12px; line-height: 1.15; overflow-wrap: anywhere; }
+.route-block small { display: block; margin-top: 2px; font-size: 9px; line-height: 1.15; overflow-wrap: anywhere; }
+.route-arrow { font-size: 16px; font-weight: 700; text-align: center; }
+.field-label { display: block; font-size: 8px; font-weight: 700; letter-spacing: .06em; }
+
+.tracking-block {
+    text-align: center;
+    padding: 2.5mm 1mm 2mm;
+    border-bottom: 2px solid #111;
+}
+
+.tracking-block .field-label { margin-bottom: 2mm; }
+.barcode { display: block; width: 100%; height: 18mm; object-fit: fill; }
+.tracking-number { display: block; margin-top: 1mm; font-size: 12px; letter-spacing: .04em; overflow-wrap: anywhere; }
+
+.address-block {
+    display: grid;
+    grid-template-columns: 11mm 1fr;
+    border-bottom: 1px solid #111;
+    min-height: 30mm;
+}
+
+.address-tag {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-right: 1px solid #111;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.05;
+    text-align: center;
+}
+
+.address-body { padding: 2mm 2.5mm; min-width: 0; }
+.address-name { font-size: 12px; font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; }
+.address-detail { margin-top: 1mm; font-size: 10px; line-height: 1.2; overflow-wrap: anywhere; }
+.address-phone { margin-top: 1mm; font-size: 10px; font-weight: 700; }
+
+.label-footer {
+    display: grid;
+    grid-template-columns: 1fr 29mm;
+    min-height: 36mm;
+    flex: 1;
+}
+
+.parcel-details {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    padding: 1mm 2mm 0 0;
+}
+
+.parcel-details > div { display: flex; justify-content: space-between; align-items: baseline; gap: 2mm; }
+.parcel-details strong { font-size: 13px; }
+.parcel-details small { font-size: 8px; line-height: 1.2; }
+.qr-block { display: flex; flex-direction: column; justify-content: center; align-items: center; border-left: 1px solid #111; }
+.qr-block img { width: 26mm; height: 26mm; image-rendering: pixelated; }
+.qr-block span { margin-top: 1mm; font-size: 8px; font-weight: 700; letter-spacing: .05em; }
+
+@media print {
+    html, body { width: 4in; min-height: 6in; background: white; }
+    .print-toolbar { display: none; }
+    .shipping-label { margin: 0; border: 0; }
+}

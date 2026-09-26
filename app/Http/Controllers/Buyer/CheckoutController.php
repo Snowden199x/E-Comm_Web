@@ -9,15 +9,21 @@ use App\Models\Ecommerce\Order;
 use App\Models\Ecommerce\Product;
 use App\Models\Profiles\BuyerDetail;
 use App\Services\InventoryService;
+use App\Services\LocationCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class CheckoutController extends Controller
 {
-    public function index()
+    public function index(Request $request, LocationCatalog $locations)
     {
-        $cartItems = CartItem::with('product')->where('user_id', auth()->id())->orderBy('id')->get();
+        $selectedIds = $request->validate(['items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct']])['items'];
+        $cartItems = CartItem::with('product.seller.sellerDetail')->where('user_id', auth()->id())
+            ->whereIn('id', $selectedIds)->orderBy('id')->get();
+        if ($cartItems->count() !== count($selectedIds)) {
+            throw ValidationException::withMessages(['items' => 'Review your cart selection and try again.']);
+        }
         $checkoutRevision = $this->revision($cartItems, $cartItems->mapWithKeys(fn ($item) => [$item->product_id => $item->product]));
         $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
 
@@ -26,22 +32,30 @@ class CheckoutController extends Controller
                 $buyerDetail->house_no,
                 $buyerDetail->street,
                 $buyerDetail->barangay,
-                $buyerDetail->municipality,
-                $buyerDetail->province,
                 $buyerDetail->zip_code,
             ])))
             : '';
 
-        return view('buyer.checkout', compact('cartItems', 'defaultAddress', 'checkoutRevision'));
+        $locationOptions = $locations->all();
+        [$defaultProvinceCode, $defaultCityCode] = $buyerDetail
+            ? ($locations->codesForNames($buyerDetail->province, $buyerDetail->municipality) ?? [null, null])
+            : [null, null];
+
+        return view('buyer.checkout', compact('cartItems', 'defaultAddress', 'checkoutRevision', 'locationOptions', 'defaultProvinceCode', 'defaultCityCode'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, LocationCatalog $locations)
     {
-        $request->validate(['shipping_address' => 'required|string|max:2000', 'payment_mode' => 'required|in:cod', 'checkout_revision' => ['required', 'regex:/^[a-f0-9]{64}$/']]);
-        DB::transaction(function () use ($request) {
-            $cartItems = CartItem::where('user_id', $request->user()->id)->orderBy('id')->lockForUpdate()->get();
-            if ($cartItems->isEmpty()) {
-                throw ValidationException::withMessages(['quantity' => 'Your cart is empty.']);
+        $data = $request->validate(['shipping_address' => 'required|string|max:1800', 'shipping_province_code' => 'required|string|size:9', 'shipping_city_code' => 'required|string|size:9', 'payment_mode' => 'required|in:cod', 'checkout_revision' => ['required', 'regex:/^[a-f0-9]{64}$/'], 'items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct']]);
+        $location = $locations->address($data['shipping_province_code'], $data['shipping_city_code']);
+        if (! $location) {
+            throw ValidationException::withMessages(['shipping_city_code' => 'Select a city or municipality within the chosen province.']);
+        }
+        DB::transaction(function () use ($request, $data, $location) {
+            $selectedIds = $request->input('items');
+            $cartItems = CartItem::where('user_id', $request->user()->id)->whereIn('id', $selectedIds)->orderBy('id')->lockForUpdate()->get();
+            if ($cartItems->count() !== count($selectedIds)) {
+                throw ValidationException::withMessages(['items' => 'Your cart selection changed. Review your cart and try again.']);
             }
             $products = Product::with('seller')->whereIn('id', $cartItems->pluck('product_id'))
                 ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
@@ -73,11 +87,14 @@ class CheckoutController extends Controller
                     'buyer_id' => $request->user()->id, 'seller_id' => $sellerId,
                     'total_amount' => $items->sum(fn ($item) => $item->quantity * $products[$item->product_id]->price),
                     'shipping_fee' => 0, 'status' => 'placed', 'payment_mode' => $request->payment_mode,
-                    'shipping_address' => $request->shipping_address,
+                    'shipping_address' => trim($data['shipping_address']).', '.$location['city'].', '.$location['province'],
+                    'shipping_province_code' => $data['shipping_province_code'],
+                    'shipping_city_code' => $data['shipping_city_code'],
+                    'shipping_province' => $location['province'],
+                    'shipping_city' => $location['city'],
                 ]);
                 $order->statusEvents()->create(['user_id' => $request->user()->id, 'to_status' => 'placed']);
                 Notification::create(['user_id' => $sellerId, 'type' => 'new_order', 'title' => 'New order '.$order->number, 'message' => 'A buyer placed an order. Review it in Orders.', 'link' => route('seller.orders.show', $order)]);
-                Notification::create(['user_id' => null, 'type' => 'new_order', 'title' => 'New order '.$order->number, 'message' => 'A buyer placed an order with a seller.', 'link' => route('admin.dashboard')]);
                 foreach ($items as $item) {
                     $product = $products[$item->product_id];
                     $order->items()->create(['product_id' => $product->id, 'quantity' => $item->quantity, 'color' => $item->color, 'size' => $item->size, 'price' => $product->price]);

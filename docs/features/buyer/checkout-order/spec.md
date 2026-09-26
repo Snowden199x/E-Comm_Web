@@ -1,11 +1,11 @@
 # Checkout and Order Creation
 
 **Status:** Implemented core COD-style order creation  
-**Reviewed:** 24 September 2026
+**Reviewed:** 26 September 2026
 
 ## Current behavior
 
-Validates shipping address/payment mode, checks locked product stock, groups cart items by seller, creates order and item snapshots, decrements stock, notifies sellers, and clears the cart inside a transaction.
+Checkout requires selected cart item IDs from the buyer's cart. The server validates their ownership and a checkout revision, validates street/barangay detail, a province/city choice from the bundled location catalog, and COD payment mode, locks the selected rows/products, checks stock and current product data, groups selected items by seller, creates order and item snapshots, decrements stock, and notifies each seller inside a transaction. Only purchased cart rows are removed; unselected rows remain. Buyer purchases do not create admin `new_order` notifications.
 
 ## Gaps and acceptance direction
 

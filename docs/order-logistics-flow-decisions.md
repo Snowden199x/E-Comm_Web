@@ -1,35 +1,27 @@
 # Order and Logistics Flow Decisions
 
-## Current order status vocabulary
+## Current status sequence and owners
 
-The `Order` model defines: `placed`, `confirmed`, `preparing`, `ready_for_pickup`, `picked_up`, `at_sorting_center`, `sorted`, `assigned_to_rider`, `out_for_delivery`, `delivered`, `completed`, `delivery_failed`, `returned`, and `cancelled`. Buyer checkout creates `placed`. `order_status_events` stores each transition and note.
+Buyer checkout creates `placed` seller-specific orders. Seller can accept, prepare, and move an order to `ready_for_pickup`; seller cannot mark physical pickup. Readiness invokes `OrderRoutingService`, which selects an approved, active pickup center from seller location and a destination center from the structured buyer shipping location. Selection prefers a unique city match, then a unique province match. Missing or ambiguous matches stay unresolved. There is no admin dispatch action.
 
-## Current actor ownership
+The origin center assigns an approved pickup rider linked to it. The web backend now accepts that rider's barcode/QR scan for `ready_for_pickup → picked_up`, then an optional arrival scan for `picked_up → at_sorting_center`; the center may also manually record arrival. The center manually records sorting. A cross-center parcel moves `sorted → in_transit_to_hub` when the origin center records sending it, then `in_transit_to_hub → at_destination_hub` when the destination center records receipt. These manual records are not proof of a vehicle scan or manifest. For a same-center parcel, `sorted` is already at its destination. The destination center assigns its approved delivery rider, moving either `sorted` or `at_destination_hub` to `assigned_to_rider`.
 
-| Transition/action | Current owner in code | Current implementation |
-|---|---|---|
-| Place order; reserve stock | Buyer checkout | Implemented; stock is checked/locked and decremented at checkout. |
-| Accept or decline `placed` order | Seller | Implemented; decline requires a reason and restores stock once in its transaction. |
-| `confirmed` → `preparing` | Seller | Implemented. |
-| `preparing` → `ready_for_pickup` | Seller | Implemented. |
-| `ready_for_pickup` → `picked_up` | Seller confirms handoff only after a courier is assigned | Implemented with courier assignment precondition; assignment itself is not implemented in this repository. |
-| Cancel before pickup | Seller Shipments | Implemented for confirmed/preparing/ready-for-pickup only; reason, one-time stock restoration, history and notifications. |
-| Sorting scans, hub/linehaul, rider assignment, out-for-delivery | Logistics / courier | Statuses exist, but corresponding operational action routes are not implemented. |
-| `delivered` → `completed` | Buyer confirms receipt | Implemented on buyer order detail for delivered orders. |
-| Failed delivery, return, refund | Logistics/admin policy still needed | Status labels exist; complete exception/refund actions are not implemented. |
+The assigned destination rider can scan `assigned_to_rider → out_for_delivery`. `delivered`, `delivery_failed`, and `returned` remain in `Order::STATUSES`, but rider completion/exception routes are not yet built. Buyer receipt confirmation moves `delivered → completed`. Seller pre-pickup cancellation remains supported with stock restoration. Scan transitions create one scan event and status event with center/city, and notify seller, buyer, and the center owner. Manual hub transitions also notify seller and buyer with center/city context. The mobile scanner remains a separate repository.
 
-## Buyer-visible grouping
+## Routing and data limits
 
-Seller Orders groups map multiple ERP states into UI tabs: New, To Pack, Ready for Pickup, Pending Delivery, Delivered/Completed, Cancelled, and Returned. “Pending Delivery” includes states after pickup through delivery failure; the logistics team still needs to supply those transitions.
+Checkout now requires a selected province and city/municipality from a bundled PSGC location snapshot and saves both codes and names on the order. The free-text address holds the street/barangay detail; the server appends city and province. Old orders have only free-text addresses and cannot have a destination hub inferred safely. Use `php artisan orders:route-ready` after migration to assign eligible existing ready orders; approving or reactivating a logistics center also retries unresolved ready orders. A destination that still has no unique approved center blocks hub send, with an explicit dispatch message.
 
-## Decisions still required
+The location snapshot is based on the existing PSGC mirror and includes Metro Manila as a top-level choice. It is a fixed reference, not a live proof of current administrative boundaries. Two independent cities missing province associations in that mirror are not included. The current routing rule is based on city/province names and does not calculate physical distance, capacity, route coverage, or travel time. A primary-center policy, reassignment, exception handling, consolidation, truck manifests, delivery proof, and refunds remain decisions for later work. The initial scan contract is documented in the [rider scan API](features/courier/scan-api/spec.md).
 
-- Define who creates an assignment and whether one shipment may contain multiple seller orders.
-- Define scan events, hub arrival/departure, service-level timestamps, failed-attempt reasons, return-to-seller, and proof requirements.
-- Decide cancellation cutoffs and refund/payment behavior for COD and any future online payments.
-- Define status-event retention, customer-facing wording, and notifications for each transition.
-- Replace coarse order-level shipping with a shipment/parcel model if split packages or consolidation are required.
+## Proposed virtual SOC5 and SOC6 route checkpoints
 
-## Seller operations implementation
+For a parcel traveling between different main logistics hubs, the intended tracking path is **seller pickup → origin main hub → SOC5 → SOC6 → destination main hub**. The authorized courier scans the parcel's shipping-label barcode/QR to advance each leg: pickup scan points toward the seller-area hub; a scan at that hub points toward SOC5; the next courier scan advances the route through SOC5 toward SOC6; the next advances it through SOC6 toward the buyer-area main hub. SOC5 and SOC6 are route/checkpoint codes only: they have no address, warehouse, logistics account, rider roster, or independent parcel custody. They must not be selected as the origin or destination logistics center. A parcel staying within one main hub can bypass these inter-hub checkpoints.
 
-Orders and Shipments now share `SellerOrderWorkflow`. Mark as Shipped means physical pickup by an assigned active courier, not a new status. Tracking metadata is recorded separately from ERP transitions and cannot change courier assignment or buyer charges. See [Shipments](features/seller/shipments/spec.md) and [Products & Inventory](features/seller/products-inventory/spec.md).
+Example: a seller in Laoag, Ilocos Norte ships to a buyer in Calamba, Laguna. The actual origin is the approved Laoag-area main logistics hub and the actual destination is the approved Calamba-area main logistics hub. The courier scans at seller pickup, then scans again at the Laoag hub, then scans for SOC5 and SOC6 in order. After the SOC6 scan, Calamba is the next hub; Calamba's actual receipt must be confirmed before its logistics team assigns the delivery rider. The buyer's Laguna address determines the destination hub; the virtual SOC codes do not imply a city or a nearest-hub calculation.
+
+The intended seller/buyer timeline distinguishes **confirmed scan** from **next destination**. A pickup scan means the parcel was picked up and is headed to the seller-area hub; it does not mean the hub has received it. Likewise, the SOC6 scan makes the buyer-area hub the next destination, not a confirmed arrival there. Merely calculating the route must not mark SOC5 or SOC6 as passed, imply a scan occurred there, or claim a physical location. Each planned courier scan needs an assigned/authorized rider, tracking number, server time and idempotent event; a virtual SOC scan confirms a workflow milestone, not presence at an SOC facility. Notifications to seller/buyer must describe the confirmed milestone and the next leg accurately. The actual destination hub's receipt remains a separate confirmation before delivery assignment.
+
+The current code has only the single `in_transit_to_hub` handoff between origin and destination; it does **not** store SOC5/SOC6 route legs or scans. Its rider API supports pickup, origin arrival and out-for-delivery scans only. Implementation still needs lane rules, leg-specific courier assignments/authorization, an operational meaning for virtual SOC scans, and handling for skipped/late/returned parcels. See the [virtual SOC checkpoint proposal](features/logistics/virtual-soc-checkpoints/spec.md).
+
+See [seller shipments](features/seller/shipments/spec.md), [logistics dispatch](features/logistics/deploy-rider/spec.md), and [schema](schema.md).
