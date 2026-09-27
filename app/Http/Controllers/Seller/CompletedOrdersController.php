@@ -56,6 +56,10 @@ class CompletedOrdersController extends Controller
                 'statusEvents', 'items.review.reply', 'reviews',
             ])->findOrFail($order);
 
+        if (! $request->ajax()) {
+            return redirect()->route('seller.orders.show', $record);
+        }
+
         return view('seller.completed-orders.detail', ['order' => $record]);
     }
 

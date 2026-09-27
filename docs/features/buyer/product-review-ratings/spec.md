@@ -5,7 +5,7 @@
 
 ## Buyer journey to implement
 
-The buyer opens an order after confirming receipt. The existing `POST /buyer/orders/{order}/complete` changes `delivered → completed`; only then does each purchased `order_items` row offer **Write a review**. This includes the product name, variation, quantity and purchased price so the buyer knows which item is being rated. An order can have several eligible items; quantity of one item does not grant extra reviews. A merely delivered, cancelled or returned order is not review-eligible.
+The buyer opens an order after confirming receipt. The existing `POST /buyer/orders/{order}/complete` changes `delivered → completed`; only then does each purchased `order_items` row offer **Write a review**. The final buyer progress step is labeled **Rate Product** and links to that section when it becomes available; it is a UI action, not a new database status. Each row includes the product name, variation, quantity and purchased price so the buyer knows which item is being rated. An order can have several eligible items; quantity of one item does not grant extra reviews. A merely delivered, cancelled or returned order is not review-eligible.
 
 Buyer selects 1–5 stars and enters a 10–2000-character plain-text comment. `POST /buyer/order-items/{orderItem}/review` derives buyer, seller, order and product from the owned order item; the request supplies only rating and comment. Enforce one review per item with a database unique constraint and recheck order completion in the write transaction. If already reviewed, show the submitted review and any seller reply instead of another form. The initial policy is one-time submission with no silent edit/delete; admin handles correction requests through the future moderation process.
 

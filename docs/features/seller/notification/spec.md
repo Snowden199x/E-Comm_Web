@@ -23,7 +23,7 @@ Each notification should link to the relevant seller-owned order, product, revie
 | Policy or platform announcement | Targeted policy notification exists; announcements also appear on dashboard | The inbox displays the notice. A dedicated seller policy view remains future work. |
 | Product approved or rejected | Implemented | Product detail and review outcome/reason. |
 | Low or out of stock | Implemented | Product detail; emitted when stock crosses the threshold. |
-| Shipment status or delivery outcome | Implemented | Shipment or Delivered Orders detail after a status transition. |
+| Shipment status or delivery outcome | Implemented | Opens the seller-owned order in the full Orders workspace, including scan history. Existing notification links to Shipments/Delivered Orders detail are redirected to that order. |
 | Admin support reply | Implemented | Opens the seller's support thread. |
 
 Stock and shipment events are emitted on changes rather than page reads. A stable event key for broader retry deduplication remains future work. Notification text avoids private buyer contact information. Email and push settings can follow when those channels exist.
@@ -31,6 +31,8 @@ Stock and shipment events are emitted on changes rather than page reads. A stabl
 ## Backend contract
 
 `GET /seller/notifications`, `GET /seller/notifications/recent`, `POST /seller/notifications/{notification}/open`, `POST /seller/notifications/{notification}/read` and `POST /seller/notifications/read-all` run under `auth` and `EnsureActiveSeller`. Every query and update is scoped to `user_id = auth()->id()`; `NULL` recipients are excluded. The full inbox is paginated and newest first. A seller cannot mark another user's notification read.
+
+The notification destination resolves owned order detail URLs through the full Orders page. Older stored `/seller/shipments/{id}` and `/seller/completed-orders/{id}` links are mapped to the same route; missing orders fall back to the Orders list. Shipment and completed-order detail endpoints still return fragments to their drawer requests, but direct browser navigation redirects to the full Orders detail flow.
 
 The dashboard's recent list and the header badge should use the same notification source so their counts agree. Future mobile clients can consume the same recipient-scoped event records without changing the event definitions.
 

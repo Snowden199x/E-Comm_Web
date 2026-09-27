@@ -1,6 +1,6 @@
 # Vendo Project Documentation
 
-This documentation describes the Laravel web application as it exists in the repository, checked on **26 September 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
+This documentation describes the Laravel web application as it exists in the repository, checked on **27 September 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
 
 ## Start here
 
@@ -10,11 +10,12 @@ This documentation describes the Laravel web application as it exists in the rep
 - [Feature implementation guide](feature-implementation-guide.md) — how a feature moves from UI through routes, authorization, database, and tests.
 - [Architecture](architecture.md) and [schema](schema.md) — current technical structure and data relationships.
 - [Order and logistics flow decisions](order-logistics-flow-decisions.md) — current order states and ownership boundaries.
-- [Virtual SOC5/SOC6 checkpoints](features/logistics/virtual-soc-checkpoints/spec.md) — proposed inter-hub tracking route; documentation only.
-- [Rider scan API](features/courier/scan-api/spec.md) and [Logistics navigation](features/logistics/navigation/spec.md) — current backend contract and center sidebar scope.
+- [Virtual SOC5/SOC6 checkpoints](features/logistics/virtual-soc-checkpoints/spec.md) — ordered rider scan milestones for cross-hub parcels.
+- [Rider registration API](features/courier/registration-api/spec.md), [rider scan API](features/courier/scan-api/spec.md), and [Logistics navigation](features/logistics/navigation/spec.md) — current backend contracts and center sidebar scope.
 - [25 September progress](logs/PROGRESS-2026-09-25.md) — messaging, notification and inventory updates.
 - [26 September progress](logs/PROGRESS-2026-09-26.md) — policies, cart, notifications, chat, and agent workflow.
-- [Future plan](future-plan.md) — remaining web scope and the planned mobile integration seam.
+- [27 September progress](logs/PROGRESS-2026-09-27.md) — rider registration and separate mobile client integration.
+- [Future plan](future-plan.md) — remaining web and mobile integration work.
 
 ## Domains
 

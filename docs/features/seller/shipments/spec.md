@@ -19,12 +19,12 @@ All routes use active-seller middleware and ownership queries. Cards/chart follo
 ## States and actions
 
 - To Ship: `confirmed`, `preparing`, `ready_for_pickup`.
-- In Transit: `picked_up`, `at_sorting_center`, `sorted`, `in_transit_to_hub`, `at_destination_hub`, `assigned_to_rider`, `out_for_delivery`, `delivery_failed` (exact ERP stage remains visible).
+- In Transit: `picked_up`, `at_sorting_center`, `sorted`, `to_soc5`, `to_soc6`, `in_transit_to_hub`, `at_destination_hub`, `assigned_to_rider`, `out_for_delivery`, `delivery_failed` (exact ERP stage remains visible).
 - Delivered: `delivered`, `completed`; Cancelled and Returned remain separate groups.
 - Cancel Shipment only permits `confirmed/preparing/ready_for_pickup → cancelled`. It requires a reason, restores reserved stock once, writes stock/status history, and notifies the buyer and assigned courier. In-transit and closed orders cannot be canceled by this screen.
 - Tracking details are editable before closure; delivered/completed/cancelled/returned records are read-only.
 
-Both Orders and Shipments call `SellerOrderWorkflow`, so they cannot diverge in status or inventory behavior. Automatic center routing follows seller readiness; origin and destination centers handle rider assignments. Assigned rider scans now record pickup, origin arrival, and out-for-delivery through the versioned API. Manual hub send/receipt and delivery rider assignment are implemented; delivery completion and proof remain unfinished. No refund/payment-gateway action is performed; checkout currently supports COD.
+Both Orders and Shipments call `SellerOrderWorkflow`, so they cannot diverge in status or inventory behavior. Automatic center routing follows seller readiness; origin and destination centers handle rider assignments. Assigned rider scans record pickup, origin arrival, virtual SOC route milestones, out for delivery, and delivered through the versioned API. The destination hub manually confirms receipt and assigns the delivery rider. Buyer receipt confirmation and product review remain separate from the rider's delivery report; independent proof is unfinished. No refund/payment-gateway action is performed; checkout currently supports COD.
 
 ## Tracking and totals
 

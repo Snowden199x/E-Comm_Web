@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Logistics;
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
 use App\Models\Profiles\CourierDetail;
-use App\Services\OrderRoutingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,14 +20,14 @@ class DispatchController extends Controller
         $orders = Order::query()
             ->where(function ($query) use ($center) {
                 $query->where(fn ($origin) => $origin->where('logistics_center_id', $center->id)
-                    ->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'in_transit_to_hub']))
+                    ->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'to_soc5', 'to_soc6', 'in_transit_to_hub']))
                     ->orWhere(fn ($destination) => $destination->where('destination_logistics_center_id', $center->id)
                         ->whereIn('status', ['in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider', 'out_for_delivery']));
             })
             ->when($lane === 'incoming', fn ($query) => $query->where('logistics_center_id', $center->id)
                 ->whereIn('status', ['ready_for_pickup', 'picked_up']))
             ->when($lane === 'sorting', fn ($query) => $query->where('logistics_center_id', $center->id)
-                ->whereIn('status', ['at_sorting_center', 'sorted', 'in_transit_to_hub']))
+                ->whereIn('status', ['at_sorting_center', 'sorted', 'to_soc5', 'to_soc6', 'in_transit_to_hub']))
             ->when($lane === 'delivery', fn ($query) => $query->where('destination_logistics_center_id', $center->id)
                 ->whereIn('status', ['sorted', 'in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider', 'out_for_delivery']))
             ->with(['seller:id,name,phone_number', 'seller.sellerDetail', 'courier:id,name', 'deliveryCourier:id,name', 'destinationLogisticsCenter'])
@@ -96,33 +95,6 @@ class DispatchController extends Controller
         $this->transition($request, $order, 'at_sorting_center', 'sorted');
 
         return back()->with('success', 'Sorting completed for this order.');
-    }
-
-    public function sendToHub(Request $request, int $order, OrderRoutingService $routing): RedirectResponse
-    {
-        $centerId = $request->user()->logisticsCenterDetail->id;
-        DB::transaction(function () use ($request, $order, $centerId, $routing) {
-            $record = Order::query()->where('logistics_center_id', $centerId)->lockForUpdate()->findOrFail($order);
-            abort_unless($record->status === 'sorted', 409, 'This order is no longer ready for hub transfer.');
-            $routing->route($record);
-            abort_unless($record->destination_logistics_center_id, 409, 'Destination hub is unresolved. Check the buyer location and active centers.');
-            abort_unless($record->destination_logistics_center_id !== $centerId, 409, 'This order is already at its destination hub.');
-            $record->status = 'in_transit_to_hub';
-            $record->save();
-            $record->statusEvents()->create([
-                'user_id' => $request->user()->id,
-                'from_status' => 'sorted',
-                'to_status' => 'in_transit_to_hub',
-                'note' => 'Sent from '.$record->logisticsCenter->business_name.' to '.$record->destinationLogisticsCenter->business_name.'.',
-            ]);
-            DB::table('order_logistics_assignments')->insert([
-                'order_id' => $record->id, 'actor_id' => $request->user()->id, 'action' => 'sent_to_destination_hub',
-                'from_logistics_center_id' => $centerId, 'to_logistics_center_id' => $record->destination_logistics_center_id,
-                'created_at' => now(), 'updated_at' => now(),
-            ]);
-        }, 3);
-
-        return back()->with('success', 'Parcel dispatched to its destination hub.');
     }
 
     public function receiveAtHub(Request $request, int $order): RedirectResponse

@@ -5,11 +5,11 @@
 
 ## Current behavior
 
-Buyer sees owned orders and status events; buyer can confirm an order after the status reaches delivered.
+Buyer sees owned orders and status events. The assigned delivery rider's `delivered` scan marks the parcel delivered; the buyer can then confirm receipt. The final progress label reads **Rate Product** and links to the product review section once receipt is confirmed. The internal order status remains `completed`, and reviews require that status.
 
 ## Gaps and acceptance direction
 
-Logistics/courier transitions are not yet supplied; failed delivery and return/refund handling need implementation.
+Independent delivery proof, failed delivery and return/refund handling still need implementation.
 
 ## Source evidence
 

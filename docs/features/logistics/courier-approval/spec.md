@@ -1,15 +1,17 @@
 # Courier Approval
 
 **Status:** Partial  
-**Reviewed:** 26 September 2026
+**Reviewed:** 27 September 2026
 
 ## Current behavior
 
 Approved, active logistics centers can approve or reject pending courier applications linked to their center. Review actions require authentication and a center profile; wrong-center or non-courier records are denied, and already-reviewed applications are rejected under a row lock.
 
+The separate rider app now submits applications through `POST /api/v1/rider/register`. The server matches residence to one approved, active center by city or province and creates a pending courier linked to it. The rider cannot request a center ID. Addresses without a unique match receive a validation error; no application is created.
+
 ## Gaps and acceptance direction
 
-The rider registration app and private verification-document delivery remain future work. Review decisions do not yet have a dedicated audit record.
+Authorized reviewer delivery of the now privately stored verification documents remains future work. Review decisions do not yet have a dedicated audit record.
 
 ## Source evidence
 

@@ -1,11 +1,15 @@
 <?php
 
 use App\Http\Controllers\Api\RiderAuthController;
+use App\Http\Controllers\Api\RiderRegistrationController;
 use App\Http\Controllers\Api\RiderScanController;
 use App\Http\Middleware\EnsureApprovedRiderToken;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1/rider')->group(function () {
+    Route::get('/locations', [RiderRegistrationController::class, 'locations'])->middleware('throttle:30,1');
+    Route::get('/locations/{cityCode}/barangays', [RiderRegistrationController::class, 'barangays'])->middleware('throttle:30,1');
+    Route::post('/register', [RiderRegistrationController::class, 'store'])->middleware('throttle:5,1');
     Route::post('/login', [RiderAuthController::class, 'login'])->middleware('throttle:5,1');
 
     Route::middleware(['auth:sanctum', EnsureApprovedRiderToken::class, 'throttle:30,1'])->group(function () {

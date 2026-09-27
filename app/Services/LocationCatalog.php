@@ -6,6 +6,8 @@ use Illuminate\Support\Str;
 
 class LocationCatalog
 {
+    private ?array $barangays = null;
+
     public function all(): array
     {
         return json_decode(file_get_contents(resource_path('data/psgc-locations.json')), true, 512, JSON_THROW_ON_ERROR);
@@ -19,6 +21,29 @@ class LocationCatalog
         }
 
         return ['province' => $province['name'], 'city' => $province['cities'][$cityCode]];
+    }
+
+    public function barangaysForCity(string $cityCode): ?array
+    {
+        foreach ($this->all() as $province) {
+            if (isset($province['cities'][$cityCode])) {
+                $this->barangays ??= json_decode(
+                    file_get_contents(resource_path('data/psgc-barangays.json')),
+                    true,
+                    512,
+                    JSON_THROW_ON_ERROR
+                );
+
+                return $this->barangays[$cityCode] ?? [];
+            }
+        }
+
+        return null;
+    }
+
+    public function barangayName(string $cityCode, string $barangayCode): ?string
+    {
+        return $this->barangaysForCity($cityCode)[$barangayCode] ?? null;
     }
 
     public function codesForNames(?string $province, ?string $city): ?array

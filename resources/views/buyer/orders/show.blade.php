@@ -6,7 +6,18 @@
         @endif
 
         @php
-            $steps = ['placed','confirmed','preparing','ready_for_pickup','picked_up','at_sorting_center','sorted','assigned_to_rider','out_for_delivery','delivered','completed'];
+            $steps = ['placed','confirmed','preparing','ready_for_pickup','picked_up','at_sorting_center','sorted'];
+            $socRoute = $order->scanEvents()->whereIn('scan_type', ['soc5', 'soc6', 'destination_hub'])->exists()
+                || ($order->logistics_center_id && $order->destination_logistics_center_id
+                    && $order->logistics_center_id !== $order->destination_logistics_center_id
+                    && ! in_array($order->status, ['in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed'], true));
+            if ($socRoute) {
+                array_push($steps, 'to_soc5', 'to_soc6');
+            }
+            if ($order->logistics_center_id !== $order->destination_logistics_center_id) {
+                array_push($steps, 'in_transit_to_hub', 'at_destination_hub');
+            }
+            array_push($steps, 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed');
             $currentIndex = array_search($order->status, $steps);
             $isTerminalIssue = in_array($order->status, ['cancelled', 'returned', 'delivery_failed']);
         @endphp
@@ -22,9 +33,13 @@
                                 {{ $i <= $currentIndex ? 'bg-[#3b1735] text-white' : 'bg-gray-200 text-gray-400' }}">
                                 {{ $i + 1 }}
                             </div>
-                            <span class="text-[0.65rem] text-center mt-2 capitalize {{ $i <= $currentIndex ? 'text-gray-900 font-medium' : 'text-gray-400' }}">
-                                {{ str_replace('_', ' ', $step) }}
-                            </span>
+                            @if ($step === 'completed' && $order->status === 'completed')
+                                <a href="#rate-products" class="mt-2 text-center text-[0.65rem] font-medium text-[#5b2963] underline">Rate Product</a>
+                            @else
+                                <span class="text-[0.65rem] text-center mt-2 capitalize {{ $i <= $currentIndex ? 'text-gray-900 font-medium' : 'text-gray-400' }}">
+                                    {{ $step === 'completed' ? 'Rate Product' : str_replace('_', ' ', $step) }}
+                                </span>
+                            @endif
                             @if ($i < count($steps) - 1)
                                 <div class="absolute top-3 left-1/2 w-full h-0.5 {{ $i < $currentIndex ? 'bg-[#3b1735]' : 'bg-gray-200' }}"></div>
                             @endif
@@ -49,7 +64,7 @@
                 @endforeach
             </div>
         @endif
-        <div class="bg-white rounded-2xl p-5 shadow-sm">
+        <div id="rate-products" class="bg-white rounded-2xl p-5 shadow-sm">
             @foreach ($order->items as $item)
                 <div class="py-3 border-b last:border-0">
                     <div class="flex justify-between text-sm">
