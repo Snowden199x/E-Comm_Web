@@ -10,6 +10,7 @@ use App\Services\LogisticsCenterMatcher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -38,6 +39,8 @@ class RiderRegistrationController extends Controller
             'sex' => ['required', Rule::in(['male', 'female'])],
             'birthday' => ['required', 'date', 'before:today'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+            'email_verification_token' => ['required_without:google_registration_token', 'nullable', 'string', 'size:64'],
+            'google_registration_token' => ['required_without:email_verification_token', 'nullable', 'string', 'size:64'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'phone_number' => ['required', 'string', 'max:30'],
             'province_code' => ['required', 'regex:/^[0-9]{9}$/'],
@@ -45,12 +48,27 @@ class RiderRegistrationController extends Controller
             'barangay_code' => ['required', 'regex:/^[0-9]{9}$/'],
             'street' => ['required', 'string', 'max:255'],
             'zip_code' => ['required', 'string', 'max:20'],
-            'vehicle_type' => ['required', Rule::in(['Motorcycle', 'Bicycle', 'Tricycle', 'Car'])],
+            'vehicle_type' => ['required', Rule::in(['Motorcycle', 'Van', 'L300', 'Truck'])],
             'plate_number' => ['required', 'string', 'max:50'],
             'valid_id' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
             'drivers_license' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
             'or_cr' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
         ]);
+
+        $email = strtolower(trim($data['email']));
+        $googleProofKey = isset($data['google_registration_token'])
+            ? RiderEmailOtpController::proofKey('google-registration', $data['google_registration_token'])
+            : null;
+        $googleProof = $googleProofKey ? Cache::get($googleProofKey) : null;
+        $otpProofKey = isset($data['email_verification_token'])
+            ? RiderEmailOtpController::proofKey('email', $data['email_verification_token'])
+            : null;
+        $otpProof = $otpProofKey ? Cache::get($otpProofKey) : null;
+        $emailVerified = (is_array($googleProof) && ($googleProof['email'] ?? null) === $email)
+            || (is_array($otpProof) && ($otpProof['email'] ?? null) === $email);
+        if (! $emailVerified) {
+            throw ValidationException::withMessages(['email' => 'Verify this email before submitting your Rider application.']);
+        }
 
         $address = $locations->address($data['province_code'], $data['city_code']);
         if (! $address) {
@@ -69,7 +87,7 @@ class RiderRegistrationController extends Controller
 
         $stored = [];
         try {
-            $rider = DB::transaction(function () use ($data, $request, $address, $barangay, $center, &$stored) {
+            $rider = DB::transaction(function () use ($data, $request, $address, $barangay, $center, $email, &$stored) {
                 foreach (['valid_id', 'drivers_license', 'or_cr'] as $field) {
                     $stored[$field] = $request->file($field)->store('private/rider-verification', 'local');
                 }
@@ -79,13 +97,14 @@ class RiderRegistrationController extends Controller
                     'first_name' => $data['first_name'],
                     'last_name' => $data['last_name'],
                     'middle_initial' => isset($data['middle_name']) ? mb_substr($data['middle_name'], 0, 1) : null,
-                    'email' => $data['email'],
+                    'email' => $email,
                     'password' => $data['password'],
                     'phone_number' => $data['phone_number'],
                     'role' => 'courier',
                     'status' => 'pending',
                     'account_status' => 'active',
                 ]);
+                $rider->forceFill(['email_verified_at' => now()])->save();
 
                 CourierDetail::create([
                     'user_id' => $rider->id,
@@ -113,6 +132,9 @@ class RiderRegistrationController extends Controller
             Storage::disk('local')->delete(array_values($stored));
             throw $exception;
         }
+
+        if ($googleProofKey) Cache::forget($googleProofKey);
+        if ($otpProofKey) Cache::forget($otpProofKey);
 
         return response()->json([
             'message' => 'Rider application submitted for logistics hub review.',

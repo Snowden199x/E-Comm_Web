@@ -193,11 +193,15 @@
                             <div class="md:col-span-1 text-center">
                                 <p class="text-sm font-semibold text-gray-700 mb-3">Valid Id</p>
                                 @if ($details->valid_id_path)
-                                    <img src="{{ Storage::url($details->valid_id_path) }}" alt="Valid ID"
+                                    <img src="{{ route('admin.verification-documents.show', [$user, 'valid-id']) }}" alt="Valid ID"
                                         class="rounded-lg border w-full mb-3">
-                                    <a href="{{ Storage::url($details->valid_id_path) }}" target="_blank"
+                                    <a href="{{ route('admin.verification-documents.show', [$user, 'valid-id']) }}" target="_blank" rel="noopener noreferrer"
                                         class="inline-block text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50">View
                                         File</a>
+                                    @if ($user->role === 'buyer' && $details->valid_id_path_2)
+                                        <a href="{{ route('admin.verification-documents.show', [$user, 'second-id']) }}" target="_blank" rel="noopener noreferrer"
+                                            class="block mt-2 text-xs font-medium text-[#3b1735] hover:underline">View second ID</a>
+                                    @endif
                                 @else
                                     <p class="text-sm text-gray-400">No ID uploaded.</p>
                                 @endif
@@ -253,8 +257,8 @@
                                 @if ($user->role === 'seller')
                                 <div class="flex gap-6 items-center">
                                     <span class="text-gray-500 w-32 flex-shrink-0">Business Permit</span>
-                                    <a href="{{ Storage::url($details->business_permit_path) }}"
-                                        target="_blank"
+                                    <a href="{{ route('admin.verification-documents.show', [$user, 'business-permit']) }}"
+                                        target="_blank" rel="noopener noreferrer"
                                         class="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50">View
                                         File</a>
                                 </div>

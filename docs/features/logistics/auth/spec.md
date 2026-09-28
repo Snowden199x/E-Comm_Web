@@ -1,11 +1,13 @@
 # Logistics Center Authentication
 
-**Status:** Partial  
-**Reviewed:** 26 September 2026
+**Status:** Email OTP and Google verified registration implemented; owner verification pending
+**Reviewed:** 28 September 2026
 
 ## Current behavior
 
-Center registration uses email OTP, saves business/profile documents, and awaits admin approval. The dashboard, account page, and rider review actions require an authenticated, approved, active logistics-center account with a center profile. Shared logistics login accepts approved center/courier roles.
+Center registration uses email OTP or server-verified Google sign-in, saves business/profile documents, and awaits admin approval. A new Google identity continues to the regular registration form with its verified email locked; Google does not bypass the business/profile documents or admin approval. Existing Google accounts sign in only under their matching role after approval. The dashboard, account page, and rider review actions require an authenticated, approved, active logistics-center account with a center profile. Shared logistics login accepts approved center/courier roles.
+The center operator ID and business permit now upload to private local storage and use an active Admin route for review. Rider IDs, licenses, and OR/CR images were already private; Rider Management now opens them through a protected Logistics route that checks center ownership.
+The shared registration view initializes email and Google verification values before rendering the script that uses them, so opening the form does not depend on a Google session.
 
 ## Gaps and acceptance direction
 

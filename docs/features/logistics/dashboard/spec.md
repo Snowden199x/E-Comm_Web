@@ -1,15 +1,15 @@
 # Logistics Center Dashboard
 
 **Status:** Partial  
-**Reviewed:** 26 September 2026
+**Reviewed:** 28 September 2026
 
 ## Current behavior
 
-Authenticated, approved, active logistics centers with a profile can list their own pending riders and counts of pending/approved/rejected applications. The Rider Management page exposes center-scoped approve/reject actions for pending applications. It now uses the shared responsive Logistics sidebar; see [navigation](../navigation/spec.md).
+Authenticated, approved, active logistics centers with a profile can list their own pending riders and counts of pending/approved/rejected applications. The Rider Management page exposes center-scoped approve/reject actions for pending applications. Delivery Monitoring and Reports are center-scoped read views for current parcel status and 30-day order counts. The portal uses a shared responsive Logistics sidebar; see [navigation](../navigation/spec.md).
 
 ## Gaps and acceptance direction
 
-Incoming Parcel Management, Parcel Sorting, and Delivery assignments link to stage-filtered center dispatch pages. The assigned rider scan API advances cross-hub parcels through virtual SOC5/SOC6 milestones after sorting; the destination hub manually confirms receipt. Truck manifests and delivery completion are still unavailable. Verification-document URLs still use public storage and need a private-document migration.
+Incoming Parcel Management, Parcel Sorting, and Delivery assignments link to stage-filtered center dispatch pages. The existing assigned-rider API has transitional SOC-coded states on old flows; Logistics web views identify them as legacy and do not claim they prove an SH locality arrival. Configured virtual SH locality routes can be selected at origin sorting; scanner arrival, route progression, truck manifests/assignments, and local rider handoff from an SH remain unimplemented. Delivery Monitoring and Reports reflect current order rows only. Logistics-center verification documents still use public storage; rider verification uploads use the private local disk but have no authorized reviewer download flow. Courier/rider/truck work has no web dashboards.
 
 ## Source evidence
 

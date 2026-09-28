@@ -1,3 +1,17 @@
+@php
+    $registrationVerification = session('registration_verification', []);
+    $registrationEmail = $registrationVerification['email'] ?? '';
+    $googleRegistration = session('google_registration_verification', []);
+    $googleRegistrationVerified = in_array($googleRegistration['role'] ?? null, ['seller', 'logistics_center'], true)
+        && ($googleRegistration['email'] ?? null) === $registrationEmail
+        && ($googleRegistration['expires_at'] ?? 0) > now()->timestamp
+        && \Illuminate\Support\Facades\Cache::get('otp_verified:' . $registrationEmail, false);
+
+    $registrationVerified = $registrationEmail !== ''
+        && ($registrationVerification['expires_at'] ?? 0) > now()->timestamp
+        && \Illuminate\Support\Facades\Cache::get('otp_verified:' . $registrationEmail, false);
+@endphp
+
 <script>
     // ---------------------------------------------------------------
     // CSRF helper for fetch() calls
@@ -241,7 +255,7 @@
 
         const emailField = form.querySelector('[name="email"]');
 
-        if (emailField && !emailField.value && verifiedEmail) {
+        if (emailField && verifiedEmail && (@json((bool) $googleRegistrationVerified) || !emailField.value)) {
             emailField.value = verifiedEmail;
         }
 
@@ -378,16 +392,9 @@
         // Global store: tracks whether the entered email has been
         // verified via the 6-digit OTP flow.
         // -------------------------------------------------------------
-        @php
-            $registrationVerification = session('registration_verification', []);
-            $registrationEmail = $registrationVerification['email'] ?? '';
-
-            $registrationVerified = $registrationEmail !== '' && ($registrationVerification['expires_at'] ?? 0) > now()->timestamp && \Illuminate\Support\Facades\Cache::get('otp_verified:' . $registrationEmail, false);
-        @endphp
-
         Alpine.store('registration', {
-            otpVerified: @json((bool) $registrationVerified),
-            email: @json($registrationVerified ? $registrationEmail : ''),
+            otpVerified: @json((bool) ($registrationVerified || $googleRegistrationVerified)),
+            email: @json(($registrationVerified || $googleRegistrationVerified) ? $registrationEmail : ''),
         });
 
         // -------------------------------------------------------------

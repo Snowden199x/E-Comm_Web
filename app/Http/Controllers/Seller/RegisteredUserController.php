@@ -17,11 +17,20 @@ use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
 {
-    public function create(): View
+    public function create(Request $request): View
     {
         $categories = Category::whereNull('parent_id')->orderBy('id')->get();
+        $verification = $request->session()->get('registration_verification', []);
+        $google = $request->session()->get('google_registration_verification', []);
+        $googleVerified = ($google['role'] ?? null) === 'seller'
+            && ($google['email'] ?? null) === ($verification['email'] ?? null)
+            && ($google['expires_at'] ?? 0) > now()->timestamp
+            && Cache::get('otp_verified:'.($google['email'] ?? ''), false);
 
-        return view('seller.auth.register', compact('categories'));
+        return view('seller.auth.register', [
+            'categories' => $categories,
+            'googleRegistration' => $googleVerified ? $google : null,
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -51,6 +60,10 @@ class RegisteredUserController extends Controller
         $email = strtolower($validated['email']);
 
         $verification = $request->session()->get('registration_verification', []);
+        $googleProof = $request->session()->get('google_registration_verification', []);
+        if (($googleProof['email'] ?? null) === $email && ($googleProof['role'] ?? null) !== 'seller') {
+            throw ValidationException::withMessages(['email' => 'Continue registration using the account type chosen in Google sign-in.']);
+        }
 
         if (
             ($verification['email'] ?? null) !== $email ||
@@ -70,9 +83,10 @@ class RegisteredUserController extends Controller
             'status' => 'pending',
             'password' => Hash::make($validated['password']),
         ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
 
-        $businessPermitPath = $request->file('business_permit')->store('business-permits', 'public');
-        $validIdPath = $request->file('valid_id')->store('valid-ids/seller', 'public');
+        $businessPermitPath = $request->file('business_permit')->store('business-permits', 'local');
+        $validIdPath = $request->file('valid_id')->store('valid-ids/seller', 'local');
 
         $user->sellerDetail()->create([
             'last_name' => $validated['last_name'],

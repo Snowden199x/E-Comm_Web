@@ -153,22 +153,7 @@
                         </div>
 
                         {{-- Continue with Google --}}
-                        <a href="#"
-                            class="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-lg py-3 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors duration-150">
-                            {{-- Google "G" logo --}}
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="w-5 h-5 flex-shrink-0">
-                                <path fill="#EA4335"
-                                    d="M24 9.5c3.15 0 5.64 1.08 7.55 2.84l5.63-5.63C33.73 3.52 29.19 1.5 24 1.5 14.98 1.5 7.3 7.08 4.03 14.9l6.56 5.1C12.2 13.67 17.63 9.5 24 9.5z" />
-                                <path fill="#4285F4"
-                                    d="M46.5 24.5c0-1.64-.15-3.22-.42-4.75H24v9h12.67c-.55 2.97-2.18 5.48-4.64 7.18l7.18 5.57C43.63 37.57 46.5 31.49 46.5 24.5z" />
-                                <path fill="#FBBC05"
-                                    d="M10.59 28.99A14.52 14.52 0 019.5 24c0-1.74.3-3.42.83-4.99l-6.56-5.1A22.44 22.44 0 001.5 24c0 3.6.86 7.01 2.38 10.03l6.71-5.04z" />
-                                <path fill="#34A853"
-                                    d="M24 46.5c5.19 0 9.55-1.72 12.73-4.67l-7.18-5.57c-1.79 1.2-4.08 1.91-5.55 1.91-6.37 0-11.8-4.17-13.74-9.99l-6.71 5.04C7.3 40.92 14.98 46.5 24 46.5z" />
-                                <path fill="none" d="M1.5 1.5h45v45h-45z" />
-                            </svg>
-                            <span class="text-[0.88rem] font-medium text-gray-700">Continue with Google</span>
-                        </a>
+                        @include('auth.partials.google-signin', ['role' => 'buyer'])
 
                     </form>
 

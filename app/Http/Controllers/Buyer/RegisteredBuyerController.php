@@ -18,11 +18,19 @@ class RegisteredBuyerController extends Controller
     public function create(Request $request)
     {
         $proof = $request->session()->get('buyer_registration_verification', []);
-        $valid = $this->verifiedRecord($request, $proof['email'] ?? '') !== null;
+        $googleProof = $request->session()->get('google_registration_verification', []);
+        $googleVerified = ($googleProof['role'] ?? null) === 'buyer'
+            && filter_var($googleProof['email'] ?? null, FILTER_VALIDATE_EMAIL)
+            && ($googleProof['expires_at'] ?? 0) > now()->timestamp;
+        $email = $googleVerified ? $googleProof['email'] : ($proof['email'] ?? '');
+        $valid = $googleVerified || $this->verifiedRecord($request, $email) !== null;
 
         return view('buyer.auth.register', ['registrationVerification' => [
-            'email' => $valid ? $proof['email'] : '',
-            'expires_at' => $valid ? $proof['expires_at'] : 0,
+            'email' => $valid ? $email : '',
+            'expires_at' => $valid ? ($googleVerified ? $googleProof['expires_at'] : $proof['expires_at']) : 0,
+            'google_verified' => $valid && $googleVerified,
+            'first_name' => $googleVerified ? ($googleProof['first_name'] ?? '') : '',
+            'last_name' => $googleVerified ? ($googleProof['last_name'] ?? '') : '',
         ]]);
     }
 
@@ -64,18 +72,22 @@ class RegisteredBuyerController extends Controller
             'agree_terms' => 'accepted',
         ]);
 
-        $otp = $this->verifiedRecord($request, $request->email);
-        if (! $otp) {
+        $googleProof = $request->session()->get('google_registration_verification', []);
+        $googleVerified = ($googleProof['role'] ?? null) === 'buyer'
+            && ($googleProof['email'] ?? null) === $request->email
+            && ($googleProof['expires_at'] ?? 0) > now()->timestamp;
+        $otp = $googleVerified ? null : $this->verifiedRecord($request, $request->email);
+        if (! $googleVerified && ! $otp) {
             throw ValidationException::withMessages(['email' => 'Please verify your email first.']);
         }
 
         $paths = [];
         try {
-            $validIdPath = $request->file('valid_id')->store('valid-ids', 'public');
+            $validIdPath = $request->file('valid_id')->store('valid-ids', 'local');
             $paths[] = $validIdPath;
             $secondIdPath = null;
             if ($request->id_category === 'secondary') {
-                $secondIdPath = $request->file('valid_id_2')->store('valid-ids', 'public');
+                $secondIdPath = $request->file('valid_id_2')->store('valid-ids', 'local');
                 $paths[] = $secondIdPath;
             }
             DB::transaction(function () use ($request, $validIdPath, $secondIdPath, $otp) {
@@ -87,6 +99,7 @@ class RegisteredBuyerController extends Controller
                     'status' => 'pending',
                     'phone_number' => $request->contact_number,
                 ]);
+                $user->forceFill(['email_verified_at' => now()])->save();
 
                 BuyerDetail::create([
                     'user_id' => $user->id,
@@ -106,13 +119,14 @@ class RegisteredBuyerController extends Controller
                     'zip_code' => $request->zip_code,
                 ]);
 
-                $otp->delete();
+                $otp?->delete();
             });
         } catch (\Throwable $exception) {
-            Storage::disk('public')->delete($paths);
+            Storage::disk('local')->delete($paths);
             throw $exception;
         }
         $request->session()->forget('buyer_registration_verification');
+        $request->session()->forget('google_registration_verification');
 
         return response()->json(['success' => true, 'message' => 'Registration submitted.']);
     }

@@ -9,7 +9,7 @@ Real order list, groups, search/date filters, pagination, details/history, and s
 
 ## Gaps and acceptance direction
 
-Center arrival, sorting, hub send/receipt, and delivery-rider assignment have logistics endpoints. Assigned rider pickup, origin arrival, virtual SOC5/SOC6 routing, destination leg, out-for-delivery, and delivered scans have a versioned API used by the separate rider client. The delivered scan is a rider report; buyer receipt confirmation remains a separate action. Courier acceptance and independent delivery proof remain open.
+Center arrival, sorting, hub send/receipt, and manual delivery-rider assignment have Logistics Center web endpoints. The assigned Rider does not accept or decline work; pickup, origin arrival, transitional SOC-coded routing, destination leg, out-for-delivery, and delivered scans use the versioned mobile API. The delivered scan is a Rider report; buyer receipt confirmation remains a separate action. Physical SH scans, truck movement/manifests, and independent delivery proof remain open. Rider and Truck interfaces are mobile-only.
 
 ## Source evidence
 

@@ -10,10 +10,10 @@
     <div class="lg-page mx-auto max-w-6xl px-4 py-7 sm:px-6">
         <h2 class="text-2xl font-bold">{{ $pageTitle }}</h2>
         <p class="mt-1 text-sm text-gray-600">@switch($lane)
-            @case('incoming') Assign pickup riders and receive parcels from local sellers. @break
-            @case('sorting') Sort received parcels. The assigned pickup rider scans SOC5 and SOC6 in order for inter-hub parcels. @break
-            @case('delivery') Confirm destination hub receipts and assign local delivery riders. @break
-            @default Manage pickup, sorting, hub handoff, and delivery assignments.
+            @case('incoming') Assign an approved pickup courier to parcels routed to this Main Hub. The rider app records physical pickup. @break
+            @case('sorting') Confirm Main Hub arrival and sort parcels along their configured route. @break
+            @case('delivery') Confirm parcel receipt at this destination Main Hub and assign an approved local delivery rider. @break
+            @default Manage pickup, Main Hub sorting, destination receipt, and local delivery assignments.
         @endswitch</p>
 
         @if (session('success'))
@@ -35,7 +35,7 @@
                             <h2 class="font-semibold">{{ $order->number }}</h2>
                             <p class="mt-1 text-xs text-gray-500">Tracking {{ $order->tracking_number }}</p>
                         </div>
-                        <span class="text-sm font-semibold text-[#5c2864]">{{ $order->status_label }}</span>
+                        <span class="text-sm font-semibold text-[#5c2864]">{{ in_array($order->status, ['to_soc5', 'to_soc6'], true) ? 'Legacy route record' : $order->status_label }}</span>
                     </div>
                     <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                         <div>
@@ -61,10 +61,25 @@
                             <dt class="font-semibold text-gray-600">Destination hub</dt>
                             <dd class="mt-1">{{ $order->destinationLogisticsCenter?->business_name ?? 'Unresolved: no unique approved center for this destination' }}</dd>
                         </div>
+                        @if ($order->status === 'sorted' && $order->logistics_center_id !== $order->destination_logistics_center_id)
+                            <div>
+                                <dt class="font-semibold text-gray-600">Planned next stop</dt>
+                                <dd class="mt-1">{{ $order->nextRouteCheckpoint ? $order->nextRouteCheckpoint->name.' ('.$order->nextRouteCheckpoint->code.')' : ($order->routePlan ? ($order->destinationLogisticsCenter?->business_name ?? 'Destination Main Hub') : 'No active route plan configured') }}</dd>
+                                @if ($order->routePlan)
+                                    <dd class="mt-1 text-gray-600">Route: {{ $order->routePlan->stops->map(fn ($stop) => $stop->checkpoint?->code)->filter()->implode(' → ') ?: 'Direct to Main Hub' }} → {{ $order->destinationLogisticsCenter?->business_name }}</dd>
+                                @endif
+                            </div>
+                        @endif
                         @if ($order->delivery_courier_id)
                             <div>
                                 <dt class="font-semibold text-gray-600">Delivery rider</dt>
                                 <dd class="mt-1">{{ $order->deliveryCourier?->name ?? 'Unavailable' }}</dd>
+                            </div>
+                        @endif
+                        @if ($order->linehaul_rider_id)
+                            <div>
+                                <dt class="font-semibold text-gray-600">Truck Rider</dt>
+                                <dd class="mt-1">{{ $order->linehaulRider?->name ?? 'Unavailable' }}</dd>
                             </div>
                         @endif
                     </dl>
@@ -109,12 +124,39 @@
                             </form>
                         @elseif ($order->status === 'sorted' && $order->destination_logistics_center_id !== $center->id)
                             @if ($order->destination_logistics_center_id)
-                                <p class="text-sm text-gray-600">Sorted. The assigned pickup rider must scan the label to start the SOC5 → SOC6 → destination hub route.</p>
+                                <p class="text-sm text-gray-600">Sorted at this Main Hub. Planned next checkpoint: {{ $order->nextRouteCheckpoint ? $order->nextRouteCheckpoint->name.' ('.$order->nextRouteCheckpoint->code.')' : ($order->routePlan ? ($order->destinationLogisticsCenter?->business_name ?? 'destination Main Hub') : 'No active route plan configured for this Main Hub pair') }}. SH names are virtual route checkpoints; the configured plan determines which ones this parcel follows.</p>
+                                @if ($order->routePlan)
+                                    @if ($order->linehaul_rider_id)
+                                        <p class="mt-2 text-sm text-gray-600">Truck Rider assigned: {{ $order->linehaulRider?->name ?? 'Unavailable' }}. The route shown is planned; SH arrival and sorting still require the separate SH scanner.</p>
+                                    @endif
+                                    <form method="POST" action="{{ route('logistics.dispatch.linehaul-rider', $order) }}" class="mt-3 flex flex-wrap items-end gap-2">
+                                        @csrf
+                                        <div>
+                                            <label for="linehaul-rider-{{ $order->id }}" class="mb-1 block text-sm font-medium">{{ $order->linehaul_rider_id ? 'Reassign Truck Rider' : 'Truck Rider' }}</label>
+                                            <select id="linehaul-rider-{{ $order->id }}" name="rider_id" required
+                                                class="min-w-52 rounded-lg border-gray-300 text-sm focus:border-[#5c2864] focus:ring-[#5c2864]">
+                                                <option value="">Select approved Truck Rider</option>
+                                                @foreach ($truckRiders as $truckRider)
+                                                    <option value="{{ $truckRider->user_id }}" @selected((int) $order->linehaul_rider_id === (int) $truckRider->user_id)>{{ $truckRider->user->name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <button type="submit" @disabled($truckRiders->isEmpty())
+                                            class="rounded-lg bg-[#3b1735] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#52234a] focus:outline-none focus:ring-2 focus:ring-[#5c2864] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                                            {{ $order->linehaul_rider_id ? 'Update assignment' : 'Assign Truck Rider' }}
+                                        </button>
+                                    </form>
+                                    @if ($truckRiders->isEmpty())
+                                        <p class="mt-2 text-sm text-gray-600">No approved Truck Rider is linked to this Main Hub. Review applications in Rider Management.</p>
+                                    @endif
+                                @else
+                                    <p class="mt-2 text-sm text-amber-800">No configured route plan is available. Configure and activate a route before assigning a Truck Rider.</p>
+                                @endif
                             @else
                                 <p class="text-sm text-amber-800">Destination hub is unresolved. An approved center must cover {{ $order->shipping_city ?: 'the buyer city' }}, {{ $order->shipping_province ?: 'the buyer province' }} before transfer.</p>
                             @endif
                         @elseif (in_array($order->status, ['to_soc5', 'to_soc6'], true))
-                            <p class="text-sm text-gray-600">{{ $order->status === 'to_soc5' ? 'SOC5 is next. The assigned pickup rider scans the label again at the SOC5 route checkpoint.' : 'SOC6 is next. The assigned pickup rider scans the label again before it heads to the destination hub.' }}</p>
+                            <p class="text-sm text-amber-800">This parcel is in a legacy SOC route state. It does not confirm arrival at an SH locality. Do not treat it as an SH scan or sorting update.</p>
                         @elseif ($order->status === 'in_transit_to_hub' && $order->destination_logistics_center_id === $center->id)
                             <form method="POST" action="{{ route('logistics.dispatch.receive', $order) }}">
                                 @csrf

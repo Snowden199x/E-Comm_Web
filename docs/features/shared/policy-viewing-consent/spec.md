@@ -1,11 +1,13 @@
 # Policy Viewing and Consent
 
 **Status:** Partial  
-**Reviewed:** 26 September 2026
+**Reviewed:** 28 September 2026
 
 ## Current behavior
 
 Admin can store and display platform policies. Admin previews and Buyer/Seller policy notification dialogs share a formatted policy component. Ordered lists, bullet lists, headings, emphasis and paragraph spacing are preserved from the saved editor content. Rendering allows only supported formatting tags and attributes; scripts and arbitrary HTML attributes are discarded. Existing stored policies do not need to be re-entered.
+
+The website now serves public Terms and Conditions at `/terms-and-conditions` and Privacy Policy at `/privacy-policy`. The content comes from `docs/legal/terms-and-conditions.md` and `docs/legal/privacy-policy.md`, rendered as Markdown with inline HTML stripped and unsafe links disabled. Buyer, Seller, and Logistics Center registration links open these pages in a new tab so form entries are preserved. The public landing footer also links to both pages. These legal pages are separate from Admin-managed role policies.
 
 ## Account access
 
@@ -15,11 +17,11 @@ Policy rows show the saved version and update date. View policy opens a scrollab
 
 ## Gaps and acceptance direction
 
-Versioned user consent records and acceptance history are not evidenced.
+Registration still validates the required `agree_terms` checkbox, but does not record the accepted document version or acceptance history. The mobile registration screens have their own labels and are not linked by this web change. Buyer registration does not yet record verified guardian consent for minors. Current public copy and remaining legal/privacy review work are recorded in [release review](../../../legal/release-review.md).
 
 ## Source evidence
 
-`app/Models/Communication/PlatformPolicy.php`
+`app/Models/Communication/PlatformPolicy.php`, `app/Http/Controllers/LegalPageController.php`, `routes/web.php`, `resources/views/legal/show.blade.php`
 
 ## Related documentation
 

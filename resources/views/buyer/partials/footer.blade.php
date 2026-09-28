@@ -30,7 +30,8 @@
         <li><a href="#">Help Center</a></li>
         <li><a href="#">Contact</a></li>
         <li><a href="#">Complaints & Disputes</a></li>
-        <li><a href="#">Policies</a></li>
+        <li><a href="{{ route('legal.terms') }}">Terms and Conditions</a></li>
+        <li><a href="{{ route('legal.privacy') }}">Privacy Policy</a></li>
       </ul>
     </div>
   </div>
@@ -38,4 +39,3 @@
     <span>© 2026 Vendo. All rights reserved.</span>
   </div>
 </footer>
-
