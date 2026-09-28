@@ -1,7 +1,7 @@
 # Waybill
 
-**Status:** Seller-owned print label implemented; mobile scanner pending
-**Reviewed:** 26 September 2026
+**Status:** Seller-owned print label implemented; rider API/client available; SH locality scanner integration pending
+**Reviewed:** 28 September 2026
 
 ## Current behavior
 
@@ -9,7 +9,7 @@ Seller can print a 4 × 6 inch shipping label for an owned order after it is rea
 
 ## Gaps and acceptance direction
 
-No uploaded logistics logo image, hub manifest, carrier API, or physical print verification is present. The assigned rider scan backend is described in [the courier scan contract](../../courier/scan-api/spec.md); the separate rider client remains future work.
+No uploaded logistics logo image, truck manifest, carrier API, or physical print verification is present. The current mobile rider API/client handles seller pickup, transitional SOC-coded stages, destination delivery and delivery reporting. SH codes on configured routes refer to named localities such as Pagsanjan/SH3 and do not have exact addresses. Actual locality arrival scans and truck/local-rider handoffs need a separate backend contract; the planned scanner app belongs to a separate repository that the owner will provide later. Courier/rider/truck interfaces are mobile-only. See [the current rider API contract](../../courier/scan-api/spec.md) and [virtual SH routing](../subhub-routing/spec.md).
 
 ## Source evidence
 

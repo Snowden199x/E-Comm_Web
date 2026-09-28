@@ -13,10 +13,13 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SellerComplianceController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Auth\EmailOtpController;
+use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\UnifiedLoginController;
 use App\Http\Controllers\Auth\UserNewPasswordController;
 use App\Http\Controllers\Auth\UserPasswordResetLinkController;
 use App\Http\Controllers\MessageAttachmentController;
+use App\Http\Controllers\LegalPageController;
+use App\Http\Controllers\VerificationDocumentController;
 use App\Http\Controllers\MarketplaceMessageController;
 use App\Http\Controllers\UserReportController;
 use App\Http\Controllers\Buyer\AccountController as BuyerAccountController;
@@ -36,6 +39,7 @@ use App\Http\Controllers\Logistics\Auth\AuthenticatedSessionController as Logist
 use App\Http\Controllers\Logistics\Auth\RegisteredUserController as LogisticsRegisteredUserController;
 use App\Http\Controllers\Logistics\DashboardController as LogisticsDashboardController;
 use App\Http\Controllers\Logistics\DispatchController as LogisticsDispatchController;
+use App\Http\Controllers\Logistics\OperationsController as LogisticsOperationsController;
 use App\Http\Controllers\Seller\AuthenticatedSessionController as SellerAuthenticatedSessionController;
 use App\Http\Controllers\Seller\DashboardController as SellerDashboardController;
 use App\Http\Controllers\Seller\CompletedOrdersController;
@@ -63,12 +67,17 @@ Route::get('/', function () {
     return view('home');
 });
 
+Route::get('/terms-and-conditions', [LegalPageController::class, 'terms'])->name('legal.terms');
+Route::get('/privacy-policy', [LegalPageController::class, 'privacy'])->name('legal.privacy');
+
 Route::get('/register', function () {
     return view('auth.choose-role');
 })->name('register.choose');
 
 Route::post('/email/otp/send', [EmailOtpController::class, 'send'])->name('email-otp.send');
 Route::post('/email/otp/verify', [EmailOtpController::class, 'verify'])->name('email-otp.verify');
+Route::post('/auth/google', [GoogleAuthController::class, 'exchange'])
+    ->middleware('throttle:10,1')->name('auth.google.exchange');
 
 Route::get('/seller', function () {
     return redirect('/seller/login');
@@ -96,6 +105,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/registrations', [RegistrationController::class, 'index'])->name('registrations.index');
         Route::get('/registrations/table', [RegistrationController::class, 'table'])->name('registrations.table');
         Route::get('/registrations/{user}', [RegistrationController::class, 'show'])->name('registrations.show');
+        Route::get('/users/{user}/verification-documents/{document}', [VerificationDocumentController::class, 'admin'])
+            ->whereNumber('user')->whereIn('document', ['valid-id', 'second-id', 'business-permit'])
+            ->name('verification-documents.show');
         Route::post('/registrations/{user}/approve', [RegistrationController::class, 'approve'])->name('registrations.approve');
         Route::post('/registrations/{user}/disapprove', [RegistrationController::class, 'disapprove'])->name('registrations.disapprove');
 
@@ -353,10 +365,13 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
         Route::get('/incoming-parcels', [LogisticsDispatchController::class, 'index'])->defaults('lane', 'incoming')->name('incoming-parcels');
         Route::get('/parcel-sorting', [LogisticsDispatchController::class, 'index'])->defaults('lane', 'sorting')->name('parcel-sorting');
         Route::get('/delivery-assignments', [LogisticsDispatchController::class, 'index'])->defaults('lane', 'delivery')->name('delivery-assignments');
-        Route::get('/delivery-monitoring', fn () => view('logistics.placeholder', ['title' => 'Delivery Monitoring']))->name('delivery-monitoring');
-        Route::get('/reports', fn () => view('logistics.placeholder', ['title' => 'Reports']))->name('reports');
+        Route::get('/delivery-monitoring', [LogisticsOperationsController::class, 'monitoring'])->name('delivery-monitoring');
+        Route::get('/reports', [LogisticsOperationsController::class, 'reports'])->name('reports');
         Route::get('/messages', fn () => view('logistics.placeholder', ['title' => 'Messages']))->name('messages');
         Route::get('/account', [\App\Http\Controllers\Logistics\AccountController::class, 'index'])->name('account.index');
+        Route::get('/riders/{courierDetail}/verification-documents/{document}', [VerificationDocumentController::class, 'logistics'])
+            ->whereNumber('courierDetail')->whereIn('document', ['valid-id', 'drivers-license', 'or-cr'])
+            ->name('riders.verification-documents.show');
         Route::post('/riders/{courierDetail}/approve', [LogisticsDashboardController::class, 'approveRider'])
             ->whereNumber('courierDetail')->name('riders.approve');
         Route::post('/riders/{courierDetail}/reject', [LogisticsDashboardController::class, 'rejectRider'])
@@ -368,6 +383,8 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
             ->whereNumber('order')->name('dispatch.arrive');
         Route::post('/dispatch/{order}/sort', [LogisticsDispatchController::class, 'markSorted'])
             ->whereNumber('order')->name('dispatch.sort');
+        Route::post('/dispatch/{order}/linehaul-rider', [LogisticsDispatchController::class, 'assignLinehaulRider'])
+            ->whereNumber('order')->name('dispatch.linehaul-rider');
         Route::post('/dispatch/{order}/receive', [LogisticsDispatchController::class, 'receiveAtHub'])
             ->whereNumber('order')->name('dispatch.receive');
         Route::post('/dispatch/{order}/delivery-rider', [LogisticsDispatchController::class, 'assignDeliveryCourier'])

@@ -15,9 +15,18 @@ use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
 {
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('logistics.auth.register-center');
+        $verification = $request->session()->get('registration_verification', []);
+        $google = $request->session()->get('google_registration_verification', []);
+        $googleVerified = ($google['role'] ?? null) === 'logistics_center'
+            && ($google['email'] ?? null) === ($verification['email'] ?? null)
+            && ($google['expires_at'] ?? 0) > now()->timestamp
+            && Cache::get('otp_verified:'.($google['email'] ?? ''), false);
+
+        return view('logistics.auth.register-center', [
+            'googleRegistration' => $googleVerified ? $google : null,
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -44,6 +53,11 @@ class RegisteredUserController extends Controller
 
         $email = strtolower($validated['email']);
 
+        $googleProof = $request->session()->get('google_registration_verification', []);
+        if (($googleProof['email'] ?? null) === $email && ($googleProof['role'] ?? null) !== 'logistics_center') {
+            throw ValidationException::withMessages(['email' => 'Continue registration using the account type chosen in Google sign-in.']);
+        }
+
         if (! Cache::pull('otp_verified:'.$email)) {
             throw ValidationException::withMessages([
                 'email' => 'Please verify your email address before submitting.',
@@ -58,9 +72,10 @@ class RegisteredUserController extends Controller
             'status' => 'pending',
             'password' => Hash::make($validated['password']),
         ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
 
-        $businessPermitPath = $request->file('business_permit')->store('business-permits', 'public');
-        $validIdPath = $request->file('valid_id')->store('valid-ids/logistics-center', 'public');
+        $businessPermitPath = $request->file('business_permit')->store('business-permits', 'local');
+        $validIdPath = $request->file('valid_id')->store('valid-ids/logistics-center', 'local');
 
         $user->logisticsCenterDetail()->create([
             'last_name' => $validated['last_name'],

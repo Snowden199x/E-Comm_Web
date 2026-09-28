@@ -4,7 +4,7 @@ For Codex work, follow the repository [AGENTS.md](../AGENTS.md): every code chan
 
 ## Repository snapshot
 
-Vendo is a Laravel web application using Blade views, Eloquent models, Laravel migrations, and Vite-managed JavaScript/CSS. Current route groups serve Admin, Buyer, Seller, and Logistics Center experiences. A Courier role and profile model exist, but a courier-facing web or mobile workflow is not implemented yet.
+Vendo is a Laravel web application using Blade views, Eloquent models, Laravel migrations, and Vite-managed JavaScript/CSS. Current web route groups serve Admin, Buyer, Seller, and Logistics Center experiences. Courier/rider/truck operations are mobile-only; this web repository supplies the protected APIs and data workflows, not operator dashboards. The existing rider client lives in the separate E-Comm_Mobile repository. A future SubHub scanner app will have its own repository and docs.
 
 ## Local development
 

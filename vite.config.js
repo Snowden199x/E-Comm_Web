@@ -7,9 +7,11 @@ export default defineConfig({
             input: [
                 // Shared bootstrap (Tailwind base + Alpine init) — every role's pages load this
                 "resources/css/shared/app.css",
+                "resources/css/shared/legal.css",
                 "resources/css/shared/marketplace-chat.css",
                 "resources/css/shared/user-report.css",
                 "resources/js/shared/app.js",
+                "resources/js/auth/google-signin.js",
 
                 // Admin
                 "resources/css/admin/layout.css",

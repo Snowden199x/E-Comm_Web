@@ -57,7 +57,7 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        $validIdPath = $request->file('valid_id')->store('valid-ids/buyer', 'public');
+        $validIdPath = $request->file('valid_id')->store('valid-ids/buyer', 'local');
 
         $user->buyerDetail()->create([
             'last_name' => $validated['last_name'],

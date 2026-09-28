@@ -34,7 +34,11 @@ class RiderAuthController extends Controller
             'token' => $token->plainTextToken,
             'token_type' => 'Bearer',
             'expires_at' => $token->accessToken->expires_at?->toIso8601String(),
-            'rider' => ['id' => $rider->id, 'name' => $rider->name],
+            'rider' => [
+                'id' => $rider->id,
+                'name' => $rider->name,
+                'vehicle_type' => $rider->courierDetail?->vehicle_type,
+            ],
             'logistics_center' => ['id' => $center->id, 'name' => $center->business_name],
         ]);
     }

@@ -44,7 +44,7 @@ document.addEventListener('alpine:init', () => {
                 this.step = [1, 2, 3].includes(draft.step) ? draft.step : 1;
                 this.draftRestored = true;
             } else { draft = null; }
-            if (!this.email && proof.email) this.email = proof.email;
+            if (proof.email) this.email = proof.email;
             this.verifiedEmail = proof.email || '';
             this.verifiedUntil = proof.expires_at || 0;
             this.refreshVerification();
