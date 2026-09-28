@@ -65,6 +65,10 @@ class ShipmentController extends Controller
         $order = Order::where('seller_id', $request->user()->id)->where('status', '!=', 'placed')
             ->with(['buyer', 'courier', 'items.product.images', 'statusEvents'])->findOrFail($order);
 
+        if (! $request->ajax()) {
+            return redirect()->route('seller.orders.show', $order);
+        }
+
         return view('seller.shipments.detail', compact('order'));
     }
 

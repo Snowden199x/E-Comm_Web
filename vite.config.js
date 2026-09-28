@@ -12,7 +12,11 @@ export default defineConfig({
                 "resources/js/shared/app.js",
 
                 // Admin
+                "resources/css/admin/layout.css",
                 "resources/js/admin/sidebar.js",
+                "resources/js/admin/layout.js",
+                "resources/js/admin/dashboard.js",
+                "resources/js/admin/reports.js",
 
                 // Buyer (public storefront / landing page)
                 "resources/css/buyer/landing.css",

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use App\Models\Communication\Notification;
 use App\Models\Communication\PlatformPolicy;
+use App\Models\Ecommerce\Order;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -79,6 +80,11 @@ class NotificationController extends Controller
     {
         $path = parse_url((string) $notification->link, PHP_URL_PATH);
         $query = parse_url((string) $notification->link, PHP_URL_QUERY);
+        if (is_string($path) && preg_match('~^/seller/(?:orders|shipments|completed-orders)/([1-9][0-9]*)/?$~', $path, $matches)) {
+            $order = Order::query()->where('seller_id', $notification->user_id)->find((int) $matches[1]);
+
+            return $order ? route('seller.orders.show', $order) : route('seller.orders.index');
+        }
         if (! is_string($path) || ! preg_match('~^/seller/(dashboard|orders|products|shipments|completed-orders|feedback|messages|reports|account|notifications)(/|$)~', $path)) {
             return route('seller.notifications.index');
         }

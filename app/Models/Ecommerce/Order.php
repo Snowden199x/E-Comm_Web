@@ -14,6 +14,7 @@ class Order extends Model
         'placed' => 'Placed', 'confirmed' => 'Confirmed', 'preparing' => 'Preparing',
         'ready_for_pickup' => 'Ready for Pickup', 'picked_up' => 'Picked Up',
         'at_sorting_center' => 'At Sorting Center', 'sorted' => 'Sorted',
+        'to_soc5' => 'On Route to SOC5', 'to_soc6' => 'On Route to SOC6',
         'in_transit_to_hub' => 'In Transit to Hub', 'at_destination_hub' => 'At Destination Hub',
         'assigned_to_rider' => 'Assigned to Rider', 'out_for_delivery' => 'Out for Delivery',
         'delivered' => 'Delivered', 'completed' => 'Completed', 'delivery_failed' => 'Delivery Failed',
@@ -22,13 +23,13 @@ class Order extends Model
 
     public const SELLER_GROUPS = [
         'new' => ['placed'], 'pack' => ['confirmed', 'preparing'], 'pickup' => ['ready_for_pickup'],
-        'pending' => ['picked_up', 'at_sorting_center', 'sorted', 'in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'],
+        'pending' => ['picked_up', 'at_sorting_center', 'sorted', 'to_soc5', 'to_soc6', 'in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'],
         'completed' => ['delivered', 'completed'], 'cancelled' => ['cancelled'], 'returned' => ['returned'],
     ];
 
     public const SHIPMENT_GROUPS = [
         'to_ship' => ['confirmed', 'preparing', 'ready_for_pickup'],
-        'in_transit' => ['picked_up', 'at_sorting_center', 'sorted', 'in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'],
+        'in_transit' => ['picked_up', 'at_sorting_center', 'sorted', 'to_soc5', 'to_soc6', 'in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'],
         'delivered' => ['delivered', 'completed'], 'cancelled' => ['cancelled'], 'returned' => ['returned'],
     ];
 
@@ -49,7 +50,7 @@ class Order extends Model
         });
         static::updated(function (Order $order) {
             if (! $order->wasChanged('status') || ! in_array($order->status, [
-                'picked_up', 'at_sorting_center', 'sorted', 'in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider',
+                'picked_up', 'at_sorting_center', 'sorted', 'to_soc5', 'to_soc6', 'in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider',
                 'out_for_delivery', 'delivered', 'completed', 'delivery_failed', 'returned',
             ], true)) {
                 return;
@@ -60,12 +61,10 @@ class Order extends Model
                 'type' => 'shipment_update',
                 'title' => 'Order '.$order->number.' updated',
                 'message' => $order->shipmentUpdateMessage(),
-                'link' => in_array($order->status, self::SALES_STATUSES, true)
-                    ? route('seller.completed-orders.show', $order)
-                    : route('seller.shipments.show', $order),
+                'link' => route('seller.orders.show', $order),
             ]);
             if (in_array($order->status, [
-                'picked_up', 'at_sorting_center', 'sorted', 'in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider', 'out_for_delivery',
+                'picked_up', 'at_sorting_center', 'sorted', 'to_soc5', 'to_soc6', 'in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider', 'out_for_delivery',
                 'delivered', 'completed', 'delivery_failed', 'returned',
             ], true)) {
                 Notification::create([
@@ -95,6 +94,8 @@ class Order extends Model
                 'picked_up' => 'The courier picked up your order.',
                 'at_sorting_center' => 'Your order arrived at a sorting center.',
                 'sorted' => 'Your order has been sorted for the next delivery step.',
+                'to_soc5' => 'Your parcel was scanned after sorting. SOC5 is the next virtual route checkpoint.',
+                'to_soc6' => 'The SOC5 route checkpoint was scanned. SOC6 is next.',
                 'in_transit_to_hub' => 'Your order is on its way to the destination hub.',
                 'at_destination_hub' => 'Your order arrived at the destination hub.',
                 'assigned_to_rider' => 'A rider has been assigned to your order.',
@@ -162,10 +163,13 @@ class Order extends Model
             'picked_up' => 'Picked up by the rider assigned to '.$place($origin).'.',
             'at_sorting_center' => 'Arrived at '.$place($origin).' for sorting.',
             'sorted' => 'Sorted at '.$place($origin).'.',
-            'in_transit_to_hub' => 'Sent from '.$place($origin).' to '.$place($destination).'.',
+            'to_soc5' => 'Scanned after sorting at '.$place($origin).'; next virtual route checkpoint: SOC5.',
+            'to_soc6' => 'SOC5 virtual route checkpoint scanned; next: SOC6.',
+            'in_transit_to_hub' => 'En route to '.$place($destination).'. Hub receipt is pending.',
             'at_destination_hub' => 'Received at '.$place($destination).'.',
             'assigned_to_rider' => 'A delivery rider from '.$place($destination).' has been assigned.',
             'out_for_delivery' => 'Out for delivery from '.$place($destination).'.',
+            'delivered' => 'The assigned rider scanned this parcel as delivered from '.$place($destination).'. Buyer receipt confirmation is pending.',
             default => 'Order status changed to '.$this->status_label.'.',
         };
     }

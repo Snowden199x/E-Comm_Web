@@ -1,7 +1,7 @@
 # Seller Order Management
 
 **Status:** Implemented for seller-owned orders  
-**Reviewed:** 26 September 2026
+**Reviewed:** 27 September 2026
 
 ## Current behavior
 
@@ -9,7 +9,7 @@ Real order list, groups, search/date filters, pagination, details/history, and s
 
 ## Gaps and acceptance direction
 
-Center arrival, sorting, hub send/receipt, and delivery-rider assignment have logistics endpoints. Assigned rider pickup, origin arrival, and out-for-delivery scans have a versioned API for the later separate rider client. Courier acceptance, proof, and delivery completion remain open.
+Center arrival, sorting, hub send/receipt, and delivery-rider assignment have logistics endpoints. Assigned rider pickup, origin arrival, virtual SOC5/SOC6 routing, destination leg, out-for-delivery, and delivered scans have a versioned API used by the separate rider client. The delivered scan is a rider report; buyer receipt confirmation remains a separate action. Courier acceptance and independent delivery proof remain open.
 
 ## Source evidence
 

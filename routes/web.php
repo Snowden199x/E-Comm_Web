@@ -368,8 +368,6 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
             ->whereNumber('order')->name('dispatch.arrive');
         Route::post('/dispatch/{order}/sort', [LogisticsDispatchController::class, 'markSorted'])
             ->whereNumber('order')->name('dispatch.sort');
-        Route::post('/dispatch/{order}/send-to-hub', [LogisticsDispatchController::class, 'sendToHub'])
-            ->whereNumber('order')->name('dispatch.send-to-hub');
         Route::post('/dispatch/{order}/receive', [LogisticsDispatchController::class, 'receiveAtHub'])
             ->whereNumber('order')->name('dispatch.receive');
         Route::post('/dispatch/{order}/delivery-rider', [LogisticsDispatchController::class, 'assignDeliveryCourier'])

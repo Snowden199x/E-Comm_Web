@@ -21,7 +21,10 @@ class RiderScanController extends Controller
         $orders = Order::query()->where(function ($query) use ($rider, $center) {
             $query->where(fn ($pickup) => $pickup->where('courier_id', $rider->id)
                 ->where('logistics_center_id', $center->id)
-                ->whereIn('status', ['ready_for_pickup', 'picked_up']))
+                ->where(fn ($stage) => $stage->whereIn('status', ['ready_for_pickup', 'picked_up'])
+                    ->orWhere(fn ($interHub) => $interHub->whereIn('status', ['sorted', 'to_soc5', 'to_soc6'])
+                        ->whereNotNull('destination_logistics_center_id')
+                        ->whereColumn('destination_logistics_center_id', '!=', 'logistics_center_id'))))
                 ->orWhere(fn ($delivery) => $delivery->where('delivery_courier_id', $rider->id)
                     ->where('destination_logistics_center_id', $center->id)
                     ->whereIn('status', ['assigned_to_rider', 'out_for_delivery']));
@@ -32,7 +35,7 @@ class RiderScanController extends Controller
 
         return response()->json(['assignments' => $orders->map(function (Order $order) use ($rider, $center) {
             $pickup = $order->courier_id === $rider->id && $order->logistics_center_id === $center->id
-                && in_array($order->status, ['ready_for_pickup', 'picked_up'], true);
+                && in_array($order->status, ['ready_for_pickup', 'picked_up', 'sorted', 'to_soc5', 'to_soc6'], true);
             $seller = $order->seller;
             $detail = $seller?->sellerDetail;
 
@@ -63,7 +66,7 @@ class RiderScanController extends Controller
     {
         $data = $request->validate([
             'tracking_number' => ['required', 'string', 'max:50'],
-            'scan_type' => ['required', Rule::in(['pickup', 'origin_arrival', 'out_for_delivery'])],
+            'scan_type' => ['required', Rule::in(['pickup', 'origin_arrival', 'soc5', 'soc6', 'destination_hub', 'out_for_delivery', 'delivered'])],
             'scan_key' => ['required', 'uuid'],
         ]);
 

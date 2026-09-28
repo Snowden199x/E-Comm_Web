@@ -9,7 +9,7 @@ Authenticated, approved, active logistics centers with a profile can list their 
 
 ## Gaps and acceptance direction
 
-Incoming Parcel Management, Parcel Sorting, and Delivery assignments link to stage-filtered center dispatch pages. Manual hub send/receipt and the assigned rider scan API are available; truck manifests and delivery completion are still unavailable. Verification-document URLs still use public storage and need a private-document migration.
+Incoming Parcel Management, Parcel Sorting, and Delivery assignments link to stage-filtered center dispatch pages. The assigned rider scan API advances cross-hub parcels through virtual SOC5/SOC6 milestones after sorting; the destination hub manually confirms receipt. Truck manifests and delivery completion are still unavailable. Verification-document URLs still use public storage and need a private-document migration.
 
 ## Source evidence
 

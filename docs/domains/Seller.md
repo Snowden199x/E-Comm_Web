@@ -10,7 +10,7 @@ Seller registration is OTP-gated and stores seller detail, identity/permit paths
 
 ## Products, inventory and shipments
 
-[Products & Inventory](../features/seller/products-inventory/spec.md) is connected to seller product records, admin review, stock/status filters, categories, audited restocks and stock history. [Shipments](../features/seller/shipments/spec.md) reads the same ERP orders as Orders, with tracking metadata, real summaries, customer/item details and pre-pickup cancellation. Seller actions stop at ready for pickup; the versioned rider scan backend updates the seller notification and timeline, while the mobile client remains future work.
+[Products & Inventory](../features/seller/products-inventory/spec.md) is connected to seller product records, admin review, stock/status filters, categories, audited restocks and stock history. [Shipments](../features/seller/shipments/spec.md) reads the same ERP orders as Orders, with tracking metadata, real summaries, customer/item details and pre-pickup cancellation. Seller actions stop at ready for pickup; the rider app's versioned scans update seller notifications and order history. Notification clicks open the full owned Orders detail view, including for older shipment-detail links.
 
 ## Delivered orders and feedback
 

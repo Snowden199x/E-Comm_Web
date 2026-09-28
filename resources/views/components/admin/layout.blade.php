@@ -12,48 +12,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap"
         rel="stylesheet">
 
-    @vite(['resources/css/shared/app.css', 'resources/js/admin/sidebar.js', 'resources/js/shared/app.js'])
+    @vite(['resources/css/shared/app.css', 'resources/css/admin/layout.css', 'resources/js/admin/sidebar.js', 'resources/js/admin/layout.js', 'resources/js/shared/app.js'])
     <link rel="stylesheet" href="{{ asset('assets/css/notification-actions.css') }}">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
 
-    <script>
-        setInterval(function() {
-            fetch('{{ route('admin.check-status') }}')
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.active) {
-                        window.location.href = '{{ route('admin.login') }}';
-                    }
-                })
-                .catch(() => {});
-        }, 5000);
-    </script>
-
-    <style>
-        body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
-        h1, h2, h3, h4, .font-display { font-family: 'Poppins', 'Inter', sans-serif; }
-
-        /* One shared easing so every panel, pill and label moves the same way */
-        .ease-vendo { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-
-        .admin-bell-menu[hidden] { display: none; }
-        .thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-        .thin-scroll::-webkit-scrollbar-thumb { background: #e2dbe4; border-radius: 999px; }
-        .thin-scroll::-webkit-scrollbar-track { background: transparent; }
-
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                transition-duration: 0.01ms !important;
-                animation-duration: 0.01ms !important;
-            }
-        }
-    </style>
 </head>
 
-<body class="h-full antialiased bg-[#FBF7F2] text-[#2B1730]" x-data="{ loading: false }"
+<body class="h-full antialiased bg-[#FBF7F2] text-[#2B1730]"
+    data-check-status-url="{{ route('admin.check-status') }}" data-login-url="{{ route('admin.login') }}"
+    x-data="{ loading: false }"
     @ajax:before.window="loading = true" @ajax:after.window="loading = false">
 
     @php
@@ -85,7 +55,8 @@
 
                 <div class="flex items-center gap-3 sm:gap-5">
 
-                    <div class="relative" id="adminBellWrap">
+                    <div class="relative" id="adminBellWrap" data-latest-id="{{ $latestAdminNotificationId }}"
+                        data-recent-url="{{ route('admin.notifications.recent') }}">
                         <button type="button" id="adminBellButton" aria-label="Notifications" aria-controls="adminBellMenu" aria-expanded="false"
                             class="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[#f1e9f1]">
                             <img src="{{ asset('assets/icons/dashboard/notifications-icon.svg') }}" alt="" class="h-6 w-6">
@@ -159,51 +130,6 @@
         </div>
     </div>
 
-<script>
-        (() => {
-            const bellWrap = document.getElementById('adminBellWrap');
-            const bellButton = document.getElementById('adminBellButton');
-            const bellMenu = document.getElementById('adminBellMenu');
-            const closeBell = () => { bellMenu.hidden = true; bellButton.setAttribute('aria-expanded', 'false'); };
-            bellButton.addEventListener('click', () => {
-                const opening = bellMenu.hidden;
-                bellMenu.hidden = !opening;
-                bellButton.setAttribute('aria-expanded', String(opening));
-            });
-            document.addEventListener('click', event => { if (!bellWrap.contains(event.target)) closeBell(); });
-            document.addEventListener('keydown', event => { if (event.key === 'Escape' && !bellMenu.hidden) { closeBell(); bellButton.focus(); } });
-            let latestId = @json($latestAdminNotificationId);
-            let audio;
-            function sound() {
-                try {
-                    audio ||= new (window.AudioContext || window.webkitAudioContext)();
-                    audio.resume();
-                    const oscillator = audio.createOscillator();
-                    const gain = audio.createGain();
-                    oscillator.frequency.value = 880;
-                    gain.gain.setValueAtTime(0.07, audio.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.16);
-                    oscillator.connect(gain).connect(audio.destination);
-                    oscillator.start(); oscillator.stop(audio.currentTime + 0.17);
-                } catch (_) {}
-            }
-            async function refreshAdminNotifications() {
-                if (document.hidden) return;
-                try {
-                    const response = await fetch(@json(route('admin.notifications.recent')), {headers: {'Accept': 'application/json'}});
-                    if (!response.ok) return;
-                    const data = await response.json();
-                    const badge = document.getElementById('adminNotificationCount');
-                    if (badge) { badge.hidden = !data.unread_count; badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count; }
-                    if (data.html) document.getElementById('adminBellList').innerHTML = data.html;
-                    if (data.latest_id > latestId) sound();
-                    latestId = Math.max(latestId, data.latest_id);
-                } catch (_) {}
-            }
-            setInterval(refreshAdminNotifications, 3000);
-            document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAdminNotifications(); });
-        })();
-    </script>
     @include('shared.message-delete-dialog')
     @include('shared.live-revision-script')
 </body>

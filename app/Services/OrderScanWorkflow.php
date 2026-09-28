@@ -14,7 +14,11 @@ class OrderScanWorkflow
     private const TRANSITIONS = [
         'pickup' => ['ready_for_pickup', 'picked_up', 'courier_id', 'logistics_center_id'],
         'origin_arrival' => ['picked_up', 'at_sorting_center', 'courier_id', 'logistics_center_id'],
+        'soc5' => ['sorted', 'to_soc5', 'courier_id', 'logistics_center_id'],
+        'soc6' => ['to_soc5', 'to_soc6', 'courier_id', 'logistics_center_id'],
+        'destination_hub' => ['to_soc6', 'in_transit_to_hub', 'courier_id', 'logistics_center_id'],
         'out_for_delivery' => ['assigned_to_rider', 'out_for_delivery', 'delivery_courier_id', 'destination_logistics_center_id'],
+        'delivered' => ['out_for_delivery', 'delivered', 'delivery_courier_id', 'destination_logistics_center_id'],
     ];
 
     public function record(User $rider, LogisticsCenter $center, array $data): array
@@ -26,6 +30,11 @@ class OrderScanWorkflow
             abort_unless((int) $order->{$transition[2]} === (int) $rider->id
                 && (int) $order->{$transition[3]} === (int) $center->id, 403,
                 'This parcel is not assigned to this rider and logistics center.');
+            if (in_array($data['scan_type'], ['soc5', 'soc6', 'destination_hub'], true)) {
+                abort_unless($order->destination_logistics_center_id
+                    && (int) $order->destination_logistics_center_id !== (int) $center->id,
+                    409, 'Inter-hub scans require a different resolved destination hub.');
+            }
 
             $existing = $order->scanEvents()->where('scan_key', $data['scan_key'])->first();
             if ($existing) {
@@ -41,7 +50,11 @@ class OrderScanWorkflow
             $note = match ($data['scan_type']) {
                 'pickup' => 'Picked up by the assigned rider for '.$center->business_name.' in '.$this->location($center).'.',
                 'origin_arrival' => 'Rider scan confirmed arrival at '.$center->business_name.' in '.$this->location($center).'.',
+                'soc5' => 'Parcel scanned after sorting at '.$center->business_name.'; SOC5 is the next virtual route checkpoint.',
+                'soc6' => 'SOC5 virtual route checkpoint scanned; SOC6 is next.',
+                'destination_hub' => 'SOC6 virtual route checkpoint scanned; next destination is '.$order->destinationLogisticsCenter->business_name.'. Receipt there is not yet confirmed.',
                 'out_for_delivery' => 'Delivery rider scanned the parcel for dispatch from '.$center->business_name.' in '.$this->location($center).'.',
+                'delivered' => 'Assigned delivery rider scanned the parcel as delivered for '.$center->business_name.' in '.$this->location($center).'. Buyer receipt confirmation is pending.',
             };
 
             $order->status = $transition[1];

@@ -1,5 +1,7 @@
 <x-admin.layout>
-    <div class="p-4 sm:p-5 lg:p-6" x-data="{
+    <div id="adminReportsPage" class="p-4 sm:p-5 lg:p-6"
+        data-chart-config="{{ json_encode(['labels' => $chartLabels, 'sales' => $chartSales, 'commission' => $chartCommission], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+        x-data="{
         view: '{{ $view }}',
         dateFilter: '{{ $dateFilter }}',
         customDate: '{{ $customDate }}',
@@ -210,71 +212,5 @@
         </div>
     </div>
 
-    <script>
-        (function() {
-            const salesCtx = document.getElementById('salesChart');
-            const commissionCtx = document.getElementById('commissionChart');
-            if (!salesCtx || !commissionCtx) return;
-
-            const labels = @json($chartLabels);
-
-            new Chart(salesCtx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Sales',
-                        data: @json($chartSales),
-                        borderColor: '#7a6a9e',
-                        backgroundColor: 'rgba(122, 106, 158, 0.15)',
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-
-            new Chart(commissionCtx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Commission',
-                        data: @json($chartCommission),
-                        borderColor: '#15803d',
-                        backgroundColor: 'rgba(21, 128, 61, 0.15)',
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        })();
-    </script>
+    @vite('resources/js/admin/reports.js')
 </x-admin.layout>

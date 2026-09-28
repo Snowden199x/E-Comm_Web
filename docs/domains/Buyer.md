@@ -6,10 +6,10 @@ Buyers register, discover products, maintain a cart, place seller-specific order
 
 ## Implemented journey
 
-Registration collects profile/address/ID data and requires an email OTP proof stored in the current session and a verified database record. The cart groups items by store and lets buyers select individual items or whole stores for checkout. Checkout validates selected cart rows and stock under row locks, groups selected items by seller into separate orders, decrements stock transactionally, removes only purchased cart rows, and creates an initial order event. Buyers can list/view their orders and confirm receipt after delivery. Product/category pages, account editing, cart operations, and messaging routes are present.
+Registration collects profile/address/ID data and requires an email OTP proof stored in the current session and a verified database record. The cart groups items by store and lets buyers select individual items or whole stores for checkout. Checkout validates selected cart rows and stock under row locks, groups selected items by seller into separate orders, decrements stock transactionally, removes only purchased cart rows, and creates an initial order event. Buyers can list/view their orders, confirm receipt after the assigned rider scans delivery, then use the final Rate Product progress action to review purchased items. Product/category pages, account editing, cart operations, and messaging routes are present.
 
 ## Boundaries and gaps
 
-Checkout accepts a payment mode but this code snapshot does not demonstrate a payment-gateway integration. Buyer cancellation/refund, review submission, saved wishlist, voucher application, recently viewed products, and buyer support tickets are not evidenced as working routes. Address defaults are built from profile fields; the current registration stores the combined street and leaves `house_no` null.
+Checkout accepts a payment mode but this code snapshot does not demonstrate a payment-gateway integration. Buyer cancellation/refund, saved wishlist, voucher application, recently viewed products, and buyer support tickets are not evidenced as working routes. Address defaults are built from profile fields; the current registration stores the combined street and leaves `house_no` null.
 
 See `features/buyer/` and [order flow](../order-logistics-flow-decisions.md).
