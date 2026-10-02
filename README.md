@@ -1,58 +1,126 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Vendo
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Vendo is a server-rendered marketplace and commerce operations web application. It provides marketplace features for buyers and sellers, with operational workspaces for administrators and logistics centers.
 
-## About Laravel
+## Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Laravel 13 and PHP 8.3
+- Blade views and Laravel session authentication
+- Vite, JavaScript, CSS, and Alpine.js
+- Eloquent ORM and Laravel migrations
+- MariaDB for local development; the Laravel configuration also supports SQLite and other database drivers
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+The courier role has a limited backend API contract. The rider app is maintained in a separate repository. See the implementation status docs for current workflow limits and planned work.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Requirements
+- PHP 8.3 with Composer (follow the PHP constraint in `composer.json`)
+- Node.js and npm
+- MariaDB and PHP's `pdo_mysql` extension
+- DBeaver Community or another SQL client (optional, for managing the database)
 
-## Learning Laravel
+## Local setup
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+1. Install dependencies from the repository root:
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+   ```bash
+   composer install
+   npm install
+   ```
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+2. Create an ignored local `.env` file and configure the app URL, database, session, mail, and other local services. The repository does not include an `.env.example` file. Never commit `.env` or put real credentials in this README.
 
-## Agentic Development
+3. Start the MariaDB service. In DBeaver, connect to that service and create a local database, for example:
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+   ```sql
+   CREATE DATABASE vendo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+
+   Configure Laravel to use the same MariaDB connection in `.env`:
+
+   ```dotenv
+   DB_CONNECTION=mariadb
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=vendo
+   DB_USERNAME=your_local_database_user
+   DB_PASSWORD=your_local_database_password
+   ```
+
+   Replace the username and password with the local account you use in DBeaver. DBeaver is the database client; the MariaDB service must also be running.
+
+4. Generate the local application key:
+
+   ```bash
+   php artisan key:generate
+   ```
+
+5. Apply the database migrations:
+
+   ```bash
+   php artisan migrate
+   ```
+
+   Populate the Seller registration and product category list after a new database setup:
+
+   ```bash
+   php artisan db:seed --class=CategorySeeder
+   ```
+
+   `migrate` creates the category table but does not insert category rows. The category seeder can be run again without duplicating its existing categories.
+
+6. Start the Laravel server and Vite in separate terminals:
+
+   ```bash
+   php artisan serve
+   ```
+
+   ```bash
+   npm run dev
+   ```
+
+   To compile production assets, run `npm run build`.
+
+### Local admin account
+
+For a local development database, set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`, then run:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+php artisan db:seed --class=AdminSeeder
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+The seeder creates or updates a super administrator using those values. Keep them local and use a strong password.
 
-## Contributing
+## Project structure
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| Path | Purpose |
+|---|---|
+| `app/` | Controllers, models, services, middleware, and application logic |
+| `routes/` | Web and API route definitions |
+| `resources/views/` | Blade pages and reusable view components |
+| `resources/css/`, `resources/js/` | Vite-managed frontend assets, organized by role and shared features |
+| `database/migrations/`, `database/seeders/` | Database schema changes and development seeders |
+| `docs/` | Architecture, domain status, workflow decisions, feature specifications, and progress notes |
 
-## Code of Conduct
+## Documentation
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+- [Documentation index](docs/README.md)
+- [Current feature status](docs/domain-feature-status.md)
+- [Architecture](docs/architecture.md)
+- [Database schema](docs/schema.md)
+- [Order and logistics flow decisions](docs/order-logistics-flow-decisions.md)
+- [Development workspace guide](docs/Development-Workspace-&-Task-Planning-guide.md)
+- [Contribution and repository rules](AGENTS.md)
 
-## Security Vulnerabilities
+Read the relevant feature specification under `docs/features/` before changing a workflow. The status matrix distinguishes implemented behavior from partial workflows and placeholders.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Tests
 
-## License
+Run the Laravel test suite with:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+php artisan test
+```
+
+## Security
+
+Do not commit `.env`, credentials, private verification documents, or production data. Configure production URLs and proxy settings according to [the architecture guide](docs/architecture.md).

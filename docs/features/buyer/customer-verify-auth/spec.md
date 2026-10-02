@@ -5,7 +5,7 @@
 
 ## Current behavior
 
-Buyer OTP is stored in a verification record and a proof token/email/expiry in the registration session; refresh can repopulate the verified email until expiry.
+Buyer OTP is stored in a verification record and a proof token/email/expiry in the registration session; refresh can repopulate the verified email until expiry. A server-validated Google ID token can also verify a new buyer email; its short-lived session proof is bound to the Google email and registration role. Google verification pre-fills and locks the email field but does not bypass buyer profile, identity document, or account approval requirements.
 
 ## Gaps and acceptance direction
 

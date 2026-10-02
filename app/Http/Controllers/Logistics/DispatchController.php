@@ -30,7 +30,7 @@ class DispatchController extends Controller
                 ->whereIn('status', ['at_sorting_center', 'sorted', 'to_soc5', 'to_soc6', 'in_transit_to_hub']))
             ->when($lane === 'delivery', fn ($query) => $query->where('destination_logistics_center_id', $center->id)
                 ->whereIn('status', ['sorted', 'in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider', 'out_for_delivery']))
-            ->with(['seller:id,name,phone_number', 'seller.sellerDetail', 'courier:id,name', 'deliveryCourier:id,name', 'destinationLogisticsCenter'])
+            ->with(['seller:id,name,phone_number', 'seller.sellerDetail', 'courier:id,name', 'linehaulRider:id,name', 'deliveryCourier:id,name', 'destinationLogisticsCenter', 'nextRouteCheckpoint', 'routePlan.stops.checkpoint'])
             ->latest()
             ->paginate(15);
 
@@ -43,8 +43,9 @@ class DispatchController extends Controller
             ->get()
             ->sortBy(fn ($courier) => $courier->user->name)
             ->values();
+        $truckRiders = $couriers->filter(fn (CourierDetail $courier) => $courier->vehicle_type === 'Truck')->values();
 
-        return view('logistics.dispatch.index', compact('center', 'orders', 'couriers', 'lane'));
+        return view('logistics.dispatch.index', compact('center', 'orders', 'couriers', 'truckRiders', 'lane'));
     }
 
     public function assignCourier(Request $request, int $order): RedirectResponse
@@ -90,11 +91,88 @@ class DispatchController extends Controller
         return back()->with('success', 'Arrival at the sorting center recorded.');
     }
 
-    public function markSorted(Request $request, int $order): RedirectResponse
+    public function markSorted(Request $request, int $order, \App\Services\LogisticsRoutePlanner $planner): RedirectResponse
     {
-        $this->transition($request, $order, 'at_sorting_center', 'sorted');
+        $centerId = $request->user()->logisticsCenterDetail->id;
+        DB::transaction(function () use ($request, $order, $centerId, $planner) {
+            $record = Order::query()->where('logistics_center_id', $centerId)
+                ->with(['logisticsCenter', 'destinationLogisticsCenter'])
+                ->lockForUpdate()->findOrFail($order);
+            abort_unless($record->status === 'at_sorting_center', 409, 'This order is no longer awaiting sorting.');
+            abort_unless($record->courier_id, 409, 'A pickup courier is required.');
 
-        return back()->with('success', 'Sorting completed for this order.');
+            $plan = $record->destination_logistics_center_id !== $centerId
+                ? $planner->selectPlan($record)
+                : null;
+            $firstStop = $plan?->stops->first();
+            $record->route_plan_id = $plan?->id;
+            $record->route_step = $firstStop ? 1 : null;
+            $record->next_route_checkpoint_id = $firstStop?->checkpoint_id;
+            $record->status = 'sorted';
+            $record->save();
+            $record->statusEvents()->create([
+                'user_id' => $request->user()->id,
+                'from_status' => 'at_sorting_center',
+                'to_status' => 'sorted',
+                'note' => $firstStop
+                    ? 'Parcel sorted at '.$request->user()->logisticsCenterDetail->business_name.'. Planned virtual checkpoint: '.$firstStop->checkpoint->name.' ('.$firstStop->checkpoint->code.').'
+                    : ($plan
+                        ? 'Parcel sorted at '.$request->user()->logisticsCenterDetail->business_name.'. The configured route goes directly to '.$record->destinationLogisticsCenter?->business_name.'.'
+                        : 'Parcel sorted at '.$request->user()->logisticsCenterDetail->business_name.'. No active route plan is configured for the destination Main Hub.'),
+            ]);
+        }, 3);
+
+        return back()->with('success', 'Sorting completed. The next virtual checkpoint follows the active route plan for this Main Hub pair.');
+    }
+
+    public function assignLinehaulRider(Request $request, int $order): RedirectResponse
+    {
+        $data = $request->validate([
+            'rider_id' => ['required', 'integer', Rule::exists('users', 'id')],
+        ]);
+        $centerId = $request->user()->logisticsCenterDetail->id;
+
+        DB::transaction(function () use ($request, $order, $data, $centerId) {
+            $record = Order::query()->where('logistics_center_id', $centerId)
+                ->lockForUpdate()->findOrFail($order);
+            $validPlan = $record->routePlan()->where('from_logistics_center_id', $centerId)
+                ->where('to_logistics_center_id', $record->destination_logistics_center_id)
+                ->exists();
+            abort_unless($record->status === 'sorted'
+                && $record->destination_logistics_center_id
+                && (int) $record->destination_logistics_center_id !== (int) $centerId
+                && $validPlan, 409,
+                'A sorted cross-hub parcel with a configured route plan is required for truck assignment.');
+
+            $riderDetail = CourierDetail::query()->where('logistics_center_id', $centerId)
+                ->where('user_id', $data['rider_id'])->where('vehicle_type', 'Truck')
+                ->with('user')->firstOrFail();
+            $rider = $riderDetail->user;
+            abort_unless($rider && $rider->role === 'courier' && $rider->status === 'approved'
+                && ! $rider->archived_at && (! $rider->account_status || $rider->account_status === 'active'),
+                422, 'Select an active, approved Truck Rider linked to this Main Hub.');
+
+            $previousRiderId = $record->linehaul_rider_id;
+            if ((int) $previousRiderId === (int) $rider->id) {
+                return;
+            }
+
+            $record->linehaul_rider_id = $rider->id;
+            $record->save();
+
+            DB::table('order_logistics_assignments')->insert([
+                'order_id' => $record->id,
+                'actor_id' => $request->user()->id,
+                'action' => $previousRiderId ? 'linehaul_rider_reassigned' : 'linehaul_rider_assigned',
+                'from_logistics_center_id' => $centerId,
+                'to_logistics_center_id' => $record->destination_logistics_center_id,
+                'courier_id' => $rider->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }, 3);
+
+        return back()->with('success', 'Truck Rider assigned to the configured linehaul route. SH arrival and sorting are recorded by the separate SH scanner.');
     }
 
     public function receiveAtHub(Request $request, int $order): RedirectResponse

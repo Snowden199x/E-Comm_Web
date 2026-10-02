@@ -1,11 +1,14 @@
 # Seller Registration and Access
 
-**Status:** Implemented  
-**Reviewed:** 24 September 2026
+**Status:** Email OTP and Google verified registration implemented; owner verification pending
+**Reviewed:** 28 September 2026
 
 ## Current behavior
 
-Seller submits identity, address, business permit, categories, and password after email OTP verification. Account remains pending until admin approval; active approved seller middleware guards dashboard/orders.
+Seller submits identity, address, business permit, categories, and password after email OTP verification or server-verified Google sign-in. A Google sign-in for a new email continues into the same registration form with the verified email locked; it does not bypass required profile/business documents or admin approval. Existing Google accounts sign in only under their matching role and only after approval. The server verifies Google ID tokens against Google's signing keys and configured OAuth client IDs. Account remains pending until admin approval; active approved seller middleware guards dashboard/orders.
+The valid ID and business permit now upload to private local storage. Admin previews use an authenticated, active Admin route; the legacy public files can be moved with `php artisan verification:privatize` while retaining their saved relative paths.
+The shared registration view initializes email and Google verification values before rendering the script that uses them, so opening the form does not depend on a Google session.
+The Business Information step loads top-level categories from the database. After creating a fresh database with `php artisan migrate`, run `php artisan db:seed --class=CategorySeeder` to populate the choices; migration alone leaves the list empty. The current form presents these as multiple-selection checkboxes.
 
 ## Gaps and acceptance direction
 

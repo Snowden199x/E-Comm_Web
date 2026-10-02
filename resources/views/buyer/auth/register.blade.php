@@ -402,7 +402,7 @@
                                 </label>
 
                                 <input type="text" name="last_name" required placeholder="Enter last name"
-                                    value="{{ old('last_name') }}"
+                                    value="{{ old('last_name', $registrationVerification['last_name'] ?? '') }}"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
@@ -412,7 +412,7 @@
                                 </label>
 
                                 <input type="text" name="first_name" required placeholder="Enter first name"
-                                    value="{{ old('first_name') }}"
+                                    value="{{ old('first_name', $registrationVerification['first_name'] ?? '') }}"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
                             </div>
 
@@ -472,6 +472,7 @@
 
                                 <input type="email" name="email" required placeholder="Enter email address"
                                     x-model="email" @input="emailVerified = false" value="{{ old('email') }}"
+                                    @readonly(($registrationVerification['google_verified'] ?? false))
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition"
                                     >
                             </div>
@@ -1095,11 +1096,11 @@
 
                                         <span class="text-[0.85rem] text-gray-600">
                                             I agree to the
-                                            <a href="#" class="text-[#3b1735] font-semibold hover:underline">
+                                            <a href="{{ route('legal.terms') }}" target="_blank" rel="noopener noreferrer" class="text-[#3b1735] font-semibold hover:underline">
                                                 Terms and Conditions
                                             </a>
                                             and
-                                            <a href="#" class="text-[#3b1735] font-semibold hover:underline">
+                                            <a href="{{ route('legal.privacy') }}" target="_blank" rel="noopener noreferrer" class="text-[#3b1735] font-semibold hover:underline">
                                                 Privacy Policy
                                             </a>.
                                         </span>

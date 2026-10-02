@@ -62,7 +62,7 @@ These were the design questions. Their implemented resolution is in the [impleme
 
 ## Current implementation and related docs
 
-Seller Shipments routes serve live lists, details, persisted tracking metadata and pre-pickup cancellation. Orders and Shipments share the same transition service. Logistics dispatch assigns pickup and delivery riders; the separate rider app scans pickup and the virtual inter-hub route, while the destination hub confirms receipt on the web. Delivery completion remains future work. See the [implementation spec](spec.md).
+Seller Shipments routes serve live lists, details, persisted tracking metadata and pre-pickup cancellation. Orders and Shipments share the same transition service. Logistics Center web dispatch assigns pickup and delivery riders; the separate rider app scans pickup and current transitional inter-hub stages, while the destination Main Hub confirms receipt on the web. Physical SH routing, truck dispatch, and SubHub scanner actions remain future work. Courier/rider/truck interfaces are mobile-only. See the [implementation spec](spec.md).
 
 - [Seller domain](../../../domains/Seller.md)
 - [Seller order management](../order-management/spec.md)

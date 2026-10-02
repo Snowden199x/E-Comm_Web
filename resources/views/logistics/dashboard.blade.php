@@ -105,13 +105,13 @@
                                 <p class="text-gray-400 mb-0.5">Documents</p>
                                 <div class="flex flex-wrap gap-2 mt-1">
                                     @if ($rider->valid_id_path)
-                                        <a href="{{ Storage::url($rider->valid_id_path) }}" target="_blank" class="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-white transition">Valid ID</a>
+                                        <a href="{{ route('logistics.riders.verification-documents.show', [$rider, 'valid-id']) }}" target="_blank" rel="noopener noreferrer" class="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-white transition">Valid ID</a>
                                     @endif
                                     @if ($rider->drivers_license_path)
-                                        <a href="{{ Storage::url($rider->drivers_license_path) }}" target="_blank" class="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-white transition">Driver's License</a>
+                                        <a href="{{ route('logistics.riders.verification-documents.show', [$rider, 'drivers-license']) }}" target="_blank" rel="noopener noreferrer" class="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-white transition">Driver's License</a>
                                     @endif
                                     @if ($rider->or_cr_path)
-                                        <a href="{{ Storage::url($rider->or_cr_path) }}" target="_blank" class="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-white transition">OR / CR</a>
+                                        <a href="{{ route('logistics.riders.verification-documents.show', [$rider, 'or-cr']) }}" target="_blank" rel="noopener noreferrer" class="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-white transition">OR / CR</a>
                                     @endif
                                 </div>
                             </div>

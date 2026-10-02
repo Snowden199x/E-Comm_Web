@@ -1,6 +1,6 @@
 # Vendo Project Documentation
 
-This documentation describes the Laravel web application as it exists in the repository, checked on **27 September 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
+This documentation describes the Laravel web application as it exists in the repository, checked on **28 September 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
 
 ## Start here
 
@@ -9,12 +9,16 @@ This documentation describes the Laravel web application as it exists in the rep
 - [Current implementation status](domain-feature-status.md) — the cross-domain source of truth for what is implemented.
 - [Feature implementation guide](feature-implementation-guide.md) — how a feature moves from UI through routes, authorization, database, and tests.
 - [Architecture](architecture.md) and [schema](schema.md) — current technical structure and data relationships.
+- [Security overview](security.md) — code-based web/API controls, deployment configuration, and known security gaps; not a penetration-test report.
+- [Terms and Conditions](legal/terms-and-conditions.md), [Privacy Policy](legal/privacy-policy.md), and [policy release review](legal/release-review.md) — source for the public web pages and remaining consent/privacy follow-ups.
 - [Order and logistics flow decisions](order-logistics-flow-decisions.md) — current order states and ownership boundaries.
-- [Virtual SOC5/SOC6 checkpoints](features/logistics/virtual-soc-checkpoints/spec.md) — ordered rider scan milestones for cross-hub parcels.
+- [Virtual SH locality routing](features/logistics/subhub-routing/spec.md), [Main Hub route plans](features/logistics/hub-to-hub-routing/spec.md), and [truck/linehaul dispatch](features/logistics/company-truck-linehaul-dispatch/spec.md) — route selection and remaining scanner/handoff gaps. Courier, rider, truck, and scanner interfaces are mobile-only.
 - [Rider registration API](features/courier/registration-api/spec.md), [rider scan API](features/courier/scan-api/spec.md), and [Logistics navigation](features/logistics/navigation/spec.md) — current backend contracts and center sidebar scope.
+- [Google sign-in](features/shared/google-auth/spec.md) — verified web and Rider token exchange, registration continuation, configuration, and platform limits.
 - [25 September progress](logs/PROGRESS-2026-09-25.md) — messaging, notification and inventory updates.
 - [26 September progress](logs/PROGRESS-2026-09-26.md) — policies, cart, notifications, chat, and agent workflow.
 - [27 September progress](logs/PROGRESS-2026-09-27.md) — rider registration and separate mobile client integration.
+- [28 September progress](logs/PROGRESS-2026-09-28.md) — virtual SH locality route plans and Logistics monitoring/dispatch updates.
 - [Future plan](future-plan.md) — remaining web and mobile integration work.
 
 ## Domains

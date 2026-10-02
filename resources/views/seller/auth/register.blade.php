@@ -471,12 +471,14 @@
                                 <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Last Name <span
                                         class="text-red-500">*</span></label>
                                 <input type="text" name="last_name" required placeholder="Enter last name"
+                                    value="{{ $googleRegistration['last_name'] ?? old('last_name') }}"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
                             </div>
                             <div>
                                 <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">First Name <span
                                         class="text-red-500">*</span></label>
                                 <input type="text" name="first_name" required placeholder="Enter first name"
+                                    value="{{ $googleRegistration['first_name'] ?? old('first_name') }}"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
                             </div>
                             <div>
@@ -511,6 +513,9 @@
                                 <div class="flex items-center justify-between mb-1">
                                     <label class="text-[0.85rem] font-semibold text-gray-700">Email <span
                                             class="text-red-500">*</span></label>
+                                    @if ($googleRegistration)
+                                        <span class="text-[0.72rem] font-semibold text-green-600">✓ Verified with Google</span>
+                                    @else
                                     <button type="button"
                                         @click="Alpine.store('registration').email = document.querySelector('[name=email]').value.trim();
                                                 if (!Alpine.store('registration').email) { return; }
@@ -524,8 +529,11 @@
                                             x-transition:enter-start="opacity-0 scale-75"
                                             x-transition:enter-end="opacity-100 scale-100">&check; Verified</span>
                                     </button>
+                                    @endif
                                 </div>
                                 <input type="email" name="email" required placeholder="Enter email address"
+                                    value="{{ $googleRegistration['email'] ?? old('email') }}"
+                                    @readonly($googleRegistration !== null)
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
                             </div>
                             <div>
@@ -1077,9 +1085,9 @@
                                         <input type="checkbox" name="agree_terms" required
                                             class="w-3.5 h-3.5 rounded border-gray-400 text-[#3b1735] focus:ring-[#3b1735]">
                                         <span class="text-[0.8rem] text-gray-600">
-                                            I agree to the <a href="#"
+                                            I agree to the <a href="{{ route('legal.terms') }}" target="_blank" rel="noopener noreferrer"
                                                 class="text-[#3b1735] font-semibold hover:underline">Terms and
-                                                Conditions</a> and <a href="#"
+                                                Conditions</a> and <a href="{{ route('legal.privacy') }}" target="_blank" rel="noopener noreferrer"
                                                 class="text-[#3b1735] font-semibold hover:underline">Privacy
                                                 Policy</a>.
                                         </span>

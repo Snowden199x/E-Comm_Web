@@ -204,7 +204,7 @@ class Order extends Model
         'payment_mode',
         'shipping_address',
         'shipping_province_code', 'shipping_city_code', 'shipping_province', 'shipping_city',
-        'logistics_center_id', 'destination_logistics_center_id',
+        'logistics_center_id', 'destination_logistics_center_id', 'route_plan_id', 'next_route_checkpoint_id', 'route_step',
         'tracking_number', 'carrier_name', 'carrier_tracking_number', 'estimated_delivery_from', 'estimated_delivery_to', 'shipping_fee',
     ];
 
@@ -223,6 +223,11 @@ class Order extends Model
         return $this->belongsTo(User::class, 'courier_id');
     }
 
+    public function linehaulRider()
+    {
+        return $this->belongsTo(User::class, 'linehaul_rider_id');
+    }
+
     public function deliveryCourier()
     {
         return $this->belongsTo(User::class, 'delivery_courier_id');
@@ -236,6 +241,16 @@ class Order extends Model
     public function destinationLogisticsCenter()
     {
         return $this->belongsTo(LogisticsCenter::class, 'destination_logistics_center_id');
+    }
+
+    public function routePlan()
+    {
+        return $this->belongsTo(\App\Models\Profiles\LogisticsRoutePlan::class, 'route_plan_id');
+    }
+
+    public function nextRouteCheckpoint()
+    {
+        return $this->belongsTo(\App\Models\Profiles\LogisticsRouteCheckpoint::class, 'next_route_checkpoint_id');
     }
 
     public function items()

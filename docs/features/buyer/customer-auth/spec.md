@@ -1,11 +1,12 @@
 # Buyer Authentication
 
-**Status:** Implemented  
-**Reviewed:** 24 September 2026
+**Status:** Password and Google login implemented; new Google registrations continue through buyer registration
+**Reviewed:** 28 September 2026
 
 ## Current behavior
 
-Buyer login/logout and shared password reset routes exist; buyer protected pages require authentication.
+Buyer login/logout and shared password reset routes exist; buyer protected pages require authentication. The login page also accepts Google Identity Services credentials, which the server validates using Google's signing keys and configured OAuth client IDs. Existing users can sign in only through the matching role and approval gate. A new Google identity receives a short-lived session proof and continues through the normal Buyer form with the verified email locked; buyer identity documents and account review remain required.
+New Buyer ID uploads use the private local disk; the Admin registration and user-management views read them through an authorized route. Legacy public IDs can be moved without changing their saved relative database paths using `php artisan verification:privatize`.
 
 ## Gaps and acceptance direction
 

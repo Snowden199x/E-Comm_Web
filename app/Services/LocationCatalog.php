@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 class LocationCatalog
 {
     private ?array $barangays = null;
+    private ?array $municipalityCoordinates = null;
 
     public function all(): array
     {
@@ -60,6 +61,25 @@ class LocationCatalog
         }
 
         return null;
+    }
+
+    public function municipalityCoordinates(string $province, string $city): ?array
+    {
+        $codes = $this->codesForNames($province, $city);
+        if (! $codes) {
+            return null;
+        }
+
+        $this->municipalityCoordinates ??= json_decode(
+            file_get_contents(resource_path('data/municipality-coordinates.json')),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        )['coordinates'];
+
+        // PSGC municipality codes in the location form are 9 digits; the
+        // reference coordinate dataset keys municipalities by the first 6.
+        return $this->municipalityCoordinates[substr($codes[1], 0, 6)] ?? null;
     }
 
     public function normalize(?string $name): string
