@@ -8,6 +8,7 @@
 One product review belongs to one purchased `order_items` row. A buyer may submit it only for their own order after `orders.status = completed` (buyer-confirmed receipt). The item must belong to that order, and the order's `seller_id` must match the item's product seller. The buyer may create at most one review per item; quantity greater than one does not create extra review slots. Multiple separate purchases can each have a review. Only the original buyer controls the review text/rating; the seller may post one public reply or report it to admin. Seller cannot delete, hide, rate, or edit customer feedback. Initial implementation treats submitted buyer reviews and seller replies as immutable; corrections require a documented admin process, avoiding silent rating changes.
 
 This page tracks product reviews only. A separate service-rating feature would need its own buyer input and metric. Do not combine courier performance or delivery completion with product stars.
+Buyer review text, Seller reply/report text, and Admin moderation reasons now have same-tab reload recovery for up to two hours. Server permissions and validation remain unchanged. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
 ## Database changes to implement
 

@@ -39,7 +39,8 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
-        if ($user->status !== 'approved') {
+        if ($user->status !== 'approved' || $user->archived_at
+            || ($user->account_status && $user->account_status !== 'active')) {
             Auth::logout();
 
             $message = match ($user->status) {
@@ -47,6 +48,10 @@ class AuthenticatedSessionController extends Controller
                 'disapproved' => 'Your registration was not approved. '.($user->rejection_reason ?? ''),
                 default => 'Your account is not active.',
             };
+
+            if ($user->archived_at || ($user->account_status && $user->account_status !== 'active')) {
+                $message = 'Your account is not active. Please contact the administrator.';
+            }
 
             throw ValidationException::withMessages(['email' => $message]);
         }

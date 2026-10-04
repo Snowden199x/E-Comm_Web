@@ -21,6 +21,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('shared.site-icon')
     <title>{{ $title }}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -84,9 +85,9 @@
 
                     <!-- Messages -->
                     <a href="{{ route('buyer.messages.index') }}" aria-label="Messages"
-                        class="grid h-10 w-10 place-items-center rounded-full text-white/90 transition-colors duration-200 hover:bg-white/10 hover:text-white">
-                        <span class="vb-icon h-6 w-6"
-                            style="--icon: url('{{ asset('assets/icons/buyer/message-icon.svg') }}')"></span>
+                        class="grid h-10 w-10 place-items-center rounded-full text-white transition-colors duration-200 hover:bg-white/10">
+                        <span class="vb-icon h-5 w-5"
+                            style="--icon: url('{{ asset('assets/icons/buyer/messages-icon.svg') }}')"></span>
                     </a>
 
                     <!-- Cart -->

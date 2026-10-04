@@ -48,7 +48,7 @@
                                     <button type="submit" class="rounded-lg border border-blue-300 px-3 py-2 text-sm text-blue-700">Mark in progress</button>
                                 </form>
                             @endif
-                            <form method="POST" action="{{ route('admin.complaints.decision', $complaint) }}">
+                            <form method="POST" action="{{ route('admin.complaints.decision', $complaint) }}" data-draft-key="admin-{{ auth('admin')->id() }}-complaint-decision-{{ $complaint->id }}">
                                 @csrf
                                 <label for="reviewNote" class="mb-1 block text-sm font-medium text-gray-700">Review note</label>
                                 <textarea id="reviewNote" name="note" minlength="10" maxlength="500" rows="3" required class="mb-3 w-full rounded-lg border border-gray-200 p-3 text-sm" placeholder="Explain the decision for the case record.">{{ old('note') }}</textarea>

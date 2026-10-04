@@ -1,0 +1,35 @@
+.vendo-draft-toast {
+    position: fixed;
+    right: 16px;
+    top: 16px;
+    z-index: 10000;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: min(360px, calc(100vw - 32px));
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #3b1735;
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(43, 23, 48, .2);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.vendo-draft-toast span { flex: 1; }
+
+.vendo-draft-toast button {
+    flex: none;
+    border: 0;
+    padding: 0 2px;
+    background: transparent;
+    color: inherit;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.vendo-draft-toast button:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}

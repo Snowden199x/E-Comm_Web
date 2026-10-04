@@ -17,7 +17,7 @@
                 @if($conversation?->status === 'open')
                     <div class="sw-inbox__history" id="swMessages" data-fetch="{{ route('seller.messages.fetch', $conversation) }}" aria-live="polite"></div>
                     @if($conversation->status === 'open')
-                        <form class="sw-inbox__composer" id="swMessageForm" action="{{ route('seller.messages.store', $conversation) }}" method="POST" enctype="multipart/form-data">
+                        <form class="sw-inbox__composer" id="swMessageForm" action="{{ route('seller.messages.store', $conversation) }}" method="POST" enctype="multipart/form-data" data-draft-key="seller-{{ auth()->id() }}-support-{{ $conversation->id }}" data-draft-ajax>
                             @csrf<label class="sw-sr-only" for="swMessageBody">Message</label><textarea id="swMessageBody" name="body" rows="2" maxlength="2000" placeholder="Write a message..."></textarea>
                             <div class="sw-inbox__composer-actions"><label class="sw-file">Attach image or PDF <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf"></label><button class="sw-button" type="submit">Send</button></div>
                             <p class="sw-error" id="swMessageError" role="alert" hidden></p>
@@ -112,6 +112,7 @@
                     error.textContent = data.message || 'Message could not be sent.';
                     error.hidden = false; return;
                 }
+                form.dispatchEvent(new Event('vendo:draft-committed'));
                 form.reset(); await load(); box.scrollTop = box.scrollHeight;
             } catch (_) { error.textContent = 'Connection lost. Please try again.'; error.hidden = false; }
             finally { button.disabled = false; }

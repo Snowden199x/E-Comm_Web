@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('shared.site-icon')
     <title>Buyer Registration - Vendo</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -379,9 +380,6 @@
                     @csrf
                     <p x-show="formError" x-cloak x-text="formError" role="alert"
                         class="mb-4 border border-red-300 rounded-lg p-3 text-sm text-red-700"></p>
-                    <p x-show="draftRestored" x-cloak class="mb-4 text-sm text-gray-600">
-                        Your progress was restored. Re-enter your password and select your ID files again before submitting.
-                    </p>
 
                     <div x-ref="step1" x-show="step === 1">
 

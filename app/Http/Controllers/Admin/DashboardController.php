@@ -17,7 +17,7 @@ class DashboardController extends Controller
         $stats = [
             'total_orders' => Order::count(),
             'total_sales' => Order::where('status', '!=', 'cancelled')->sum('total_amount'),
-            'total_users' => User::where('role', 'buyer')->count(),
+            'total_users' => User::whereIn('role', ['buyer', 'seller', 'logistics_center'])->count(),
             'total_sellers' => User::where('role', 'seller')->count(),
         ];
 
@@ -56,14 +56,15 @@ class DashboardController extends Controller
         $pendingRegistrations = [
             'sellers' => User::where('role', 'seller')->where('status', 'pending')->count(),
             'buyers' => User::where('role', 'buyer')->where('status', 'pending')->count(),
+            'logistics_centers' => User::where('role', 'logistics_center')->where('status', 'pending')->count(),
         ];
 
         // Latest Notifications
         $notifications = Notification::whereNull('user_id')->where('type', '!=', 'new_order')->latest()->take(5)->get();
 
         // Recent Registrations
-        $recentRegistrations = User::with(['sellerDetail', 'buyerDetail', 'categories'])
-            ->whereIn('role', ['seller', 'buyer'])
+        $recentRegistrations = User::with(['sellerDetail', 'buyerDetail', 'logisticsCenterDetail', 'categories'])
+            ->whereIn('role', ['seller', 'buyer', 'logistics_center'])
             ->latest()
             ->take(5)
             ->get();

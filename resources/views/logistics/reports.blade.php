@@ -13,19 +13,20 @@
         <div class="lg-page-head">
             <div>
                 <h1>Logistics Reports</h1>
-                <p>Parcel status counts updated in the last 30 days for this center.</p>
+                <p>Parcel status counts for the selected period at this center.</p>
             </div>
             <div class="lg-page-head__actions">
-                <button type="button" class="lg-btn lg-btn--outline" data-lg-export="lgStatusTable" data-lg-filename="logistics-status-{{ now()->format('Y-m-d') }}.csv">
-                    <x-logistics.icon name="download" :size="18" /> Export CSV
-                </button>
-                <button type="button" class="lg-btn" data-lg-print>
-                    <x-logistics.icon name="printer" :size="18" /> Print / Save as PDF
-                </button>
+                <a class="lg-btn lg-btn--outline" href="{{ route('logistics.reports.export', ['format' => 'csv', 'date_from' => $since->toDateString(), 'date_to' => $until->toDateString()]) }}"><x-logistics.icon name="download" :size="18" /> Export CSV for Excel</a>
+                <a class="lg-btn" href="{{ route('logistics.reports.export', ['format' => 'pdf', 'date_from' => $since->toDateString(), 'date_to' => $until->toDateString()]) }}"><x-logistics.icon name="printer" :size="18" /> Download PDF</a>
             </div>
         </div>
 
-        <p class="lg-section-sub" style="margin-top: -8px;">Since {{ $since->format('M j, Y') }} &middot; Counts include an order when this center is its origin or destination.</p>
+        <form method="GET" action="{{ route('logistics.reports') }}" class="lg-toolbar">
+            <label class="lg-label">From <input class="lg-input" type="date" name="date_from" value="{{ $since->toDateString() }}" required></label>
+            <label class="lg-label">To <input class="lg-input" type="date" name="date_to" value="{{ $until->toDateString() }}" required></label>
+            <button type="submit" class="lg-btn lg-btn--sm">Apply period</button>
+        </form>
+        <p class="lg-section-sub">{{ $since->format('M j, Y') }} to {{ $until->format('M j, Y') }} &middot; Counts include an order when this center is its origin or destination.</p>
 
         <section aria-label="Key figures">
             <dl class="lg-grid lg-grid--5" style="margin: 0;">
@@ -40,6 +41,23 @@
                 @endforeach
             </dl>
         </section>
+
+        <div class="lg-grid lg-grid--2">
+            <section class="lg-card" aria-labelledby="lgAreaTitle">
+                <div class="lg-card__head"><h2 class="lg-section-title" id="lgAreaTitle">By delivery area</h2></div>
+                <div class="lg-table-wrap"><table class="lg-table"><thead><tr><th>Area</th><th class="is-num">Parcels</th></tr></thead><tbody>
+                    @forelse($areaCounts as $row)<tr><td>{{ $row->shipping_city ?: 'Unknown area' }}</td><td class="is-num">{{ number_format($row->total) }}</td></tr>
+                    @empty<tr><td colspan="2">No parcels in this period.</td></tr>@endforelse
+                </tbody></table></div>
+            </section>
+            <section class="lg-card" aria-labelledby="lgRiderReportTitle">
+                <div class="lg-card__head"><h2 class="lg-section-title" id="lgRiderReportTitle">By delivery rider</h2></div>
+                <div class="lg-table-wrap"><table class="lg-table"><thead><tr><th>Rider</th><th class="is-num">Parcels</th></tr></thead><tbody>
+                    @forelse($riderCounts as $row)<tr><td>{{ $row->deliveryCourier?->name ?: 'Unavailable rider' }}</td><td class="is-num">{{ number_format($row->total) }}</td></tr>
+                    @empty<tr><td colspan="2">No assigned delivery riders in this period.</td></tr>@endforelse
+                </tbody></table></div>
+            </section>
+        </div>
 
         <section class="lg-card" aria-labelledby="lgStatusTitle">
             <div class="lg-card__head">

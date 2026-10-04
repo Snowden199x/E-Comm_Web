@@ -6,6 +6,7 @@
 ## Current behavior
 
 Real order list, groups, search/date filters, pagination, details/history, and seller-safe order scoping are present. Seller actions stop at ready for pickup; the drawer distinguishes pickup and delivery riders after delivery assignment. The seller-owned print route produces a 4 × 6 inch label with the assigned origin logistics center's business name, destination hub or buyer area, addresses, Code 128 barcode and QR for the Vendo tracking number. Printing is available after readiness and origin assignment; before then, the visible control explains why it is disabled.
+An unsent decline reason in the order drawer survives a same-tab reload for up to two hours and clears after a successful action. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
 ## Gaps and acceptance direction
 

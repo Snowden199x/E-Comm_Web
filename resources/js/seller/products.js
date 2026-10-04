@@ -1,4 +1,5 @@
 /* Vendo Seller – Products & Inventory, product modal, Add/Edit Product form. */
+import { showRestoredDraftNotice, clearRestoredDraftNotice } from '../shared/draft-notice.js';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const csrf = () => $('meta[name="csrf-token"]')?.content ?? '';
@@ -29,7 +30,40 @@ try {
     if (message) { toast(message); sessionStorage.removeItem('sellerOperationMessage'); }
 } catch { /* storage optional */ }
 
-async function postForm(url, body) {
+async function postForm(url, body, onUploadProgress = null) {
+    if (onUploadProgress) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', url);
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.setRequestHeader('X-CSRF-TOKEN', csrf());
+            xhr.upload.addEventListener('progress', event => {
+                if (event.lengthComputable) onUploadProgress(event.loaded, event.total);
+            });
+            xhr.upload.addEventListener('load', () => onUploadProgress(null, null, true));
+            xhr.addEventListener('load', () => {
+                let data = {};
+                let validJson = false;
+                try { data = JSON.parse(xhr.responseText); validJson = true; } catch { /* Non-JSON responses are reported clearly below. */ }
+                if (xhr.status >= 200 && xhr.status < 300 && validJson) return resolve(data);
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    return reject(new Error('The upload reached the server, but it returned an unreadable response. Check the PHP request-size limits and try again.'));
+                }
+                let message = data.message || 'Unable to save. Please try again.';
+                if (xhr.status === 419) message = 'Your session expired. Reload the page and sign in again.';
+                else if (xhr.status === 413) message = 'The upload is larger than the PHP or web server request limit. Check upload_max_filesize and post_max_size.';
+                else if (!Object.keys(data).length && xhr.status >= 500) message = 'The server could not process this upload. Check the local PHP upload limits and server error log.';
+                const error = new Error(message);
+                error.errors = data.errors || null;
+                reject(error);
+            });
+            xhr.addEventListener('error', () => reject(new Error('The upload connection failed. Check your connection and PHP upload limits, then try again.')));
+            xhr.addEventListener('abort', () => reject(new Error('The upload was interrupted. Please try again.')));
+            xhr.send(body);
+        });
+    }
+
     const response = await fetch(url, { method: 'POST', body, headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf() } });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -51,6 +85,7 @@ document.addEventListener('submit', async e => {
     btn.disabled = true; btn.classList.add('is-loading');
     try {
         const data = await postForm(form.action, new FormData(form));
+        form.dispatchEvent(new Event('vendo:draft-committed'));
         try { sessionStorage.setItem('sellerOperationMessage', data.message || 'Stock updated.'); } catch { /* optional */ }
         location.reload();
     } catch (ex) {
@@ -173,16 +208,21 @@ function initProductForm(form) {
     const cfg = JSON.parse($('#piConfig').textContent);
     const schema = cfg.schema || {};
     const categoryKey = cfg.categoryKeys || {};
-    const limits = { maxImages: +form.dataset.maxImages || 6, maxMb: +form.dataset.maxMb || 2, totalMb: +form.dataset.totalMb || 7, videoMb: +form.dataset.videoMb || 30, videoSec: +form.dataset.videoSec || 60 };
+    const limits = { maxImages: +form.dataset.maxImages || 6, maxMb: +form.dataset.maxMb || 2, totalMb: +form.dataset.totalMb || 10, videoMb: +form.dataset.videoMb || 10, videoSec: +form.dataset.videoSec || 60 };
     const isEdit = form.dataset.mode === 'edit';
     const MAX_VAR_TYPES = 3, MAX_OPTIONS = 20, MAX_VARIANTS = 100;
+    const productDraftKey = `vendo.product.${form.dataset.productDraftKey}`;
+    // Remove the older generic snapshot; this form has its own draft handler.
+    try { sessionStorage.removeItem(`vendo.form.${form.dataset.productDraftKey}`); } catch { /* storage is optional */ }
+    let productDraftReady = false, productDraftDirty = false, productDraftSaved = false, productDraftTimer;
 
     const state = {
         images: (cfg.existingImages || []).map(i => ({ kind: 'existing', id: i.id, url: i.url })),
-        video: null,
+        video: cfg.videoUrl ? { file: null, url: cfg.videoUrl } : null,
+        removeVideo: false,
         hasVariations: false,
-        types: [], // [{ name, options: [] }]
-        variants: {}, // label -> { price, stock, sku, image: File|null, url }
+        types: cfg.variationTypes || [], // [{ name, options: [] }]
+        variants: cfg.variants || {}, // label -> { price, stock, sku, image: File|null, url }
     };
     const errors = new Map(); // key -> { section, message }
     const fieldOf = key => $(`[data-field="${key}"]`, form);
@@ -336,7 +376,7 @@ function initProductForm(form) {
         if (!state.video) return;
         const t = el('div', { className: 'pi-tile', style: 'max-width:200px' });
         t.append(el('video', { src: state.video.url, muted: true, controls: true, preload: 'metadata' }));
-        t.append(el('div', { className: 'pi-tile-actions', style: 'opacity:1;position:static;background:none;padding:8px 0 0' }, el('button', { type: 'button', className: 'pi-del', textContent: 'Remove video', onclick: () => { URL.revokeObjectURL(state.video.url); state.video = null; renderVideo(); changed(); } })));
+        t.append(el('div', { className: 'pi-tile-actions', style: 'opacity:1;position:static;background:none;padding:8px 0 0' }, el('button', { type: 'button', className: 'pi-del', textContent: 'Remove video', onclick: () => { if (state.video.file) URL.revokeObjectURL(state.video.url); state.video = null; state.removeVideo = true; renderVideo(); changed(); } })));
         t.style.aspectRatio = 'auto';
         vidHost.append(t);
     }
@@ -350,7 +390,7 @@ function initProductForm(form) {
         const probe = el('video', { preload: 'metadata', src: url });
         probe.onloadedmetadata = () => {
             if (probe.duration > limits.videoSec) { URL.revokeObjectURL(url); return showError('video', `Keep the video to ${limits.videoSec} seconds or less.`); }
-            if (state.video) URL.revokeObjectURL(state.video.url);
+            if (state.video?.file) URL.revokeObjectURL(state.video.url);
             state.video = { file: f, url }; renderVideo(); changed();
         };
         probe.onerror = () => { URL.revokeObjectURL(url); showError('video', 'This video could not be read. Try another file.'); };
@@ -384,6 +424,7 @@ function initProductForm(form) {
     const labelOf = c => c.map(x => x.option).join(' / ');
 
     function addType(name = '') {
+        if (isEdit && cfg.hasVariations) return;
         if (state.types.length >= MAX_VAR_TYPES) return toast(`You can add up to ${MAX_VAR_TYPES} variations.`);
         if (name && state.types.some(t => t.name.toLowerCase() === name.toLowerCase())) return;
         const empty = state.types.find(t => !t.name && !t.options.length);
@@ -393,13 +434,14 @@ function initProductForm(form) {
     function renderTypes() {
         typesHost.replaceChildren(...state.types.map((t, ti) => {
             const card = el('div', { className: 'pi-var' });
-            card.append(el('div', { className: 'pi-var-head' }, el('span', { textContent: `Variation ${ti + 1}` }), el('button', { type: 'button', className: 'pi-btn pi-btn--sm pi-btn--ghost pi-btn--danger', textContent: 'Remove', onclick: () => { state.types.splice(ti, 1); renderTypes(); rebuildVariants(); } })));
+            card.append(el('div', { className: 'pi-var-head' }, el('span', { textContent: `Variation ${ti + 1}` }), ...((isEdit && cfg.hasVariations) ? [] : [el('button', { type: 'button', className: 'pi-btn pi-btn--sm pi-btn--ghost pi-btn--danger', textContent: 'Remove', onclick: () => { state.types.splice(ti, 1); renderTypes(); rebuildVariants(); } })])));
             const name = el('input', { className: 'pi-input pi-var-name', placeholder: 'Variation name (e.g. Color, Size, Flavor)', maxLength: 30, value: t.name, ariaLabel: 'Variation name' });
             name.dataset.field = `type.${ti}.name`;
+            name.readOnly = isEdit && cfg.hasVariations;
             name.addEventListener('input', () => { t.name = name.value; clearError(`type.${ti}.name`); debounceVariants(); });
             card.append(name, el('div', { className: 'pi-error', dataset: { errorFor: `type.${ti}.name` } }));
             const opts = el('div', { className: 'pi-opts' });
-            t.options.forEach((o, oi) => opts.append(el('span', { className: 'pi-tag' }, o, el('button', { type: 'button', ariaLabel: `Remove ${o}`, textContent: '×', onclick: () => { t.options.splice(oi, 1); renderTypes(); rebuildVariants(); } }))));
+            t.options.forEach((o, oi) => opts.append(el('span', { className: 'pi-tag' }, o, ...((isEdit && cfg.hasVariations) ? [] : [el('button', { type: 'button', ariaLabel: `Remove ${o}`, textContent: '×', onclick: () => { t.options.splice(oi, 1); renderTypes(); rebuildVariants(); } })]))));
             card.append(opts);
             const add = el('div', { className: 'pi-inline' });
             const optInput = el('input', { className: 'pi-input', placeholder: 'Add an option (e.g. Black)', maxLength: 30, ariaLabel: 'New option' });
@@ -415,10 +457,11 @@ function initProductForm(form) {
             };
             optInput.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commit(); } });
             add.append(optInput, el('button', { type: 'button', className: 'pi-btn pi-btn--sm', textContent: '+ Add Option', onclick: commit }));
-            card.append(add, el('div', { className: 'pi-error', dataset: { errorFor: `type.${ti}.options` } }));
+            if (!(isEdit && cfg.hasVariations)) card.append(add);
+            card.append(el('div', { className: 'pi-error', dataset: { errorFor: `type.${ti}.options` } }));
             return card;
         }));
-        $('#piAddType').hidden = state.types.length >= MAX_VAR_TYPES;
+        $('#piAddType').hidden = state.types.length >= MAX_VAR_TYPES || (isEdit && cfg.hasVariations);
     }
     $('#piAddType').addEventListener('click', () => { addType(''); typesHost.lastElementChild?.querySelector('input')?.focus(); });
 
@@ -441,16 +484,16 @@ function initProductForm(form) {
             const num = (key, ph, step, min) => {
                 const input = el('input', { className: 'pi-input', type: 'number', min, step, placeholder: ph, value: v[key], ariaLabel: `${key} for ${label}` });
                 input.dataset.field = `variant.${label}.${key}`;
+                if (key === 'stock' && isEdit && cfg.hasVariations) input.readOnly = true;
                 input.addEventListener('input', () => { v[key] = input.value; clearError(`variant.${label}.${key}`); updateTotals(); changed(); });
                 return el('td', {}, input, el('div', { className: 'pi-error', dataset: { errorFor: `variant.${label}.${key}` } }));
             };
             const priceCell = num('price', '0.00', '0.01', '0.01');
             const priceInput = priceCell.firstChild;
             priceCell.prepend(el('div', { className: 'pi-unit pi-unit--pre' }, el('span', { textContent: '₱' }), priceInput));
-            const sku = el('input', { className: 'pi-input', placeholder: 'Auto-generated', maxLength: 60, value: v.sku, ariaLabel: `SKU for ${label}` });
-            sku.addEventListener('input', () => { v.sku = sku.value; });
+            const sku = el('input', { className: 'pi-input', placeholder: 'Assigned after submission', value: cfg.showGeneratedSku ? v.sku : '', ariaLabel: `SKU for ${label}`, readOnly: true });
             const pick = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', hidden: true });
-            const btn = el('button', { type: 'button', className: 'pi-vimg', ariaLabel: `Image for ${label}`, innerHTML: v.url ? `<img src="${v.url}" alt="">` : '+', onclick: () => pick.click() });
+            const btn = el('button', { type: 'button', className: 'pi-vimg', ariaLabel: `Image for ${label}`, innerHTML: v.url ? `<img src="${v.url}" alt="">` : '+', disabled: isEdit && cfg.hasVariations, onclick: () => pick.click() });
             pick.addEventListener('change', () => {
                 const f = pick.files[0]; if (!f) return;
                 if (!IMG_OK.includes(f.type) || f.size > limits.maxMb * 1048576) return toast(`Variant image must be JPG, PNG or WebP up to ${limits.maxMb} MB.`);
@@ -472,7 +515,7 @@ function initProductForm(form) {
     }
     $('#piBulkApply').addEventListener('click', () => {
         const p = $('#piBulkPrice').value, s = $('#piBulkStock').value;
-        Object.values(state.variants).forEach(v => { if (p !== '') v.price = p; if (s !== '') v.stock = s; });
+        Object.values(state.variants).forEach(v => { if (p !== '') v.price = p; if (s !== '' && !(isEdit && cfg.hasVariations)) v.stock = s; });
         renderVariantTable(Object.keys(state.variants).length); changed();
     });
     function setVariations(on) {
@@ -486,6 +529,109 @@ function initProductForm(form) {
     varToggle.forEach(r => r.addEventListener('change', () => setVariations(r.value === '1' && r.checked)));
     $('#piVarHints'); // populated by renderCategory
     function schemaDirty() { /* reserved: re-suggest hints when category changes */ }
+
+    /* ---------- reload recovery ---------- */
+    function draftFields() {
+        const fields = {};
+        for (const field of form.elements) {
+            if (!field.name || field.readOnly ||
+                ['file', 'hidden', 'password', 'submit', 'button'].includes(field.type)) continue;
+            if (field.type === 'radio' || field.type === 'checkbox') {
+                fields[field.name] ??= [];
+                if (field.checked) fields[field.name].push(field.value);
+            } else fields[field.name] = field.value;
+        }
+        return fields;
+    }
+    function applyDraftFields(fields) {
+        for (const field of form.elements) {
+            if (!field.name || field.readOnly || !(field.name in fields) ||
+                ['file', 'hidden', 'password', 'submit', 'button'].includes(field.type)) continue;
+            const value = fields[field.name];
+            if (field.type === 'radio' || field.type === 'checkbox') field.checked = Array.isArray(value) && value.includes(field.value);
+            else if (typeof value === 'string') field.value = value;
+        }
+    }
+    function saveProductDraft() {
+        if (!productDraftReady || !productDraftDirty || productDraftSaved) return;
+        const draft = {
+            savedAt: Date.now(),
+            revision: form.elements.expected_revision?.value || null,
+            fields: draftFields(),
+            category: catSelect.value,
+            subcategory: subSelect.value,
+            noBrand: noBrand.checked,
+            specs: specRows().map(({ name, value }) => ({ name, value })),
+            hasVariations: state.hasVariations,
+            types: state.types.map(t => ({ name: t.name, options: [...t.options] })),
+            optionInputs: $$('.pi-var input[aria-label="New option"]', typesHost).map(input => input.value),
+            variants: Object.fromEntries(Object.entries(state.variants).map(([label, v]) => [label, { price: v.price, stock: v.stock }])),
+            imageIds: state.images.filter(i => i.kind === 'existing').map(i => i.id),
+            removeVideo: state.removeVideo,
+        };
+        try { sessionStorage.setItem(productDraftKey, JSON.stringify(draft)); } catch { /* storage is optional */ }
+    }
+    function scheduleProductDraft() {
+        if (!productDraftReady) return;
+        productDraftDirty = true;
+        clearTimeout(productDraftTimer);
+        productDraftTimer = setTimeout(saveProductDraft, 250);
+    }
+    function restoreProductDraft() {
+        let draft;
+        try { draft = JSON.parse(sessionStorage.getItem(productDraftKey) || 'null'); } catch { /* optional */ }
+        if (!draft) return;
+        if (draft.savedAt <= Date.now() - 7200000 || draft.revision !== (form.elements.expected_revision?.value || null)) {
+            try { sessionStorage.removeItem(productDraftKey); } catch { /* optional */ }
+            clearRestoredDraftNotice(productDraftKey);
+            return;
+        }
+
+        catSelect.value = draft.category || '';
+        lastCat = catSelect.value;
+        renderSubs(draft.subcategory || '');
+        for (const [name, value] of Object.entries(draft.fields || {})) {
+            const match = name.match(/^attributes\[([^\]]+)\]/);
+            if (match) savedAttrs[match[1]] = Array.isArray(value) ? value : value;
+        }
+        renderCategory();
+        noBrand.checked = !!draft.noBrand;
+        applyDraftFields(draft.fields || {});
+        syncBrand();
+        syncCategoryId();
+
+        specsHost.replaceChildren();
+        (draft.specs || []).forEach(s => addSpec(s.name, s.value));
+        if (!(isEdit && cfg.hasVariations)) {
+            state.types = (draft.types || []).slice(0, MAX_VAR_TYPES).map(t => ({
+                name: String(t.name || '').slice(0, 30),
+                options: (Array.isArray(t.options) ? t.options : []).slice(0, MAX_OPTIONS),
+            }));
+        }
+        state.hasVariations = !!draft.hasVariations;
+        const variationChoice = varToggle.find(r => r.value === (state.hasVariations ? '1' : '0'));
+        if (variationChoice) variationChoice.checked = true;
+        setVariations(state.hasVariations);
+        renderTypes();
+        rebuildVariants();
+        Object.entries(draft.variants || {}).forEach(([label, values]) => {
+            if (!state.variants[label]) return;
+            state.variants[label].price = values.price ?? state.variants[label].price;
+            if (!(isEdit && cfg.hasVariations)) state.variants[label].stock = values.stock ?? state.variants[label].stock;
+        });
+        renderVariantTable(Object.keys(state.variants).length);
+        $$('.pi-var input[aria-label="New option"]', typesHost).forEach((input, i) => { input.value = draft.optionInputs?.[i] || ''; });
+
+        if (Array.isArray(draft.imageIds)) {
+            const byId = new Map(state.images.filter(i => i.kind === 'existing').map(i => [String(i.id), i]));
+            state.images = draft.imageIds.map(id => byId.get(String(id))).filter(Boolean);
+            renderImages();
+        }
+        if (draft.removeVideo) { state.video = null; state.removeVideo = true; renderVideo(); }
+        updateDescCount();
+        productDraftDirty = true;
+        showRestoredDraftNotice(productDraftKey, 'Your unsaved product details were restored. Select any new photos, video, or variant images again before submitting.');
+    }
 
     /* ---------- validation ---------- */
     function validate(forSubmit) {
@@ -522,6 +668,11 @@ function initProductForm(form) {
                 if (price === '' || isNaN(price) || +price <= 0) fail('price', 'variations', 'Enter a valid price greater than 0.');
                 if (!isEdit && (stock === '' || isNaN(stock) || +stock < 0 || !Number.isInteger(+stock))) fail('stock', 'variations', 'Enter a valid stock quantity (0 or more).');
             }
+            const sellingPrice = state.hasVariations
+                ? Math.min(...Object.values(state.variants).map(x => +x.price || 0)) : +v('price');
+            if (v('compare_at_price') && +v('compare_at_price') <= sellingPrice) {
+                fail('compare_at_price', 'variations', 'Original price must be higher than the selling price.');
+            }
             [['package_length', 'length'], ['package_width', 'width'], ['package_height', 'height']].forEach(([n, label]) => {
                 if (v(n) === '' || isNaN(v(n)) || +v(n) <= 0) fail(n, 'shipping', `Enter the package ${label} in cm.`);
             });
@@ -549,7 +700,7 @@ function initProductForm(form) {
 
     /* ---------- progress + review ---------- */
     const sections = ['basic', 'category', 'variations', 'shipping', 'review'];
-    let rt; function changed() { clearTimeout(rt); rt = setTimeout(refresh, 120); }
+    let rt; function changed() { clearTimeout(rt); rt = setTimeout(refresh, 120); scheduleProductDraft(); }
     function refresh() {
         validate(true);
         const bad = new Set([...errors.values()].map(e => e.section));
@@ -572,7 +723,7 @@ function initProductForm(form) {
         pic.append(el('div', { className: 'pi-rv-img' }, imgs[0] ? el('img', { src: imgs[0].url, alt: 'Main product photo' }) : 'No photo yet'));
         if (imgs.length > 1) pic.append(el('div', { className: 'pi-rv-thumbs' }, ...imgs.slice(1).map(i => el('img', { src: i.url, alt: '' }))));
         const brandTxt = noBrand.checked ? 'No Brand' : v('brand');
-        const info = el('div', {}, el('div', { className: 'pi-rv-title', textContent: v('name') || 'Untitled product' }), el('p', { className: 'pi-muted', style: 'white-space:pre-line', textContent: v('description').slice(0, 280) + (v('description').length > 280 ? '…' : '') }), dl([['Category', [catSelect.selectedOptions[0]?.textContent.trim(), subSelect.value && subSelect.selectedOptions[0]?.textContent.trim()].filter(Boolean).join(' › ')], ['Brand', brandTxt], ['Condition', form.elements.condition.value ? form.elements.condition.value[0].toUpperCase() + form.elements.condition.value.slice(1) : ''], ['Video', state.video ? state.video.file.name : '']]));
+        const info = el('div', {}, el('div', { className: 'pi-rv-title', textContent: v('name') || 'Untitled product' }), el('p', { className: 'pi-muted', style: 'white-space:pre-line', textContent: v('description').slice(0, 280) + (v('description').length > 280 ? '…' : '') }), dl([['Category', [catSelect.selectedOptions[0]?.textContent.trim(), subSelect.value && subSelect.selectedOptions[0]?.textContent.trim()].filter(Boolean).join(' › ')], ['Brand', brandTxt], ['Condition', form.elements.condition.value ? form.elements.condition.value[0].toUpperCase() + form.elements.condition.value.slice(1) : ''], ['Video', state.video ? (state.video.file?.name || 'Current video') : '']]));
         info.lastChild.style.marginTop = '14px';
         top.append(pic, info);
         const attrRows = (schema[catName()]?.fields || []).map(f => {
@@ -586,7 +737,7 @@ function initProductForm(form) {
             const prices = vs.map(([, x]) => +x.price).filter(p => p > 0);
             priceRows = [['Variations', state.types.map(t => `${t.name || '—'}: ${t.options.join(', ')}`).join(' • ')], ['Variants', vs.length], ['Price', prices.length ? (Math.min(...prices) === Math.max(...prices) ? peso(prices[0]) : `${peso(Math.min(...prices))} – ${peso(Math.max(...prices))}`) : ''], ['Total stock', vs.reduce((s, [, x]) => s + (parseInt(x.stock) || 0), 0)]];
         } else {
-            priceRows = [['Price', v('price') ? peso(v('price')) : ''], ['Stock', v('stock')], ['SKU', v('sku') || 'Auto-generated']];
+            priceRows = [['Price', v('price') ? peso(v('price')) : ''], ['Stock', v('stock')], ['SKU', cfg.showGeneratedSku ? cfg.productCode : 'Assigned after submission']];
         }
         const dims = ['package_length', 'package_width', 'package_height'].map(n => v(n)).filter(Boolean);
         host.replaceChildren(top, group('Category details', attrRows), group('Additional specifications', specRowsData), group('Price & stock', priceRows), group('Shipping', [['Package weight', v('weight_kg') ? `${v('weight_kg')} kg` : ''], ['Package size (L × W × H)', dims.length ? `${dims.join(' × ')} cm` : ''], ['Fragile', form.elements.fragile.value === '1' ? 'Yes' : 'No']]));
@@ -605,29 +756,49 @@ function initProductForm(form) {
         const news = state.images.filter(i => i.kind === 'new');
         if (state.images[0]?.kind === 'new') { body.set('main_image', news[0].file); news.slice(1).forEach(i => body.append('gallery_images[]', i.file)); }
         else news.forEach(i => body.append('gallery_images[]', i.file));
-        if (state.video) body.set('video', state.video.file);
+        if (state.video?.file) body.set('video', state.video.file);
+        if (state.removeVideo) body.set('remove_video', '1');
+        if (isEdit && state.images[0]?.kind === 'existing') body.set('main_image_id', state.images[0].id);
         specRows().filter(r => r.name && r.value).forEach((r, i) => { body.set(`specs[${i}][name]`, r.name); body.set(`specs[${i}][value]`, r.value); });
-        body.set('has_variations', state.hasVariations ? '1' : '0');
-        if (state.hasVariations) {
+        const completeVariations = state.types.length > 0 && state.types.every(t => t.name.trim() && t.options.length)
+            && Object.values(state.variants).length > 0 && Object.values(state.variants).every(x => x.combo?.length === state.types.length
+                && x.price !== '' && +x.price > 0 && x.stock !== '' && Number.isInteger(+x.stock) && +x.stock >= 0);
+        const persistVariations = state.hasVariations && (action !== 'draft' || completeVariations);
+        body.set('has_variations', persistVariations ? '1' : '0');
+        if (persistVariations) {
             state.types.forEach((t, i) => { body.set(`variation_types[${i}][name]`, t.name.trim()); t.options.forEach(o => body.append(`variation_types[${i}][options][]`, o)); });
             Object.entries(state.variants).forEach(([label, x], i) => {
                 body.set(`variants[${i}][label]`, label);
                 x.combo.forEach(c => body.set(`variants[${i}][options][${c.type}]`, c.option));
-                body.set(`variants[${i}][price]`, x.price); body.set(`variants[${i}][stock]`, x.stock); body.set(`variants[${i}][sku]`, x.sku || '');
+                body.set(`variants[${i}][price]`, x.price); body.set(`variants[${i}][stock]`, x.stock);
                 if (x.image) body.set(`variants[${i}][image]`, x.image);
             });
-            // LEGACY-COMPAT: current store() still requires price + stock; remove once the backend reads variants.
             const vs = Object.values(state.variants);
             body.set('price', Math.min(...vs.map(x => +x.price || 0)).toFixed(2));
             if (!isEdit) body.set('stock', vs.reduce((s, x) => s + (parseInt(x.stock) || 0), 0));
         }
-        // LEGACY-COMPAT: current store() requires `weight` as "1.25 kg" and a `material` string.
-        body.set('weight', `${(+body.get('weight_kg') || 0).toString()} kg`);
-        if (!body.get('material')) body.set('material', body.get('attributes[material]') || 'Not specified');
         if (!body.get('brand')) body.set('brand', '');
         return body;
     }
     let submitting = false;
+    const uploadPanel = $('#piUploadProgress', form);
+    const uploadBar = $('#piUploadBar', form);
+    const uploadPercent = $('#piUploadPercent', form);
+    const uploadStatus = $('#piUploadStatus', form);
+    function updateUploadProgress(loaded, total, complete = false) {
+        if (!uploadPanel || !uploadBar || !uploadPercent || !uploadStatus) return;
+        uploadPanel.hidden = false;
+        if (complete) {
+            uploadBar.value = 100;
+            uploadPercent.textContent = '100%';
+            uploadStatus.textContent = 'Upload finished. Waiting for Vendo to save the product…';
+            return;
+        }
+        const percent = total > 0 ? Math.min(99, Math.floor((loaded / total) * 100)) : 0;
+        uploadBar.value = percent;
+        uploadPercent.textContent = `${percent}%`;
+        uploadStatus.textContent = 'Uploading selected files and product details…';
+    }
     async function submit(action, button) {
         if (submitting) return;
         clearAllErrors();
@@ -635,18 +806,38 @@ function initProductForm(form) {
         submitting = true;
         $$('#piActions button', form).forEach(b => { b.disabled = true; });
         button.classList.add('is-loading');
+        const body = buildBody(action);
+        const hasFiles = [...body.values()].some(value => typeof File !== 'undefined' && value instanceof File && value.size > 0);
+        if (uploadPanel) uploadPanel.hidden = !hasFiles;
+        if (hasFiles) {
+            updateUploadProgress(0, 1);
+            uploadPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
         try {
-            const data = await postForm(form.action, buildBody(action));
+            const data = await postForm(form.action, body, hasFiles ? updateUploadProgress : null);
+            productDraftSaved = true;
+            clearTimeout(productDraftTimer);
+            try { sessionStorage.removeItem(productDraftKey); } catch { /* optional */ }
+            clearRestoredDraftNotice(productDraftKey);
             try { sessionStorage.setItem('sellerOperationMessage', data.message || (action === 'draft' ? 'Draft saved.' : 'Product submitted for admin review.')); } catch { /* optional */ }
             location.assign(form.dataset.redirect);
         } catch (ex) {
+            if (hasFiles && uploadStatus) uploadStatus.textContent = 'Vendo did not save this upload. Review the error below, then try again.';
             // Server messages are shown beside the matching field when possible; the form is never cleared.
             const map = k => k.startsWith('attributes.') ? `attr.${k.slice(11)}` : k.startsWith('gallery_images') || k === 'main_image' ? 'images' : k;
             let general = ex.errors ? '' : ex.message;
-            Object.entries(ex.errors || {}).forEach(([k, msgs]) => { const key = map(k); if ($(`[data-error-for="${key}"]`, form)) showError(key, msgs[0]); else general += msgs.join(' ') + ' '; });
+            Object.entries(ex.errors || {}).forEach(([k, msgs]) => {
+                const key = map(k);
+                const message = key === 'video' && /failed to upload/i.test(msgs[0])
+                    ? 'PHP or the web server rejected the video before Vendo could receive it. Increase upload_max_filesize and post_max_size, then restart php artisan serve.'
+                    : msgs[0];
+                if ($(`[data-error-for="${key}"]`, form)) showError(key, message);
+                else general += msgs.join(' ') + ' ';
+            });
             const b = $('#piFormError');
             b.textContent = general.trim() || 'Please review the highlighted fields.'; b.classList.add('is-show');
-            b.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const videoError = ex.errors?.video && $('[data-error-for="video"]', form);
+            (videoError || b).scrollIntoView({ behavior: 'smooth', block: 'center' });
             $$('#piActions button', form).forEach(x => { x.disabled = false; });
             button.classList.remove('is-loading'); submitting = false;
         }
@@ -658,6 +849,10 @@ function initProductForm(form) {
     /* ---------- init ---------- */
     renderSubs(cfg.selectedSub || '');
     renderCategory();
-    if (cfg.hasVariations) { varToggle.find(r => r.value === '1').checked = true; setVariations(true); }
+    if (cfg.hasVariations) { varToggle.find(r => r.value === '1').checked = true; setVariations(true); renderTypes(); rebuildVariants(); }
+    renderVideo();
+    restoreProductDraft();
+    productDraftReady = true;
+    window.addEventListener('pagehide', saveProductDraft);
     refresh();
 }

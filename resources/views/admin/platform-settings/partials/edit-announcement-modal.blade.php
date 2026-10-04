@@ -8,7 +8,7 @@
             <button type="button" @click="editAnnouncementId = null" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
 
-        <form method="POST" action="{{ route('admin.platform-settings.announcements.update', $a) }}" class="space-y-4">
+        <form method="POST" action="{{ route('admin.platform-settings.announcements.update', $a) }}" class="space-y-4" data-draft-key="admin-{{ auth('admin')->id() }}-announcement-{{ $a->id }}">
             @csrf
             @method('PUT')
 

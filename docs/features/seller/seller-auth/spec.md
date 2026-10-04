@@ -9,6 +9,7 @@ Seller submits identity, address, business permit, categories, and password afte
 The valid ID and business permit now upload to private local storage. Admin previews use an authenticated, active Admin route; the legacy public files can be moved with `php artisan verification:privatize` while retaining their saved relative paths.
 The shared registration view initializes email and Google verification values before rendering the script that uses them, so opening the form does not depend on a Google session.
 The Business Information step loads top-level categories from the database. After creating a fresh database with `php artisan migrate`, run `php artisan db:seed --class=CategorySeeder` to populate the choices; migration alone leaves the list empty. The current form presents these as multiple-selection checkboxes.
+An unfinished Seller registration restores ordinary fields and address choices after a reload in the same tab for up to two hours. The form returns to step one and prompts for passwords and document uploads again. OTP/Google verification still follows the server session; browser storage cannot verify an email. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
 ## Gaps and acceptance direction
 

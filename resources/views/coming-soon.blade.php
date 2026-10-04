@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    @include('shared.site-icon')
     <title>Coming Soon — Vendo</title>
     <style>
         body { display:flex; align-items:center; justify-content:center; height:100vh; margin:0; font-family:sans-serif; background:#0f0f0f; color:#fff; text-align:center; }

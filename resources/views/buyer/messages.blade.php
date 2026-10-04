@@ -113,12 +113,33 @@
     function buyerSupportChat() {
         return {
             messages: [], body: '', error: '', lightbox: null, fetching: false,
+            draftKey: @js('vendo.buyer.support.'.auth()->id().'.'.$conversation->id),
             init() {
+                try {
+                    const draft = JSON.parse(sessionStorage.getItem(this.draftKey) || 'null');
+                    if (draft?.savedAt > Date.now() - 7200000 && typeof draft.body === 'string') {
+                        this.body = draft.body;
+                        window.vendoDraftNotice?.restored(this.draftKey, 'Your unsent message was restored. Reattach any file before sending.');
+                    } else if (draft) {
+                        sessionStorage.removeItem(this.draftKey);
+                        window.vendoDraftNotice?.clear(this.draftKey);
+                    }
+                } catch (_) {}
+                this.$watch('body', () => this.saveDraft());
                 this.fetchMessages();
                 this.poll = setInterval(() => {
                     if (!this.$el.isConnected) { clearInterval(this.poll); return; }
                     if (!document.hidden) this.fetchMessages();
                 }, 1000);
+            },
+            saveDraft() {
+                try {
+                    if (this.body.trim()) sessionStorage.setItem(this.draftKey, JSON.stringify({ savedAt: Date.now(), body: this.body }));
+                    else {
+                        sessionStorage.removeItem(this.draftKey);
+                        window.vendoDraftNotice?.clear(this.draftKey);
+                    }
+                } catch (_) {}
             },
             async fetchMessages() {
                 if (this.fetching) return;
@@ -148,7 +169,7 @@
                         headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content},
                     });
                     if (!response.ok) { this.error = 'Message could not be sent. Check the text or attachment and try again.'; return; }
-                    this.body = ''; fileInput.value = ''; this.fetchMessages();
+                    this.body = ''; fileInput.value = ''; this.saveDraft(); this.fetchMessages();
                 } catch (_) { this.error = 'Connection lost. Please try again.'; }
             },
         };

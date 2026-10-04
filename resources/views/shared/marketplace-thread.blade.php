@@ -81,7 +81,7 @@
                 <button type="submit">Send order</button>
             </form>
         @endif
-        <form class="mc-composer" method="POST" action="{{ $sendRoute }}" enctype="multipart/form-data" data-chat-form>
+        <form class="mc-composer" method="POST" action="{{ $sendRoute }}" enctype="multipart/form-data" data-chat-form data-draft-key="{{ $side }}-{{ auth()->id() }}-chat-{{ md5($sendRoute) }}" data-draft-ajax>
             @csrf
             @if($isBuyer && $selectedItem)<input type="hidden" name="order_item_id" value="{{ $selectedItem->id }}"><span class="mc-selected">Asking about {{ $selectedItem->product?->name ?? 'this item' }}</span>@endif
             <label class="mc-sr-only" for="mcBody">Message</label>
@@ -168,6 +168,7 @@
             const response = await fetch(form.action, {method: 'POST', body: new FormData(form), headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content}});
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(Object.values(data.errors || {})[0]?.[0] || data.message || 'Message could not be sent.');
+            if (form.classList.contains('mc-composer')) form.dispatchEvent(new Event('vendo:draft-committed'));
             if (data.show_url && new URL(data.show_url).pathname !== location.pathname) { location.assign(data.show_url); return; }
             if (data.fetch_url) box.dataset.fetch = data.fetch_url;
             if (form.classList.contains('mc-composer')) form.reset();

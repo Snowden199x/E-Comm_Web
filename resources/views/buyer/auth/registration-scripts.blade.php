@@ -13,7 +13,7 @@ document.addEventListener('alpine:init', () => {
         idCategory: 'primary', email: '', emailVerified: false, verifiedEmail: '',
         verifiedUntil: 0, agreeTerms: false, formError: '',
         step1Error: '', step2Error: '', step3Error: '',
-        digits: ['', '', '', '', '', ''], draftRestored: false,
+        digits: ['', '', '', '', '', ''],
         reviewVersion: 1, reviewFiles: '—', addressLoading: false,
         restoring: true, addressVersions: { municipality: 0, barangay: 0 },
         expiryTimer: null, pagehideHandler: null,
@@ -41,9 +41,16 @@ document.addEventListener('alpine:init', () => {
                 if (typeof draft.fields?.house_no === 'string' && draft.fields.house_no.trim()) {
                     this.field('street').value = [draft.fields.house_no.trim(), this.field('street').value].filter(Boolean).join(' ');
                 }
-                this.step = [1, 2, 3].includes(draft.step) ? draft.step : 1;
-                this.draftRestored = true;
-            } else { draft = null; }
+                // Passwords and ID files need to be selected again after reload.
+                this.step = 1;
+                window.vendoDraftNotice?.restored(draftKey, 'Your registration details were restored. Re-enter your password and select your ID files again before submitting.');
+            } else {
+                if (draft) {
+                    try { sessionStorage.removeItem(draftKey); } catch (_) {}
+                    window.vendoDraftNotice?.clear(draftKey);
+                }
+                draft = null;
+            }
             if (proof.email) this.email = proof.email;
             this.verifiedEmail = proof.email || '';
             this.verifiedUntil = proof.expires_at || 0;
@@ -268,6 +275,7 @@ document.addEventListener('alpine:init', () => {
                     this.showSuccessModal = true;
                     clearTimeout(this.expiryTimer);
                     try { sessionStorage.removeItem(draftKey); } catch (_) {}
+                    window.vendoDraftNotice?.clear(draftKey);
                 } else {
                     const name = Object.keys(data.errors || {})[0];
                     const message = data.errors?.[name]?.[0] || data.message || 'Registration failed. Please try again.';

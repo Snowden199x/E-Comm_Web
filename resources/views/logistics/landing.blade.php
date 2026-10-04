@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('shared.site-icon')
     <title>Vendo Logistics — Partner With Us</title>
     <meta name="description"
         content="Become a Vendo Logistics partner. Handle deliveries for Vendo sellers and buyers at scale.">

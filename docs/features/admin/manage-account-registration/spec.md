@@ -13,8 +13,10 @@ Admin reviews pending buyer, seller, and logistics-center applications. Riders a
 
 **Decisions.** While an application is pending, a sticky bar offers Reject and Approve.
 - **Approve** asks for confirmation, sets `status = approved`, sends `AccountApprovedMail` synchronously, and for logistics centers re-runs routing of unresolved ready orders.
-- **Reject** requires a reason (one of seven options) with optional details up to 500 characters, and stores `rejection_reason` and `rejection_notes` with `status = disapproved`. **No email is sent.** The applicant sees the reason the next time they try to sign in. The "Other" option requires details in the browser only; the server treats details as optional.
+- **Reject** requires a reason (one of seven options) with optional details up to 500 characters, and stores `rejection_reason` and `rejection_notes` with `status = disapproved`. **No email is sent.** The applicant sees the reason the next time they try to sign in. The "Other" option requires details in the browser and on the server.
 - After either decision the page shows a result dialog (auto-closes after five seconds) and the status badge in place of the buttons.
+
+An unfinished rejection reason/details selection survives a same-tab reload for up to two hours. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
 The Dashboard "Recent Registrations" dialogs reuse the applicant-details and reject-dialog partials, so their contracts (`$user`, `$showExpr`, `$closeExpr`) must be kept.
 
@@ -22,10 +24,11 @@ ID and business-permit previews use a protected Admin route that selects the app
 
 ## Gaps and acceptance direction
 
-- Add action audit events, verify details before mail/send failure handling (approval is saved before the email is sent), and test each account role.
-- Decide whether a rejection should send an email; if so, add a mail class and change the result-dialog copy.
+- Approval/rejection now records the acting Admin in `admin_action_logs`. Approval changes the account inside a transaction, routes unresolved Logistics parcels, then sends email in a guarded block. A transport failure keeps approval and shows an explicit mail warning in the result dialog. Owner verification remains pending.
+- Decide whether a rejection should send an email; if so, add a mail class and change the result-dialog copy. The UI must not claim that email was sent until this exists.
+- The server requires details for "Other (please specify)" and checks that a rejection target is a pending Buyer, Seller or Logistics Center.
 - The owner's mockup includes a Courier applicant with a Vehicle Information tab. This is **not** implemented: riders are approved by their linked Logistics Center, `approve` returns 403 for couriers, and the Admin document route has no driver's license or OR/CR fields. Define Admin's role for riders before building it.
-- Pending-count icons `pending-*-icon.svg` are expected in `public/assets/icons/registration/`; older icons are used until they exist.
+- Pending-count icons (`pending-request-icon.svg`, `pending-seller-icon.svg`, `pending-buyer-icon.svg`, `pending-logistics-icon.svg`) are present in `public/assets/icons/registration/` and used by the redesigned cards, with the earlier icons as fallbacks.
 - Verified by static review only (Alpine expressions and Blade directives). No automated tests or browser walkthrough have been run.
 
 ## Source evidence

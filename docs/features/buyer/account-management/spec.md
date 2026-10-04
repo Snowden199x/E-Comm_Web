@@ -6,6 +6,7 @@
 ## Current behavior
 
 Buyer can edit profile/password and upload/remove profile picture and banner.
+Unsubmitted profile fields survive an accidental reload in the same tab for up to two hours. Passwords and image files are excluded. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
 ## Gaps and acceptance direction
 

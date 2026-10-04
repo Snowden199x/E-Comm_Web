@@ -35,7 +35,8 @@ class Order extends Model
 
     public const SHIPMENT_LABELS = ['to_ship' => 'To Ship', 'in_transit' => 'In Transit', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled', 'returned' => 'Returned'];
 
-    protected $casts = ['shipping_fee' => 'decimal:2', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date', 'delivered_at' => 'datetime'];
+    protected $casts = ['shipping_fee' => 'decimal:2', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date',
+        'delivered_at' => 'datetime', 'pickup_verified_at' => 'datetime'];
 
     protected static function booted(): void
     {
@@ -74,6 +75,23 @@ class Order extends Model
                     'message' => $order->shipmentUpdateMessage(),
                     'link' => route('buyer.orders.show', $order),
                 ]);
+            }
+            $centerId = match ($order->status) {
+                'at_sorting_center' => $order->logistics_center_id,
+                'at_destination_hub' => $order->destination_logistics_center_id,
+                default => null,
+            };
+            if ($centerId) {
+                $center = LogisticsCenter::query()->find($centerId);
+                if ($center) {
+                    Notification::create([
+                        'user_id' => $center->user_id, 'type' => 'logistics_arrival',
+                        'title' => 'Parcel arrived '.$order->number,
+                        'message' => 'A parcel has reached your Main Hub and needs the next logistics action.',
+                        'link' => $order->status === 'at_sorting_center'
+                            ? route('logistics.parcel-sorting') : route('logistics.delivery-assignments'),
+                    ]);
+                }
             }
         });
 

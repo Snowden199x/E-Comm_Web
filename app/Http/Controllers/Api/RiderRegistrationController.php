@@ -126,6 +126,13 @@ class RiderRegistrationController extends Controller
                     'or_cr_path' => $stored['or_cr'],
                 ]);
 
+                \App\Models\Communication\Notification::create([
+                    'user_id' => $center->user_id, 'type' => 'logistics_rider_application',
+                    'title' => 'New rider application',
+                    'message' => $rider->name.' applied to your Main Hub.',
+                    'link' => route('logistics.riders.index', ['status' => 'pending']),
+                ]);
+
                 return $rider;
             });
         } catch (\Throwable $exception) {

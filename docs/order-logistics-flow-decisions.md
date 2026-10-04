@@ -29,3 +29,9 @@ The selected first checkpoint is only the next planned locality. The parcel must
 The earlier `logistics_sub_hubs`/`orders.next_sub_hub_id` migration is a physical-site draft. The current route planner uses `logistics_route_checkpoints`, `logistics_route_plans`, and `logistics_route_plan_stops`; any legacy rows are copied as locality labels, without their owner or address. Legacy `soc5`/`soc6` scan names do not confirm arrival at the new SH localities.
 
 See [virtual SubHub route checkpoints](features/logistics/subhub-routing/spec.md), [truck and linehaul dispatch](features/logistics/company-truck-linehaul-dispatch/spec.md), [mobile rider API](features/courier/scan-api/spec.md), [seller shipments](features/seller/shipments/spec.md), and [schema](schema.md).
+
+## Pickup request review (4 October 2026)
+
+When a Seller marks an order `ready_for_pickup`, routing assigns an origin Main Hub and notifies its Logistics account. The center must verify the pending pickup request before assigning an approved pickup Rider. If the package is not ready, the center records a reason and returns the order to `preparing`; the Seller sees the reason and can mark it ready again after fixing the issue. This review is a Main Hub decision; it is not proof that the Rider physically collected the parcel. The Rider scan still records physical pickup.
+
+A destination Main Hub may assign several eligible parcels in one delivery area to one approved Motorcycle/Van/L300 Rider in one locked transaction. Truck assignments remain the separate linehaul workflow. These web actions do not record physical SH arrival or sorting; those require the future scanner/mobile contracts.

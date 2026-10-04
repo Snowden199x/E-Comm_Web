@@ -68,7 +68,7 @@
             @foreach ($order->items as $item)
                 <div class="py-3 border-b last:border-0">
                     <div class="flex justify-between text-sm">
-                        <span>{{ $item->product?->name ?? 'Product unavailable' }} {{ $item->color }} {{ $item->size }} x{{ $item->quantity }}</span>
+                        <span>{{ $item->product?->name ?? 'Product unavailable' }} {{ $item->variant?->label ?? trim($item->color.' '.$item->size) }} x{{ $item->quantity }}</span>
                         <span>₱{{ number_format($item->quantity * $item->price, 2) }}</span>
                     </div>
                     <a href="{{ route('buyer.marketplace-messages.show', ['order' => $order, 'item' => $item->id]) }}" class="mt-2 inline-block text-xs font-semibold text-[#6a3373] hover:underline">Ask about item</a>
@@ -81,7 +81,7 @@
                                 @if ($item->review->reply)<div class="mt-2 border-l-2 border-[#3b1735] pl-3"><p class="font-medium text-gray-800">Seller reply</p><p>{{ $item->review->reply->body }}</p></div>@endif
                             </div>
                         @else
-                            <form action="{{ route('buyer.reviews.store', $item) }}" method="POST" class="mt-3 rounded-lg bg-gray-50 p-3">
+                            <form action="{{ route('buyer.reviews.store', $item) }}" method="POST" class="mt-3 rounded-lg bg-gray-50 p-3" data-draft-key="buyer-{{ auth()->id() }}-review-{{ $item->id }}">
                                 @csrf
                                 <label class="block text-sm font-medium text-gray-800">Rate this product
                                     <select name="rating" required class="mt-1 block rounded border-gray-300 text-sm">

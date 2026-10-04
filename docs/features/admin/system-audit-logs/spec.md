@@ -1,15 +1,16 @@
 # Administrative Audit Trail
 
-**Status:** Partial / planned  
-**Reviewed:** 24 September 2026
+**Status:** Partial — account review/status actions logged; other Admin mutations pending
+**Reviewed:** 4 October 2026
 
 ## Current behavior
 
 Admin login-session records include login/logout and device information.
+Migration `2026_10_04_000003_create_admin_action_logs_table.php` adds actor Admin ID, target user ID, action, reason and timestamps. Registration approval/rejection and User Management suspend/deactivate/activate write an audit row in the same transaction as the account change.
 
 ## Gaps and acceptance direction
 
-There is no general append-only audit log for admin changes such as approvals, account status changes, policy edits, or commission changes.
+Policy edits, commission changes, product moderation and other Admin mutations are not yet recorded here. There is no audit browsing screen. Preserve the append-only record and never use mutable notification rows as the audit trail. Owner migration and verification are pending.
 
 ## Source evidence
 

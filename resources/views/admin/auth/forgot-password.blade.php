@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('shared.site-icon')
     <title>Password Restoration - Vendo</title>
     @vite(['resources/css/shared/app.css', 'resources/js/shared/app.js'])
 </head>

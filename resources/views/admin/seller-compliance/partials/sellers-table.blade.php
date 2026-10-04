@@ -43,10 +43,10 @@
                     <td class="py-3">
                         <span @class([
                             'px-2 py-1 rounded-full text-xs font-medium',
-                            'bg-green-100 text-green-700' => $seller->status === 'approved',
-                            'bg-red-100 text-red-700' => $seller->status === 'suspended',
+                            'bg-green-100 text-green-700' => $seller->account_status !== 'suspended',
+                            'bg-red-100 text-red-700' => $seller->account_status === 'suspended',
                         ])>
-                            {{ $seller->status === 'approved' ? 'Compliant' : ucfirst($seller->status) }}
+                            {{ $seller->account_status === 'suspended' ? 'Suspended' : 'Compliant' }}
                         </span>
                     </td>
                 </tr>

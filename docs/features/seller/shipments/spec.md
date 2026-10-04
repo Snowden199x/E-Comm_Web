@@ -24,6 +24,8 @@ All routes use active-seller middleware and ownership queries. Cards/chart follo
 - Cancel Shipment only permits `confirmed/preparing/ready_for_pickup → cancelled`. It requires a reason, restores reserved stock once, writes stock/status history, and notifies the buyer and assigned courier. In-transit and closed orders cannot be canceled by this screen.
 - Tracking details are editable before closure; delivered/completed/cancelled/returned records are read-only.
 
+Unsubmitted cancellation reasons and tracking edits in the drawer survive a same-tab reload for up to two hours. Server status/revision fields remain authoritative. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
+
 Both Orders and Shipments call `SellerOrderWorkflow`, so they cannot diverge in status or inventory behavior. Automatic Main Hub routing follows seller readiness; origin and destination centers handle assignments in the Logistics Center web portal. The mobile rider API records pickup, origin arrival, transitional SOC-coded route stages, out for delivery, and delivered. The destination Main Hub manually confirms receipt and assigns the delivery rider. Physical SH routing and truck handoffs are not implemented. Buyer receipt confirmation and product review remain separate from the rider's delivery report; independent proof is unfinished. Courier, rider, and truck interfaces are mobile-only. No refund/payment-gateway action is performed; checkout currently supports COD.
 
 ## Tracking and totals

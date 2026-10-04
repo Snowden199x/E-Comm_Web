@@ -2108,3 +2108,29 @@ html {
     .lg-card,
     .lg-stat { box-shadow: none; break-inside: avoid; }
 }
+.lg-notification-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    color: var(--lg-brand, #5a1d63);
+    border-radius: 10px;
+    text-decoration: none;
+}
+.lg-notification-link:hover,
+.lg-notification-link:focus-visible { background: #f4eef5; outline: 2px solid transparent; }
+.lg-notification-count {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 3px;
+    border-radius: 9px;
+    background: #8d3048;
+    color: #fff;
+    font: 600 10px/17px Poppins, sans-serif;
+    text-align: center;
+}

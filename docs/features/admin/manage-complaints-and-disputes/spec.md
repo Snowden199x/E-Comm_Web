@@ -6,6 +6,7 @@
 ## Current behavior
 
 Complaints have complainant/respondent, optional order link, evidence, activity records, and an admin status update flow.
+An unfinished Admin decision note survives a same-tab reload for up to two hours. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
 ## Gaps and acceptance direction
 

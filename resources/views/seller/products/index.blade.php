@@ -63,7 +63,7 @@
                                 <td>
                                     <button type="button" class="pi-prod" data-product-modal="{{ route('seller.products.show', $product) }}" aria-label="View details of {{ $product->name }}">
                                         @include('seller.products.partials.thumb', ['product' => $product])
-                                        <span><strong>{{ $product->name }}</strong><small>SKU: {{ $product->product_code }}</small></span>
+                                        <span><strong>{{ $product->name }}</strong><small>{{ $product->status === 'draft' ? 'SKU assigned after submission' : 'SKU: '.$product->product_code }}</small></span>
                                     </button>
                                 </td>
                                 <td><span class="pi-pill" style="color: {{ $colors['border'] }}; border-color: {{ $colors['border'] }}; background: {{ $colors['bg'] }}">{{ $main?->name ?? 'Uncategorized' }}</span>@if($cat?->parent)<small class="pi-subcat">{{ $cat->name }}</small>@endif</td>

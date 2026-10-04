@@ -7,6 +7,7 @@ Buyers can open a seller's public shop from a product or order and start a chat.
 Buyer and seller messages use the same asynchronous thread: text, one private JPEG/PNG/WebP image up to 5 MB, incremental refresh while the page is visible, unread counts, and recipient notifications. The sender can share only an order belonging to that buyer and seller. Every thread read, send, and attachment request checks the signed-in participant. Images are served through an authorized route.
 
 Seller Messages also keeps its separate Vendo Support conversation with admin. It supports text, JPEG/PNG/WebP/PDF attachments up to 5 MB, and close/reopen actions. Marketplace chats do not enter the admin support inbox.
+Unsent support and buyer–seller message text survives a same-tab reload for up to two hours. A successful send clears its browser draft; attachments must be selected again. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
 **Related:** [Admin Messaging](../../admin/chat-messaging/spec.md) · [Buyer Messaging](../../buyer/chat-messaging/spec.md) · [Seller Notifications](../notification/spec.md)
 ## 25 September 2026 update

@@ -11,6 +11,7 @@
 Show a shop header with the saved banner, profile image, business name and account status. Use a neutral placeholder when an image is absent. The seller can preview how the public-facing header will look before saving. Below it, group contact information, business information, security and approval status. Explain which details are public and which are used only for verification.
 
 An active seller can change their contact number, profile image, shop banner and optional shop description. Each section saves independently. Saved images appear in the account page and topbar without a new login. Password changes require the current password and a confirmed new password.
+Unsubmitted editable account fields survive a same-tab reload for up to two hours. Passwords and image files are excluded. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
 Email, legal name, registered business name, permit, address and selected categories affect identity or approval. The page shows their current values without an edit control and directs corrections to Vendo Support. An admin-reviewed change request remains future work.
 

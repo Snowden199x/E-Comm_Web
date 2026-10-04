@@ -3,37 +3,57 @@
         $colors = array_values(array_filter(array_map('trim', explode(',', $product->colors ?? ''))));
         $sizes = array_values(array_filter(array_map('trim', explode(',', $product->sizes ?? ''))));
         $photos = $product->images;
+        $photoCount = $photos->count();
+        $mediaCount = $photoCount + ($product->video_path ? 1 : 0);
+        $videoUrl = $product->video_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($product->video_path) : null;
+        $visibleAttributes = $product->attributeValues->filter(fn ($item) => collect($item->value ?? [])->filter(fn ($value) => filled($value))->isNotEmpty());
+        $visibleSpecifications = $product->specifications->filter(fn ($item) => filled($item->name) && filled($item->value));
     @endphp
     <div class="max-w-7xl mx-auto p-4 sm:p-5 lg:p-6">
         <div class="bg-white rounded-2xl p-6 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div x-data="{ photo: 0, touchX: null }" tabindex="0"
-                @keydown.arrow-left.prevent="photo = (photo - 1 + {{ max(1, $photos->count()) }}) % {{ max(1, $photos->count()) }}"
-                @keydown.arrow-right.prevent="photo = (photo + 1) % {{ max(1, $photos->count()) }}"
+            <div x-data="{ media: 0, touchX: null }" tabindex="0"
+                @keydown.arrow-left.prevent="media = (media - 1 + {{ max(1, $mediaCount) }}) % {{ max(1, $mediaCount) }}"
+                @keydown.arrow-right.prevent="media = (media + 1) % {{ max(1, $mediaCount) }}"
                 @touchstart.passive="touchX = $event.changedTouches[0].screenX"
-                @touchend.passive="if (touchX !== null && Math.abs($event.changedTouches[0].screenX - touchX) > 40) photo = ($event.changedTouches[0].screenX < touchX ? photo + 1 : photo - 1 + {{ max(1, $photos->count()) }}) % {{ max(1, $photos->count()) }}; touchX = null"
-                aria-label="Product photo gallery. Swipe or use the arrow keys to browse photos.">
-                @if($photos->isNotEmpty())
+                @touchend.passive="if (touchX !== null && Math.abs($event.changedTouches[0].screenX - touchX) > 40) media = ($event.changedTouches[0].screenX < touchX ? media + 1 : media - 1 + {{ max(1, $mediaCount) }}) % {{ max(1, $mediaCount) }}; touchX = null"
+                aria-label="Product gallery. Swipe or use the arrow keys to browse photos and video.">
+                @if($mediaCount > 0)
                     <div class="relative rounded-lg overflow-hidden bg-gray-100">
                         @foreach($photos as $image)
                             <img src="{{ asset('storage/'.$image->path) }}" alt="{{ $product->name }} photo {{ $loop->iteration }} of {{ $photos->count() }}"
-                                class="w-full h-80 object-contain" x-show="photo === {{ $loop->index }}" @if(!$loop->first) x-cloak @endif>
+                                class="w-full h-80 object-contain" x-show="media === {{ $loop->index }}" @if(!$loop->first) x-cloak @endif>
                         @endforeach
-                        @if($photos->count() > 1)
-                            <button type="button" @click="photo = (photo - 1 + {{ $photos->count() }}) % {{ $photos->count() }}"
-                                class="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 rounded-full w-9 h-9 shadow text-xl" aria-label="Previous product photo">‹</button>
-                            <button type="button" @click="photo = (photo + 1) % {{ $photos->count() }}"
-                                class="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 rounded-full w-9 h-9 shadow text-xl" aria-label="Next product photo">›</button>
+                        @if($product->video_path)
+                            <video class="w-full h-80 object-contain bg-black" controls playsinline preload="metadata"
+                                x-show="media === {{ $photoCount }}" @if($photoCount > 0) x-cloak @endif
+                                src="{{ $videoUrl }}" aria-label="{{ $product->name }} product video">
+                                Your browser does not support product video playback.
+                            </video>
+                        @endif
+                        @if($mediaCount > 1)
+                            <button type="button" @click="media = (media - 1 + {{ $mediaCount }}) % {{ $mediaCount }}"
+                                class="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 rounded-full w-9 h-9 shadow text-xl" aria-label="Previous gallery item">‹</button>
+                            <button type="button" @click="media = (media + 1) % {{ $mediaCount }}"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 rounded-full w-9 h-9 shadow text-xl" aria-label="Next gallery item">›</button>
                         @endif
                     </div>
-                    @if($photos->count() > 1)
-                        <div class="flex gap-2 mt-3 overflow-x-auto" aria-label="Product photos">
+                    @if($mediaCount > 1)
+                        <div class="flex gap-2 mt-3 overflow-x-auto" aria-label="Product photos and video">
                             @foreach($photos as $image)
-                                <button type="button" @click="photo = {{ $loop->index }}" :aria-pressed="photo === {{ $loop->index }}"
-                                    :class="photo === {{ $loop->index }} ? 'border-[#3b1735]' : 'border-gray-200'"
+                                <button type="button" @click="media = {{ $loop->index }}" :aria-pressed="media === {{ $loop->index }}"
+                                    :class="media === {{ $loop->index }} ? 'border-[#3b1735]' : 'border-gray-200'"
                                     class="w-16 h-16 shrink-0 rounded-lg border-2 overflow-hidden" aria-label="Show photo {{ $loop->iteration }}">
                                     <img src="{{ asset('storage/'.$image->path) }}" alt="" class="w-full h-full object-cover">
                                 </button>
                             @endforeach
+                            @if($product->video_path)
+                                <button type="button" @click="media = {{ $photoCount }}" :aria-pressed="media === {{ $photoCount }}"
+                                    :class="media === {{ $photoCount }} ? 'border-[#3b1735]' : 'border-gray-200'"
+                                    class="w-16 h-16 shrink-0 rounded-lg border-2 overflow-hidden bg-gray-900 text-white grid place-items-center"
+                                    aria-label="Show product video">
+                                    <span class="flex flex-col items-center text-[10px] font-medium" aria-hidden="true"><span class="text-lg leading-none">▶</span>Video</span>
+                                </button>
+                            @endif
                         </div>
                     @endif
                 @else
@@ -76,7 +96,19 @@
                     <form action="{{ route('buyer.cart.store') }}" method="POST" class="mt-6 space-y-4">
                         @csrf
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
-                        @if($colors)
+                        @if($product->has_variations)
+                            <label class="block text-sm font-medium text-gray-700">Variation
+                                <select name="variant_id" required class="block w-full max-w-sm mt-1 border rounded-lg px-3 py-2 bg-white">
+                                    <option value="">Choose a variation</option>
+                                    @foreach($product->variants as $variant)
+                                        <option value="{{ $variant->id }}" @disabled($variant->stock < 1) @selected((int) old('variant_id') === $variant->id)>
+                                            {{ $variant->label }} · ₱{{ number_format($variant->price, 2) }} · {{ $variant->stock }} available
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </label>
+                        @endif
+                        @if($colors && ! $product->has_variations)
                             <label class="block text-sm font-medium text-gray-700">Color
                                 <select name="color" required class="block w-full max-w-xs mt-1 border rounded-lg px-3 py-2 bg-white">
                                     <option value="">Choose a color</option>
@@ -84,7 +116,7 @@
                                 </select>
                             </label>
                         @endif
-                        @if($sizes)
+                        @if($sizes && ! $product->has_variations)
                             <label class="block text-sm font-medium text-gray-700">Size
                                 <select name="size" required class="block w-full max-w-xs mt-1 border rounded-lg px-3 py-2 bg-white">
                                     <option value="">Choose a size</option>
@@ -102,6 +134,56 @@
                     </form>
                 @endif
             </div>
+        </div>
+
+        <div class="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+            <section class="rounded-2xl border border-[#eee6ef] bg-white p-5 sm:p-6" aria-labelledby="product-details-heading">
+                <h3 id="product-details-heading" class="text-lg font-semibold text-gray-900">Category Details</h3>
+                @if($visibleAttributes->isNotEmpty())
+                    <dl class="mt-4 grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+                        @foreach($visibleAttributes as $item)
+                            @php
+                                $attributeValue = collect($item->value ?? [])->filter(fn ($value) => filled($value))->implode(', ');
+                            @endphp
+                            @if($attributeValue !== '')
+                                <div>
+                                    <dt class="text-gray-500">{{ $attributeLabels[$item->key] ?? \Illuminate\Support\Str::headline($item->key) }}</dt>
+                                    <dd class="mt-0.5 text-gray-900">{{ $attributeValue }}</dd>
+                                </div>
+                            @endif
+                        @endforeach
+                    </dl>
+                @else
+                    <p class="mt-3 text-sm text-gray-500">No category details provided for this product.</p>
+                @endif
+
+                @if($visibleSpecifications->isNotEmpty())
+                    <div class="mt-5 border-t border-gray-100 pt-4">
+                        <h4 class="text-sm font-semibold text-gray-800">Additional Specifications</h4>
+                        <dl class="mt-3 grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+                            @foreach($visibleSpecifications as $specification)
+                                <div>
+                                    <dt class="text-gray-500">{{ $specification->name }}</dt>
+                                    <dd class="mt-0.5 whitespace-pre-line text-gray-900">{{ $specification->value }}</dd>
+                                </div>
+                            @endforeach
+                        </dl>
+                    </div>
+                @endif
+            </section>
+
+            <section class="rounded-2xl border border-[#eee6ef] bg-white p-5 sm:p-6" aria-labelledby="related-products-heading">
+                <h3 id="related-products-heading" class="text-lg font-semibold text-gray-900">You May Also Like</h3>
+                @if($recommendedProducts->isNotEmpty())
+                    <div class="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
+                        @foreach($recommendedProducts as $recommendedProduct)
+                            @include('buyer.partials.product-card', ['product' => $recommendedProduct, 'compact' => true])
+                        @endforeach
+                    </div>
+                @else
+                    <p class="mt-3 text-sm text-gray-500">No other products available right now.</p>
+                @endif
+            </section>
         </div>
 
         <section class="mt-6 rounded-2xl bg-white p-6 shadow-sm" aria-labelledby="product-reviews-heading">
