@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\AdminActionLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use App\Mail\AccountApprovedMail;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 use App\Services\OrderRoutingService;
 
 class RegistrationController extends Controller
@@ -56,6 +60,7 @@ class RegistrationController extends Controller
 
     public function show(User $user): View
     {
+        abort_unless(in_array($user->role, ['seller', 'buyer', 'logistics_center'], true), 403);
         $user->load(['sellerDetail', 'courierDetail', 'categories', 'buyerDetail']);
 
         return view('admin.registrations.show', compact('user'));
@@ -64,29 +69,42 @@ class RegistrationController extends Controller
     public function approve(User $user, OrderRoutingService $routing): RedirectResponse
 {
     abort_unless(in_array($user->role, ['seller', 'buyer', 'logistics_center'], true) && $user->status === 'pending', 403);
-    $user->update(['status' => 'approved']);
+    DB::transaction(function () use ($user) {
+        $user->update(['status' => 'approved']);
+        AdminActionLog::record($user, 'registration_approved');
+    }, 3);
 
     if ($user->role === 'logistics_center') {
         $routing->routeUnresolvedReady();
     }
 
-    Mail::to($user->email)->send(new AccountApprovedMail($user));
+    try {
+        Mail::to($user->email)->send(new AccountApprovedMail($user));
+    } catch (\Throwable $e) {
+        Log::error('Account approval email failed', ['user_id' => $user->id, 'exception' => $e]);
+
+        return back()->with('confirmation', 'approved')->with('warning', 'Account approved, but the approval email could not be sent.');
+    }
 
     return back()->with('confirmation', 'approved');
 }
 
     public function disapprove(Request $request, User $user): RedirectResponse
     {
+        abort_unless(in_array($user->role, ['seller', 'buyer', 'logistics_center'], true) && $user->status === 'pending', 403);
         $request->validate([
             'reason' => 'required|string',
-            'additional_details' => 'nullable|string|max:500',
+            'additional_details' => ['nullable', 'string', 'max:500', Rule::requiredIf(fn () => $request->input('reason') === 'Other (please specify)')],
         ]);
 
-        $user->update([
-            'status' => 'disapproved',
-            'rejection_reason' => $request->reason,
-            'rejection_notes' => $request->additional_details,
-        ]);
+        DB::transaction(function () use ($request, $user) {
+            $user->update([
+                'status' => 'disapproved',
+                'rejection_reason' => $request->reason,
+                'rejection_notes' => $request->additional_details,
+            ]);
+            AdminActionLog::record($user, 'registration_rejected', $request->reason);
+        }, 3);
 
         return back()->with('confirmation', 'rejected');
     }

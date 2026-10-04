@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Model;
     'product_code', 'seller_id', 'category_id', 'name', 'description', 'price', 'stock',
     'brand', 'material', 'sizes', 'colors', 'weight', 'country_of_origin', 'status',
     'rejection_reason', 'rejection_details',
+    'condition', 'video_path', 'weight_kg', 'package_length', 'package_width', 'package_height',
+    'is_fragile', 'has_variations', 'compare_at_price',
 ])]
 class Product extends Model
 {
@@ -21,7 +23,8 @@ class Product extends Model
 
     public const STOCK_LABELS = ['in_stock' => 'In Stock', 'low_stock' => 'Low Stock', 'out_of_stock' => 'Out of Stock'];
 
-    protected $casts = ['price' => 'decimal:2', 'stock' => 'integer'];
+    protected $casts = ['price' => 'decimal:2', 'stock' => 'integer', 'weight_kg' => 'decimal:3',
+        'is_fragile' => 'boolean', 'has_variations' => 'boolean', 'compare_at_price' => 'decimal:2'];
 
     protected static function booted(): void
     {
@@ -59,7 +62,11 @@ class Product extends Model
         $photos = $this->images()->reorder()->orderBy('sort_order')->orderBy('id')
             ->get(['id', 'path', 'sort_order'])->toArray();
 
-        return hash('sha256', json_encode([$this->getRawOriginal(), $photos]));
+        $variants = $this->variants()->reorder()->orderBy('id')->get(['id', 'sku', 'price', 'stock', 'options'])->toArray();
+        $attributes = $this->attributeValues()->orderBy('key')->get(['key', 'value'])->toArray();
+        $specifications = $this->specifications()->reorder()->orderBy('id')->get(['name', 'value', 'sort_order'])->toArray();
+
+        return hash('sha256', json_encode([$this->getRawOriginal(), $photos, $variants, $attributes, $specifications]));
     }
 
     public function movements()
@@ -82,6 +89,26 @@ class Product extends Model
         return $this->hasMany(ProductImage::class)->orderBy('sort_order');
     }
 
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class)->orderBy('sort_order');
+    }
+
+    public function attributeValues()
+    {
+        return $this->hasMany(ProductAttributeValue::class);
+    }
+
+    public function specifications()
+    {
+        return $this->hasMany(ProductSpecification::class)->orderBy('sort_order');
+    }
+
+    public function variationTypes()
+    {
+        return $this->hasMany(ProductVariationType::class)->orderBy('sort_order');
+    }
+
     public function warnings()
     {
         return $this->hasMany(ProductWarning::class);
@@ -100,5 +127,25 @@ class Product extends Model
     public function publishedReviews()
     {
         return $this->reviews()->where('visibility', 'published');
+    }
+
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    public function scopeAvailableToBuy($query)
+    {
+        return $query->where('status', 'approved')
+            ->whereHas('seller', fn ($seller) => $seller->where('status', 'approved')
+                ->whereNull('archived_at')
+                ->where(fn ($active) => $active->whereNull('account_status')->orWhere('account_status', 'active')));
+    }
+
+    public function scopeWithCardMetrics($query)
+    {
+        return $query->withAvg('publishedReviews as reviews_avg_rating', 'rating')
+            ->withSum(['orderItems as sold_count' => fn ($items) => $items->whereHas('order',
+                fn ($orders) => $orders->whereIn('status', Order::SALES_STATUSES))], 'quantity');
     }
 }

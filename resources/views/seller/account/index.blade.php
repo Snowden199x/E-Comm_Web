@@ -22,7 +22,7 @@
 
         <div class="sw-grid sw-grid--equal">
             <section class="sw-card"><h2>Shop and contact</h2><p class="sw-muted">Your description may appear on your public shop profile. Your phone number stays private.</p>
-                <form class="sw-form" method="POST" action="{{ route('seller.account.update') }}">@csrf @method('PATCH')
+                <form class="sw-form" method="POST" action="{{ route('seller.account.update') }}" data-draft-key="seller-{{ auth()->id() }}-account">@csrf @method('PATCH')
                     <label>Contact number<input type="tel" name="phone_number" maxlength="20" value="{{ old('phone_number', $seller->phone_number) }}"></label>
                     <label>Shop description<textarea name="shop_description" rows="5" maxlength="1000" placeholder="Tell buyers about your shop">{{ old('shop_description', $seller->sellerDetail?->shop_description) }}</textarea></label>
                     <button class="sw-button" type="submit">Save changes</button>

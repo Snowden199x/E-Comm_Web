@@ -39,3 +39,11 @@ This overview is derived from Eloquent models and migrations, not a replacement 
 
 - `inventory_movements`: product, nullable actor/order references, type, signed quantity, before/after stock, reason, unique optional request key and timestamps. Opening stock/restock/checkout/cancellation writes are transactional. Legacy balances are preserved; historical movements are not fabricated.
 - `orders`: unique stable `tracking_number`, nullable carrier name/reference and ETA range, `shipping_fee` default zero. Legacy references are backfilled by migration; new references are generated on order creation. ERP order status remains the only fulfillment status source.
+
+## 4 October 2026 additions (pending owner migration)
+
+- `product_sequences` holds a locked annual counter for new `PRD-YYYY-NNNN` codes; existing ULID codes are retained. `products.status` adds `draft`, and product rows add condition, video path, packed weight/size, fragile flag, has-variations flag and optional compare-at price.
+- `product_attribute_values`, `product_specifications`, `product_variation_types`, `product_variation_options`, and `product_variants` store Seller listing details and purchasable options. Category field definitions remain in `config/product-attributes.php`; each variant stores its selected type/value map as JSON.
+- `cart_items.product_variant_id`, `order_items.product_variant_id` and `inventory_movements.product_variant_id` tie selection, purchase and stock movement to the selected variant. Product aggregate stock equals the sum of variant stocks for variant products.
+- `orders.pickup_request_status`, `pickup_decline_reason` and `pickup_verified_at` record Main Hub review of a Seller pickup request. A decline returns the order to `preparing` and lets the Seller mark it ready again.
+- `admin_action_logs` records actor Admin ID, target user ID, action, reason and timestamps for registration/account actions. These tables/columns are added by three new `2026_10_04_*` migrations.

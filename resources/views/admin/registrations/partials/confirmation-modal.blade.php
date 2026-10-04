@@ -8,7 +8,7 @@
     @php $approved = session('confirmation') === 'approved'; @endphp
 
     <div x-data="{ show: false, run: false }"
-        x-init="$nextTick(() => { show = true; setTimeout(() => run = true, 60); }); setTimeout(() => show = false, 5000)"
+        x-init="$nextTick(() => { show = true; setTimeout(() => run = true, 60); }); @unless(session('warning')) setTimeout(() => show = false, 5000) @endunless"
         x-show="show" x-cloak role="dialog" aria-modal="true" aria-labelledby="registration-result-title"
         @click.self="show = false" @keydown.escape.window="show = false"
         x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
@@ -28,7 +28,8 @@
                 </h3>
                 <p class="mt-1.5 text-sm text-gray-500">
                     @if ($approved)
-                        {{ $user->name }} can now sign in. A confirmation email was sent to {{ $user->email }}.
+                        {{ $user->name }} can now sign in.
+                        {{ session('warning') ?: 'A confirmation email was sent to '.$user->email.'.' }}
                     @else
                         The reason was saved. {{ $user->name }} will see it the next time they try to sign in.
                     @endif

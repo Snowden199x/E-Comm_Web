@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Logistics;
 
 use App\Http\Controllers\Controller;
 use App\Models\Profiles\CourierDetail;
+use App\Models\Ecommerce\Order;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,7 +34,23 @@ class DashboardController extends Controller
                 ->whereHas('user', fn ($q) => $q->where('status', 'disapproved'))->count(),
         ];
 
-        return view('logistics.dashboard', compact('center', 'riders', 'stats'));
+        $overview = [
+            'pickup_requests' => Order::query()->where('logistics_center_id', $centerId)
+                ->where('status', 'ready_for_pickup')->count(),
+            'to_sort' => Order::query()->where('logistics_center_id', $centerId)
+                ->where('status', 'at_sorting_center')->count(),
+            'to_assign' => Order::query()->where('destination_logistics_center_id', $centerId)
+                ->where(fn ($query) => $query->where('status', 'at_destination_hub')
+                    ->orWhere(fn ($local) => $local->where('status', 'sorted')
+                        ->where('logistics_center_id', $centerId)))->count(),
+            'active' => Order::query()
+                ->where(fn ($query) => $query->where('logistics_center_id', $centerId)
+                    ->orWhere('destination_logistics_center_id', $centerId))
+                ->whereIn('status', ['picked_up', 'sorted', 'to_soc5', 'to_soc6', 'in_transit_to_hub',
+                    'at_destination_hub', 'assigned_to_rider', 'out_for_delivery'])->count(),
+        ];
+
+        return view('logistics.dashboard', compact('center', 'riders', 'stats', 'overview'));
     }
 
     public function approveRider(CourierDetail $courierDetail): RedirectResponse
@@ -46,6 +63,47 @@ class DashboardController extends Controller
         }, 3);
 
         return back()->with('confirmation', 'approved');
+    }
+
+    public function ridersIndex(Request $request): View
+    {
+        $centerId = $request->user()->logisticsCenterDetail->id;
+        $status = $request->validate(['status' => 'nullable|in:approved,pending,disapproved,deactivated'])['status'] ?? 'approved';
+        $riders = CourierDetail::query()->where('logistics_center_id', $centerId)
+            ->whereHas('user', function ($query) use ($status) {
+                $query->where('role', 'courier');
+                if ($status === 'deactivated') {
+                    $query->where('status', 'approved')->where('account_status', 'deactivated');
+                } elseif ($status === 'approved') {
+                    $query->where('status', 'approved')
+                        ->where(fn ($active) => $active->whereNull('account_status')->orWhere('account_status', 'active'));
+                } else {
+                    $query->where('status', $status);
+                }
+            })
+            ->with('user')->latest()->paginate(12)->withQueryString();
+        $workload = Order::query()->where('destination_logistics_center_id', $centerId)
+            ->whereIn('status', ['assigned_to_rider', 'out_for_delivery'])
+            ->whereIn('delivery_courier_id', $riders->getCollection()->pluck('user_id'))
+            ->select('delivery_courier_id', DB::raw('COUNT(*) as total'))
+            ->groupBy('delivery_courier_id')->pluck('total', 'delivery_courier_id');
+
+        return view('logistics.riders', compact('riders', 'status', 'workload'));
+    }
+
+    public function updateRiderStatus(Request $request, CourierDetail $courierDetail): RedirectResponse
+    {
+        $this->authorizeRider($courierDetail);
+        $data = $request->validate(['active' => 'required|boolean']);
+        DB::transaction(function () use ($courierDetail, $data) {
+            $user = User::query()->lockForUpdate()->findOrFail($courierDetail->user_id);
+            abort_unless($user->status === 'approved'
+                && in_array($user->account_status, ['active', 'deactivated', null], true), 409,
+                'Review this rider application before changing its active status.');
+            $user->update(['account_status' => $data['active'] ? 'active' : 'deactivated']);
+        }, 3);
+
+        return back()->with('success', $data['active'] ? 'Rider activated.' : 'Rider deactivated.');
     }
 
     public function rejectRider(Request $request, CourierDetail $courierDetail): RedirectResponse

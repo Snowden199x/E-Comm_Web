@@ -5,6 +5,7 @@
     $center = $user->logisticsCenterDetail;
     $centerName = $center?->business_name ?: $user->name;
     $initial = mb_strtoupper(mb_substr($centerName, 0, 1));
+    $logisticsUnread = \App\Models\Communication\Notification::query()->where('user_id', $user->id)->whereNull('read_at')->count();
 
     // Rider Management lives on the dashboard route today. If a dedicated riders
     // route is added later, the link switches to it automatically.
@@ -52,6 +53,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('shared.site-icon')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title }} | Vendo Logistics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -116,6 +118,11 @@
             <span class="lg-topbar__spacer"></span>
 
             <span class="lg-date">{{ now()->format('l, F j') }}</span>
+
+            <a href="{{ route('logistics.notifications.index') }}" class="lg-notification-link" aria-label="Notifications, {{ $logisticsUnread }} unread">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+                <span class="lg-notification-count" data-lg-notification-count data-endpoint="{{ route('logistics.notifications.recent') }}" @if(!$logisticsUnread) hidden @endif>{{ $logisticsUnread }}</span>
+            </a>
 
             <div class="lg-account" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
                 <button type="button" class="lg-account-trigger" @click="open = !open" :aria-expanded="open.toString()" aria-haspopup="menu">

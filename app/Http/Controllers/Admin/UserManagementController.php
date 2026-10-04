@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\AdminActionLog;
 use App\Services\OrderRoutingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class UserManagementController extends Controller
@@ -16,11 +19,12 @@ class UserManagementController extends Controller
         $showRejected = $request->boolean('rejected');
         $users = $this->filteredUsers($request, $showRejected);
 
+        $managed = User::query()->where('status', 'approved');
         $stats = [
-            'total_users' => User::whereIn('role', ['seller', 'buyer', 'logistics_center'])->count(),
-            'sellers' => User::where('role', 'seller')->count(),
-            'buyers' => User::where('role', 'buyer')->count(),
-            'logistics_centers' => User::where('role', 'logistics_center')->count(),
+            'total_users' => (clone $managed)->whereIn('role', ['seller', 'buyer', 'logistics_center'])->count(),
+            'sellers' => (clone $managed)->where('role', 'seller')->count(),
+            'buyers' => (clone $managed)->where('role', 'buyer')->count(),
+            'logistics_centers' => (clone $managed)->where('role', 'logistics_center')->count(),
         ];
 
         return view('admin.user-management.index', compact('users', 'stats', 'showRejected'));
@@ -41,7 +45,7 @@ class UserManagementController extends Controller
         if ($showRejected) {
             $query->where('status', 'disapproved');
         } else {
-            $query->whereIn('status', ['approved', 'suspended', 'deactivated']);
+            $query->where('status', 'approved');
         }
 
         if ($request->filled('search')) {
@@ -65,28 +69,36 @@ class UserManagementController extends Controller
 
     public function suspend(Request $request, User $user): RedirectResponse
     {
-        $this->authorizeManagedAccount($user, ['approved']);
-        $request->validate([
+        $this->authorizeManagedAccount($user, ['active']);
+        $data = $request->validate([
             'reasons' => 'required|array|min:1',
-            'reasons.*' => 'string',
-            'additional_details' => 'nullable|string|max:500',
+            'reasons.*' => ['string', Rule::in(['Policy Violation', 'Suspicious Activity', 'Repeated Violations', 'Security Concern', 'Other'])],
+            'additional_details' => ['nullable', 'string', 'max:500', Rule::requiredIf(fn () => in_array('Other', $request->input('reasons', []), true))],
+            'duration_days' => ['nullable', 'required_unless:permanent,1', 'integer', 'min:1', 'max:365'],
+            'permanent' => ['nullable', 'boolean'],
         ]);
 
-        $user->update([
-            'status' => 'suspended',
-            'suspension_reason' => implode(', ', $request->reasons),
-            'suspension_notes' => $request->additional_details,
-            'suspended_at' => now(),
-            'suspended_until' => now()->addDays(7),
-        ]);
+        DB::transaction(function () use ($user, $data) {
+            $user->update([
+                'account_status' => 'suspended',
+                'suspension_reason' => implode(', ', $data['reasons']),
+                'suspension_notes' => $data['additional_details'] ?? null,
+                'suspended_at' => now(),
+                'suspended_until' => ($data['permanent'] ?? false) ? null : now()->addDays((int) $data['duration_days']),
+            ]);
+            AdminActionLog::record($user, 'user_suspended', implode(', ', $data['reasons']));
+        }, 3);
 
         return back()->with('confirmation', 'suspended');
     }
 
     public function deactivate(User $user): RedirectResponse
     {
-        $this->authorizeManagedAccount($user, ['approved']);
-        $user->update(['status' => 'deactivated']);
+        $this->authorizeManagedAccount($user, ['active']);
+        DB::transaction(function () use ($user) {
+            $user->update(['account_status' => 'deactivated']);
+            AdminActionLog::record($user, 'user_deactivated');
+        }, 3);
 
         return back()->with('confirmation', 'deactivated');
     }
@@ -94,9 +106,12 @@ class UserManagementController extends Controller
     public function activate(User $user, OrderRoutingService $routing): RedirectResponse
     {
         $this->authorizeManagedAccount($user, ['suspended', 'deactivated']);
-        $wasSuspended = $user->status === 'suspended';
+        $wasSuspended = $user->account_status === 'suspended';
 
-        $user->update(['status' => 'approved']);
+        DB::transaction(function () use ($user, $wasSuspended) {
+            $user->update(['account_status' => 'active', 'suspended_until' => null]);
+            AdminActionLog::record($user, $wasSuspended ? 'suspension_lifted' : 'user_activated');
+        }, 3);
         if ($user->role === 'logistics_center') {
             $routing->routeUnresolvedReady();
         }
@@ -104,9 +119,10 @@ class UserManagementController extends Controller
         return back()->with('confirmation', $wasSuspended ? 'suspension_lifted' : 'activated');
     }
 
-    private function authorizeManagedAccount(User $user, array $statuses): void
+    private function authorizeManagedAccount(User $user, array $accountStatuses): void
     {
         abort_unless(in_array($user->role, ['seller', 'buyer', 'logistics_center'], true)
-            && in_array($user->status, $statuses, true), 403);
+            && $user->status === 'approved'
+            && in_array($user->account_status ?? 'active', $accountStatuses, true), 403);
     }
 }

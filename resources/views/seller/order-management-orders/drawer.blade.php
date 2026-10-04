@@ -17,10 +17,12 @@
         @endif
         <p id="omoActionError" class="omo-error" role="alert" hidden></p>
     </div>
-    <form id="omoActionForm" class="omo-drawer__actions" data-url="{{ route('seller.orders.update',$order) }}"><input type="hidden" name="expected_status" value="{{ $order->status }}">
+    <form id="omoActionForm" class="omo-drawer__actions" data-url="{{ route('seller.orders.update',$order) }}" data-draft-key="seller-{{ auth()->id() }}-order-action-{{ $order->id }}-{{ $order->status }}" data-draft-ajax><input type="hidden" name="expected_status" value="{{ $order->status }}">
         @if($order->status==='placed')<label class="omo-reason">Reason if declining<textarea name="reason" maxlength="500" placeholder="Explain why this order cannot be fulfilled"></textarea></label><button class="omo-btn omo-btn--primary" name="action" value="accept">Accept Order</button><button class="omo-btn omo-btn--ghost" name="action" value="decline">Decline Order</button>
         @elseif($order->status==='confirmed')<button class="omo-btn omo-btn--primary" name="action" value="prepare">Start Preparing</button>
-        @elseif($order->status==='preparing')<button class="omo-btn omo-btn--primary" name="action" value="ready">Mark Ready for Pickup</button>
+        @elseif($order->status==='preparing')
+            @if($order->pickup_request_status === 'declined')<p class="omo-history" role="status">Pickup request returned by Logistics: {{ $order->pickup_decline_reason }}. Resolve this before marking ready again.</p>@endif
+            <button class="omo-btn omo-btn--primary" name="action" value="ready">Mark Ready for Pickup</button>
         @elseif($order->status==='ready_for_pickup')<p class="omo-history">Ready for pickup. Waiting for logistics to assign a rider and for the rider to scan the parcel at pickup.</p>
         @else<p class="omo-history">{{ $order->status_label }} · No seller action required.</p>@endif
     </form>

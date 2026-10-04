@@ -77,7 +77,7 @@
         <div class="bg-white rounded-2xl p-5 shadow-sm mb-4">
             <h3 class="font-bold text-gray-900 mb-4">Profile Information</h3>
 
-            <form action="{{ route('buyer.account.update') }}" method="POST" class="space-y-4">
+            <form action="{{ route('buyer.account.update') }}" method="POST" class="space-y-4" data-draft-key="buyer-{{ auth()->id() }}-profile">
                 @csrf
                 @method('PUT')
 

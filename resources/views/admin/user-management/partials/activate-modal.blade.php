@@ -4,7 +4,7 @@
 --}}
 @php
     $titleId = 'activate-title-' . $user->id;
-    $isSuspended = $user->status === 'suspended';
+    $isSuspended = $user->account_status === 'suspended';
 @endphp
 
 <div x-show="activateId === {{ $user->id }}" x-cloak role="dialog" aria-modal="true" aria-labelledby="{{ $titleId }}"

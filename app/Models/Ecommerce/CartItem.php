@@ -7,7 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class CartItem extends Model
 {
-    protected $fillable = ['user_id', 'product_id', 'quantity', 'color', 'size'];
+    protected $fillable = ['user_id', 'product_id', 'product_variant_id', 'quantity', 'color', 'size'];
+
+    public function variant()
+    {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
+
+    public function getUnitPriceAttribute(): float
+    {
+        return (float) ($this->variant?->price ?? $this->product?->price ?? 0);
+    }
 
     public function product()
     {

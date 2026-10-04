@@ -3,7 +3,7 @@
     $listing = ['for_review' => 'Pending review', 'approved' => 'Published', 'warned' => 'Needs changes', 'rejected' => 'Rejected', 'draft' => 'Draft'];
     $cat = $product->category; $main = $cat?->parent ?? $cat;
     $colors = $main?->colors ?? ['border' => '#6B7280', 'bg' => '#F3F4F6'];
-    // Variants appear automatically once the backend adds a `variants` relation (see redesign-backend-needs.md).
+    // Variants appear once the backend adds a `variants` relation (see the Seller Products & Inventory spec).
     $variants = method_exists($product, 'variants') ? $product->variants : collect();
     $totalStock = $variants->isNotEmpty() ? $variants->sum('stock') : $product->stock;
     $threshold = \App\Models\Ecommerce\Product::LOW_STOCK_THRESHOLD;
@@ -27,7 +27,7 @@
 
     <div>
         <h3>{{ $product->name }}</h3>
-        <p class="pi-sku">SKU: {{ $product->product_code }}</p>
+        <p class="pi-sku">{{ $product->status === 'draft' ? 'SKU assigned after submission' : 'SKU: '.$product->product_code }}</p>
         <div class="pi-badges">
             <span class="pi-pill" style="color: {{ $colors['border'] }}; border-color: {{ $colors['border'] }}; background: {{ $colors['bg'] }}">{{ $main?->name ?? 'Uncategorized' }}</span>
             @if($cat?->parent)<span class="pi-pill" style="color:#512258;border-color:#cfc4d2;background:#fff">{{ $cat->name }}</span>@endif
@@ -66,7 +66,7 @@
                         @foreach($variants as $variant)
                             <tr>
                                 <td><strong>{{ $variant->label }}</strong></td>
-                                <td>{{ $variant->sku ?: '—' }}</td>
+                                <td>{{ $product->status === 'draft' ? 'After submission' : ($variant->sku ?: '—') }}</td>
                                 <td class="pi-nowrap">₱{{ number_format($variant->price, 2) }}</td>
                                 <td>{{ number_format($variant->stock) }}</td>
                                 <td><span class="pi-pill pi-pill--{{ $variantStatus($variant->stock) }}">{{ $stockLabels[$variantStatus($variant->stock)] }}</span></td>
@@ -80,7 +80,7 @@
         </div>
 
         <div class="pi-tabpanel" data-tabpanel="restock">
-            <form action="{{ route('seller.products.restock', $product) }}" method="POST" data-restock>
+            <form action="{{ route('seller.products.restock', $product) }}" method="POST" data-restock data-draft-key="seller-{{ auth()->id() }}-restock-{{ $product->id }}" data-draft-ajax>
                 @csrf
                 <input type="hidden" name="request_key" value="{{ \Illuminate\Support\Str::uuid() }}">
                 <div class="pi-grid" style="grid-template-columns:1fr;gap:16px">

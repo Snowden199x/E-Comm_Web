@@ -11,6 +11,7 @@ export default defineConfig({
                 "resources/css/shared/marketplace-chat.css",
                 "resources/css/shared/user-report.css",
                 "resources/js/shared/app.js",
+                "resources/js/shared/form-drafts.js",
                 "resources/js/auth/google-signin.js",
 
                 // Admin

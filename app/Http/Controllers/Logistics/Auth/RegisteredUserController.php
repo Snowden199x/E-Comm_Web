@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Logistics\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Communication\Notification;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -91,6 +92,14 @@ class RegisteredUserController extends Controller
             'zip_code' => $validated['zip_code'],
             'business_name' => $validated['business_name'],
             'business_permit_path' => $businessPermitPath,
+        ]);
+
+        Notification::create([
+            'user_id' => null,
+            'type' => 'new_logistics_registration',
+            'title' => 'New Logistics Center registration',
+            'message' => 'A Logistics Center account is awaiting review.',
+            'link' => route('admin.registrations.index', ['user_type' => 'logistics_center']),
         ]);
 
         return response()->json([

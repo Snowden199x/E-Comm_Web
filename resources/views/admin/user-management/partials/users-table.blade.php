@@ -10,7 +10,7 @@
         'logistics_center' => 'bg-[#E4F1EE] text-[#2b6258]',
     ];
     $statusPill = [
-        'approved' => ['Active', 'border-green-600/60 bg-green-50 text-green-700'],
+        'active' => ['Active', 'border-green-600/60 bg-green-50 text-green-700'],
         'suspended' => ['Suspended', 'border-red-600/60 bg-red-50 text-red-700'],
         'deactivated' => ['Deactivated', 'border-[#d9826b]/70 bg-[#FBF1EE] text-[#b4452a]'],
         'disapproved' => ['Rejected', 'border-orange-500/60 bg-orange-50 text-orange-700'],
@@ -61,7 +61,7 @@
                 </thead>
                 <tbody class="divide-y divide-[#f3edf4]">
                     @foreach ($users as $u)
-                        @php $pill = $statusPill[$u->status] ?? [ucfirst((string) $u->status), 'border-gray-300 bg-gray-50 text-gray-600']; @endphp
+                        @php $accountState = $u->status === 'disapproved' ? 'disapproved' : ($u->account_status ?: 'active'); $pill = $statusPill[$accountState] ?? [ucfirst((string) $accountState), 'border-gray-300 bg-gray-50 text-gray-600']; @endphp
                         <tr style="--i: {{ $loop->index }}" @click="openId = {{ $u->id }}"
                             class="cursor-pointer transition-colors duration-150 hover:bg-[#FBF8FB]">
                             <td class="px-5 py-3">

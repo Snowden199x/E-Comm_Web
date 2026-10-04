@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('shared.site-icon')
     <title>Logistics/Sorting Center Registration - Vendo</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -88,6 +89,9 @@
             step: 1, showPassword: false, showConfirmPassword: false,
             showVerifyModal: false, showSuccessModal: false,
             submitting: false, formError: '', idCategory: 'primary',
+            init() {
+                this.$nextTick(() => vendoRestoreRegistrationDraft(this, 'logistics'));
+            },
             async submitForm(form) {
                 if (!Alpine.store('registration').otpVerified) {
                     this.formError = 'Please verify your email address before submitting.';

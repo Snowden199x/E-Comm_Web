@@ -1,10 +1,7 @@
 @php
     use Illuminate\Support\Str;
 
-    // Flip to true once the backend in docs/features/seller/products-inventory/redesign-backend-needs.md is implemented.
-    // While false: "Save as Draft" is hidden (the current store() would submit it for review) and a notice explains
-    // that variations, category details, specifications, video and shipping size are not stored yet.
-    $backendReady = false;
+    $backendReady = true;
 
     $editing = $product->exists;
     $keyOf = fn ($name) => Str::slug(str_replace('&', 'and', (string) $name));
@@ -20,7 +17,9 @@
     $subcategoryKeys = $categories->whereNotNull('parent_id')->mapWithKeys(fn ($c) => [$c->id => $keyOf($c->name)])->all();
 
     $kg = '';
-    if ($editing && preg_match('/^([\d.]+)\s*(g|kg)$/i', (string) $product->weight, $m)) {
+    if ($editing && $product->weight_kg) {
+        $kg = $product->weight_kg;
+    } elseif ($editing && preg_match('/^([\d.]+)\s*(g|kg)$/i', (string) $product->weight, $m)) {
         $kg = strtolower($m[2]) === 'g' ? round($m[1] / 1000, 3) : $m[1];
     }
     $legacySpecs = [];
@@ -34,9 +33,14 @@
         'subcategoryKeys' => (object) $subcategoryKeys,
         'selectedSub' => $selectedSub,
         'existingImages' => $editing ? $product->images->map(fn ($i) => ['id' => $i->id, 'url' => asset('storage/'.$i->path)])->values() : [],
-        'attributes' => $editing && $product->material ? ['material' => $product->material] : (object) [],
-        'specs' => $legacySpecs,
-        'hasVariations' => false,
+        'attributes' => $editing ? ($product->attributeValues->mapWithKeys(fn ($item) => [$item->key => count($item->value) === 1 ? $item->value[0] : $item->value])->all() ?: ($product->material ? ['material' => $product->material] : [])) : (object) [],
+        'specs' => $editing && $product->specifications->isNotEmpty() ? $product->specifications->map(fn ($spec) => ['name' => $spec->name, 'value' => $spec->value])->all() : $legacySpecs,
+        'hasVariations' => $editing && $product->has_variations,
+        'showGeneratedSku' => $editing && $product->status !== 'draft',
+        'productCode' => $editing && $product->status !== 'draft' ? $product->product_code : null,
+        'variationTypes' => $editing ? $product->variationTypes->map(fn ($type) => ['name' => $type->name, 'options' => $type->options->pluck('value')->all()])->all() : [],
+        'variants' => $editing ? $product->variants->mapWithKeys(fn ($variant) => [$variant->label => ['price' => $variant->price, 'stock' => $variant->stock, 'sku' => $variant->sku, 'url' => $variant->image_path ? asset('storage/'.$variant->image_path) : '']])->all() : [],
+        'videoUrl' => $editing && $product->video_path ? asset('storage/'.$product->video_path) : null,
     ];
     $steps = ['basic' => 'Basic Information', 'category' => 'Category Details', 'variations' => 'Variations, Price & Stock', 'shipping' => 'Shipping', 'review' => 'Review & Submit'];
 @endphp
@@ -51,15 +55,16 @@
             <a class="pi-btn" href="{{ route('seller.products.index') }}">← Back to Products</a>
         </header>
 
-        @unless($backendReady)
-            <p class="pi-warn" role="status" style="margin:0 0 20px"><strong>Heads-up:</strong> variations, category details, additional specifications, video, shipping size and drafts are not saved yet. Only the basic listing (name, description, category, brand, photos, price, stock and weight) is stored when you submit.</p>
-        @endunless
+        @if($editing && $product->has_variations)
+            <p class="pi-warn" role="status" style="margin:0 0 20px">Existing variant options and stock are locked to protect carts and orders. Edit prices here; use Restock to add stock.</p>
+        @endif
         @if($categories->isEmpty())
             <p class="pi-callout" role="alert">No selling categories are assigned to your account. Contact the administrator before adding a product.</p>
         @else
         <form id="piProductForm" method="POST" action="{{ $editing ? route('seller.products.update', $product) : route('seller.products.store') }}" novalidate
               data-mode="{{ $editing ? 'edit' : 'create' }}" data-redirect="{{ route('seller.products.index') }}"
-              data-max-images="6" data-max-mb="2" data-total-mb="7" data-video-mb="30" data-video-sec="60">
+              data-product-draft-key="seller-{{ auth()->id() }}-product-{{ $editing ? $product->id : 'new' }}"
+              data-max-images="6" data-max-mb="2" data-total-mb="10" data-video-mb="10" data-video-sec="60">
             @csrf
             @if($editing)
                 @method('PATCH')
@@ -105,8 +110,8 @@
                             <div class="pi-field">
                                 <span class="pi-label">Condition<em>*</em></span>
                                 <div class="pi-seg" role="radiogroup" aria-label="Condition">
-                                    <label><input type="radio" name="condition" value="new" checked><span>New</span></label>
-                                    <label><input type="radio" name="condition" value="used"><span>Used</span></label>
+                                    <label><input type="radio" name="condition" value="new" @checked(($product->condition ?? 'new') === 'new')><span>New</span></label>
+                                    <label><input type="radio" name="condition" value="used" @checked($product->condition === 'used')><span>Used</span></label>
                                 </div>
                                 <div class="pi-error" data-error-for="condition"></div>
                             </div>
@@ -121,7 +126,7 @@
                                 <div class="pi-drop" id="piDrop" data-field="images" tabindex="0" role="button" aria-label="Upload product photos">
                                     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
                                     <strong>Click to upload or drag photos here</strong>
-                                    <small>JPG, PNG or WebP · up to 2 MB each · up to 6 photos</small>
+                                    <small>JPG, PNG or WebP · up to 2 MB each · 10 MB total · up to 6 photos</small>
                                 </div>
                                 <input type="file" id="piFiles" accept="image/jpeg,image/png,image/webp" multiple hidden>
                                 <div class="pi-tiles" id="piTiles" aria-live="polite"></div>
@@ -136,7 +141,12 @@
                                 </button>
                                 <input type="file" id="piVideoFile" accept="video/mp4,video/webm,video/quicktime" hidden>
                                 <div class="pi-video-box" id="piVideoPreview"></div>
-                                <div class="pi-help">One short video · MP4, WebM or MOV · up to 30 MB and 60 seconds.</div>
+                                <div class="pi-upload-progress" id="piUploadProgress" role="status" aria-live="polite" hidden>
+                                    <div class="pi-upload-progress__head"><span>Product file upload</span><strong id="piUploadPercent">0%</strong></div>
+                                    <progress id="piUploadBar" max="100" value="0" aria-label="Product file upload progress"></progress>
+                                    <p id="piUploadStatus">Preparing upload…</p>
+                                </div>
+                                <div class="pi-help">One short video · MP4, WebM or MOV · up to 10 MB and 60 seconds.</div>
                                 <div class="pi-error" data-error-for="video"></div>
                             </div>
 
@@ -161,8 +171,8 @@
                         <div class="pi-field">
                             <span class="pi-label">Does this product have variations?</span>
                             <div class="pi-seg" role="radiogroup" aria-label="Has variations">
-                                <label><input type="radio" name="has_variations" value="0" checked><span>No</span></label>
-                                <label><input type="radio" name="has_variations" value="1"><span>Yes</span></label>
+                                <label><input type="radio" name="has_variations" value="0" @checked(! $product->has_variations) @disabled($editing && $product->has_variations)><span>No</span></label>
+                                <label><input type="radio" name="has_variations" value="1" @checked($product->has_variations)><span>Yes</span></label>
                             </div>
                         </div>
 
@@ -184,11 +194,11 @@
                             </div>
                             <div class="pi-field">
                                 <label class="pi-label" for="piSku">SKU</label>
-                                @if($editing)
+                                @if($editing && $product->status !== 'draft')
                                     <input class="pi-input" id="piSku" value="{{ $product->product_code }}" readonly aria-readonly="true">
                                 @else
-                                    <input class="pi-input" id="piSku" name="sku" maxlength="60" placeholder="Auto-generated">
-                                    <div class="pi-help">Leave blank. Vendo assigns an ID like PRD-{{ now()->year }}-0001.</div>
+                                    <input class="pi-input" id="piSku" value="" placeholder="Assigned after submission" readonly aria-readonly="true">
+                                    <div class="pi-help">Vendo assigns this automatically when you submit the listing.</div>
                                 @endif
                             </div>
                         </div>
@@ -207,6 +217,12 @@
                             <div id="piVariantTable" hidden></div>
                             <p class="pi-warn" id="piVarWarn" hidden>Too many combinations. Remove some options to continue (maximum 100 variants).</p>
                         </div>
+                        <div class="pi-field" style="margin-top:22px">
+                            <label class="pi-label" for="piComparePrice">Original price <span class="pi-help">(optional)</span></label>
+                            <div class="pi-unit pi-unit--pre"><span>₱</span><input class="pi-input" id="piComparePrice" name="compare_at_price" data-field="compare_at_price" type="number" min="0.01" max="99999999.99" step="0.01" value="{{ $product->compare_at_price }}" placeholder="0.00"></div>
+                            <div class="pi-help">Shown crossed out on product cards when it is higher than the selling price.</div>
+                            <div class="pi-error" data-error-for="compare_at_price"></div>
+                        </div>
                     </section>
 
                     {{-- 4. SHIPPING --}}
@@ -221,8 +237,8 @@
                             <div class="pi-field">
                                 <span class="pi-label">Fragile Item?</span>
                                 <div class="pi-seg" role="radiogroup" aria-label="Fragile item">
-                                    <label><input type="radio" name="fragile" value="1"><span>Yes</span></label>
-                                    <label><input type="radio" name="fragile" value="0" checked><span>No</span></label>
+                                    <label><input type="radio" name="fragile" value="1" @checked($product->is_fragile)><span>Yes</span></label>
+                                    <label><input type="radio" name="fragile" value="0" @checked(! $product->is_fragile)><span>No</span></label>
                                 </div>
                             </div>
                             <div class="pi-field pi-span">
@@ -230,7 +246,7 @@
                                 <div class="pi-grid pi-grid--3">
                                     @foreach(['package_length' => 'Length', 'package_width' => 'Width', 'package_height' => 'Height'] as $name => $label)
                                         <div class="pi-field">
-                                            <div class="pi-unit"><input class="pi-input" name="{{ $name }}" data-field="{{ $name }}" type="number" min="0.1" step="0.1" placeholder="{{ $label }}" aria-label="Package {{ strtolower($label) }}" required aria-required="true"><span>cm</span></div>
+                                            <div class="pi-unit"><input class="pi-input" name="{{ $name }}" data-field="{{ $name }}" type="number" min="0.1" step="0.1" value="{{ $product->{$name} }}" placeholder="{{ $label }}" aria-label="Package {{ strtolower($label) }}"><span>cm</span></div>
                                             <div class="pi-error" data-error-for="{{ $name }}"></div>
                                         </div>
                                     @endforeach
@@ -262,7 +278,7 @@
                             <li data-step="{{ $key }}"><a href="#sec-{{ $key }}"><span class="pi-dot">✓</span>{{ $label }}</a></li>
                         @endforeach
                     </ol>
-                    <p class="pi-note">Product ID and SKU are assigned automatically when you save (format <strong>PRD-{{ now()->year }}-0001</strong>).</p>
+                    <p class="pi-note">Vendo assigns the product and variant SKUs automatically. They appear after you submit the listing for review (format <strong>PRD-{{ now()->year }}-0001</strong>).</p>
                 </aside>
             </div>
         </form>

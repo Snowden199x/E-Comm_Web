@@ -17,17 +17,17 @@
             @foreach ($sellerItems as $item)
                 <div class="flex justify-between text-sm py-2 border-b last:border-0">
                     <span>{{ $item->product->name }} x{{ $item->quantity }}</span>
-                    <span>₱{{ number_format($item->quantity * $item->product->price, 2) }}</span>
+                    <span>₱{{ number_format($item->quantity * $item->unit_price, 2) }}</span>
                 </div>
             @endforeach
             @endforeach
             <div class="flex justify-between font-bold mt-3">
                 <span>Total</span>
-                <span>₱{{ number_format($cartItems->sum(fn($i) => $i->quantity * $i->product->price), 2) }}</span>
+                <span>₱{{ number_format($cartItems->sum(fn($i) => $i->quantity * $i->unit_price), 2) }}</span>
             </div>
         </div>
 
-        <form action="{{ route('buyer.checkout.store') }}" method="POST"
+        <form action="{{ route('buyer.checkout.store') }}" method="POST" data-draft-key="buyer-{{ auth()->id() }}-checkout" data-draft-cascade="shipping_province_code"
             class="bg-white rounded-2xl p-5 shadow-sm space-y-4">
             @csrf
             @foreach($cartItems as $item)<input type="hidden" name="items[]" value="{{ $item->id }}">@endforeach

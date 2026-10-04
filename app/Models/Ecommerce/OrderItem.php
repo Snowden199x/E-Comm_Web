@@ -5,7 +5,7 @@ namespace App\Models\Ecommerce;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
-#[Fillable(['order_id', 'product_id', 'quantity', 'color', 'size', 'price'])]
+#[Fillable(['order_id', 'product_id', 'product_variant_id', 'quantity', 'color', 'size', 'price'])]
 class OrderItem extends Model
 {
     public function order()
@@ -16,6 +16,11 @@ class OrderItem extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function variant()
+    {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
 
     public function review()

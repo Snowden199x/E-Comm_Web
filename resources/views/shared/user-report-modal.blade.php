@@ -8,7 +8,7 @@
             <button type="button" class="ur-close" data-report-close aria-label="Close report form">&times;</button>
         </div>
         <p class="ur-intro">Tell us what happened in this conversation. Admin will review the report before taking action.</p>
-        <form id="userReportForm" action="{{ $reportStoreUrl }}" method="POST" enctype="multipart/form-data">
+        <form id="userReportForm" action="{{ $reportStoreUrl }}" method="POST" enctype="multipart/form-data" data-draft-key="{{ $reportRole }}-{{ auth()->id() }}-report-{{ md5($reportContext) }}" data-draft-ajax>
             @csrf
             <input type="hidden" name="context" value="{{ $reportContext }}">
             <label class="ur-field" for="userReportReason"><span>Reason</span>
@@ -46,7 +46,6 @@
     const notice = document.getElementById('userReportNotice');
 
     document.querySelectorAll('[data-report-open]').forEach(button => button.addEventListener('click', () => {
-        form.reset();
         error.hidden = true;
         dialog.showModal();
     }));
@@ -70,6 +69,8 @@
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(Object.values(data.errors || {})[0]?.[0] || data.message || 'Could not send the report.');
+            form.dispatchEvent(new Event('vendo:draft-committed'));
+            form.reset();
             dialog.close();
             notice.textContent = data.message;
             notice.hidden = false;

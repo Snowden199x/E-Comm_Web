@@ -15,7 +15,7 @@
         x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
         class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-[0_30px_70px_-30px_rgba(43,23,48,0.6)]">
 
-        <form method="POST" action="{{ route('admin.user-management.suspend', $user) }}"
+        <form method="POST" action="{{ route('admin.user-management.suspend', $user) }}" data-draft-key="admin-{{ auth('admin')->id() }}-user-suspend-{{ $user->id }}"
             x-data="{ reasons: [], details: '', busy: false }" @submit="busy = true"
             x-effect="if (suspendId !== {{ $user->id }}) { reasons = []; details = ''; busy = false }"
             class="flex max-h-[90vh] flex-col">
@@ -62,6 +62,17 @@
                     class="mt-2 w-full resize-none rounded-xl border border-[#ddd0e0] p-3 text-sm text-[#2B1730] placeholder:text-gray-400
                            transition duration-200 focus:border-[#3b1735] focus:outline-none focus:ring-2 focus:ring-[#3b1735]/20"></textarea>
                 <p class="mb-3 mt-1 text-right text-xs text-gray-400" x-text="details.length + '/500'">0/500</p>
+                <fieldset class="mb-4 border-t border-[#ece4ec] pt-4">
+                    <legend class="mb-2 text-sm font-medium text-[#2B1730]">Suspension length</legend>
+                    <label for="suspend-duration-{{ $user->id }}" class="block text-xs text-gray-500">Days (1–365)</label>
+                    <input id="suspend-duration-{{ $user->id }}" type="number" name="duration_days" value="7" min="1" max="365"
+                        class="mt-1 w-full rounded-xl border border-[#ddd0e0] p-3 text-sm text-[#2B1730] focus:border-[#3b1735] focus:outline-none focus:ring-2 focus:ring-[#3b1735]/20"
+                        x-bind:disabled="$refs.permanent.checked" x-bind:required="!$refs.permanent.checked">
+                    <label class="mt-3 flex items-center gap-2 text-sm text-[#2B1730]">
+                        <input x-ref="permanent" type="checkbox" name="permanent" value="1" class="accent-[#3b1735]">
+                        No end date (until an admin lifts it)
+                    </label>
+                </fieldset>
             </div>
 
             <div class="flex gap-3 border-t border-[#ece4ec] bg-[#FBF8FB] px-6 py-4">

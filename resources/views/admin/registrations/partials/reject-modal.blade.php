@@ -30,7 +30,7 @@
         x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
         class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-[0_30px_70px_-30px_rgba(43,23,48,0.6)]">
 
-        <form method="POST" action="{{ route('admin.registrations.disapprove', $user) }}"
+        <form method="POST" action="{{ route('admin.registrations.disapprove', $user) }}" data-draft-key="admin-{{ auth('admin')->id() }}-registration-reject-{{ $user->id }}"
             x-data="{ reason: '', details: '', busy: false }" @submit="busy = true"
             x-effect="if (!({{ $show }})) { reason = ''; details = ''; busy = false }"
             class="flex max-h-[90vh] flex-col">

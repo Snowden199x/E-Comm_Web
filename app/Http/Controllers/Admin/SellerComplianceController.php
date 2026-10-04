@@ -33,7 +33,7 @@ class SellerComplianceController extends Controller
 
     private function filteredSellers(Request $request)
     {
-        $query = User::where('role', 'seller')->whereIn('status', ['approved', 'suspended']);
+        $query = User::where('role', 'seller')->where('status', 'approved');
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -55,7 +55,7 @@ class SellerComplianceController extends Controller
             'for_review' => Product::where('status', 'for_review')->count(),
             'warnings_issued' => ProductWarning::count(),
             'violations' => ProductViolation::count(),
-            'suspended_sellers' => User::where('role', 'seller')->where('status', 'suspended')->count(),
+            'suspended_sellers' => User::where('role', 'seller')->where('status', 'approved')->where('account_status', 'suspended')->count(),
         ];
 
         $categories = Category::all();
@@ -84,7 +84,7 @@ class SellerComplianceController extends Controller
             $query->where('category_id', $request->category_id);
         }
 
-        return $query->with(['seller.sellerDetail', 'category', 'images'])
+        return $query->with(['seller.sellerDetail', 'category', 'images', 'attributeValues', 'specifications', 'variants'])
             ->latest()
             ->paginate(8)
             ->withQueryString();
@@ -92,6 +92,7 @@ class SellerComplianceController extends Controller
 
     public function approve(Product $product): RedirectResponse
     {
+        abort_unless($product->status === 'for_review', 409, 'Only submitted products can be approved.');
         $previousStatus = $product->status;
         $product->update(['status' => 'approved']);
         if ($previousStatus !== 'approved') {
@@ -105,6 +106,7 @@ class SellerComplianceController extends Controller
 
     public function reject(Request $request, Product $product): RedirectResponse
     {
+        abort_unless($product->status === 'for_review', 409, 'Only submitted products can be rejected.');
         $request->validate([
             'reason' => 'required|string',
             'details' => 'required|string|max:500',
@@ -133,6 +135,7 @@ class SellerComplianceController extends Controller
 
     public function warn(Request $request, Product $product): RedirectResponse
     {
+        abort_unless($product->status === 'for_review', 409, 'Only submitted products can be warned.');
         $request->validate([
             'reason' => 'required|string',
             'details' => 'required|string|max:500',
@@ -172,7 +175,7 @@ class SellerComplianceController extends Controller
 
         if ($count >= 9) {
             $seller->update([
-                'status' => 'suspended',
+                'account_status' => 'suspended',
                 'suspension_reason' => 'Severe/repeated violations',
                 'suspension_notes' => 'Permanent suspension due to repeated policy violations.',
                 'suspended_at' => now(),
@@ -180,7 +183,7 @@ class SellerComplianceController extends Controller
             ]);
         } elseif ($count === 6) {
             $seller->update([
-                'status' => 'suspended',
+                'account_status' => 'suspended',
                 'suspension_reason' => 'Repeated Violations',
                 'suspension_notes' => 'Suspended for 30 days after 6 recorded violations.',
                 'suspended_at' => now(),
@@ -188,7 +191,7 @@ class SellerComplianceController extends Controller
             ]);
         } elseif ($count === 3) {
             $seller->update([
-                'status' => 'suspended',
+                'account_status' => 'suspended',
                 'suspension_reason' => 'Repeated Violations',
                 'suspension_notes' => 'Suspended for 7 days after 3 recorded violations.',
                 'suspended_at' => now(),
@@ -203,7 +206,7 @@ class SellerComplianceController extends Controller
             'compliant' => User::where('role', 'seller')->doesntHave('productViolations')->count(),
             'with_warnings' => User::where('role', 'seller')->has('productWarnings')->count(),
             'with_violations' => User::where('role', 'seller')->has('productViolations')->count(),
-            'suspended' => User::where('role', 'seller')->where('status', 'suspended')->count(),
+            'suspended' => User::where('role', 'seller')->where('status', 'approved')->where('account_status', 'suspended')->count(),
         ];
     }
 
@@ -295,7 +298,7 @@ class SellerComplianceController extends Controller
 
     private function filteredSuspendedSellers(Request $request)
     {
-        $query = User::where('role', 'seller')->where('status', 'suspended');
+        $query = User::where('role', 'seller')->where('status', 'approved')->where('account_status', 'suspended');
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -314,7 +317,7 @@ class SellerComplianceController extends Controller
         }
 
         $sellers = User::where('role', 'seller')
-            ->whereIn('status', ['approved', 'suspended'])
+            ->where('status', 'approved')
             ->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
             ->limit(5)
             ->get(['id', 'name', 'email']);

@@ -1,5 +1,4 @@
 @php
-    // Groups only describe the parcels loaded on this page.
     $groupTabs = [
         'hub' => 'At hub',
         'transit' => 'In transit',
@@ -17,10 +16,9 @@
         default => 'hub',
     };
 
-    $groupCounts = $orders->getCollection()->groupBy($groupOf)->map->count();
 @endphp
 <x-logistics.layout title="Delivery Monitoring">
-    <div class="lg-page" data-lg-filter>
+    <div class="lg-page">
 
         <div class="lg-page-head">
             <div>
@@ -34,22 +32,30 @@
             </div>
         </div>
 
-        @if ($orders->count() > 0)
-            <div class="lg-toolbar">
+            <form class="lg-toolbar" method="GET" action="{{ request()->url() }}">
                 <div class="lg-search">
                     <x-logistics.icon name="search" :size="18" />
-                    <input type="search" class="lg-input" data-lg-search placeholder="Search this page by order or tracking number" aria-label="Search parcels on this page">
+                    <input type="search" class="lg-input" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Tracking, seller or address" aria-label="Search parcels">
                 </div>
-                <p class="lg-toolbar__meta">Showing <strong data-lg-visible>{{ $orders->count() }}</strong> of {{ $orders->count() }} on this page</p>
-            </div>
+                <select class="lg-select" name="area" aria-label="Filter by delivery area"><option value="">All areas</option>
+                    @foreach($areas as $area)<option value="{{ $area->shipping_city_code }}" @selected(($filters['area'] ?? '') === $area->shipping_city_code)>{{ $area->shipping_city }}</option>@endforeach
+                </select>
+                <select class="lg-select" name="status" aria-label="Filter by status"><option value="">All statuses</option>
+                    @foreach($availableStatuses as $status)<option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ \App\Models\Ecommerce\Order::STATUSES[$status] ?? ucfirst(str_replace('_', ' ', $status)) }}</option>@endforeach
+                </select>
+                <input class="lg-input" type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" aria-label="From date">
+                <input class="lg-input" type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" aria-label="To date">
+                <button type="submit" class="lg-btn lg-btn--sm">Apply</button>
+                <a class="lg-btn lg-btn--outline lg-btn--sm" href="{{ request()->url() }}">Clear</a>
+                <p class="lg-toolbar__meta">Showing {{ $orders->count() }} of {{ $orders->total() }} matching parcels</p>
+            </form>
 
             <div class="lg-tabs" role="group" aria-label="Filter by delivery stage">
-                <button type="button" class="lg-tab" data-lg-tab="all" aria-pressed="true">All <span class="lg-tab__count">{{ $orders->count() }}</span></button>
+                <a class="lg-tab" href="{{ request()->fullUrlWithQuery(['stage' => null, 'page' => null]) }}" @if($selectedStage === 'all') aria-current="page" @endif>All</a>
                 @foreach ($groupTabs as $key => $label)
-                    <button type="button" class="lg-tab" data-lg-tab="{{ $key }}" aria-pressed="false">{{ $label }} <span class="lg-tab__count">{{ $groupCounts[$key] ?? 0 }}</span></button>
+                    <a class="lg-tab" href="{{ request()->fullUrlWithQuery(['stage' => $key, 'page' => null]) }}" @if($selectedStage === $key) aria-current="page" @endif>{{ $label }} <span class="lg-tab__count">{{ $groupCounts[$key] ?? 0 }}</span></a>
                 @endforeach
             </div>
-        @endif
 
         @if ($orders->count() > 0)
             <section class="lg-card" aria-label="Active parcels">
@@ -136,7 +142,7 @@
                 <div class="lg-empty">
                     <span class="lg-empty__icon"><x-logistics.icon name="search" :size="30" /></span>
                     <h3>No parcels match your filters</h3>
-                    <p>Try another stage or clear the search. Filters only cover the parcels loaded on this page.</p>
+                    <p>Try another stage or clear the search.</p>
                 </div>
             </div>
         @else

@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('shared.site-icon')
     <title>Seller Registration - Vendo</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -164,7 +165,7 @@
     <div class="min-h-screen flex flex-col lg:flex-row" x-data="{
         step: 1,
         init() {
-            this.$nextTick(() => vendoRestoreSellerDraft(this));
+            this.$nextTick(() => vendoRestoreRegistrationDraft(this, 'seller'));
         },
         showPassword: false,
         showConfirmPassword: false,

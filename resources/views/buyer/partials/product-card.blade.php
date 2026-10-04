@@ -59,7 +59,12 @@
             </div>
 
             @if ($compact && ! $soldOut)
-                @if ($hasOptions)
+                @if ($product->has_variations)
+                    <a href="{{ route('buyer.products.show', $product) }}" aria-label="Choose a variant of {{ $product->name }}"
+                        class="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#805487] hover:bg-[#f3e8f5]">
+                        <span class="vb-icon h-[18px] w-[18px]" style="--icon: url('{{ asset('assets/icons/buyer/cart-icon.svg') }}')"></span>
+                    </a>
+                @elseif ($hasOptions)
                     <button type="button" aria-label="Add {{ $product->name }} to cart"
                         @click="$dispatch('quick-add', @js($payload))"
                         class="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#805487] transition-all duration-300 ease-vendo hover:bg-[#f3e8f5] hover:text-[#402143] active:scale-90">
@@ -90,6 +95,9 @@
             <div class="mt-2.5">
                 @if ($soldOut)
                     <span class="flex h-8 w-full items-center justify-center rounded-md bg-[#efe8f0] text-[12px] font-medium text-[#8c7a8e]">Out of Stock</span>
+                @elseif ($product->has_variations)
+                    <a href="{{ route('buyer.products.show', $product) }}"
+                        class="flex h-8 w-full items-center justify-center rounded-md bg-[#805487] text-[12px] font-medium text-white hover:bg-[#6d4574]">Choose variation</a>
                 @elseif ($hasOptions)
                     <button type="button" @click="$dispatch('quick-add', @js($payload))"
                         class="flex h-8 w-full items-center justify-center rounded-md bg-[#805487] text-[12px] font-medium text-white transition-all duration-300 ease-vendo hover:bg-[#6d4574] hover:shadow-[0_10px_18px_-10px_rgba(128,84,135,0.95)] active:scale-[0.97]">Add to Cart</button>

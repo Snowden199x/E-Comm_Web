@@ -6,6 +6,7 @@
 ## Current behavior
 
 Checkout requires selected cart item IDs from the buyer's cart. The server validates their ownership and a checkout revision, validates street/barangay detail, a province/city choice from the bundled location catalog, and COD payment mode, locks the selected rows/products, checks stock and current product data, groups selected items by seller, creates order and item snapshots, decrements stock, and notifies each seller inside a transaction. Only purchased cart rows are removed; unselected rows remain. Buyer purchases do not create admin `new_order` notifications.
+The shipping address and province/city selections are restored after an accidental same-tab reload for up to two hours. The current server-generated cart selection and checkout revision remain authoritative. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
 ## Gaps and acceptance direction
 

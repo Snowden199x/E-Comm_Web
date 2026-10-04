@@ -14,11 +14,12 @@
     $ext = fn (?string $path, string $fallback) => strtolower(pathinfo((string) $path, PATHINFO_EXTENSION)) ?: $fallback;
 
     $statusPill = [
-        'approved' => ['Active', 'border-green-600/60 bg-green-50 text-green-700'],
+        'active' => ['Active', 'border-green-600/60 bg-green-50 text-green-700'],
         'suspended' => ['Suspended', 'border-red-600/60 bg-red-50 text-red-700'],
         'deactivated' => ['Deactivated', 'border-[#d9826b]/70 bg-[#FBF1EE] text-[#b4452a]'],
         'disapproved' => ['Rejected', 'border-orange-500/60 bg-orange-50 text-orange-700'],
-    ][$user->status] ?? [ucfirst((string) $user->status), 'border-gray-300 bg-gray-50 text-gray-600'];
+    ][$user->status === 'disapproved' ? 'disapproved' : ($user->account_status ?: 'active')]
+        ?? [ucfirst((string) ($user->account_status ?: $user->status)), 'border-gray-300 bg-gray-50 text-gray-600'];
 
     $roleIcon = [
         'seller' => 'seller-icon.svg',
@@ -150,7 +151,7 @@
                     </dl>
 
                     {{-- Suspension details (only while suspended) --}}
-                    @if ($user->status === 'suspended')
+                    @if ($user->account_status === 'suspended')
                         <div class="mx-5 mb-5 mt-1 space-y-1.5 rounded-xl border border-[#f0d4cc] bg-[#FBF1EE] p-3.5 text-[13px]">
                             <p class="flex justify-between gap-3"><span class="text-gray-500">Reason</span><span class="text-right font-medium text-[#2B1730]">{{ $user->suspension_reason ?: $dash }}</span></p>
                             <p class="flex justify-between gap-3"><span class="text-gray-500">Started</span><span class="font-medium text-[#2B1730]">{{ $user->suspended_at ? $user->suspended_at->format('M j, Y') : $dash }}</span></p>
@@ -184,7 +185,7 @@
                 </aside>
 
                 {{-- Actions, kept outside the card as in the mockup --}}
-                @if ($user->status === 'approved')
+                @if ($user->status === 'approved' && in_array($user->account_status, ['active', null], true))
                     <div class="grid grid-cols-2 gap-3">
                         <button type="button" @click="suspendId = {{ $user->id }}"
                             class="h-11 rounded-xl border border-[#cf9f93] bg-[#FBF1EE] text-sm font-semibold text-[#8a2f1b] transition duration-200
@@ -197,11 +198,11 @@
                             Deactivate
                         </button>
                     </div>
-                @elseif (in_array($user->status, ['suspended', 'deactivated'], true))
+                @elseif ($user->status === 'approved' && in_array($user->account_status, ['suspended', 'deactivated'], true))
                     <button type="button" @click="activateId = {{ $user->id }}"
                         class="h-11 w-full rounded-xl border border-green-600/60 bg-green-50 text-sm font-semibold text-green-700 transition duration-200
                                hover:bg-green-100 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600/30">
-                        {{ $user->status === 'suspended' ? 'Lift suspension' : 'Activate account' }}
+                        {{ $user->account_status === 'suspended' ? 'Lift suspension' : 'Activate account' }}
                     </button>
                 @endif
             </div>

@@ -5,6 +5,7 @@
 Buyers can open a seller's shop from a product or order and choose **Chat with Seller**. The latest order with that seller, when present, appears in the thread. **Send order** posts a linked order card so the seller can open the correct order details. The buyer may also ask about one item from Order Details. A shop inquiry can start before the buyer places an order.
 
 Seller chats support text, one private JPEG/PNG/WebP image up to 5 MB, unread counts, asynchronous sending, and incremental refresh. Only the buyer and seller in that conversation can read its messages and attachments. The buyer's separate Vendo Support conversation remains available in Messages.
+Unsent seller-chat and Vendo Support text survives a same-tab reload for up to two hours. A successful send clears the browser draft; attachments must be selected again. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
 The buyer notification bell and inbox show order updates, seller chat replies, review outcomes, and admin support replies. Opening a notification marks it read. The bell sounds for new notifications after the browser has accepted a user interaction.
 

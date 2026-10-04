@@ -97,7 +97,8 @@ Route::get('/admin', function () {
 });
 
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth:admin', 'verified'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->middleware(['auth:admin', 'verified', 'check.admin.active', 'force.password.change'])->name('dashboard');
     Route::get('/live/{scope}', [\App\Http\Controllers\LiveRevisionController::class, 'admin'])->middleware(['auth:admin', 'check.admin.active', 'force.password.change'])->name('live');
     Route::get('/check-status', [AccountManagementController::class, 'checkStatus'])->middleware('auth:admin')->name('check-status');
     Route::middleware(['auth:admin', 'check.admin.active', 'force.password.change'])->group(function () {
@@ -224,6 +225,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::post('/login', [BuyerAuthenticatedSessionController::class, 'store'])->name('login.store');
     Route::post('/logout', [BuyerAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
+    Route::middleware(['auth', \App\Http\Middleware\EnsureActiveBuyer::class])->group(function () {
     Route::get('/dashboard', [BuyerDashboardController::class, 'index'])->middleware('auth')->name('dashboard');
     Route::get('/live/{scope}', [\App\Http\Controllers\LiveRevisionController::class, 'buyer'])->middleware('auth')->name('live');
     Route::get('/categories', [BuyerCategoryController::class, 'index'])->middleware('auth')->name('categories');
@@ -266,6 +268,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::post('/notifications/read-all', [BuyerNotificationController::class, 'readAll'])->middleware('auth')->name('notifications.read-all');
     Route::post('/notifications/{notification}/open', [BuyerNotificationController::class, 'open'])->middleware('auth')->whereNumber('notification')->name('notifications.open');
     Route::post('/notifications/{notification}/read', [BuyerNotificationController::class, 'markRead'])->middleware('auth')->whereNumber('notification')->name('notifications.read');
+    });
 });
 
 Route::post('/buyer/otp/send', [OtpController::class, 'send']);
@@ -362,11 +365,20 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
 
     Route::middleware(['auth', EnsureActiveLogisticsCenter::class])->group(function () {
         Route::get('/dashboard', [LogisticsDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/notifications', [\App\Http\Controllers\Logistics\NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/notifications/recent', [\App\Http\Controllers\Logistics\NotificationController::class, 'recent'])->name('notifications.recent');
+        Route::post('/notifications/read-all', [\App\Http\Controllers\Logistics\NotificationController::class, 'readAll'])->name('notifications.read-all');
+        Route::post('/notifications/{notification}/open', [\App\Http\Controllers\Logistics\NotificationController::class, 'open'])
+            ->whereNumber('notification')->name('notifications.open');
+        Route::get('/riders', [LogisticsDashboardController::class, 'ridersIndex'])->name('riders.index');
+        Route::patch('/riders/{courierDetail}/status', [LogisticsDashboardController::class, 'updateRiderStatus'])
+            ->whereNumber('courierDetail')->name('riders.status');
         Route::get('/incoming-parcels', [LogisticsDispatchController::class, 'index'])->defaults('lane', 'incoming')->name('incoming-parcels');
         Route::get('/parcel-sorting', [LogisticsDispatchController::class, 'index'])->defaults('lane', 'sorting')->name('parcel-sorting');
         Route::get('/delivery-assignments', [LogisticsDispatchController::class, 'index'])->defaults('lane', 'delivery')->name('delivery-assignments');
         Route::get('/delivery-monitoring', [LogisticsOperationsController::class, 'monitoring'])->name('delivery-monitoring');
         Route::get('/reports', [LogisticsOperationsController::class, 'reports'])->name('reports');
+        Route::get('/reports/export', [LogisticsOperationsController::class, 'exportReport'])->name('reports.export');
         Route::get('/messages', fn () => view('logistics.placeholder', ['title' => 'Messages']))->name('messages');
         Route::get('/account', [\App\Http\Controllers\Logistics\AccountController::class, 'index'])->name('account.index');
         Route::get('/riders/{courierDetail}/verification-documents/{document}', [VerificationDocumentController::class, 'logistics'])
@@ -379,6 +391,10 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
         Route::get('/dispatch', [LogisticsDispatchController::class, 'index'])->name('dispatch.index');
         Route::post('/dispatch/{order}/courier', [LogisticsDispatchController::class, 'assignCourier'])
             ->whereNumber('order')->name('dispatch.courier');
+        Route::post('/dispatch/{order}/pickup-verify', [LogisticsDispatchController::class, 'verifyPickupRequest'])
+            ->whereNumber('order')->name('dispatch.pickup-verify');
+        Route::post('/dispatch/{order}/pickup-decline', [LogisticsDispatchController::class, 'declinePickupRequest'])
+            ->whereNumber('order')->name('dispatch.pickup-decline');
         Route::post('/dispatch/{order}/arrive', [LogisticsDispatchController::class, 'markArrived'])
             ->whereNumber('order')->name('dispatch.arrive');
         Route::post('/dispatch/{order}/sort', [LogisticsDispatchController::class, 'markSorted'])
@@ -389,6 +405,8 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
             ->whereNumber('order')->name('dispatch.receive');
         Route::post('/dispatch/{order}/delivery-rider', [LogisticsDispatchController::class, 'assignDeliveryCourier'])
             ->whereNumber('order')->name('dispatch.delivery-rider');
+        Route::post('/dispatch/delivery-riders/bulk', [LogisticsDispatchController::class, 'assignDeliveryCouriersBulk'])
+            ->name('dispatch.delivery-riders.bulk');
     });
 
     Route::get('/forgot-password', function () {

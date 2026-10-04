@@ -44,7 +44,11 @@
                                 </div>
 
                                 @foreach($sellerItems as $item)
-                                    @php $line = $item->product->price * $item->quantity; @endphp
+                                    @php
+                                        $line = $item->unit_price * $item->quantity;
+                                        $stock = $item->variant?->stock ?? $item->product->stock;
+                                        $stockKey = $item->product_variant_id ?: 'product-'.$item->product_id;
+                                    @endphp
                                     <div class="cart-item">
                                         <input type="checkbox" name="items[]" value="{{ $item->id }}" form="checkoutSelection" data-cart-item data-price="{{ $line }}" aria-label="Select {{ $item->product->name }} for checkout">
 
@@ -54,9 +58,10 @@
                                                 <a href="{{ route('buyer.products.show', $item->product) }}" class="cart-item__name">{{ $item->product->name }}</a>
                                                 @if($item->color)<p class="cart-item__variant">Color: {{ $item->color }}</p>@endif
                                                 @if($item->size)<p class="cart-item__variant">Size: {{ $item->size }}</p>@endif
-                                                <span class="cart-item__unit">₱{{ number_format($item->product->price, 2) }}</span>
-                                                @if($totalsByProduct[$item->product_id] > $item->product->stock)
-                                                    <p class="cart-item__stock">Only {{ $item->product->stock }} left; you have {{ $totalsByProduct[$item->product_id] }} in cart.</p>
+                                                @if($item->variant)<p class="cart-item__variant">{{ $item->variant->label }}</p>@endif
+                                                <span class="cart-item__unit">₱{{ number_format($item->unit_price, 2) }}</span>
+                                                @if($totalsByProduct[$stockKey] > $stock)
+                                                    <p class="cart-item__stock">Only {{ $stock }} left; you have {{ $totalsByProduct[$stockKey] }} in cart.</p>
                                                 @endif
                                             </div>
                                         </div>

@@ -113,7 +113,7 @@ function validateProductPhotos(form) {
     if (total < 1 || total > 6) message = 'Keep one main photo and no more than five additional photos.';
     else if (gallery.files.length > 5) message = 'Choose at most five additional photos.';
     else if (newFiles.some(file => file.size > 2 * 1024 * 1024)) message = 'Each photo must be 2 MB or less.';
-    else if (newFiles.reduce((sum, file) => sum + file.size, 0) > 7 * 1024 * 1024) message = 'All new photos together must be 7 MB or less.';
+    else if (newFiles.reduce((sum, file) => sum + file.size, 0) > 10 * 1024 * 1024) message = 'All new photos together must be 10 MB or less.';
     const error = form.querySelector('[data-photo-error]');
     error.textContent = message;
     error.hidden = !message;
@@ -207,6 +207,7 @@ document.addEventListener('submit', async event => {
             const messages = data.errors ? Object.values(data.errors).flat().join(' ') : data.message;
             throw new Error(response.status === 419 ? 'Your session expired. Reload the page and sign in again.' : messages || 'Unable to save. Please try again.');
         }
+        form.dispatchEvent(new Event('vendo:draft-committed'));
         try { sessionStorage.setItem('sellerOperationMessage', data.message || 'Saved.'); } catch { /* Optional success notice. */ }
         window.location.reload();
     } catch (error) {

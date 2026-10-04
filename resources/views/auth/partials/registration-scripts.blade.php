@@ -193,8 +193,8 @@
     }
     window.vendoRefreshRegistrationReview = vendoRefreshRegistrationReview;
 
-    function vendoRestoreSellerDraft(component) {
-        const key = 'vendo.seller.registration.draft';
+    function vendoRestoreRegistrationDraft(component, role) {
+        const key = `vendo.${role}.registration.draft`;
         const form = component.$el.querySelector('form');
         const registration = Alpine.store('registration');
         const address = Alpine.store('address');
@@ -224,7 +224,8 @@
             // Registration still works when browser storage is unavailable.
         }
 
-        if (draft && typeof draft === 'object') {
+        if (draft && typeof draft === 'object' && draft.savedAt > Date.now() - 7200000) {
+            window.vendoDraftNotice?.restored(key, 'Your saved registration details were restored. Re-enter your password and select your documents again before submitting.');
             component.idCategory = draft.idCategory === 'secondary' ?
                 'secondary' :
                 'primary';
@@ -248,9 +249,11 @@
                 }
             }
 
-            component.step = [1, 2, 3].includes(draft.step) ?
-                draft.step :
-                1;
+            // Passwords and verification files cannot survive a reload.
+            component.step = 1;
+        } else if (draft) {
+            try { sessionStorage.removeItem(key); } catch (_) {}
+            window.vendoDraftNotice?.clear(key);
         }
 
         const emailField = form.querySelector('[name="email"]');
@@ -329,6 +332,7 @@
 
             try {
                 sessionStorage.setItem(key, JSON.stringify({
+                    savedAt: Date.now(),
                     step: component.step,
                     idCategory: component.idCategory,
                     fields,
@@ -362,6 +366,7 @@
             try {
                 sessionStorage.removeItem(key);
             } catch (_) {}
+            window.vendoDraftNotice?.clear(key);
         });
 
         component.$nextTick(() => {

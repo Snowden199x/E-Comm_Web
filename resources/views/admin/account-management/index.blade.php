@@ -437,7 +437,7 @@
 
                     </div>
 
-                    <form method="POST" action="{{ route('admin.account-management.store') }}">
+                    <form method="POST" action="{{ route('admin.account-management.store') }}" data-draft-key="admin-{{ auth('admin')->id() }}-create-admin">
 
                         @csrf
 

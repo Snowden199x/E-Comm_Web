@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Communication\Announcement;
 use App\Models\Ecommerce\Product;
 
 class DashboardController extends Controller
@@ -12,12 +13,22 @@ class DashboardController extends Controller
     {
         $categories = Category::whereNull('parent_id')->get();
 
-        $products = Product::with('images')
-            ->where('status', 'approved')
+        $announcements = Announcement::query()
+            ->whereIn('audience', ['All Users', 'Buyers & Sellers', 'Buyers Only'])
+            ->where(fn ($query) => $query->where('status', 'published')
+                ->orWhere(fn ($scheduled) => $scheduled->where('status', 'scheduled')
+                    ->whereNotNull('scheduled_at')->where('scheduled_at', '<=', now())))
             ->latest()
-            ->take(12)
+            ->take(5)
             ->get();
 
-        return view('buyer.dashboard', compact('categories', 'products'));
+        $products = Product::with(['images', 'seller.sellerDetail'])
+            ->availableToBuy()
+            ->withCardMetrics()
+            ->latest()
+            ->take(18)
+            ->get();
+
+        return view('buyer.dashboard', compact('categories', 'products', 'announcements'));
     }
 }

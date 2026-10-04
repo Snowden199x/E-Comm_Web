@@ -13,7 +13,6 @@
         default => 'Manage pickup, Main Hub sorting, destination receipt, and local delivery assignments.',
     };
 
-    // Stage tabs per lane. These only group the parcels already on this page.
     $stageTabs = match ($lane) {
         'incoming' => ['pickup' => 'Pickup requests', 'arriving' => 'On the way to hub'],
         'sorting' => ['to-sort' => 'To sort', 'sorted' => 'Sorted', 'transit' => 'In transit', 'legacy' => 'Legacy route'],
@@ -45,12 +44,10 @@
         };
     };
 
-    $stageCounts = $orders->getCollection()->groupBy($stageOf)->map->count();
-    $areas = $orders->getCollection()->pluck('shipping_city')->filter()->unique()->sort()->values();
     $initial = fn (?string $name) => mb_strtoupper(mb_substr($name ?: '?', 0, 1));
 @endphp
 <x-logistics.layout :title="$pageTitle">
-    <div class="lg-page" data-lg-filter>
+    <div class="lg-page">
 
         <div class="lg-page-head">
             <div>
@@ -68,23 +65,20 @@
             @endif
         </div>
 
-        {{-- Riders at this hub, with their load on this page --}}
+        {{-- Rider workload includes every active assignment for this Main Hub. --}}
         @if ($lane === 'delivery' && $couriers->isNotEmpty())
             <section class="lg-card" aria-labelledby="lgRidersLoad">
                 <div class="lg-card__head">
                     <div>
                         <h2 class="lg-section-title" id="lgRidersLoad">Riders at this hub</h2>
-                        <p class="lg-section-sub">Parcels each rider holds among the {{ $orders->count() }} shown on this page.</p>
+                        <p class="lg-section-sub">Active delivery parcels assigned to each rider at this Main Hub.</p>
                     </div>
                 </div>
                 <div class="lg-card__body">
                     <div class="lg-chiplist">
                         @foreach ($couriers as $courier)
                             @php
-                                $load = $orders->getCollection()
-                                    ->where('delivery_courier_id', $courier->user_id)
-                                    ->whereIn('status', ['assigned_to_rider', 'out_for_delivery'])
-                                    ->count();
+                                $load = $workload[$courier->user_id] ?? 0;
                             @endphp
                             <div class="lg-chip">
                                 <span class="lg-avatar lg-avatar--sm" aria-hidden="true">{{ $initial($courier->user->name) }}</span>
@@ -100,33 +94,52 @@
         @endif
 
         {{-- Filters --}}
-        @if ($orders->count() > 0)
-            <div class="lg-toolbar">
+            <form class="lg-toolbar" method="GET" action="{{ request()->url() }}">
                 <div class="lg-search">
                     <x-logistics.icon name="search" :size="18" />
-                    <input type="search" class="lg-input" data-lg-search placeholder="Search this page by order, tracking, seller or address" aria-label="Search parcels on this page">
+                    <input type="search" class="lg-input" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Order, tracking, seller or address" aria-label="Search parcels">
                 </div>
 
-                @if ($areas->count() > 1)
-                    <select class="lg-select" data-lg-area aria-label="Filter by delivery area">
+                @if ($areas->count() > 0)
+                    <select class="lg-select" name="area" aria-label="Filter by delivery area">
                         <option value="">All areas</option>
                         @foreach ($areas as $area)
-                            <option value="{{ \Illuminate\Support\Str::lower($area) }}">{{ $area }}</option>
+                            <option value="{{ $area->shipping_city_code }}" @selected(($filters['area'] ?? '') === $area->shipping_city_code)>{{ $area->shipping_city }}</option>
                         @endforeach
                     </select>
                 @endif
-
-                <p class="lg-toolbar__meta">Showing <strong data-lg-visible>{{ $orders->count() }}</strong> of {{ $orders->count() }} on this page</p>
-            </div>
+                <select class="lg-select" name="status" aria-label="Filter by status">
+                    <option value="">All statuses</option>
+                    @foreach($availableStatuses as $status)
+                        <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ \App\Models\Ecommerce\Order::STATUSES[$status] ?? ucfirst(str_replace('_', ' ', $status)) }}</option>
+                    @endforeach
+                </select>
+                <input class="lg-input" type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" aria-label="From date">
+                <input class="lg-input" type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" aria-label="To date">
+                <button type="submit" class="lg-btn lg-btn--sm">Apply</button>
+                <a class="lg-btn lg-btn--outline lg-btn--sm" href="{{ request()->url() }}">Clear</a>
+                <p class="lg-toolbar__meta">Showing {{ $orders->count() }} of {{ $orders->total() }} matching parcels</p>
+            </form>
 
             @if ($stageTabs)
                 <div class="lg-tabs" role="group" aria-label="Filter by stage">
-                    <button type="button" class="lg-tab" data-lg-tab="all" aria-pressed="true">All <span class="lg-tab__count">{{ $orders->count() }}</span></button>
+                    <a class="lg-tab" href="{{ request()->fullUrlWithQuery(['stage' => null, 'page' => null]) }}" @if($selectedStage === 'all') aria-current="page" @endif>All</a>
                     @foreach ($stageTabs as $key => $label)
-                        <button type="button" class="lg-tab" data-lg-tab="{{ $key }}" aria-pressed="false">{{ $label }} <span class="lg-tab__count">{{ $stageCounts[$key] ?? 0 }}</span></button>
+                        <a class="lg-tab" href="{{ request()->fullUrlWithQuery(['stage' => $key, 'page' => null]) }}" @if($selectedStage === $key) aria-current="page" @endif>{{ $label }} <span class="lg-tab__count">{{ $stageCounts[$key] ?? 0 }}</span></a>
                     @endforeach
                 </div>
             @endif
+
+        @if($lane === 'delivery' && $localRiders->isNotEmpty())
+            <form id="bulkDelivery" method="POST" action="{{ route('logistics.dispatch.delivery-riders.bulk') }}" class="lg-toolbar" data-lg-loading>
+                @csrf
+                <label for="bulk-rider" class="lg-label">Assign selected parcels in one area</label>
+                <select id="bulk-rider" class="lg-select" name="courier_id" required>
+                    <option value="">Select local rider</option>
+                    @foreach($localRiders as $rider)<option value="{{ $rider->user_id }}">{{ $rider->user->name }} · {{ $rider->vehicle_type }}</option>@endforeach
+                </select>
+                <button type="submit" class="lg-btn lg-btn--sm">Assign selected</button>
+            </form>
         @endif
 
         <div class="lg-parcel-list">
@@ -155,6 +168,12 @@
                 <article class="lg-parcel lg-rise" style="--i: {{ min($loop->index, 8) }}"
                          data-lg-item data-stage="{{ $stageOf($order) }}" data-area="{{ \Illuminate\Support\Str::lower((string) $order->shipping_city) }}" data-search="{{ $searchText }}">
                     <header class="lg-parcel__head">
+                        @if($lane === 'delivery' && $localRiders->isNotEmpty()
+                            && ! $order->delivery_courier_id
+                            && ($order->status === 'at_destination_hub'
+                                || ($order->status === 'sorted' && $order->logistics_center_id === $center->id)))
+                            <label class="lg-label"><input type="checkbox" form="bulkDelivery" name="order_ids[]" value="{{ $order->id }}" aria-label="Select {{ $order->number }} for bulk assignment"> Select</label>
+                        @endif
                         <div class="lg-parcel__id">
                             <span class="lg-parcel__chip"><x-logistics.icon name="package" :size="20" /></span>
                             <div>
@@ -216,7 +235,18 @@
                     </div>
 
                     <footer class="lg-parcel__foot">
-                        @if ($order->status === 'ready_for_pickup' && ! $order->courier_id)
+                        @if ($order->status === 'ready_for_pickup' && ! $order->courier_id && $order->pickup_request_status === 'pending')
+                            <form method="POST" action="{{ route('logistics.dispatch.pickup-verify', $order) }}" class="lg-action" data-lg-loading>
+                                @csrf
+                                <button type="submit" class="lg-btn">Verify pickup request</button>
+                            </form>
+                            <form method="POST" action="{{ route('logistics.dispatch.pickup-decline', $order) }}" class="lg-action" data-lg-loading data-draft-key="logistics-{{ auth()->id() }}-pickup-decline-{{ $order->id }}">
+                                @csrf
+                                <div class="lg-field"><label for="pickup-decline-{{ $order->id }}">If the parcel is not ready, tell the seller why</label>
+                                    <input id="pickup-decline-{{ $order->id }}" class="lg-input" name="reason" required maxlength="500" placeholder="Reason for declining"></div>
+                                <button type="submit" class="lg-btn lg-btn--outline">Send back to seller</button>
+                            </form>
+                        @elseif ($order->status === 'ready_for_pickup' && ! $order->courier_id)
                             <form method="POST" action="{{ route('logistics.dispatch.courier', $order) }}" class="lg-action" data-lg-loading>
                                 @csrf
                                 <div class="lg-field">
@@ -231,7 +261,7 @@
                                 <button type="submit" class="lg-btn" @disabled($couriers->isEmpty())>Assign courier</button>
                             </form>
                             @if ($couriers->isEmpty())
-                                <p class="lg-note"><x-logistics.icon name="info" :size="16" /><span>No approved rider is linked to this hub. <a href="{{ route('logistics.dashboard') }}#rider-applications">Open Rider Management</a> to review applications.</span></p>
+                                <p class="lg-note"><x-logistics.icon name="info" :size="16" /><span>No approved rider is linked to this hub. <a href="{{ route('logistics.riders.index', ['status' => 'pending']) }}">Open Rider Management</a> to review applications.</span></p>
                             @endif
                         @elseif ($order->status === 'ready_for_pickup')
                             <p class="lg-note"><x-logistics.icon name="info" :size="16" /><span>Assigned rider: {{ $order->courier?->name }}. Ask the seller to print the shipping label, then scan its QR or barcode in the rider app at pickup.</span></p>
@@ -288,14 +318,14 @@
                                     <label for="delivery-courier-{{ $order->id }}">Delivery rider</label>
                                     <select id="delivery-courier-{{ $order->id }}" name="courier_id" required class="lg-select">
                                         <option value="">Select approved rider</option>
-                                        @foreach ($couriers as $courier)
+                                        @foreach ($localRiders as $courier)
                                             <option value="{{ $courier->user_id }}">{{ $courier->user->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
-                                <button type="submit" class="lg-btn" @disabled($couriers->isEmpty())>Assign delivery rider</button>
+                                <button type="submit" class="lg-btn" @disabled($localRiders->isEmpty())>Assign delivery rider</button>
                             </form>
-                            @if ($couriers->isEmpty())
+                            @if ($localRiders->isEmpty())
                                 <p class="lg-note"><x-logistics.icon name="info" :size="16" /><span>Approve a rider for this center to enable assignment.</span></p>
                             @endif
                         @else

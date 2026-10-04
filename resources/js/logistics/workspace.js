@@ -97,6 +97,22 @@ function initToasts() {
     });
 }
 
+function initNotificationCount() {
+    const count = document.querySelector('[data-lg-notification-count]');
+    if (!count) return;
+    const refresh = async () => {
+        try {
+            const response = await fetch(count.dataset.endpoint, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+            if (!response.ok) return;
+            const data = await response.json();
+            count.textContent = String(data.unread_count || 0);
+            count.hidden = !data.unread_count;
+            count.closest('a')?.setAttribute('aria-label', `Notifications, ${data.unread_count || 0} unread`);
+        } catch (_) { /* The count will refresh on the next page load. */ }
+    };
+    setInterval(refresh, 30000);
+}
+
 /* ---------- Count-up numbers ---------- */
 function initCountUp() {
     const format = new Intl.NumberFormat();
@@ -259,6 +275,7 @@ function initPrint() {
 document.addEventListener('DOMContentLoaded', () => {
     initSidebar();
     initToasts();
+    initNotificationCount();
     initCountUp();
     initFilters();
     initLoadingForms();

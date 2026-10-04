@@ -1,9 +1,6 @@
 @php
     $centerName = $center?->business_name ?: auth()->user()->name;
 
-    // $overview is optional. Until the controller supplies it, the workflow cards
-    // act as shortcuts without numbers. Expected keys are listed in
-    // docs/features/logistics/redesign-backend-needs.md.
     $hasOverview = isset($overview) && is_array($overview);
 
     $workflow = [
@@ -173,7 +170,7 @@
                                  x-show="rejectOpen"
                                  x-transition:enter="lg-t-enter" x-transition:enter-start="lg-t-enter-start" x-transition:enter-end="lg-t-enter-end"
                                  x-transition:leave="lg-t-leave" x-transition:leave-start="lg-t-leave-start" x-transition:leave-end="lg-t-leave-end">
-                                <form method="POST" action="{{ route('logistics.riders.reject', $rider) }}" data-lg-loading>
+                                <form method="POST" action="{{ route('logistics.riders.reject', $rider) }}" data-lg-loading data-draft-key="logistics-{{ auth()->id() }}-rider-reject-{{ $rider->id }}">
                                     @csrf
                                     <div class="lg-modal__head">
                                         <div>
