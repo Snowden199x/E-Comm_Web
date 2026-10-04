@@ -7,7 +7,40 @@
 ## Page purpose
 
 Let a seller review products, categories, and stock levels from one page. The subtitle in the design describes managing products, stock levels, and categories. The screenshot does not define the exact create/edit/delete flow, so those actions remain unspecified until a fuller design or requirement is provided.
+# Products & Inventory — Design Functions
 
+**Reference:** Seller `Products & Inventory` mockup, status-color sheet and category-palette sheet supplied by the owner (3 Oct 2026), plus the written Add Product requirements. Replaces the earlier screenshot reference.  
+**Implementation status:** List, modal and Add Product UI built; see [implementation spec](spec.md). Sample values in the mockup (48/42/6/0, 521 entries, product names) are reference-only.
+
+## Page layout
+
+Header (title "Products & Inventory", subtitle "Manage your products, stock levels and categories.", Add Product button) → four stat cards → filter row → table card (left) with Low Stock Alert card (right). The mockup has no Categories card.
+
+## Visible functions
+
+- **Stat cards:** Total Products, In Stock, Low Stock, Out of Stock, each with its own icon; clicking one filters the list.
+- **Filters:** search (name/SKU), Categories dropdown, All status dropdown.
+- **Table:** Product (image, name, `SKU: …`), Category pill, Price, Stock, Status pill, row menu (⋮). Pending-review/needs-changes/rejected/draft appears as a small label under the stock pill. Clicking a row opens the details modal.
+- **Pagination:** "Showing N out of total entries" with boxed page numbers.
+- **Low Stock Alert:** image, name, "N pcs", Restock action (opens the modal on the Restock tab), View all (filters low stock).
+- **Details modal:** gallery, name, SKU, category + subcategory, stock status, listing status, price; tabs Details / Restock / Stock history; for variant products a Variations & stock table with per-variant stock and a total.
+
+## Color specifications
+
+Stock status (text/border → background): Out of Stock `#8D0000` → `#FFD3D3`; Low Stock `#2563EB` → `#DBEAFE`; In Stock `#15803D` → `#DCFCE7`.  
+Category (border/text → background): Pet Supplies `#6B4F2A`/`#F1E6D2`; Electronics & Gadgets `#315A8A`/`#DCE8F5`; Women's Apparel `#A34A6F`/`#F4DDE7`; Men's Apparel `#3F5D75`/`#DDE7EF`; Kids and Baby `#C56A35`/`#F7E1D1`; Home and Garden `#4E7650`/`#DDEBDD`; Sports and Outdoors `#237A6A`/`#D8ECE7`; Health and Beauty `#7A5685`/`#E9DDEC`; Makeup & Cosmetics `#B14F68`/`#F3DCE2`; Books and Media `#705A3A`/`#EEE5D5`; Food and Gourmet `#A65C2B`/`#F4E0CF`; Automotive & Motorcycle `#7A3E3E`/`#F0DADA`; Furniture and Office Equipment `#665A50`/`#E7E1DC`; Jewelry and Watches `#8A6A25`/`#F3E8C8`; Office and School Supplies `#486B7A`/`#DDE9ED`. Implemented in `Category::colors`.
+
+## Add Product
+
+Defined in [implementation spec](spec.md#add--edit-product-form-ui-contract): five sections, category-driven details, additional specifications, variations with per-variant stock, shipping with required package size, review summary, Save as Draft / Submit for Review.
+
+## Visual rules
+
+Base text 14 px; inputs 42 px high; card padding 24–28 px; Poppins; Vendo purple; transitions 0.2–0.5 s (modal, tabs, sections, tiles, variant rows, toast) disabled for `prefers-reduced-motion`.
+
+## Not defined by this reference
+
+Category CRUD, bulk import/export, delete/archive, configurable low-stock threshold, mobile-specific layouts beyond stacking.
 ## Visible functions
 
 ### Inventory summary

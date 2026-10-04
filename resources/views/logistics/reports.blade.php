@@ -1,48 +1,90 @@
+@php
+    $metrics = [
+        ['Updated parcels', $total, 'package', ''],
+        ['Ready for pickup', $readyForPickup, 'clock', 'amber'],
+        ['Out for delivery', $outForDelivery, 'truck', 'blue'],
+        ['Delivered', $delivered, 'check-circle', 'green'],
+        ['Exceptions', $exceptions, 'alert', 'red'],
+    ];
+@endphp
 <x-logistics.layout title="Reports">
-    <section class="lg-page">
-        <div class="mb-5">
-            <h2 class="text-2xl font-semibold text-gray-900">Logistics Reports</h2>
-            <p class="mt-1 text-sm text-gray-600">Parcel status counts updated in the last 30 days for this center.</p>
+    <div class="lg-page">
+
+        <div class="lg-page-head">
+            <div>
+                <h1>Logistics Reports</h1>
+                <p>Parcel status counts updated in the last 30 days for this center.</p>
+            </div>
+            <div class="lg-page-head__actions">
+                <button type="button" class="lg-btn lg-btn--outline" data-lg-export="lgStatusTable" data-lg-filename="logistics-status-{{ now()->format('Y-m-d') }}.csv">
+                    <x-logistics.icon name="download" :size="18" /> Export CSV
+                </button>
+                <button type="button" class="lg-btn" data-lg-print>
+                    <x-logistics.icon name="printer" :size="18" /> Print / Save as PDF
+                </button>
+            </div>
         </div>
 
-        <p class="mb-4 text-xs text-gray-500">Since {{ $since->format('M j, Y') }} · Counts include an order when this center is its origin or destination.</p>
+        <p class="lg-section-sub" style="margin-top: -8px;">Since {{ $since->format('M j, Y') }} &middot; Counts include an order when this center is its origin or destination.</p>
 
-        <dl class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            @foreach ([
-                ['label' => 'Updated parcels', 'value' => $total],
-                ['label' => 'Ready for pickup', 'value' => $readyForPickup],
-                ['label' => 'Out for delivery', 'value' => $outForDelivery],
-                ['label' => 'Delivered', 'value' => $delivered],
-                ['label' => 'Exceptions', 'value' => $exceptions],
-            ] as $metric)
-                <div class="rounded-lg border border-gray-200 bg-white p-4">
-                    <dt class="text-sm text-gray-600">{{ $metric['label'] }}</dt>
-                    <dd class="mt-2 text-2xl font-semibold text-gray-900">{{ number_format($metric['value']) }}</dd>
+        <section aria-label="Key figures">
+            <dl class="lg-grid lg-grid--5" style="margin: 0;">
+                @foreach ($metrics as $index => [$label, $value, $icon, $tone])
+                    <div class="lg-stat lg-rise" style="--i: {{ $index }}">
+                        <span class="lg-stat__icon {{ $tone ? 'lg-stat__icon--'.$tone : '' }}"><x-logistics.icon :name="$icon" :size="22" /></span>
+                        <div>
+                            <dt class="lg-stat__label">{{ $label }}</dt>
+                            <dd class="lg-stat__value" style="margin-left: 0;" data-count="{{ $value }}">{{ number_format($value) }}</dd>
+                        </div>
+                    </div>
+                @endforeach
+            </dl>
+        </section>
+
+        <section class="lg-card" aria-labelledby="lgStatusTitle">
+            <div class="lg-card__head">
+                <div>
+                    <h2 class="lg-section-title" id="lgStatusTitle">Parcel counts by current status</h2>
+                    <p class="lg-section-sub">Order snapshots, not independent scan analytics.</p>
                 </div>
-            @endforeach
-        </dl>
+            </div>
 
-        <div class="mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white">
-            <div class="border-b border-gray-200 px-4 py-3">
-                <h3 class="font-semibold text-gray-900">Parcel counts by current status</h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
-                    <thead class="bg-gray-50 text-xs font-semibold text-gray-600">
-                        <tr><th scope="col" class="px-4 py-3">Status</th><th scope="col" class="px-4 py-3 text-right">Parcels</th></tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        @forelse ($statusCounts as $row)
+            @if ($statusCounts->isNotEmpty())
+                <div class="lg-table-wrap">
+                    <table class="lg-table" id="lgStatusTable">
+                        <thead>
                             <tr>
-                                <th scope="row" class="px-4 py-3 font-medium text-gray-800">{{ $row->status === 'legacy_route_record' ? 'Legacy route record' : (\App\Models\Ecommerce\Order::STATUSES[$row->status] ?? ucfirst(str_replace('_', ' ', $row->status))) }}</th>
-                                <td class="px-4 py-3 text-right text-gray-700">{{ number_format($row->total) }}</td>
+                                <th scope="col">Status</th>
+                                <th scope="col" class="lg-no-export" style="width: 40%;"><span class="sr-only">Share of parcels</span></th>
+                                <th scope="col" class="is-num">Parcels</th>
+                                <th scope="col" class="is-num">Share</th>
                             </tr>
-                        @empty
-                            <tr><td colspan="2" class="px-4 py-10 text-center text-gray-600">No parcel status updates in this period.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </section>
+                        </thead>
+                        <tbody>
+                            @foreach ($statusCounts as $row)
+                                @php $share = $total > 0 ? round(($row->total / $total) * 100) : 0; @endphp
+                                <tr>
+                                    <th scope="row" style="font-weight: 500; text-align: left;">
+                                        <x-logistics.status :status="$row->status === 'legacy_route_record' ? 'to_soc5' : $row->status" />
+                                    </th>
+                                    <td class="lg-no-export" aria-hidden="true">
+                                        <div class="lg-bar"><span style="width: {{ max($share, 2) }}%;"></span></div>
+                                    </td>
+                                    <td class="is-num">{{ number_format($row->total) }}</td>
+                                    <td class="is-num lg-muted">{{ $share }}%</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="lg-empty">
+                    <span class="lg-empty__icon"><x-logistics.icon name="bar-chart" :size="30" /></span>
+                    <h3>No parcel status updates in this period</h3>
+                    <p>Counts appear here once parcels linked to this center change status.</p>
+                </div>
+            @endif
+        </section>
+
+    </div>
 </x-logistics.layout>

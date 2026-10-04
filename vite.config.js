@@ -15,6 +15,7 @@ export default defineConfig({
 
                 // Admin
                 "resources/css/admin/layout.css",
+                "resources/css/admin/registrations.css",
                 "resources/js/admin/sidebar.js",
                 "resources/js/admin/layout.js",
                 "resources/js/admin/dashboard.js",
@@ -23,6 +24,10 @@ export default defineConfig({
                 // Buyer (public storefront / landing page)
                 "resources/css/buyer/landing.css",
                 "resources/js/buyer/landing.js",
+
+                // Buyer app shell (sidebar + top bar) and dashboard
+                "resources/css/buyer/layout.css",
+                "resources/js/buyer/sidebar.js",
 
                 // Seller
                 "resources/css/seller/seller-dashboard.css",
@@ -33,6 +38,11 @@ export default defineConfig({
                 "resources/css/logistics/workspace.css",
                 "resources/js/seller/operations.js",
                 "resources/js/seller/order-management-orders/index.js",
+                "resources/css/seller/products.css",
+                "resources/js/seller/products.js",
+
+                // Logistics
+                "resources/js/logistics/workspace.js"
             ],
             refresh: true,
         }),

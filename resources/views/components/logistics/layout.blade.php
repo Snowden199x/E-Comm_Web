@@ -1,7 +1,50 @@
 @props(['title'])
 
 @php
-    $icon = fn (string $file) => asset('assets/icons/seller/'.$file);
+    $user = auth()->user();
+    $center = $user->logisticsCenterDetail;
+    $centerName = $center?->business_name ?: $user->name;
+    $initial = mb_strtoupper(mb_substr($centerName, 0, 1));
+
+    // Rider Management lives on the dashboard route today. If a dedicated riders
+    // route is added later, the link switches to it automatically.
+    $ridersRoute = \Illuminate\Support\Facades\Route::has('logistics.riders.index');
+
+    $nav = [
+        ['label' => null, 'items' => [
+            ['Dashboard', 'home', route('logistics.dashboard'), request()->routeIs('logistics.dashboard')],
+        ]],
+        ['label' => 'People', 'items' => [
+            ['Rider Management', 'users', $ridersRoute ? route('logistics.riders.index') : route('logistics.dashboard').'#rider-applications', $ridersRoute && request()->routeIs('logistics.riders.*')],
+        ]],
+        ['label' => 'Parcels', 'items' => [
+            ['Incoming Parcels', 'inbox', route('logistics.incoming-parcels'), request()->routeIs('logistics.incoming-parcels')],
+            ['Parcel Sorting', 'layers', route('logistics.parcel-sorting'), request()->routeIs('logistics.parcel-sorting')],
+            ['Delivery Assignments', 'truck', route('logistics.delivery-assignments'), request()->routeIs('logistics.delivery-assignments')],
+            ['Delivery Monitoring', 'map-pin', route('logistics.delivery-monitoring'), request()->routeIs('logistics.delivery-monitoring')],
+        ]],
+        ['label' => 'Insights', 'items' => [
+            ['Reports', 'bar-chart', route('logistics.reports'), request()->routeIs('logistics.reports')],
+            ['Messages', 'message', route('logistics.messages'), request()->routeIs('logistics.messages')],
+        ]],
+        ['label' => 'Settings', 'items' => [
+            ['Account Management', 'user-cog', route('logistics.account.index'), request()->routeIs('logistics.account.*')],
+        ]],
+    ];
+
+    // Flash messages are shown here once for every Logistics page.
+    $toasts = [];
+    if (session('success')) {
+        $toasts[] = ['tone' => 'success', 'text' => session('success')];
+    }
+    if (session('confirmation') === 'approved') {
+        $toasts[] = ['tone' => 'success', 'text' => 'Rider approved. They can now log in to their account.'];
+    } elseif (session('confirmation') === 'rejected') {
+        $toasts[] = ['tone' => 'info', 'text' => 'Rider application rejected.'];
+    }
+    if ($errors->any()) {
+        $toasts[] = ['tone' => 'error', 'text' => $errors->first(), 'sticky' => true];
+    }
 @endphp
 
 <!doctype html>
@@ -14,45 +57,104 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    @vite(['resources/css/shared/app.css', 'resources/css/logistics/workspace.css', 'resources/js/shared/app.js'])
+    @vite(['resources/css/shared/app.css', 'resources/css/logistics/workspace.css', 'resources/js/shared/app.js', 'resources/js/logistics/workspace.js'])
 </head>
-<body class="lg-body" x-data="{ navOpen: false, navPinned: {{ request()->routeIs('logistics.dashboard') ? 'false' : 'true' }} }" @keydown.escape.window="navOpen = false">
-    <aside class="lg-sidebar" id="logisticsNavigation" :class="{ 'is-open': navOpen, 'is-pinned': navPinned }" aria-label="Logistics navigation">
-        <a href="{{ route('logistics.dashboard') }}" class="lg-brand" aria-label="Vendo Logistics Rider Management">
+<body class="lg-body">
+    <a class="lg-skip" href="#lgMain">Skip to content</a>
+
+    <aside class="lg-sidebar" id="lgSidebar" aria-label="Logistics navigation">
+        <a href="{{ route('logistics.dashboard') }}" class="lg-brand" aria-label="Vendo Logistics dashboard">
             <img class="lg-brand-icon" src="{{ asset('images/logo/vendo-icon.png') }}" alt="">
             <img class="lg-brand-full" src="{{ asset('assets/branding/log-in-logo.svg') }}" alt="Vendo">
         </a>
-        <p class="lg-center-name">{{ auth()->user()->logisticsCenterDetail?->business_name ?? 'Logistics center' }}</p>
+
+        <div class="lg-center">
+            <span class="lg-center__avatar" aria-hidden="true">{{ $initial }}</span>
+            <span class="lg-center__text">
+                <strong>{{ $centerName }}</strong>
+                <small>Logistics Center</small>
+            </span>
+        </div>
+
         <nav class="lg-nav" aria-label="Logistics sections">
-            <a href="{{ route('logistics.dashboard') }}" class="lg-nav-item" @if(request()->routeIs('logistics.dashboard')) aria-current="page" @endif title="Rider Management"><img src="{{ $icon('dashboard-icon.png') }}" alt=""><span>Rider Management</span></a>
-            <a href="{{ route('logistics.incoming-parcels') }}" class="lg-nav-item" @if(request()->routeIs('logistics.incoming-parcels')) aria-current="page" @endif title="Incoming Parcel Management"><img src="{{ $icon('ready-for-pickup-icon.png') }}" alt=""><span>Incoming Parcel Management</span></a>
-            <a href="{{ route('logistics.parcel-sorting') }}" class="lg-nav-item" @if(request()->routeIs('logistics.parcel-sorting')) aria-current="page" @endif title="Parcel Sorting"><img src="{{ $icon('products-inventory--icon.png') }}" alt=""><span>Parcel Sorting</span></a>
-            <details class="lg-nav-group" @if(request()->routeIs('logistics.delivery-*')) open @endif>
-                <summary class="lg-nav-item" title="Delivery"><img src="{{ $icon('pending-deliveries-icon.png') }}" alt=""><span>Delivery</span><span class="lg-chevron" aria-hidden="true">⌄</span></summary>
-                <div class="lg-submenu">
-                    <a href="{{ route('logistics.delivery-assignments') }}" class="lg-nav-item lg-nav-item--sub" @if(request()->routeIs('logistics.delivery-assignments')) aria-current="page" @endif title="Delivery assignments"><img src="{{ $icon('shipments-icon.png') }}" alt=""><span>Delivery assignments</span></a>
-                    <a href="{{ route('logistics.delivery-monitoring') }}" class="lg-nav-item lg-nav-item--sub" @if(request()->routeIs('logistics.delivery-monitoring')) aria-current="page" @endif title="Delivery Monitoring"><img src="{{ $icon('completed-orders-icon.png') }}" alt=""><span>Delivery Monitoring</span></a>
-                </div>
-            </details>
-            <a href="{{ route('logistics.reports') }}" class="lg-nav-item" @if(request()->routeIs('logistics.reports')) aria-current="page" @endif title="Reports"><img src="{{ $icon('reports-icon.png') }}" alt=""><span>Reports</span></a>
-            <a href="{{ route('logistics.messages') }}" class="lg-nav-item" @if(request()->routeIs('logistics.messages')) aria-current="page" @endif title="Messages"><img src="{{ $icon('messages-icon.png') }}" alt=""><span>Messages</span></a>
-            <a href="{{ route('logistics.account.index') }}" class="lg-nav-item" @if(request()->routeIs('logistics.account.*')) aria-current="page" @endif title="Account Management"><img src="{{ $icon('account-management-icon.png') }}" alt=""><span>Account Management</span></a>
+            @foreach ($nav as $group)
+                @if ($group['label'])
+                    <p class="lg-nav__section">{{ $group['label'] }}</p>
+                @endif
+                @foreach ($group['items'] as [$label, $icon, $href, $active])
+                    <a href="{{ $href }}" class="lg-nav-item" title="{{ $label }}" @if ($active) aria-current="page" @endif>
+                        <x-logistics.icon :name="$icon" />
+                        <span class="lg-nav-label">{{ $label }}</span>
+                    </a>
+                @endforeach
+            @endforeach
         </nav>
+
         <form method="POST" action="{{ route('logistics.logout') }}" class="lg-logout">
             @csrf
-            <button type="submit" class="lg-nav-item" title="Logout"><img src="{{ $icon('logout-icon.png') }}" alt=""><span>Logout</span></button>
+            <button type="submit" class="lg-nav-item" title="Logout">
+                <x-logistics.icon name="log-out" />
+                <span class="lg-nav-label">Logout</span>
+            </button>
         </form>
     </aside>
-    <button type="button" class="lg-backdrop" x-show="navOpen" x-cloak @click="navOpen = false" aria-label="Close navigation"></button>
-    <div class="lg-main" :class="{ 'is-pinned': navPinned }">
+
+    <button type="button" class="lg-backdrop" data-lg-backdrop aria-label="Close navigation"></button>
+
+    <div class="lg-main">
         <header class="lg-topbar">
-            <button type="button" class="lg-menu-button" aria-controls="logisticsNavigation" :aria-expanded="(navOpen || navPinned).toString()" @click="window.matchMedia('(max-width: 900px)').matches ? navOpen = !navOpen : navPinned = !navPinned" aria-label="Toggle sidebar">
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+            <button type="button" class="lg-menu-button" data-lg-toggle aria-controls="lgSidebar" aria-expanded="true" aria-label="Toggle navigation">
+                <x-logistics.icon name="menu" :size="22" />
             </button>
-            <h1>{{ $title }}</h1>
-            <a class="lg-topbar-account" href="{{ route('logistics.account.index') }}"><span class="lg-account-avatar" aria-hidden="true">{{ mb_strtoupper(mb_substr(auth()->user()->logisticsCenterDetail?->business_name ?: auth()->user()->name, 0, 1)) }}</span><span><strong>{{ auth()->user()->logisticsCenterDetail?->business_name }}</strong><small>Logistics Center</small></span></a>
+
+            <nav class="lg-crumbs" aria-label="Breadcrumb">
+                <span>Logistics</span>
+                <span aria-hidden="true">/</span>
+                <strong>{{ $title }}</strong>
+            </nav>
+
+            <span class="lg-topbar__spacer"></span>
+
+            <span class="lg-date">{{ now()->format('l, F j') }}</span>
+
+            <div class="lg-account" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
+                <button type="button" class="lg-account-trigger" @click="open = !open" :aria-expanded="open.toString()" aria-haspopup="menu">
+                    <span class="lg-avatar" aria-hidden="true">{{ $initial }}</span>
+                    <span>
+                        <strong>{{ $centerName }}</strong>
+                        <small>Logistics Center</small>
+                    </span>
+                    <x-logistics.icon name="chevron-down" :size="16" />
+                </button>
+
+                <div class="lg-menu" role="menu" x-show="open" x-cloak
+                     x-transition:enter="lg-t-enter" x-transition:enter-start="lg-t-enter-start" x-transition:enter-end="lg-t-enter-end"
+                     x-transition:leave="lg-t-leave" x-transition:leave-start="lg-t-leave-start" x-transition:leave-end="lg-t-leave-end">
+                    <a href="{{ route('logistics.account.index') }}" role="menuitem">
+                        <x-logistics.icon name="user-cog" :size="18" /> Account Management
+                    </a>
+                    <hr>
+                    <form method="POST" action="{{ route('logistics.logout') }}">
+                        @csrf
+                        <button type="submit" role="menuitem"><x-logistics.icon name="log-out" :size="18" /> Logout</button>
+                    </form>
+                </div>
+            </div>
         </header>
-        <main class="lg-content">{{ $slot }}</main>
+
+        @if ($toasts)
+            <div class="lg-toasts" aria-live="polite">
+                @foreach ($toasts as $toast)
+                    <div class="lg-toast lg-toast--{{ $toast['tone'] }}" role="{{ $toast['tone'] === 'error' ? 'alert' : 'status' }}" @unless ($toast['sticky'] ?? false) data-timeout="5000" @endunless>
+                        <x-logistics.icon :name="$toast['tone'] === 'error' ? 'alert' : ($toast['tone'] === 'success' ? 'check-circle' : 'info')" :size="20" />
+                        <p>{{ $toast['text'] }}</p>
+                        <button type="button" class="lg-toast__close" aria-label="Dismiss message"><x-logistics.icon name="x" :size="16" /></button>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+        <main class="lg-content" id="lgMain" tabindex="-1">{{ $slot }}</main>
     </div>
 </body>
 </html>
