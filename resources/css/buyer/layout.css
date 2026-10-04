@@ -1,0 +1,149 @@
+/*
+ * Buyer shell (header + category menu) and shared storefront styles.
+ * Loaded only by components/buyer/layout.blade.php.
+ */
+
+:root {
+    --vb-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --vb-ink: #2b1730;
+    --vb-plum: #402143;
+    --vb-accent: #805487;
+    --vb-gold: #e8c874;
+    --vb-page: #f6f2f7;
+    --vb-line: #eee6ef;
+}
+
+.vb-body {
+    font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+    font-size: 14px;
+    background: var(--vb-page);
+    color: var(--vb-ink);
+    -webkit-font-smoothing: antialiased;
+}
+
+.ease-vendo { transition-timing-function: var(--vb-ease); }
+
+/* ---------- Header ---------- */
+.vb-header {
+    background:
+        radial-gradient(520px 140px at 10% -50%, rgba(232, 200, 116, 0.22), transparent 70%),
+        radial-gradient(560px 180px at 92% 130%, rgba(196, 150, 214, 0.38), transparent 70%),
+        linear-gradient(115deg, #34132f 0%, #4b1f55 48%, #64306f 100%);
+    box-shadow: 0 10px 24px -18px rgba(43, 23, 48, 0.9);
+}
+
+.vb-navlink { position: relative; }
+.vb-navlink::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--vb-gold);
+    transform: scaleX(0);
+    transition: transform 0.35s var(--vb-ease);
+}
+.vb-navlink:hover::after,
+.vb-navlink.is-open::after,
+.vb-navlink[aria-current='page']::after { transform: scaleX(1); }
+
+/* Fade the right edge of the scrolling category strip */
+.vb-fade-x {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+}
+
+/* ---------- Mega menu ---------- */
+.vb-mega-stack { display: grid; }
+.vb-mega-pane {
+    grid-area: 1 / 1;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(6px);
+    transition: opacity 0.28s var(--vb-ease), transform 0.28s var(--vb-ease), visibility 0s linear 0.28s;
+}
+.vb-mega-pane.is-active {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition-delay: 0s;
+}
+
+/* ---------- SVG icons tinted by CSS ---------- */
+/* Drop any single-colour SVG in public/assets/icons/buyer/ and it takes the
+   text colour of its parent, so hover colours animate smoothly. */
+.vb-icon {
+    display: inline-block;
+    flex: none;
+    background-color: currentColor;
+    -webkit-mask: var(--icon) center / contain no-repeat;
+    mask: var(--icon) center / contain no-repeat;
+    transition: background-color 0.3s var(--vb-ease), transform 0.35s var(--vb-ease);
+}
+
+.vb-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.vb-no-scrollbar::-webkit-scrollbar { display: none; }
+.vb-thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.vb-thin-scroll::-webkit-scrollbar-thumb { background: #dccbe0; border-radius: 999px; }
+.vb-thin-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- Motion ---------- */
+@keyframes vb-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+}
+.vb-enter { animation: vb-enter 0.6s var(--vb-ease) both; }
+
+@keyframes vb-menu-in {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    to   { opacity: 1; transform: none; }
+}
+.vb-menu { transform-origin: top right; animation: vb-menu-in 0.22s var(--vb-ease); }
+
+@keyframes vb-pop {
+    0%   { transform: scale(0.4); opacity: 0; }
+    60%  { transform: scale(1.25); opacity: 1; }
+    100% { transform: scale(1); }
+}
+.vb-pop { animation: vb-pop 0.45s var(--vb-ease); }
+
+/* Images fade in once loaded (placeholder colour shows until then) */
+.vb-img { opacity: 0; transition: opacity 0.5s var(--vb-ease), transform 0.6s var(--vb-ease); }
+.vb-img.is-loaded { opacity: 1; }
+
+/* ---------- Announcement banner ---------- */
+.vb-banner {
+    background-color: #5d3a80;
+    background-image:
+        var(--banner-art, none),
+        linear-gradient(100deg, #4b1f55 0%, #6d4584 40%, #c79ad6 74%, #fedcc0 100%);
+    background-repeat: no-repeat;
+    background-position: right center, center;
+    background-size: cover, cover;
+}
+.vb-slides { display: grid; }
+.vb-slide {
+    grid-area: 1 / 1;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    transition: opacity 0.7s var(--vb-ease), transform 0.7s var(--vb-ease), visibility 0s linear 0.7s;
+}
+.vb-slide.is-active { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+
+/* ---------- Accessibility ---------- */
+.vb-body :focus-visible { outline: 2px solid var(--vb-accent); outline-offset: 2px; }
+.vb-header :focus-visible { outline-color: var(--vb-gold); }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-delay: 0s !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+[x-cloak] { display: none !important; }

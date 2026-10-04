@@ -1,8 +1,12 @@
-<x-buyer.layout>
-    <div class="cart-page">
-        <header class="cart-page__heading">
-            <h1>My Cart</h1>
-            <span>{{ $cartItems->count() }} {{ $cartItems->count() === 1 ? 'item' : 'items' }}</span>
+<x-buyer.layout title="Shopping Cart — Vendo">
+    <div class="cart-page vb-enter">
+        <header class="cart-head">
+            <h1>Shopping Cart</h1>
+            <nav class="cart-crumbs" aria-label="Breadcrumb">
+                <a href="{{ route('buyer.dashboard') }}">Home</a>
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+                <span aria-current="page">Cart</span>
+            </nav>
         </header>
 
         @error('items')<p class="cart-error" role="alert">{{ $message }}</p>@enderror
@@ -11,71 +15,105 @@
         <form id="checkoutSelection" action="{{ route('buyer.checkout.index') }}" method="GET"></form>
 
         @if($cartItems->isNotEmpty())
-            <div class="cart-columns" aria-hidden="true">
-                <span></span><span>Product</span><span>Unit price</span><span>Quantity</span><span>Subtotal</span><span></span>
+            <div class="cart-layout">
+                <section class="cart-main" aria-label="Cart items">
+                    <div class="cart-columns">
+                        <label class="cart-columns__all">
+                            <input type="checkbox" id="selectAllCart" aria-label="Select all items">
+                            <span>Product</span>
+                        </label>
+                        <span class="cart-columns__col">Quantity</span>
+                        <span class="cart-columns__col">Total Price</span>
+                        <span></span>
+                    </div>
+
+                    <div class="cart-stores">
+                        @foreach($cartItems->groupBy(fn ($item) => $item->product->seller_id) as $sellerItems)
+                            @php
+                                $seller = $sellerItems->first()->product->seller;
+                                $shopName = $seller?->sellerDetail?->business_name ?: ($seller?->name ?? 'Store');
+                            @endphp
+                            <section class="cart-store" data-store-group aria-label="{{ $shopName }} items">
+                                <div class="cart-store__heading">
+                                    <input type="checkbox" data-store-select aria-label="Select all items from {{ $shopName }}">
+                                    <a href="{{ route('buyer.sellers.show', $seller) }}" class="cart-store__link">
+                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9h18l-1.3-5H4.3L3 9Z"/><path d="M4 9v11h16V9M8 20v-7h8v7M3 9c0 1.7 2.5 2.5 4.5 1.1C9 11.6 11 11.6 12 10c1 1.6 3 1.6 4.5.1C18.5 11.5 21 10.7 21 9"/></svg>
+                                        <span>{{ $shopName }}</span>
+                                        <svg class="cart-store__chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+                                    </a>
+                                </div>
+
+                                @foreach($sellerItems as $item)
+                                    @php $line = $item->product->price * $item->quantity; @endphp
+                                    <div class="cart-item">
+                                        <input type="checkbox" name="items[]" value="{{ $item->id }}" form="checkoutSelection" data-cart-item data-price="{{ $line }}" aria-label="Select {{ $item->product->name }} for checkout">
+
+                                        <div class="cart-item__product">
+                                            <a href="{{ route('buyer.products.show', $item->product) }}" class="cart-item__image-link"><img src="{{ $item->product->images->first() ? asset('storage/'.$item->product->images->first()->path) : asset('images/products/tote-bag.jpg') }}" alt="{{ $item->product->name }}" loading="lazy"></a>
+                                            <div class="cart-item__details">
+                                                <a href="{{ route('buyer.products.show', $item->product) }}" class="cart-item__name">{{ $item->product->name }}</a>
+                                                @if($item->color)<p class="cart-item__variant">Color: {{ $item->color }}</p>@endif
+                                                @if($item->size)<p class="cart-item__variant">Size: {{ $item->size }}</p>@endif
+                                                <span class="cart-item__unit">₱{{ number_format($item->product->price, 2) }}</span>
+                                                @if($totalsByProduct[$item->product_id] > $item->product->stock)
+                                                    <p class="cart-item__stock">Only {{ $item->product->stock }} left; you have {{ $totalsByProduct[$item->product_id] }} in cart.</p>
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        <form action="{{ route('buyer.cart.update', $item) }}" method="POST" class="cart-item__quantity" data-quantity-form>
+                                            @csrf @method('PATCH')
+                                            <button type="button" data-quantity-step="-1" aria-label="Decrease quantity of {{ $item->product->name }}" @disabled($item->quantity <= 1)>−</button>
+                                            <input type="number" name="quantity" value="{{ $item->quantity }}" min="1" aria-label="Quantity of {{ $item->product->name }}" onchange="this.form.requestSubmit()">
+                                            <button type="button" data-quantity-step="1" aria-label="Increase quantity of {{ $item->product->name }}">+</button>
+                                        </form>
+
+                                        <strong class="cart-item__subtotal">₱{{ number_format($line, 2) }}</strong>
+
+                                        <form action="{{ route('buyer.cart.destroy', $item) }}" method="POST" class="cart-item__remove-form">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="cart-item__remove" aria-label="Remove {{ $item->product->name }} from cart">
+                                                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l.8 12.5h9.4L17.5 7M10 11v5M14 11v5"/></svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                @endforeach
+                            </section>
+                        @endforeach
+                    </div>
+                </section>
+
+                <aside class="cart-summary" aria-labelledby="orderSummaryTitle">
+                    <h2 id="orderSummaryTitle">Order Summary</h2>
+                    <dl class="cart-summary__rows">
+                        <div><dt>Subtotal (<span id="selectedCount">0 items</span>)</dt><dd id="selectedTotal">₱0.00</dd></div>
+                        <div><dt>Shipping Fee</dt><dd class="cart-summary__muted">Calculated at checkout</dd></div>
+                    </dl>
+                    <div class="cart-summary__total"><span>Total</span><strong id="grandTotal">₱0.00</strong></div>
+                    <div class="cart-summary__payment"><span>Payment Method</span><span>Cash on Delivery</span></div>
+                    <button type="submit" form="checkoutSelection" id="checkoutSelected" disabled class="cart-summary__checkout">Proceed to Checkout <span id="checkoutCountWrap">(<span id="checkoutCount">0</span>)</span></button>
+                    <p class="cart-summary__hint" id="checkoutHint">Select the items you want to check out.</p>
+                </aside>
+            </div>
+        @else
+            <div class="cart-empty">
+                <span class="cart-empty__icon"><span class="vb-icon" style="--icon: url('{{ asset('assets/icons/buyer/cart-icon.svg') }}')"></span></span>
+                <p>Your cart is empty.</p>
+                <a href="{{ route('buyer.products.index') }}">Start Shopping</a>
             </div>
         @endif
 
-        <div class="cart-stores">
-            @forelse($cartItems->groupBy(fn ($item) => $item->product->seller_id) as $sellerItems)
-                @php
-                    $seller = $sellerItems->first()->product->seller;
-                    $shopName = $seller?->sellerDetail?->business_name ?: ($seller?->name ?? 'Store');
-                @endphp
-                <section class="cart-store" data-store-group aria-label="{{ $shopName }} items">
-                    <div class="cart-store__heading">
-                        <input type="checkbox" data-store-select aria-label="Select all items from {{ $shopName }}">
-                        <a href="{{ route('buyer.sellers.show', $seller) }}" class="cart-store__link">
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9h18l-1.3-5H4.3L3 9Z"/><path d="M4 9v11h16V9M8 20v-7h8v7M3 9c0 1.7 2.5 2.5 4.5 1.1C9 11.6 11 11.6 12 10c1 1.6 3 1.6 4.5.1C18.5 11.5 21 10.7 21 9"/></svg>
-                            <span>{{ $shopName }}</span>
-                            <svg class="cart-store__chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
-                        </a>
-                        <span class="cart-store__count">{{ $sellerItems->count() }} {{ $sellerItems->count() === 1 ? 'item' : 'items' }}</span>
-                    </div>
-
-                    @foreach($sellerItems as $item)
-                        <div class="cart-item">
-                            <input type="checkbox" name="items[]" value="{{ $item->id }}" form="checkoutSelection" data-cart-item data-price="{{ $item->product->price * $item->quantity }}" aria-label="Select {{ $item->product->name }} for checkout">
-                            <div class="cart-item__product">
-                                <a href="{{ route('buyer.products.show', $item->product) }}" class="cart-item__image-link"><img src="{{ $item->product->images->first() ? asset('storage/'.$item->product->images->first()->path) : asset('images/products/tote-bag.jpg') }}" alt="{{ $item->product->name }}"></a>
-                                <div class="cart-item__details">
-                                    <a href="{{ route('buyer.products.show', $item->product) }}" class="cart-item__name">{{ $item->product->name }}</a>
-                                    @if($item->color || $item->size)<p class="cart-item__variant">{{ implode(' / ', array_filter([$item->color, $item->size])) }}</p>@endif
-                                    <span class="cart-item__mobile-price">₱{{ number_format($item->product->price, 2) }} each</span>
-                                    @if($totalsByProduct[$item->product_id] > $item->product->stock)
-                                        <p class="cart-item__stock">Only {{ $item->product->stock }} left; you have {{ $totalsByProduct[$item->product_id] }} in cart.</p>
-                                    @endif
-                                </div>
-                            </div>
-                            <span class="cart-item__unit">₱{{ number_format($item->product->price, 2) }}</span>
-                            <form action="{{ route('buyer.cart.update', $item) }}" method="POST" class="cart-item__quantity" data-quantity-form>
-                                @csrf @method('PATCH')
-                                <button type="button" data-quantity-step="-1" aria-label="Decrease quantity of {{ $item->product->name }}" @disabled($item->quantity <= 1)>−</button>
-                                <input type="number" name="quantity" value="{{ $item->quantity }}" min="1" aria-label="Quantity of {{ $item->product->name }}" onchange="this.form.requestSubmit()">
-                                <button type="button" data-quantity-step="1" aria-label="Increase quantity of {{ $item->product->name }}">+</button>
-                            </form>
-                            <strong class="cart-item__subtotal">₱{{ number_format($item->product->price * $item->quantity, 2) }}</strong>
-                            <form action="{{ route('buyer.cart.destroy', $item) }}" method="POST" class="cart-item__remove-form">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="cart-item__remove">Remove</button>
-                            </form>
-                        </div>
+        {{-- Optional: controller can pass $alsoLike (collection of Product with images, seller.sellerDetail) --}}
+        @if(isset($alsoLike) && $alsoLike->isNotEmpty())
+            <section class="cart-also" aria-labelledby="alsoLikeTitle">
+                <h2 id="alsoLikeTitle">You May Also Like</h2>
+                <div class="cart-also__grid">
+                    @foreach($alsoLike as $product)
+                        @include('buyer.partials.product-card', ['product' => $product, 'compact' => true])
                     @endforeach
-                </section>
-            @empty
-                <div class="cart-empty">
-                    <p>Your cart is empty.</p>
-                    <a href="{{ route('buyer.products.index') }}">Browse products</a>
                 </div>
-            @endforelse
-        </div>
-
-        @if($cartItems->isNotEmpty())
-            <div class="cart-summary">
-                <label class="cart-summary__select"><input type="checkbox" id="selectAllCart"><span>Select all ({{ $cartItems->count() }})</span></label>
-                <div class="cart-summary__total"><span>Total (<span id="selectedCount">0 items</span>):</span><strong id="selectedTotal">₱0.00</strong></div>
-                <button type="submit" form="checkoutSelection" id="checkoutSelected" disabled class="cart-summary__checkout">Checkout (<span id="checkoutCount">0</span>)</button>
-            </div>
+            </section>
+            @include('buyer.partials.quick-add')
         @endif
     </div>
 
@@ -85,10 +123,12 @@
         const all = document.getElementById('selectAllCart');
         if (!all) return;
         const selectionKey = 'vendo-cart-selection-{{ auth()->id() }}';
-        try {
-            const saved = JSON.parse(sessionStorage.getItem(selectionKey) || '[]');
-            if (Array.isArray(saved)) items.forEach(box => box.checked = saved.includes(box.value));
-        } catch (_) {}
+        const money = value => '₱' + value.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        // Restore the previous selection; on first visit everything starts selected.
+        let saved = null;
+        try { saved = JSON.parse(sessionStorage.getItem(selectionKey)); } catch (_) {}
+        items.forEach(box => box.checked = Array.isArray(saved) ? saved.includes(box.value) : true);
 
         function update() {
             document.querySelectorAll('[data-store-group]').forEach(group => {
@@ -99,12 +139,15 @@
                 store.indeterminate = selected > 0 && selected < boxes.length;
             });
             const selected = items.filter(box => box.checked);
+            const total = selected.reduce((sum, box) => sum + Number(box.dataset.price), 0);
             all.checked = selected.length === items.length;
             all.indeterminate = selected.length > 0 && selected.length < items.length;
             document.getElementById('selectedCount').textContent = selected.length + (selected.length === 1 ? ' item' : ' items');
-            document.getElementById('selectedTotal').textContent = '₱' + selected.reduce((sum, box) => sum + Number(box.dataset.price), 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('selectedTotal').textContent = money(total);
+            document.getElementById('grandTotal').textContent = money(total);
             document.getElementById('checkoutCount').textContent = selected.length;
             document.getElementById('checkoutSelected').disabled = selected.length === 0;
+            document.getElementById('checkoutHint').hidden = selected.length > 0;
             try { sessionStorage.setItem(selectionKey, JSON.stringify(selected.map(box => box.value))); } catch (_) {}
         }
 
