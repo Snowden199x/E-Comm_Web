@@ -82,8 +82,16 @@ class OrderController extends Controller
 
     public function update(Request $request, int $order)
     {
-        $data = $request->validate(['action' => ['required', Rule::in(['accept', 'decline', 'prepare', 'ready'])], 'expected_status' => ['required', Rule::in(array_keys(Order::STATUSES))], 'reason' => 'required_if:action,decline|nullable|string|max:500']);
-        app(SellerOrderWorkflow::class)->transition($request->user(), $order, $data['action'], $data['expected_status'], $data['reason'] ?? null);
+        $data = $request->validate([
+            'action' => ['required', Rule::in(['accept', 'decline', 'prepare', 'ready', 'cancel'])],
+            'expected_status' => ['required', Rule::in(array_keys(Order::STATUSES))],
+            'reason' => 'required_if:action,decline,cancel|nullable|string|max:500',
+            'reason_details' => 'required_if:reason,other|nullable|string|max:450',
+        ]);
+        app(SellerOrderWorkflow::class)->transition(
+            $request->user(), $order, $data['action'], $data['expected_status'],
+            $data['reason'] ?? null, $data['reason_details'] ?? null,
+        );
 
         return response()->json(['message' => 'Order updated.']);
     }

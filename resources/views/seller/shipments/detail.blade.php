@@ -14,7 +14,33 @@
 <section class="ops-section"><h3>Actions</h3>
     @if($beforePickup)
         <p class="ops-caption">{{ $order->status!=='ready_for_pickup'?'Finish preparation and mark this order ready for pickup in Orders.':'Ready for pickup. Waiting for logistics to assign a rider and for the rider to scan the parcel at pickup.' }} <a class="ops-text-link" href="{{ route('seller.orders.index',['order'=>$order->id]) }}">Open order</a></p>
-        <details class="ops-action-details"><summary>Cancel Shipment</summary><form method="POST" action="{{ route('seller.shipments.update',$order) }}" data-operation class="ops-form" data-draft-key="seller-{{ auth()->id() }}-cancel-shipment-{{ $order->id }}" data-draft-ajax>@csrf @method('PATCH')<input type="hidden" name="action" value="cancel"><input type="hidden" name="expected_status" value="{{ $order->status }}"><p class="ops-muted">This cancels the order before pickup, restores reserved stock, and notifies the buyer and assigned rider.</p><label>Cancellation reason<textarea name="reason" maxlength="500" required rows="3"></textarea></label><p class="ops-alert" data-form-error role="alert" hidden></p><button class="ops-button ops-button--danger">Confirm Cancellation</button></form></details>
+        <button class="ops-button ops-button--danger" type="button" data-ops-modal-open="#ops-cancel-dialog-{{ $order->id }}">Cancel Order</button>
+        <dialog id="ops-cancel-dialog-{{ $order->id }}" class="ops-cancel-dialog" aria-labelledby="ops-cancel-title-{{ $order->id }}">
+            <form method="POST" action="{{ route('seller.shipments.update',$order) }}" data-operation class="ops-form" data-draft-key="seller-{{ auth()->id() }}-cancel-shipment-{{ $order->id }}" data-draft-ajax>
+                @csrf
+                @method('PATCH')
+                <input type="hidden" name="action" value="cancel">
+                <input type="hidden" name="expected_status" value="{{ $order->status }}">
+                <h3 id="ops-cancel-title-{{ $order->id }}">Cancel this order?</h3>
+                <p class="ops-muted">This cancels the order before pickup, restores reserved stock, and notifies the buyer and assigned rider.</p>
+                <label>Reason
+                    <select name="reason" required>
+                        <option value="">Choose a reason</option>
+                        @foreach(\App\Services\OrderCancellationService::SELLER_REASONS as $key => $label)
+                            <option value="{{ $key }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label data-ops-cancel-details-wrap hidden>Tell us more
+                    <textarea name="reason_details" maxlength="450" rows="3"></textarea>
+                </label>
+                <p class="ops-alert" data-form-error role="alert" hidden></p>
+                <div class="ops-cancel-dialog__actions">
+                    <button class="ops-button" type="button" data-ops-modal-close>Keep Order</button>
+                    <button class="ops-button ops-button--danger" type="submit">Confirm Cancellation</button>
+                </div>
+            </form>
+        </dialog>
     @else<p class="ops-muted">{{ in_array($order->status,['cancelled','returned','delivered','completed'])?'This shipment is closed.':'Pickup is complete. Further delivery stages are managed by logistics and the rider.' }}</p>@endif
     @if($order->canPrintShippingLabel())<a class="ops-button" href="{{ route('seller.orders.waybill',$order) }}" target="_blank" rel="noopener">Print Shipping Label</a>
     @elseif(in_array($order->status, ['confirmed', 'preparing', 'ready_for_pickup'], true))<button class="ops-button" type="button" disabled>Print Shipping Label</button><p class="ops-caption">{{ $order->status === 'ready_for_pickup' ? 'Waiting for pickup logistics assignment. Existing ready orders may need routing.' : 'Available after the order is ready for pickup and its pickup logistics is assigned.' }}</p>@endif

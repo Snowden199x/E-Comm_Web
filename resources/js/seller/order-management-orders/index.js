@@ -26,14 +26,92 @@
     async function openOrder(id){const seq=++drawerSeq;currentOrder=Number(id);el('omoLayout').classList.add('is-open');el('omoDrawer').setAttribute('aria-hidden','false');el('omoDrawer').innerHTML='<div class="omo-drawer__inner"><p class="omo-empty">Loading order…</p></div>';try{const data=await api(`${app.dataset.orderBase}/${id}`);if(seq!==drawerSeq)return;el('omoDrawer').innerHTML=data.html;drawerHtml=data.html;sync();}catch(error){if(seq===drawerSeq){closeOrder();showError(error.message);}}}
     function closeOrder(){if(saving)return;drawerSeq++;currentOrder=null;drawerHtml=null;el('omoLayout').classList.remove('is-open');el('omoDrawer').setAttribute('aria-hidden','true');sync();}
     el('omoTableBody').addEventListener('click',event=>{const btn=event.target.closest('.omo-view-btn');if(btn&&!saving)(currentOrder===Number(btn.dataset.id)?closeOrder():openOrder(btn.dataset.id));});
-    el('omoDrawer').addEventListener('click',event=>{if(event.target.closest('#omoDrawerClose'))closeOrder();});
-    el('omoDrawer').addEventListener('submit',async event=>{if(event.target.id!=='omoActionForm')return;event.preventDefault();if(saving)return;const form=event.target,action=event.submitter?.value;if(!action)return;const body=Object.fromEntries(new FormData(form));body.action=action;if(action==='decline'&&!body.reason?.trim()){showError('Enter a reason before declining this order.','omoActionError');form.elements.reason.focus();return;}saving=true;showError('','omoActionError');const buttons=[...form.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);try{await api(form.dataset.url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});form.dispatchEvent(new Event('vendo:draft-committed'));await Promise.all([load(),openOrder(currentOrder)]);}catch(error){showError(error.message,'omoActionError');buttons.forEach(b=>b.disabled=false);}finally{saving=false;}});
+    el('omoDrawer').addEventListener('click', event => {
+        const openButton = event.target.closest('[data-omo-cancel-open]');
+        const modal = event.target.closest('[data-omo-cancel-modal]');
+        const form = event.target.closest('#omoActionForm');
+
+        if (event.target.closest('#omoDrawerClose')) closeOrder();
+        if (openButton && form) {
+            const cancelModal = form.querySelector('[data-omo-cancel-modal]');
+            const reason = form.querySelector('[data-omo-cancel-reason]');
+            const details = form.querySelector('[data-omo-cancel-details]');
+            const detailsWrap = form.querySelector('[data-omo-cancel-details-wrap]');
+            form.dataset.cancelAction = openButton.dataset.omoCancelOpen;
+            cancelModal.querySelector('[data-omo-cancel-title]').textContent = form.dataset.cancelAction === 'decline' ? 'Decline this order?' : 'Cancel this order?';
+            reason.required = true;
+            reason.value = '';
+            details.value = '';
+            details.required = false;
+            detailsWrap.hidden = true;
+            cancelModal.hidden = false;
+            reason.focus();
+        }
+
+        if (event.target.closest('[data-omo-cancel-close]') || (modal && event.target === modal)) {
+            const cancelModal = form?.querySelector('[data-omo-cancel-modal]') || event.target.closest('[data-omo-cancel-modal]');
+            if (cancelModal) {
+                cancelModal.hidden = true;
+                const modalForm = cancelModal.closest('#omoActionForm');
+                modalForm.querySelector('[data-omo-cancel-reason]').required = false;
+                modalForm.querySelector('[data-omo-cancel-reason]').value = '';
+                modalForm.querySelector('[data-omo-cancel-details]').required = false;
+                modalForm.querySelector('[data-omo-cancel-details]').value = '';
+            }
+        }
+    });
+    el('omoDrawer').addEventListener('change', event => {
+        if (!event.target.matches('[data-omo-cancel-reason]')) return;
+        const form = event.target.closest('#omoActionForm');
+        const detailsWrap = form.querySelector('[data-omo-cancel-details-wrap]');
+        const details = form.querySelector('[data-omo-cancel-details]');
+        detailsWrap.hidden = event.target.value !== 'other';
+        details.required = event.target.value === 'other';
+        if (!details.required) details.value = '';
+    });
+    el('omoDrawer').addEventListener('submit', async event => {
+        if (event.target.id !== 'omoActionForm') return;
+        event.preventDefault();
+        if (saving) return;
+        const form = event.target;
+        const isCancelSubmit = event.submitter?.hasAttribute('data-omo-confirm-cancel');
+        const action = isCancelSubmit ? form.dataset.cancelAction : event.submitter?.value;
+        if (!action) return;
+
+        const body = Object.fromEntries(new FormData(form));
+        body.action = action;
+        if (['decline', 'cancel'].includes(action) && !body.reason?.trim()) {
+            showError('Choose a reason before continuing.', 'omoActionError');
+            form.querySelector('[data-omo-cancel-reason]').focus();
+            return;
+        }
+        if (body.reason === 'other' && !body.reason_details?.trim()) {
+            showError('Add details for the selected reason.', 'omoActionError');
+            form.querySelector('[data-omo-cancel-details]').focus();
+            return;
+        }
+
+        saving = true;
+        showError('', 'omoActionError');
+        const buttons = [...form.querySelectorAll('button')];
+        buttons.forEach(button => { button.disabled = true; });
+        try {
+            await api(form.dataset.url, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            form.dispatchEvent(new Event('vendo:draft-committed'));
+            await Promise.all([load(), openOrder(currentOrder)]);
+        } catch (error) {
+            showError(error.message, 'omoActionError');
+            buttons.forEach(button => { button.disabled = false; });
+        } finally {
+            saving = false;
+        }
+    });
     function closePanels(){[['omoStatusPanel','omoStatusBtn'],['omoDatePanel','omoDateBtn']].forEach(([panel,button])=>{el(panel).classList.remove('is-open');el(button).setAttribute('aria-expanded','false');});}
     function filter(status){state.status=status||'all';state.page=1;closePanels();sync();load();}
     document.querySelectorAll('#omoTabs .omo-tab,.omo-status-option,[data-filter]').forEach(btn=>btn.addEventListener('click',()=>filter(btn.dataset.status||btn.dataset.filter)));
     el('omoSearchInput').value=state.search;el('omoSearchInput').addEventListener('input',event=>{state.search=event.target.value;state.page=1;clearTimeout(timer);timer=setTimeout(load,250);});
     [['omoStatusPanel','omoStatusBtn'],['omoDatePanel','omoDateBtn']].forEach(([panel,button])=>el(button).addEventListener('click',()=>{const open=!el(panel).classList.contains('is-open');closePanels();el(panel).classList.toggle('is-open',open);el(button).setAttribute('aria-expanded',String(open));}));
-    document.addEventListener('click',event=>{if(!event.target.closest('.omo-filter'))closePanels();});document.addEventListener('keydown',event=>{if(event.key==='Escape'){closePanels();closeOrder();}});
+    document.addEventListener('click',event=>{if(!event.target.closest('.omo-filter'))closePanels();});document.addEventListener('keydown',event=>{if(event.key==='Escape'){closePanels();const modal=el('omoDrawer').querySelector('[data-omo-cancel-modal]:not([hidden])');if(modal){modal.hidden=true;modal.querySelector('[data-omo-cancel-reason]').required=false;modal.querySelector('[data-omo-cancel-reason]').value='';modal.querySelector('[data-omo-cancel-details]').required=false;modal.querySelector('[data-omo-cancel-details]').value='';return;}closeOrder();}});
     const iso=date=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
     function setDates(from,to,label){if(from&&to&&from>to){showError('The end date must be on or after the start date.');return;}state.date_from=from;state.date_to=to;state.page=1;el('omoDateFrom').value=from;el('omoDateTo').value=to;el('omoDateLabel').textContent=label||(from||to?`${from||'Any'} – ${to||'Any'}`:'All Dates');closePanels();load();}
     document.querySelectorAll('.omo-date-preset').forEach(btn=>btn.addEventListener('click',()=>{const today=app.dataset.today,date=new Date(today+'T00:00:00');if(btn.dataset.preset==='today')setDates(today,today,'Today');else if(btn.dataset.preset==='7days'){date.setDate(date.getDate()-6);setDates(iso(date),today,'Last 7 Days');}else if(btn.dataset.preset==='month'){date.setDate(1);setDates(iso(date),today,'This Month');}else setDates('','','All Dates');}));

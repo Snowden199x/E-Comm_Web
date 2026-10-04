@@ -9,7 +9,7 @@ Buyer sees owned orders and status events. The assigned delivery rider's `delive
 
 ## Gaps and acceptance direction
 
-Independent delivery proof, failed delivery and return/refund handling still need implementation.
+Buyer and Seller may cancel orders before pickup with a recorded reason; cancellation restores reserved stock. Independent delivery proof, failed delivery handling and return/refund handling still need implementation.
 
 ## Source evidence
 

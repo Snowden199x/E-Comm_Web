@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
 use App\Models\Ecommerce\OrderItem;
+use App\Services\OrderCancellationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
@@ -29,6 +31,26 @@ class OrderController extends Controller
 
         return view('buyer.orders.show', compact('order'));
     }
+
+    public function cancel(Request $request, int $order, OrderCancellationService $cancellations)
+    {
+        $data = $request->validate([
+            'expected_status' => ['required', Rule::in(OrderCancellationService::CANCELLABLE_STATUSES)],
+            'reason' => ['required', Rule::in(array_keys(OrderCancellationService::BUYER_REASONS))],
+            'reason_details' => ['required_if:reason,other', 'nullable', 'string', 'max:450'],
+        ]);
+
+        $cancellations->cancelForBuyer(
+            $request->user(),
+            $order,
+            $data['expected_status'],
+            $data['reason'],
+            $data['reason_details'] ?? null,
+        );
+
+        return redirect()->route('buyer.orders.show', $order)->with('success', 'Your order has been cancelled. Reserved stock has been restored.');
+    }
+
     public function complete(\Illuminate\Http\Request $request, int $order)
     {
         \Illuminate\Support\Facades\DB::transaction(function () use ($request, $order) {

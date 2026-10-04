@@ -78,8 +78,12 @@ class ShipmentController extends Controller
             'action' => ['required', Rule::in(['cancel'])],
             'expected_status' => ['required', Rule::in(array_keys(Order::STATUSES))],
             'reason' => 'required_if:action,cancel|nullable|string|max:500',
+            'reason_details' => 'required_if:reason,other|nullable|string|max:450',
         ]);
-        app(SellerOrderWorkflow::class)->transition($request->user(), $order, 'cancel_shipment', $data['expected_status'], $data['reason'] ?? null);
+        app(SellerOrderWorkflow::class)->transition(
+            $request->user(), $order, 'cancel_shipment', $data['expected_status'],
+            $data['reason'] ?? null, $data['reason_details'] ?? null,
+        );
 
         return response()->json(['message' => 'Shipment cancelled. Reserved stock has been restored.']);
     }
