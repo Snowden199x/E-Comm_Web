@@ -240,6 +240,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::post('/checkout', [BuyerCheckoutController::class, 'store'])->middleware('auth')->name('checkout.store');
     Route::get('/orders', [BuyerOrderController::class, 'index'])->middleware('auth')->name('orders.index');
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->middleware('auth')->name('orders.show');
+    Route::patch('/orders/{order}/cancel', [BuyerOrderController::class, 'cancel'])->middleware('auth')->whereNumber('order')->name('orders.cancel');
     Route::get('/messages/orders/{order}', [MarketplaceMessageController::class, 'buyerShow'])->middleware('auth')->whereNumber('order')->name('marketplace-messages.show');
     Route::post('/messages/orders/{order}', [MarketplaceMessageController::class, 'buyerStore'])->middleware(['auth', 'throttle:20,1'])->whereNumber('order')->name('marketplace-messages.store');
     Route::get('/messages/orders/{order}/fetch', [MarketplaceMessageController::class, 'buyerFetch'])->middleware('auth')->whereNumber('order')->name('marketplace-messages.fetch');

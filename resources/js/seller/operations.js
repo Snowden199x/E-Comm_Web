@@ -185,6 +185,31 @@ drawer.addEventListener('close', () => {
     lastTrigger?.focus();
 });
 
+document.addEventListener('click', event => {
+    const openButton = event.target.closest('[data-ops-modal-open]');
+    if (openButton) {
+        const dialog = document.querySelector(openButton.dataset.opsModalOpen);
+        if (dialog instanceof HTMLDialogElement) {
+            dialog.showModal();
+            dialog.querySelector('[name="reason"]')?.focus();
+        }
+    }
+
+    const closeButton = event.target.closest('[data-ops-modal-close]');
+    if (closeButton) closeButton.closest('dialog')?.close();
+});
+
+document.addEventListener('change', event => {
+    if (!event.target.matches('form[data-operation] select[name="reason"]')) return;
+    const form = event.target.closest('form');
+    const detailsWrap = form.querySelector('[data-ops-cancel-details-wrap]');
+    const details = form.querySelector('textarea[name="reason_details"]');
+    if (!detailsWrap || !details) return;
+    detailsWrap.hidden = event.target.value !== 'other';
+    details.required = event.target.value === 'other';
+    if (!details.required) details.value = '';
+});
+
 document.addEventListener('submit', async event => {
     const form = event.target.closest('form[data-operation]');
     if (!form) return;

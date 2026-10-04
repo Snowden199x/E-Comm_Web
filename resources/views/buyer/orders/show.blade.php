@@ -1,6 +1,15 @@
 <x-buyer.layout>
-    <div class="max-w-3xl mx-auto p-4 sm:p-5 lg:p-6">
-        <h2 class="text-2xl font-bold text-gray-900 mb-2">Order #{{ $order->id }}</h2>
+    @php
+        $canBuyerCancel = in_array($order->status, \App\Services\OrderCancellationService::CANCELLABLE_STATUSES, true);
+        $reopenCancelModal = $errors->has('reason') || $errors->has('reason_details');
+    @endphp
+    <div class="max-w-3xl mx-auto p-4 sm:p-5 lg:p-6" x-data="{ cancelOpen: @js($reopenCancelModal), reason: @js(old('reason', '')) }">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-2xl font-bold text-gray-900">Order #{{ $order->id }}</h2>
+            @if($canBuyerCancel)
+                <button type="button" @click="cancelOpen = true" class="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">Cancel Order</button>
+            @endif
+        </div>
         @if($order->seller)
             <p class="mb-4 text-sm text-gray-600">Seller: <a href="{{ route('buyer.sellers.show', $order->seller) }}" class="font-semibold text-[#5b2963] hover:underline">{{ $order->seller->sellerDetail?->business_name ?: $order->seller->name }}</a></p>
         @endif
@@ -51,6 +60,34 @@
 
         @if (session('success'))<p class="mb-4 text-green-700">{{ session('success') }}</p>@endif
         @if ($errors->any())<p class="mb-4 text-sm text-red-700" role="alert">{{ $errors->first() }}</p>@endif
+        @if($canBuyerCancel)
+            <div x-show="cancelOpen" x-cloak class="fixed inset-0 z-[100] grid place-items-center bg-black/50 p-4" @click.self="cancelOpen = false" @keydown.escape.window="cancelOpen = false">
+                <section role="dialog" aria-modal="true" aria-labelledby="buyer-cancel-title" class="w-full max-w-md rounded-xl bg-white p-5 shadow-xl sm:p-6">
+                    <h3 id="buyer-cancel-title" class="text-lg font-semibold text-gray-900">Cancel this order?</h3>
+                    <p class="mt-1 text-sm text-gray-600">You can cancel before the parcel is picked up by Logistics. Choose a reason to continue.</p>
+                    <form action="{{ route('buyer.orders.cancel', $order) }}" method="POST" class="mt-4 space-y-4">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="expected_status" value="{{ $order->status }}">
+                        <label class="block text-sm font-medium text-gray-800">Reason
+                            <select name="reason" x-model="reason" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                                <option value="">Choose a reason</option>
+                                @foreach(\App\Services\OrderCancellationService::BUYER_REASONS as $key => $label)
+                                    <option value="{{ $key }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label x-show="reason === 'other'" x-cloak class="block text-sm font-medium text-gray-800">Tell us more
+                            <textarea name="reason_details" maxlength="450" rows="3" :required="reason === 'other'" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">{{ old('reason_details') }}</textarea>
+                        </label>
+                        <div class="flex justify-end gap-2">
+                            <button type="button" @click="cancelOpen = false" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">Keep Order</button>
+                            <button type="submit" class="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800">Confirm Cancellation</button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+        @endif
         @if($order->seller)
             <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-5 shadow-sm">
                 <div><p class="text-xs text-gray-500">Sold by</p><p class="font-semibold text-gray-900">{{ $order->seller->sellerDetail?->business_name ?? $order->seller->name }}</p></div>
@@ -127,7 +164,7 @@
                 </button>
             </form>
         @endif
-        @if ($order->status !== 'completed')
+        @if (! in_array($order->status, ['completed', 'cancelled', 'returned', 'delivery_failed'], true))
             <p class="mt-4 text-sm text-gray-500">You can review each product after confirming that you received the order.</p>
         @endif
     </div>

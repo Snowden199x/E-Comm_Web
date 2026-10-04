@@ -4,15 +4,14 @@ namespace App\Services;
 
 use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
-use App\Models\Ecommerce\Product;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class SellerOrderWorkflow
 {
-    public function transition(User $seller, int $orderId, string $action, string $expectedStatus, ?string $reason = null): void
+    public function transition(User $seller, int $orderId, string $action, string $expectedStatus, ?string $reason = null, ?string $reasonDetails = null): void
     {
-        DB::transaction(function () use ($seller, $orderId, $action, $expectedStatus, $reason) {
+        DB::transaction(function () use ($seller, $orderId, $action, $expectedStatus, $reason, $reasonDetails) {
             $order = Order::where('seller_id', $seller->id)->lockForUpdate()->findOrFail($orderId);
             $transitions = [
                 'accept' => [['placed'], 'confirmed'],
@@ -20,20 +19,17 @@ class SellerOrderWorkflow
                 'prepare' => [['confirmed'], 'preparing'],
                 'ready' => [['preparing'], 'ready_for_pickup'],
                 'cancel_shipment' => [['confirmed', 'preparing', 'ready_for_pickup'], 'cancelled'],
+                'cancel' => [OrderCancellationService::CANCELLABLE_STATUSES, 'cancelled'],
             ];
             abort_unless(isset($transitions[$action]), 422, 'Unknown order action.');
             [$allowed, $to] = $transitions[$action];
             $from = $order->status;
             abort_unless($from === $expectedStatus && in_array($from, $allowed, true), 409, 'This order has changed or the action is unavailable. Reload its details.');
             if ($to === 'cancelled') {
-                abort_unless(trim($reason ?? '') !== '', 422, 'Enter a cancellation reason.');
-                $items = $order->items()->orderBy('product_id')->orderBy('product_variant_id')->get();
-                $products = Product::whereIn('id', $items->pluck('product_id'))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-                foreach ($items as $item) {
-                    $product = $products->get($item->product_id);
-                    $variant = $item->product_variant_id ? $product->variants()->findOrFail($item->product_variant_id) : null;
-                    app(InventoryService::class)->changeLocked($product, (int) $item->quantity, 'cancellation', $seller->id, $order->id, $reason, variant: $variant);
-                }
+                $reason = app(OrderCancellationService::class)->sellerReason($reason, $reasonDetails);
+                app(OrderCancellationService::class)->cancelLocked($order, $seller, $reason);
+
+                return;
             }
             if ($to === 'ready_for_pickup') {
                 $order->pickup_request_status = 'pending';

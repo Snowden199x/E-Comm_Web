@@ -17,13 +17,43 @@
         @endif
         <p id="omoActionError" class="omo-error" role="alert" hidden></p>
     </div>
-    <form id="omoActionForm" class="omo-drawer__actions" data-url="{{ route('seller.orders.update',$order) }}" data-draft-key="seller-{{ auth()->id() }}-order-action-{{ $order->id }}-{{ $order->status }}" data-draft-ajax><input type="hidden" name="expected_status" value="{{ $order->status }}">
-        @if($order->status==='placed')<label class="omo-reason">Reason if declining<textarea name="reason" maxlength="500" placeholder="Explain why this order cannot be fulfilled"></textarea></label><button class="omo-btn omo-btn--primary" name="action" value="accept">Accept Order</button><button class="omo-btn omo-btn--ghost" name="action" value="decline">Decline Order</button>
-        @elseif($order->status==='confirmed')<button class="omo-btn omo-btn--primary" name="action" value="prepare">Start Preparing</button>
+    <form id="omoActionForm" class="omo-drawer__actions" data-url="{{ route('seller.orders.update',$order) }}" data-draft-key="seller-{{ auth()->id() }}-order-action-{{ $order->id }}-{{ $order->status }}" data-draft-ajax>
+        <input type="hidden" name="expected_status" value="{{ $order->status }}">
+        @if($order->status==='placed')
+            <button class="omo-btn omo-btn--primary" name="action" value="accept">Accept Order</button>
+            <button class="omo-btn omo-btn--ghost" type="button" data-omo-cancel-open="decline">Decline Order</button>
+        @elseif($order->status==='confirmed')
+            <button class="omo-btn omo-btn--primary" name="action" value="prepare">Start Preparing</button>
+            <button class="omo-btn omo-btn--danger" type="button" data-omo-cancel-open="cancel">Cancel Order</button>
         @elseif($order->status==='preparing')
             @if($order->pickup_request_status === 'declined')<p class="omo-history" role="status">Pickup request returned by Logistics: {{ $order->pickup_decline_reason }}. Resolve this before marking ready again.</p>@endif
             <button class="omo-btn omo-btn--primary" name="action" value="ready">Mark Ready for Pickup</button>
-        @elseif($order->status==='ready_for_pickup')<p class="omo-history">Ready for pickup. Waiting for logistics to assign a rider and for the rider to scan the parcel at pickup.</p>
+            <button class="omo-btn omo-btn--danger" type="button" data-omo-cancel-open="cancel">Cancel Order</button>
+        @elseif($order->status==='ready_for_pickup')
+            <p class="omo-history">Ready for pickup. Waiting for logistics to assign a rider and for the rider to scan the parcel at pickup.</p>
+            <button class="omo-btn omo-btn--danger" type="button" data-omo-cancel-open="cancel">Cancel Order</button>
         @else<p class="omo-history">{{ $order->status_label }} · No seller action required.</p>@endif
+
+        <div data-omo-cancel-modal hidden class="omo-cancel-modal" role="dialog" aria-modal="true" aria-labelledby="omoCancelTitle" tabindex="-1">
+            <div class="omo-cancel-modal__panel">
+                <h3 id="omoCancelTitle" class="omo-cancel-modal__title" data-omo-cancel-title>Cancel this order?</h3>
+                <p class="omo-cancel-modal__copy">This cancels the order before pickup and restores the reserved stock. The buyer will be notified.</p>
+                <label class="omo-cancel-modal__label">Reason
+                    <select name="reason" data-omo-cancel-reason>
+                        <option value="">Choose a reason</option>
+                        @foreach(\App\Services\OrderCancellationService::SELLER_REASONS as $key => $label)
+                            <option value="{{ $key }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label data-omo-cancel-details-wrap hidden class="omo-cancel-modal__label">Tell us more
+                    <textarea name="reason_details" maxlength="450" rows="3" data-omo-cancel-details></textarea>
+                </label>
+                <div class="omo-cancel-modal__actions">
+                    <button type="button" class="omo-btn omo-btn--ghost" data-omo-cancel-close>Keep Order</button>
+                    <button type="submit" class="omo-btn omo-btn--danger" data-omo-confirm-cancel>Confirm Cancellation</button>
+                </div>
+            </div>
+        </div>
     </form>
 </div>
