@@ -1,3 +1,8 @@
+// Registers Alpine components used across Admin screens. They must load before
+// Alpine starts, which is why they are imported here (this file loads before shared/app.js).
+import './document-viewer.js';
+import './seller-compliance.js';
+
 const { body } = document;
 
 const checkStatusUrl = body.dataset.checkStatusUrl;

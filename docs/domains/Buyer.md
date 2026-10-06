@@ -12,4 +12,6 @@ Registration collects profile/address/ID data and requires an email OTP proof st
 
 Checkout accepts a payment mode but this code snapshot does not demonstrate a payment-gateway integration. Buyer cancellation/refund, saved wishlist, voucher application, recently viewed products, and buyer support tickets are not evidenced as working routes. Address defaults are built from profile fields; the current registration stores the combined street and leaves `house_no` null.
 
+The 6 October refresh restyled the Product detail, Product list, Checkout, My Orders, Order detail, Shop, and Notifications pages and added a shared empty-state component. See [Product detail](../features/buyer/product-detail/spec.md), [Seller shop](../features/buyer/seller-shop/spec.md), [Buyer notifications](../features/buyer/notifications/spec.md), and [backend needs](../backend-needs.md) for what the server still has to add (Buyer cancel rule, shop search, saved addresses).
+
 See `features/buyer/` and [order flow](../order-logistics-flow-decisions.md).

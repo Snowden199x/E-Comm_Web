@@ -25,10 +25,7 @@
 
 /* ---------- Header ---------- */
 .vb-header {
-    background:
-        radial-gradient(520px 140px at 10% -50%, rgba(232, 200, 116, 0.22), transparent 70%),
-        radial-gradient(560px 180px at 92% 130%, rgba(196, 150, 214, 0.38), transparent 70%),
-        linear-gradient(115deg, #34132f 0%, #4b1f55 48%, #64306f 100%);
+    background: var(--vb-plum);
     box-shadow: 0 10px 24px -18px rgba(43, 23, 48, 0.9);
 }
 
@@ -48,12 +45,6 @@
 .vb-navlink:hover::after,
 .vb-navlink.is-open::after,
 .vb-navlink[aria-current='page']::after { transform: scaleX(1); }
-
-/* Fade the right edge of the scrolling category strip */
-.vb-fade-x {
-    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
-    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
-}
 
 /* ---------- Mega menu ---------- */
 .vb-mega-stack { display: grid; }
@@ -116,12 +107,10 @@
 /* ---------- Announcement banner ---------- */
 .vb-banner {
     background-color: #5d3a80;
-    background-image:
-        var(--banner-art, none),
-        linear-gradient(100deg, #4b1f55 0%, #6d4584 40%, #c79ad6 74%, #fedcc0 100%);
+    background-image: var(--banner-art, none);
     background-repeat: no-repeat;
-    background-position: right center, center;
-    background-size: cover, cover;
+    background-position: right center;
+    background-size: cover;
 }
 .vb-slides { display: grid; }
 .vb-slide {

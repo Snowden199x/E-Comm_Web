@@ -46,13 +46,13 @@
                         :aria-hidden="active !== {{ $i }} ? 'true' : 'false'">
 
                         <span
-                            class="inline-flex h-6 w-fit items-center gap-1.5 rounded-full bg-gradient-to-r from-[#fde6cb] to-[#f6be92] px-3 text-[11px] font-semibold text-[#402143]">
+                            class="inline-flex h-6 w-fit items-center gap-1.5 rounded-full bg-[#f6d9b8] px-3 text-[11px] font-semibold text-[#402143]">
                             {{ $pillLabel }}
                             <svg class="h-3 w-3" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" /></svg>
                         </span>
 
                         <h2
-                            class="mt-2 line-clamp-2 w-fit max-w-[520px] bg-gradient-to-r from-[#f6f0ff] to-[#fedeba] bg-clip-text pb-1 text-[clamp(24px,3.4vw,38px)] font-semibold leading-[1.1] text-transparent">
+                            class="mt-2 line-clamp-2 w-fit max-w-[520px] pb-1 text-[clamp(24px,3.4vw,38px)] font-semibold leading-[1.1] text-white">
                             {{ $slide->title }}
                         </h2>
 
@@ -152,11 +152,13 @@
             <div class="h-px bg-[#eee6ef]"></div>
 
             @if ($products->isEmpty())
-                <p class="py-14 text-center text-sm text-[#9a8a9d]">No products to show yet. Check back soon.</p>
+                <div class="rounded-b-xl border border-t-0 border-[#eee6ef] bg-white">
+                    <x-buyer.empty-state icon="box" title="No products to show yet" text="Products from approved sellers will appear here as soon as they are listed." />
+                </div>
             @else
                 <div class="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                     @foreach ($products as $product)
-                        @include('buyer.partials.product-card', ['product' => $product])
+                        @include('buyer.partials.product-card', ['product' => $product, 'toProduct' => true])
                     @endforeach
                 </div>
             @endif

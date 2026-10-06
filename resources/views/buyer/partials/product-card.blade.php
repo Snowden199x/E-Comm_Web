@@ -1,9 +1,11 @@
 {{-- Shared storefront product card.
-     Params: $product (Product with images), $compact (bool, optional: icon-only cart button).
+     Params: $product (Product with images), $compact (bool, optional: icon-only cart button),
+       $toProduct (bool, optional: the Add to Cart button opens the product page instead of adding directly).
      Optional data (shown only when the controller supplies it):
        reviews_avg_rating, sold_count, compare_at_price, seller.sellerDetail --}}
 @php
     $compact = $compact ?? false;
+    $toProduct = $toProduct ?? false; // true: "Add to Cart" opens the product page so the buyer sees details first
     $image = $product->images->first();
     $imageUrl = $image ? asset('storage/' . $image->path) : asset('images/products/tote-bag.jpg');
     $seller = $product->seller;
@@ -95,6 +97,9 @@
             <div class="mt-2.5">
                 @if ($soldOut)
                     <span class="flex h-8 w-full items-center justify-center rounded-md bg-[#efe8f0] text-[12px] font-medium text-[#8c7a8e]">Out of Stock</span>
+                @elseif ($toProduct)
+                    <a href="{{ route('buyer.products.show', $product) }}"
+                        class="flex h-8 w-full items-center justify-center rounded-md bg-[#805487] text-[12px] font-medium text-white transition-all duration-300 ease-vendo hover:bg-[#6d4574] hover:shadow-[0_10px_18px_-10px_rgba(128,84,135,0.95)] active:scale-[0.97]">Add to Cart</a>
                 @elseif ($product->has_variations)
                     <a href="{{ route('buyer.products.show', $product) }}"
                         class="flex h-8 w-full items-center justify-center rounded-md bg-[#805487] text-[12px] font-medium text-white hover:bg-[#6d4574]">Choose variation</a>

@@ -29,7 +29,7 @@
 .cart-columns,
 .cart-item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 112px 104px 28px;
+    grid-template-columns: minmax(0, 1fr) 112px 104px 84px;
     align-items: center;
     column-gap: 14px;
 }
@@ -97,8 +97,8 @@
 .cart-item__quantity input::-webkit-inner-spin-button, .cart-item__quantity input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
 .cart-item__subtotal { color: #52245b; font-size: 13px; font-weight: 600; text-align: center; white-space: nowrap; }
 .cart-item__remove-form { text-align: center; }
-.cart-item__remove { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; color: #9a8a9d; cursor: pointer; transition: color .2s, background-color .2s, transform .2s; }
-.cart-item__remove:hover { background: #fdf0f2; color: #a32b43; }
+.cart-item__remove { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 30px; padding: 0 10px; border: 1px solid #eadfec; border-radius: 6px; background: #fff; color: #6d5d71; font: inherit; font-size: 12px; cursor: pointer; transition: color .2s, background-color .2s, border-color .2s, transform .2s; }
+.cart-item__remove:hover { background: #fdf0f2; border-color: #f0c9d0; color: #a32b43; }
 .cart-item__remove:active { transform: scale(.88); }
 
 /* ---- Order summary ---- */
@@ -128,7 +128,7 @@
     margin: 18px 18px 0;
     border: 0;
     border-radius: 999px;
-    background: linear-gradient(135deg, #7a4a85 0%, #402143 100%);
+    background: #52245b;
     color: #fff;
     font: inherit;
     font-size: 14px;
@@ -177,3 +177,9 @@
     .cart-item__remove-form { position: absolute; top: 8px; right: 8px; }
     .cart-store__heading { padding: 8px 12px; }
 }
+/* ---- Bulk remove ---- */
+.cart-bulk { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 10px; font-size: 12px; color: #6d5d71; }
+.cart-bulk button { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid #eadfec; border-radius: 6px; background: #fff; color: #6d5d71; font: inherit; font-size: 12px; cursor: pointer; transition: color .2s, background-color .2s, border-color .2s; }
+.cart-bulk button:not(:disabled):hover { background: #fdf0f2; border-color: #f0c9d0; color: #a32b43; }
+.cart-bulk button:disabled { opacity: .5; cursor: not-allowed; }
+.cart-bulk button.is-confirming { background: #a32b43; border-color: #a32b43; color: #fff; }

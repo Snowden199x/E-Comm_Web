@@ -81,6 +81,12 @@
                                         <button type="button" role="menuitem" data-product-modal="{{ route('seller.products.show', $product) }}">View details</button>
                                         <a role="menuitem" href="{{ route('seller.products.show', [$product, 'mode' => 'edit']) }}">Edit product</a>
                                         <button type="button" role="menuitem" data-product-modal="{{ route('seller.products.show', [$product, 'mode' => 'restock']) }}" data-tab="restock" data-modal-title="Restock Product">Restock</button>
+                                        <span class="pi-menu-sep" role="separator"></span>
+                                        {{-- Backend pending: DELETE /seller/products/{product} (see handoff notes). --}}
+                                        <button type="button" role="menuitem" class="pi-menu-danger" data-delete-product data-delete-url="{{ url('/seller/products/'.$product->id) }}" data-delete-name="{{ $product->name }}">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6M10 11v6M14 11v6"/></svg>
+                                            Delete product
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -118,6 +124,18 @@
             <div class="pi-modal-bar"><h2 id="piModalTitle">Product Details</h2><button type="button" class="pi-x" data-close-modal aria-label="Close details">×</button></div>
             <div class="pi-modal-body" id="piModalBody"></div>
             <div class="pi-modal-foot" id="piModalFoot" hidden></div>
+        </dialog>
+        <dialog id="piDeleteDialog" class="pi-confirm" aria-labelledby="piDeleteTitle" aria-describedby="piDeleteCopy">
+            <div class="pi-confirm__icon" aria-hidden="true">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6M10 11v6M14 11v6"/></svg>
+            </div>
+            <h2 id="piDeleteTitle">Delete this product?</h2>
+            <p id="piDeleteCopy"><strong data-delete-name></strong> will be removed from your products and from the Vendo marketplace. Vendo admin will be notified. Past orders keep their record.</p>
+            <p class="pi-error" data-delete-error role="alert"></p>
+            <div class="pi-confirm__actions">
+                <button type="button" class="pi-btn" data-delete-cancel>Keep product</button>
+                <button type="button" class="pi-btn pi-btn--danger-solid" data-delete-confirm>Delete product</button>
+            </div>
         </dialog>
         <div class="pi-toast" id="piToast" role="status" aria-live="polite"></div>
     </section>

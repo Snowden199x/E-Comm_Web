@@ -131,6 +131,7 @@
         </div>
     </div>
 
+    @include('admin.partials.document-viewer')
     @include('shared.message-delete-dialog')
     @include('shared.live-revision-script')
 </body>

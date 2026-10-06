@@ -1,34 +1,60 @@
-<div class="bg-white rounded-2xl p-5 shadow-sm overflow-x-auto">
-    <table class="w-full text-sm">
-        <thead>
-            <tr class="text-left text-gray-500 border-b">
-                <th class="pb-3 font-medium">Product</th>
-                <th class="pb-3 font-medium">Seller</th>
-                <th class="pb-3 font-medium">Reason</th>
-                <th class="pb-3 font-medium">Details</th>
-                <th class="pb-3 font-medium">Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse ($violations as $violation)
-                <tr class="border-b last:border-0">
-                    <td class="py-3 text-gray-900">{{ $violation->product->name ?? '—' }}</td>
-                    <td class="py-3 text-gray-600">{{ $violation->seller->name }}</td>
-                    <td class="py-3">
-                        <span class="px-2 py-0.5 rounded-full bg-red-50 text-red-700 text-xs font-medium">{{ $violation->reason }}</span>
-                    </td>
-                    <td class="py-3 text-gray-500 max-w-xs truncate">{{ $violation->details }}</td>
-                    <td class="py-3 text-gray-600">{{ $violation->created_at->format('M d, Y g:i A') }}</td>
-                </tr>
-            @empty
-                <tr><td colspan="5" class="py-8 text-center text-gray-400">No violations recorded.</td></tr>
-            @endforelse
-        </tbody>
-    </table>
-    @if ($violations->hasPages())
-        <div class="flex items-center justify-between mt-4 pt-4 border-t">
-            <p class="text-xs text-gray-500">Showing {{ $violations->count() }} out of {{ $violations->total() }} entries</p>
-            <div>{{ $violations->links() }}</div>
+{{-- Violations table. Rendered inside #sc-region (scTable scope); needs $violations. --}}
+<div class="sc-rows overflow-hidden rounded-2xl border border-[#ece4ec] bg-white shadow-[0_1px_2px_rgba(43,23,48,0.04)]">
+    @if ($violations->isEmpty())
+        @include('admin.seller-compliance.partials.empty-state', [
+            'icon' => 'shield-check',
+            'tone' => 'green',
+            'title' => 'No violations recorded',
+            'text' => 'Rejected products and repeated warnings are recorded here. Nothing to act on right now.',
+            'filteredTitle' => 'No violations found',
+            'filteredText' => 'No violation matches this seller or date. Try a wider range or clear the filters.',
+        ])
+    @else
+        <div class="thin-scroll overflow-x-auto">
+            <table class="w-full min-w-[860px] text-left text-sm">
+                <caption class="sr-only">Violations committed by sellers</caption>
+                <thead>
+                    <tr class="border-b border-[#ece4ec] bg-[#FBF8FB] text-[13px] text-gray-500">
+                        <th scope="col" class="px-5 py-3 font-medium">Product</th>
+                        <th scope="col" class="px-4 py-3 font-medium">Seller</th>
+                        <th scope="col" class="px-4 py-3 font-medium">Reason</th>
+                        <th scope="col" class="px-4 py-3 font-medium">Details</th>
+                        <th scope="col" class="px-5 py-3 font-medium">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[#f3edf4]">
+                    @foreach ($violations as $violation)
+                        <tr style="--i: {{ $loop->index }}" class="transition-colors duration-150 hover:bg-[#FBF8FB]">
+                            <td class="px-5 py-3">
+                                <p class="max-w-[220px] truncate font-medium text-[#2B1730]">{{ $violation->product->name ?? '—' }}</p>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-2.5">
+                                    <span aria-hidden="true" class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1] text-xs font-semibold text-[#5b2963]">
+                                        {{ strtoupper(mb_substr($violation->seller->name ?? '?', 0, 1)) }}
+                                    </span>
+                                    <span class="max-w-[160px] truncate text-gray-700">{{ $violation->seller->name ?? '—' }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center gap-1.5 rounded-full border border-red-600/50 bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">
+                                    <x-admin.icon name="shield-x" class="h-3.5 w-3.5 flex-shrink-0" />
+                                    <span class="max-w-[200px] truncate">{{ $violation->reason }}</span>
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <p class="line-clamp-2 max-w-xs text-gray-500" title="{{ $violation->details }}">{{ $violation->details }}</p>
+                            </td>
+                            <td class="whitespace-nowrap px-5 py-3">
+                                <p class="text-gray-700">{{ $violation->created_at->format('M d, Y') }}</p>
+                                <p class="text-xs text-gray-500">{{ $violation->created_at->format('g:i A') }}</p>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
+
+        @include('admin.seller-compliance.partials.pagination', ['paginator' => $violations])
     @endif
 </div>

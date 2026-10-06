@@ -2,6 +2,7 @@
     Applicant profile + tabbed details.
     Used by admin/registrations/show and by the Dashboard "Recent Registrations" modal,
     so it must stay self-contained (own Alpine scope, Tailwind utilities only).
+    ID and permit files open in the shared document viewer popup (admin/partials/document-viewer.blade.php).
     Required: $user (with sellerDetail / logisticsCenterDetail / buyerDetail / categories).
 --}}
 @php
@@ -58,8 +59,6 @@
     tab: 'personal',
     ready: false,
     ind: { x: 0, w: 0 },
-    lightbox: false,
-    lbSrc: '',
     order: @js($tabKeys),
 
     move() {
@@ -237,12 +236,22 @@
                             <dt class="{{ $dtClass }}">Business Permit</dt>
                             <dd class="min-w-0">
                                 @if ($details->business_permit_path)
-                                    <a href="{{ route('admin.verification-documents.show', [$user, 'business-permit']) }}" target="_blank" rel="noopener noreferrer"
+                                    @php
+                                        $permitExt = $ext($details->business_permit_path, 'pdf');
+                                        $permitPayload = [
+                                            'url' => route('admin.verification-documents.show', [$user, 'business-permit']),
+                                            'title' => 'Business Permit',
+                                            'subtitle' => $user->name,
+                                            'filename' => 'business_permit.' . $permitExt,
+                                            'kind' => $permitExt === 'pdf' ? 'pdf' : 'image',
+                                        ];
+                                    @endphp
+                                    <button type="button" aria-haspopup="dialog" @click="$dispatch('open-document', @js($permitPayload))"
                                         class="inline-flex max-w-full items-center gap-2 rounded-lg border border-[#d9ccdc] px-3 py-1.5 text-[13px] font-normal text-[#3b1735]
-                                               transition duration-200 hover:bg-[#F7F1F7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
-                                        <img src="{{ asset('assets/icons/registration/document-icon.svg') }}" alt="" class="h-4 w-4 flex-shrink-0">
-                                        <span class="truncate">business_permit.{{ $ext($details->business_permit_path, 'pdf') }}</span>
-                                    </a>
+                                               transition duration-200 hover:bg-[#F7F1F7] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                                        <x-admin.icon name="file" class="h-4 w-4 flex-shrink-0" />
+                                        <span class="truncate">business_permit.{{ $permitExt }}</span>
+                                    </button>
                                 @else
                                     <span class="text-sm text-gray-400">Not submitted</span>
                                 @endif
@@ -251,28 +260,6 @@
                     </section>
                 @endif
             </div>
-
-            {{-- ID lightbox --}}
-            @if ($details->valid_id_path)
-                <div x-show="lightbox" x-cloak role="dialog" aria-modal="true" aria-label="Valid ID preview"
-                    @keydown.escape.window="lightbox = false" @click.self="lightbox = false"
-                    x-effect="if (lightbox) $nextTick(() => $refs.lbClose && $refs.lbClose.focus())"
-                    x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                    x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                    class="fixed inset-0 z-[70] flex items-center justify-center bg-[#140a17]/80 p-4 backdrop-blur-sm">
-                    <div x-show="lightbox" class="relative max-h-full max-w-4xl"
-                        x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="opacity-0 scale-95 translate-y-2" x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                        x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
-                        <img :src="lbSrc" alt="Valid ID submitted by {{ $user->name }}"
-                            class="max-h-[85vh] w-auto rounded-xl bg-white object-contain shadow-2xl">
-                        <button type="button" x-ref="lbClose" @click="lightbox = false" aria-label="Close preview"
-                            class="absolute -right-2 -top-2 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#2B1730] shadow-lg
-                                   transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/50">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
-                        </button>
-                    </div>
-                </div>
-            @endif
         @endif
     </div>
 </div>

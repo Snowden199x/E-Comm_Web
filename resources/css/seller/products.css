@@ -348,3 +348,91 @@ textarea.pi-input { min-height: 110px; resize: vertical; }
 .pi-subcat { display: block; margin-top: 4px; font-size: 12px; color: var(--pi-muted); }
 .pi-subhead { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .pi-variants tfoot td { border-top: 2px solid var(--pi-border); padding-top: 12px; }
+
+
+/* =========================================================
+   4-5 Oct follow-up: Delete product, Variations tab, richer details
+   (appended after the original file; nothing above is modified)
+   ========================================================= */
+.pi-menu-sep { display: block; height: 1px; margin: 6px 4px; background: #f0ebf1; }
+.pi-menu .pi-menu-danger { display: flex; align-items: center; gap: 8px; color: var(--pi-danger); }
+.pi-menu .pi-menu-danger:hover { background: var(--pi-danger-bg); }
+
+.pi-table tbody tr.is-removing { animation: pi-row-out .3s var(--pi-ease) forwards; pointer-events: none; }
+@keyframes pi-row-out { to { opacity: 0; transform: translateX(24px); } }
+
+/* Delete confirmation dialog */
+.pi-confirm { width: min(440px, calc(100vw - 32px)); padding: 28px 28px 24px; border: 0; border-radius: 20px; background: #fff; color: var(--pi-ink, #1c1620); text-align: center; font: 400 14px/1.5 'Poppins', system-ui, sans-serif; box-shadow: 0 30px 80px rgba(30, 10, 36, .35); opacity: 0; transform: translateY(14px) scale(.97); transition: opacity .25s var(--pi-ease, ease), transform .25s var(--pi-ease, ease), overlay .25s allow-discrete, display .25s allow-discrete; }
+.pi-confirm[open] { opacity: 1; transform: none; }
+@starting-style { .pi-confirm[open] { opacity: 0; transform: translateY(14px) scale(.97); } }
+.pi-confirm::backdrop { background: rgba(28, 12, 32, 0); transition: background .25s, overlay .25s allow-discrete, display .25s allow-discrete; }
+.pi-confirm[open]::backdrop { background: rgba(28, 12, 32, .52); backdrop-filter: blur(3px); }
+@starting-style { .pi-confirm[open]::backdrop { background: rgba(28, 12, 32, 0); } }
+.pi-confirm * { box-sizing: border-box; }
+.pi-confirm h2 { margin: 0 0 8px; font-size: 19px; font-weight: 600; }
+.pi-confirm p { margin: 0; color: #5f5765; font-size: 13.5px; }
+.pi-confirm p strong { color: #1c1620; overflow-wrap: anywhere; }
+.pi-confirm__icon { width: 56px; height: 56px; margin: 0 auto 14px; display: grid; place-items: center; border-radius: 50%; background: #fef3f2; color: #b42318; }
+.pi-confirm .pi-error { text-align: left; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #fef3f2; }
+.pi-confirm__actions { display: flex; gap: 10px; margin-top: 22px; }
+.pi-confirm__actions .pi-btn { flex: 1; }
+.pi-btn--danger-solid { background: #b42318; border-color: #b42318; color: #fff; }
+.pi-btn--danger-solid:hover { background: #912018; border-color: #912018; }
+
+/* Product modal: price, tabs, details */
+.pi-oldprice { margin-left: 10px; font-size: 15px; font-weight: 400; color: var(--pi-muted); }
+.pi-tabcount { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--pi-tint); color: var(--pi-plum); font-size: 11px; font-weight: 600; }
+.pi-subhead { margin: 20px 0 10px; font-size: 14px; font-weight: 600; color: var(--pi-ink); }
+.pi-vnote { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; background: var(--pi-tint); color: #3d2a42; font-size: 13px; }
+.pi-video { display: block; width: 100%; max-height: 260px; border-radius: 12px; background: #1c1620; }
+
+/* Variations tab */
+.pi-vsummary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.pi-vsummary div { padding: 12px 14px; border: 1px solid var(--pi-border); border-radius: 12px; background: #fcfafc; }
+.pi-vsummary span { display: block; font-size: 11.5px; color: var(--pi-muted); }
+.pi-vsummary strong { font-size: 20px; font-weight: 600; color: var(--pi-plum); }
+.pi-vtypes { display: grid; gap: 8px; margin-bottom: 16px; }
+.pi-vtype { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.pi-vtype__name { min-width: 72px; font-size: 13px; font-weight: 600; }
+.pi-chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.pi-chip { display: inline-flex; align-items: center; padding: 3px 11px; border: 1px solid var(--pi-border-strong); border-radius: 999px; background: #fff; color: #3d2a42; font-size: 12px; font-weight: 500; }
+.pi-chip--sm { padding: 1px 8px; font-size: 11px; background: var(--pi-tint); border-color: transparent; }
+
+.pi-vthumb { width: 44px; height: 44px; flex: none; border-radius: 10px; border: 1px solid var(--pi-border); object-fit: cover; background: #faf7fb; }
+.pi-vthumb--empty { display: block; background: repeating-linear-gradient(45deg, #f4eef5, #f4eef5 6px, #faf7fb 6px, #faf7fb 12px); }
+.pi-vempty { padding: 36px 16px; text-align: center; color: var(--pi-muted); }
+.pi-vempty svg { color: var(--pi-accent); margin-bottom: 8px; }
+.pi-vempty h4 { margin: 0 0 4px; font-size: 16px; color: var(--pi-ink); }
+
+/* Variation rows: a grid list instead of a table, so long names and SKUs can never overlap neighbours. */
+.pi-vlist { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.pi-vrow { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto auto auto; align-items: center; gap: 4px 14px; padding: 10px 12px; border: 1px solid var(--pi-border); border-radius: 12px; background: #fff; animation: pi-rise .4s var(--pi-ease) both; animation-delay: calc(var(--i, 0) * 28ms); transition: border-color .2s, box-shadow .2s; }
+.pi-vrow:hover { border-color: #d6c2dc; box-shadow: 0 4px 12px rgba(81, 34, 88, .07); }
+.pi-vrow .pi-vthumb { width: 48px; height: 48px; }
+.pi-vrow__main { min-width: 0; display: grid; gap: 1px; }
+.pi-vrow__title { font-size: 13.5px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.pi-vrow__opts { font-size: 12px; color: #5a4a60; overflow-wrap: anywhere; }
+.pi-vrow__sku { font-size: 11.5px; color: var(--pi-muted); overflow-wrap: anywhere; }
+.pi-vrow__cell { text-align: right; white-space: nowrap; }
+.pi-vrow__cell strong { display: block; font-size: 13.5px; font-weight: 600; }
+.pi-vrow__k { display: block; font-size: 10.5px; color: var(--pi-muted); }
+.pi-vrow__end { display: grid; justify-items: end; gap: 4px; }
+.pi-vtotal { display: flex; justify-content: space-between; margin: 12px 0 0; padding: 12px 14px; border-radius: 12px; background: #faf7fb; font-size: 13px; }
+.pi-vtotal strong { color: var(--pi-plum); }
+
+/* The modal's right column is narrow: drop to two lines per variation. */
+@media (max-width: 860px) {
+    .pi-vrow { grid-template-columns: 48px minmax(0, 1fr) auto; }
+    .pi-vrow__cell { text-align: left; }
+    .pi-vrow__cell:nth-of-type(1) { grid-column: 2; }
+    .pi-vrow__cell:nth-of-type(2) { grid-column: 2; }
+    .pi-vrow__end { grid-column: 3; grid-row: 1 / span 3; align-self: center; }
+}
+@media (max-width: 720px) {
+    .pi-vsummary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pi-detail { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .pi-table tbody tr.is-removing { animation: none; opacity: 0; }
+    .pi-confirm, .pi-confirm::backdrop { transition: none; }
+}

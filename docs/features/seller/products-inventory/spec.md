@@ -1,16 +1,16 @@
 # Products & Inventory
 
 **Status:** Product persistence, annual codes, variants, stock movements and Buyer checkout are implemented in code; owner migration and end-to-end verification pending.
-**Updated:** 4 October 2026
+**Updated:** 5 October 2026
 
 ## Routes and UI
 
 - `GET /seller/products`: search name/SKU, category and stock-status filters (selects apply instantly, search after a short pause), ten-row pagination ("Showing X out of N entries"), four inventory stat cards that also act as stock filters, and a Low Stock Alert panel. The old Categories side card was removed; the Category filter replaces it. An **Add Product** button sits in the page header.
-- Clicking a product row, name, or a menu entry opens a **details modal** (not a drawer): photo gallery, Details, Restock and Stock history tabs, Edit button. Row menu: View details, Edit product, Restock. Direct visits to `GET /seller/products/{product}` (e.g. from notifications) render the same details inside the seller layout.
+- Clicking a product row, name, or a menu entry opens a **details modal** (not a drawer): photo gallery, Details, **Variations** (only when the product has variations), Restock and Stock history tabs, Edit button. Row menu: View details, Edit product, Restock, and (below a divider) **Delete product**. The delete menu item and confirmation dialog are built, but the server route does not exist yet (see below and [backend needs](../backend-needs.md)). Direct visits to `GET /seller/products/{product}` (e.g. from notifications) render the same details inside the seller layout.
 - `GET /seller/products/create`, `POST /seller/products`, and `GET /seller/products/{product}?mode=edit` + `PATCH` render one full-page form (`seller/products/form.blade.php`). Submitted products start at `for_review`; saved drafts stay private.
 - `POST /seller/products/{product}/restock`: positive quantity and required reason; a unique request key prevents double-submit. When variants exist the form sends a product-owned `variant_id`, which the server validates and records.
 
-All routes require an approved, active seller and scope records to that seller. Category selection is limited to the seller's registered categories and their children. There is no destructive product-delete action.
+All routes require an approved, active seller and scope records to that seller. Category selection is limited to the seller's registered categories and their children. **Delete product is UI-only for now.** The row menu opens a confirmation dialog and sends `DELETE /seller/products/{id}`; that route is not implemented, so the dialog reports that deleting is not available on the server yet. Do not treat deletion as implemented until the backend items in [backend needs](../backend-needs.md) are built.
 
 ## Add / Edit Product form (UI contract)
 
@@ -43,12 +43,27 @@ Existing product photos can be made the main image by ID/order on edit. Admin Pr
 - Decide whether category schemas should move from `config/product-attributes.php` into a managed `category_attributes` table.
 - Review historical stock movement display for products converted from simple stock to variants. Such conversion is currently limited to zero-stock products with no orders.
 
+## Product details modal (5 October 2026 UI update)
+
+- **Details tab:** name, category pills, price (a range when variants have different prices, with the original price crossed out when higher), stock, brand, condition, only the legacy fields that hold a value (material, weight, country of origin), one row per **variation type** (for example Color: black, red · Size: small, medium, large) instead of the old empty Colors/Sizes rows, date added, category details, additional specifications, shipping information (weight, package size, fragile) and the product video.
+- **Variations tab:** summary cards (variation types, combinations, total stock, out of stock), the types with their options as chips, and one row per variant with image, name, option text, SKU, price, stock, status pill and a **Restock** shortcut that opens the Restock tab with that variant preselected. Variant rows are a grid list rather than a table so long names and SKUs cannot overlap. A product marked as having variations but with no stored variants shows an explanatory empty state. SKUs read "assigned after submission" for drafts.
+- Direct visits to `GET /seller/products/{product}` now have working tabs too.
+- Reads only data `ProductController::show` already eager-loads (`attributeValues`, `specifications`, `variationTypes.options`, `variants`); no backend change.
+
+## Delete product (UI built, backend pending)
+
+Intended behavior, as requested by the owner: the Seller deletes their own product from the row's 3-dot menu; the product disappears from the Seller's system; **Admin is notified**. The Admin side is deliberately **not** built; it is recorded in [backend needs](../backend-needs.md).
+
+Built now: the menu item, an accessible confirmation dialog (focus returns to the menu button, Esc/backdrop closes), a loading state, error messages (including 404/405 "route not available yet" and 419 session expiry), an animated row removal and a success toast through the existing `sellerOperationMessage` mechanism.
+
+Not built: route, controller action, soft delete, open-order blocking rule, cart cleanup, Admin notification. Product deletion is only safe as a soft delete because `order_items.product_id` and `product_reviews.product_id` restrict hard deletes.
+
 ## Stock rules
 
 `Product::LOW_STOCK_THRESHOLD` is 10: out of stock = 0, low stock = 1–10, in stock = above 10 (mutually exclusive). Status colors: In Stock `#15803D`/`#DCFCE7`, Low Stock `#2563EB`/`#DBEAFE`, Out of Stock `#8D0000`/`#FFD3D3`. Category pills use `Category::colors` of the **main** category, with the subcategory name shown beneath. New stock, restocks, checkout deductions and cancellations create `inventory_movements`. Restock/checkout/cancellation use transactions and row locks. When variants are introduced, movements and restocks become per-variant and `products.stock` must equal the variant sum.
 
 ## Files
 
-`Seller/ProductController`, `Product`, `Category`, `InventoryMovement`, `InventoryService`; views `resources/views/seller/products/{index,form,detail}.blade.php` and `partials/{detail-body,pagination,thumb}.blade.php`; `resources/css/seller/products.css`, `resources/js/seller/products.js` (the older `operations.css/js` remain for other seller pages); `config/product-attributes.php`; icons in `public/assets/icons/seller/`.
+`Seller/ProductController`, `Product`, `Category`, `InventoryMovement`, `InventoryService`; views `resources/views/seller/products/{index,form,detail}.blade.php` and `partials/{detail-body,pagination,thumb}.blade.php`; `resources/css/seller/products.css` (original rules unchanged; the 5 October additions are appended at the end), `resources/js/seller/products.js` (the older `operations.css/js` remain for other seller pages); `config/product-attributes.php`; icons in `public/assets/icons/seller/`.
 
-[Role workspace redesign and backend gaps](../../../design/2026-10-04-role-workspace-redesign.md) · [Design functions](design-functions.md) · [Inventory](../inventory/spec.md) · [Shipments](../shipments/spec.md)
+[Backend needs](../backend-needs.md) · [Role workspace redesign and backend gaps](../../../design/2026-10-04-role-workspace-redesign.md) · [Design functions](design-functions.md) · [Inventory](../inventory/spec.md) · [Shipments](../shipments/spec.md)
