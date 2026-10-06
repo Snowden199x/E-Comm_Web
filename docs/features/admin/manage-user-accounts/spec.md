@@ -1,7 +1,7 @@
 # User Management
 
-**Status:** Implemented for buyer, seller and logistics-center accounts (UI redesigned 4 October 2026; owner verification pending)  
-**Reviewed:** 4 October 2026
+**Status:** Implemented for buyer, seller and logistics-center accounts (UI redesigned 4 October 2026; file popups added 6 October 2026; owner verification pending)  
+**Reviewed:** 6 October 2026
 
 ## Current behavior
 
@@ -9,7 +9,7 @@ The Admin User Management list and counts cover buyer, seller, and logistics-cen
 
 **List (`admin.user-management.index`).** Count cards for all users, sellers, buyers, and logistics centers; selecting a card filters the list to that type. Search by name or email, a date filter, a user-type filter, and the Rejected toggle refresh the list **in place**: the browser fetches the index page and swaps only `#um-region`, which holds the table and every per-user dialog together, so the dialogs always match the visible rows. Open dialogs are closed on each refresh. Eight rows per page, a windowed page list, and the URL is kept in sync. Status pills read Active, Suspended, Deactivated, or Rejected. Selecting a row or a name opens that user's profile.
 
-**Profile (modal only, never a separate page).** A left card shows the avatar initial, role, status, email, phone, business name (sellers and logistics centers), category chips colored by `Category::colors` (sellers), and Date Joined. Below it are the actions for the user's status. The right side stacks Personal Information (with the valid ID preview and enlarge viewer), Address, and, for sellers and logistics centers, Business Information. Street and house number display as one "Street / House No." line. IDs and permits open through the protected Admin document route.
+**Profile (modal only, never a separate page).** A left card shows the avatar initial, role, status, email, phone, business name (sellers and logistics centers), category chips colored by `Category::colors` (sellers), and Date Joined. Below it are the actions for the user's status. The right side stacks Personal Information (with the valid ID preview and enlarge viewer), Address, and, for sellers and logistics centers, Business Information. Street and house number display as one "Street / House No." line. IDs and permits open through the protected Admin document route **in the shared document popup** (no new tab); images and PDFs both display, and a missing file shows a specific reason. See [Admin document viewer](../document-viewer/spec.md).
 
 **Actions.** Admin can suspend, deactivate, and reactivate these roles; each action opens its own confirmation dialog and the server checks role and current status.
 - **Suspend** (active approved accounts): one or more reasons are required (`reasons[]`), details up to 500 characters (required for "Other"); sets `account_status = suspended` with `suspended_at` and either a selected 1–365 day end date or no end date until lifted. The profile shows the reason, start, end, and a live countdown for timed suspensions.
@@ -30,8 +30,8 @@ The browser still fetches the full index page for in-place refresh; the existing
 
 ## Source evidence
 
-`app/Http/Controllers/Admin/UserManagementController.php`, `resources/views/admin/user-management/`, `resources/css/admin/registrations.css`, shared ID partials in `resources/views/admin/registrations/partials/` (`id-preview`, `id-lightbox`).
+`app/Http/Controllers/Admin/UserManagementController.php`, `resources/views/admin/user-management/`, `resources/css/admin/registrations.css`, shared ID partial `resources/views/admin/registrations/partials/id-preview.blade.php`, and the shared popup `resources/views/admin/partials/document-viewer.blade.php` (`id-lightbox` is no longer used).
 
 ## Related documentation
 
-See [Registration Review](../manage-account-registration/spec.md), [domain status](../../../domain-feature-status.md), and the [Admin domain page](../../../domains/Admin.md).
+See [Registration Review](../manage-account-registration/spec.md), [Admin document viewer](../document-viewer/spec.md), [domain status](../../../domain-feature-status.md), and the [Admin domain page](../../../domains/Admin.md).

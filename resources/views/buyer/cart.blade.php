@@ -17,6 +17,13 @@
         @if($cartItems->isNotEmpty())
             <div class="cart-layout">
                 <section class="cart-main" aria-label="Cart items">
+                    <div class="cart-bulk">
+                        <span id="bulkHint">Tick items to remove several at once.</span>
+                        <button type="button" id="removeSelected" disabled>
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 12h9l1-12"/></svg>
+                            <span id="removeSelectedLabel">Remove selected</span>
+                        </button>
+                    </div>
                     <div class="cart-columns">
                         <label class="cart-columns__all">
                             <input type="checkbox" id="selectAllCart" aria-label="Select all items">
@@ -79,6 +86,7 @@
                                             @csrf @method('DELETE')
                                             <button type="submit" class="cart-item__remove" aria-label="Remove {{ $item->product->name }} from cart">
                                                 <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l.8 12.5h9.4L17.5 7M10 11v5M14 11v5"/></svg>
+                                            <span>Remove</span>
                                             </button>
                                         </form>
                                     </div>
@@ -101,10 +109,10 @@
                 </aside>
             </div>
         @else
-            <div class="cart-empty">
-                <span class="cart-empty__icon"><span class="vb-icon" style="--icon: url('{{ asset('assets/icons/buyer/cart-icon.svg') }}')"></span></span>
-                <p>Your cart is empty.</p>
-                <a href="{{ route('buyer.products.index') }}">Start Shopping</a>
+            <div class="rounded-xl border border-[#eee6ef] bg-white">
+                <x-buyer.empty-state icon="cart" title="Your cart is empty" text="Items you add will wait here until you are ready to check out.">
+                    <a href="{{ route('buyer.products.index') }}" class="inline-flex h-10 items-center rounded-md bg-[#402143] px-5 text-[13px] font-medium text-white transition-colors duration-200 hover:bg-[#52245b]">Start shopping</a>
+                </x-buyer.empty-state>
             </div>
         @endif
 
@@ -173,7 +181,35 @@
             input.value = Math.max(1, Number(input.value || 1) + Number(button.dataset.quantityStep));
             form.requestSubmit();
         }));
+        // Remove several items at once, using the same delete route as the single Remove button
+        const removeBtn = document.getElementById('removeSelected');
+        const removeLabel = document.getElementById('removeSelectedLabel');
+        let armed = null;
+        const syncRemove = () => {
+            const n = items.filter(box => box.checked).length;
+            removeBtn.disabled = n === 0;
+            removeLabel.textContent = removeBtn.classList.contains('is-confirming') ? 'Confirm: remove ' + n : 'Remove selected' + (n ? ' (' + n + ')' : '');
+        };
+        const disarm = () => { clearTimeout(armed); removeBtn.classList.remove('is-confirming'); syncRemove(); };
+        items.forEach(box => box.addEventListener('change', disarm));
+        all.addEventListener('change', disarm);
+        document.querySelectorAll('[data-store-select]').forEach(s => s.addEventListener('change', disarm));
+        removeBtn.addEventListener('click', async () => {
+            if (!removeBtn.classList.contains('is-confirming')) {
+                removeBtn.classList.add('is-confirming'); syncRemove();
+                armed = setTimeout(disarm, 4000); return;
+            }
+            clearTimeout(armed); removeBtn.disabled = true; removeLabel.textContent = 'Removing…';
+            for (const box of items.filter(b => b.checked)) {
+                const form = box.closest('.cart-item').querySelector('.cart-item__remove-form');
+                try { await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'Accept': 'text/html' } }); } catch (_) {}
+            }
+            try { sessionStorage.removeItem(selectionKey); } catch (_) {}
+            window.location.reload();
+        });
         update();
+        syncRemove();
+        items.forEach(box => box.addEventListener('change', syncRemove));
     })();
     </script>
     @include('shared.live-revision', ['endpoint' => route('buyer.live', 'cart'), 'mode' => 'notice'])

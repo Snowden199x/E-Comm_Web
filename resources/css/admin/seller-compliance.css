@@ -1,0 +1,242 @@
+/*
+ * Admin → Seller Compliance (Overview, Products for Review, Warnings, Violations, Suspended Sellers).
+ * Prefix: sc-
+ *
+ * Layout, colour and type live in Tailwind utilities in the Blade views.
+ * This file only holds what utilities can't express: keyframes, staggered
+ * entrances, the table loading state and the animated result icons.
+ * Everything degrades cleanly if this file is missing.
+ */
+
+:root {
+    --sc-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Smooth tab changes. Browsers that support cross-document view transitions slide the
+   active pill to the next tab while the page cross-fades; others simply navigate. */
+@view-transition {
+    navigation: auto;
+}
+
+.sc-tab-pill {
+    view-transition-name: sc-tab-pill;
+}
+
+.sc-tabs {
+    view-transition-name: sc-tabs;
+}
+
+::view-transition-group(sc-tab-pill) {
+    animation-duration: 0.38s;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 0.22s;
+}
+
+/* Page enter: one short settle when a tab opens. "backwards" only, so fixed
+   dialogs inside stay anchored to the viewport (no lingering transform). */
+@keyframes sc-page-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.sc-page {
+    animation: sc-page-in 0.35s var(--sc-ease) backwards;
+}
+
+/* Stat cards rise one after another. Set style="--i: n" on each card. */
+@keyframes sc-rise {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.sc-card {
+    animation: sc-rise 0.4s var(--sc-ease) backwards;
+    animation-delay: calc(var(--i, 0) * 60ms);
+    transition: transform 0.25s var(--sc-ease), box-shadow 0.25s var(--sc-ease), border-color 0.2s ease;
+}
+
+a.sc-card:hover,
+button.sc-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 30px -22px rgba(43, 23, 48, 0.55);
+}
+
+/* Table rows settle in after a search, filter or page change (and on first load). */
+@keyframes sc-row-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.sc-fresh tbody tr,
+.sc-rows tbody tr {
+    animation: sc-row-in 0.3s var(--sc-ease) backwards;
+    animation-delay: calc(var(--i, 0) * 28ms);
+}
+
+/* Table is dimmed and inert while a request is in flight. */
+.sc-table-wrap {
+    transition: opacity 0.18s ease;
+}
+
+.sc-table-wrap[aria-busy='true'] {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+/* Thin indeterminate bar pinned to the top edge of the table region. */
+@keyframes sc-bar-run {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(300%);
+    }
+}
+
+.sc-bar {
+    position: absolute;
+    inset: 0 0 auto 0;
+    z-index: 2;
+    height: 2px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: rgba(125, 85, 128, 0.15);
+}
+
+.sc-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 35%;
+    border-radius: 2px;
+    background: #7d5580;
+    animation: sc-bar-run 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Compliance score bar grows from the left. Width is inline; only scale animates. */
+@keyframes sc-grow {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
+}
+
+.sc-meter {
+    transform-origin: left center;
+    animation: sc-grow 0.7s var(--sc-ease) backwards;
+    animation-delay: calc(var(--i, 0) * 28ms + 120ms);
+}
+
+/* Empty state: the badge floats gently, the rings pulse once. */
+@keyframes sc-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+@keyframes sc-ring {
+    from {
+        opacity: 0.55;
+        transform: scale(0.7);
+    }
+    to {
+        opacity: 0;
+        transform: scale(1.35);
+    }
+}
+
+.sc-empty-art {
+    animation: sc-float 4.5s ease-in-out infinite;
+}
+
+.sc-empty-ring {
+    animation: sc-ring 2.4s var(--sc-ease) infinite;
+}
+
+.sc-empty-ring:nth-child(2) {
+    animation-delay: 1.2s;
+}
+
+/* Animated result icon inside the confirmation dialog: pop, then draw the glyph. */
+@keyframes sc-pop {
+    0% {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+    60% {
+        transform: scale(1.08);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes sc-draw {
+    from {
+        stroke-dashoffset: 30;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.sc-result {
+    animation: sc-pop 0.45s var(--sc-ease) backwards;
+}
+
+.sc-result .sc-glyph {
+    stroke-dasharray: 30;
+    animation: sc-draw 0.45s ease-out 0.2s backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    @view-transition {
+        navigation: none;
+    }
+
+    .sc-page,
+    .sc-card,
+    .sc-fresh tbody tr,
+    .sc-rows tbody tr,
+    .sc-bar::after,
+    .sc-meter,
+    .sc-empty-art,
+    .sc-empty-ring,
+    .sc-result,
+    .sc-result .sc-glyph {
+        animation: none;
+    }
+
+    .sc-card {
+        transition: none;
+    }
+}

@@ -68,14 +68,28 @@
                     <img src="{{ asset('assets/branding/log-in-logo.svg') }}" alt="Vendo" class="h-9 w-auto sm:h-10">
                 </a>
 
-                <!-- Search -->
+                <!-- Search (products; shops too once the shop search route exists) -->
+                @php
+                    $shopSearchUrl = \Illuminate\Support\Facades\Route::has('buyer.sellers.index') ? route('buyer.sellers.index') : null;
+                    $searchScope = $shopSearchUrl && request()->routeIs('buyer.sellers.index') ? 'shops' : 'products';
+                @endphp
                 <form action="{{ route('buyer.products.index') }}" method="GET" role="search"
+                    @if ($shopSearchUrl) x-data="{ scope: @js($searchScope) }" :action="scope === 'shops' ? @js($shopSearchUrl) : @js(route('buyer.products.index'))" @endif
                     class="order-last flex h-10 w-full min-w-0 items-center rounded-lg bg-white p-[3px] transition-shadow duration-300 ease-vendo focus-within:shadow-[0_0_0_3px_rgba(232,200,116,0.55)] sm:order-none sm:mx-auto sm:max-w-[640px] sm:flex-1">
-                    <input type="search" name="search" value="{{ request('search') }}" placeholder="Search products"
-                        autocomplete="off"
+                    @if ($shopSearchUrl)
+                        <label for="vb-search-scope" class="sr-only">Search in</label>
+                        <select id="vb-search-scope" x-model="scope"
+                            class="h-full w-[96px] flex-shrink-0 cursor-pointer rounded-none border-0 border-r border-[#eee6ef] bg-transparent py-0 pl-3 pr-7 text-[12px] font-medium text-[#52245b] focus:outline-none focus:ring-0 sm:w-[108px]">
+                            <option value="products">Products</option>
+                            <option value="shops">Shops</option>
+                        </select>
+                    @endif
+                    <input type="search" name="search" value="{{ request('search') }}"
+                        @if ($shopSearchUrl) :placeholder="scope === 'shops' ? 'Search shops by name or account' : 'Search products'" @endif
+                        placeholder="Search products" autocomplete="off"
                         class="h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-[13px] text-[#2b1730] placeholder:text-[#9a8a9d] focus:outline-none focus:ring-0">
                     <button type="submit" aria-label="Search"
-                        class="grid h-full w-12 flex-shrink-0 place-items-center rounded-md bg-[#e8c874] text-[#402143] transition-all duration-300 ease-vendo hover:bg-[#f1d786] active:scale-95">
+                        class="grid h-full w-11 flex-shrink-0 place-items-center rounded-md bg-transparent text-[#402143] transition-colors duration-200 ease-vendo hover:bg-[#f3e8f5] active:scale-95">
                         <span class="vb-icon h-[18px] w-[18px]"
                             style="--icon: url('{{ asset('assets/icons/buyer/search-icon.svg') }}')"></span>
                     </button>
@@ -177,7 +191,7 @@
 
                     <span class="mx-1 hidden h-4 w-px flex-shrink-0 bg-white/15 sm:block"></span>
 
-                    <div class="vb-no-scrollbar vb-fade-x flex min-w-0 flex-1 items-center overflow-x-auto">
+                    <div class="vb-no-scrollbar flex min-w-0 flex-1 items-center overflow-x-auto">
                         @foreach ($menuCategories as $i => $category)
                             <a href="{{ route('buyer.products.index', ['category_id' => $category->id]) }}"
                                 @mouseenter="show({{ $i }})"

@@ -1,7 +1,8 @@
 {{--
     Full profile dialog for one user (modal only, never a separate page).
     Needs $user and the parent scope { openId, suspendId, deactivateId, activateId }.
-    Reuses the ID preview + lightbox from the Registrations partials.
+    Reuses the ID preview from the Registrations partials; files open in the shared
+    document viewer popup (admin/partials/document-viewer.blade.php).
 --}}
 @php
     $details = $user->sellerDetail ?? $user->buyerDetail ?? $user->logisticsCenterDetail;
@@ -62,8 +63,7 @@
     class="fixed inset-0 z-50 flex items-center justify-center bg-[#2B1730]/50 p-3 backdrop-blur-[2px] sm:p-4">
 
     <div x-show="openId === {{ $user->id }}" @click.stop
-        x-data="{ lightbox: false, lbSrc: '' }"
-        @keydown.escape.window="if (openId === {{ $user->id }} && !lightbox && !$event.defaultPrevented && !suspendId && !deactivateId && !activateId) openId = null"
+        @keydown.escape.window="if (openId === {{ $user->id }} && !$event.defaultPrevented && !suspendId && !deactivateId && !activateId) openId = null"
         x-transition:enter="transition duration-300 ease-vendo" x-transition:enter-start="opacity-0 translate-y-3 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100"
         x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
         class="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-[#FBF7F2] shadow-[0_30px_70px_-30px_rgba(43,23,48,0.6)] sm:max-h-[calc(100dvh-2rem)]">
@@ -258,12 +258,22 @@
                                 <dt class="{{ $dtClass }}">Business Permit</dt>
                                 <dd class="min-w-0">
                                     @if ($details->business_permit_path)
-                                        <a href="{{ route('admin.verification-documents.show', [$user, 'business-permit']) }}" target="_blank" rel="noopener noreferrer"
+                                        @php
+                                            $permitExt = $ext($details->business_permit_path, 'pdf');
+                                            $permitPayload = [
+                                                'url' => route('admin.verification-documents.show', [$user, 'business-permit']),
+                                                'title' => 'Business Permit',
+                                                'subtitle' => $user->name,
+                                                'filename' => 'business_permit.' . $permitExt,
+                                                'kind' => $permitExt === 'pdf' ? 'pdf' : 'image',
+                                            ];
+                                        @endphp
+                                        <button type="button" aria-haspopup="dialog" @click="$dispatch('open-document', @js($permitPayload))"
                                             class="inline-flex max-w-full items-center gap-2 rounded-lg border border-[#d9ccdc] px-3 py-1.5 text-[13px] font-normal text-[#3b1735]
-                                                   transition duration-200 hover:bg-[#F7F1F7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
-                                            <img src="{{ asset('assets/icons/user-management/document-icon.svg') }}" alt="" class="h-4 w-4 flex-shrink-0">
-                                            <span class="truncate">business_permit.{{ $ext($details->business_permit_path, 'pdf') }}</span>
-                                        </a>
+                                                   transition duration-200 hover:bg-[#F7F1F7] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                                            <x-admin.icon name="file" class="h-4 w-4 flex-shrink-0" />
+                                            <span class="truncate">business_permit.{{ $permitExt }}</span>
+                                        </button>
                                     @else
                                         <span class="text-sm text-gray-400">Not submitted</span>
                                     @endif
@@ -272,9 +282,6 @@
                         </section>
                     @endif
 
-                    @if ($details->valid_id_path)
-                        @include('admin.registrations.partials.id-lightbox')
-                    @endif
                 @else
                     <div class="rounded-2xl border border-[#ece4ec] bg-white px-6 py-14 text-center">
                         <p class="text-base font-semibold text-[#2B1730]">No details on file</p>

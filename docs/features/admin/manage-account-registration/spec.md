@@ -1,7 +1,7 @@
 # Registration Review
 
-**Status:** Implemented (UI redesigned 4 October 2026; owner verification pending)  
-**Reviewed:** 4 October 2026
+**Status:** Implemented (UI redesigned 4 October 2026; file popups added 6 October 2026; owner verification pending)  
+**Reviewed:** 6 October 2026
 
 ## Current behavior
 
@@ -9,7 +9,7 @@ Admin reviews pending buyer, seller, and logistics-center applications. Riders a
 
 **List (`admin.registrations.index`, partial `admin.registrations.table`).** Pending-count cards for all requests, sellers, buyers, and logistics centers; selecting a card filters the table to that user type. Search by name or email, a date filter, and a user-type filter refresh the table in place (debounced, stale requests cancelled, URL kept in sync). Eight rows per page with a windowed page list; page buttons use the same fetch, so pagination never navigates to the table partial. An empty result offers "Clear filters". The counts always show all pending applications and do not change with filters.
 
-**Details (`admin.registrations.show`).** A profile card (name, role, contact, business name for sellers and logistics centers, date applied, status) beside tabs: Personal Information, User Address, and, for sellers and logistics centers, Business Information. Street and house number display as one "Street / House No." line. A submitted valid ID shows as a thumbnail that opens a larger viewer; a failed preview falls back to a link. Business permits, IDs, and a Buyer's second ID open through the protected Admin document route.
+**Details (`admin.registrations.show`).** A profile card (name, role, contact, business name for sellers and logistics centers, date applied, status) beside tabs: Personal Information, User Address, and, for sellers and logistics centers, Business Information. Street and house number display as one "Street / House No." line. A submitted valid ID shows as a thumbnail (a document tile for a PDF) that opens the shared document popup; a failed preview shows "Preview couldn't load" and the popup explains why. Business permits, IDs, and a Buyer's second ID open through the protected Admin document route in that popup, never in a new tab. See [Admin document viewer](../document-viewer/spec.md).
 
 **Decisions.** While an application is pending, a sticky bar offers Reject and Approve.
 - **Approve** asks for confirmation, sets `status = approved`, sends `AccountApprovedMail` synchronously, and for logistics centers re-runs routing of unresolved ready orders.
@@ -33,8 +33,8 @@ ID and business-permit previews use a protected Admin route that selects the app
 
 ## Source evidence
 
-`app/Http/Controllers/Admin/RegistrationController.php`, `app/Http/Controllers/VerificationDocumentController.php`, `resources/views/admin/registrations/`, `resources/css/admin/registrations.css`
+`app/Http/Controllers/Admin/RegistrationController.php`, `app/Http/Controllers/VerificationDocumentController.php`, `resources/views/admin/registrations/`, `resources/views/admin/partials/document-viewer.blade.php`, `resources/css/admin/registrations.css`
 
 ## Related documentation
 
-See [domain status](../../../domain-feature-status.md), the relevant domain page, [User Management](../manage-user-accounts/spec.md), and [feature implementation guide](../../../feature-implementation-guide.md).
+See [domain status](../../../domain-feature-status.md), the relevant domain page, [User Management](../manage-user-accounts/spec.md), [Admin document viewer](../document-viewer/spec.md), and [feature implementation guide](../../../feature-implementation-guide.md).

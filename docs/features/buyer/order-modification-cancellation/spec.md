@@ -1,13 +1,17 @@
 # Order Cancellation/Modification
 
 **Status:** Buyer and Seller pre-pickup cancellation implemented
-**Reviewed:** 4 October 2026
+**Reviewed:** 6 October 2026
 
 ## Current behavior
 
 Buyer can cancel an owned order while it is `placed`, `confirmed`, `preparing`, or `ready_for_pickup`. A reason modal requires a selection, and selecting Other requires details. Seller can decline a newly placed order or cancel an order through the same pre-pickup stages from Orders or Shipments; Seller cancellation also requires a reason modal.
 
 Cancellation is serialized under an order row lock. It restores reserved product or variant stock through `InventoryService`, changes the order to `cancelled`, records the actor and reason in `order_status_events.note`, and notifies the other party. An assigned rider and a Logistics Center with a pending pickup request are notified as well. Cancellation is unavailable after pickup; there is no refund flow because the current checkout uses COD.
+
+## Owner rule pending on the server (6 October 2026)
+
+The owner decided that a **Buyer can cancel only while the order is `placed` or `confirmed`**. Once the Seller starts preparing, the Buyer cannot cancel. The Buyer pages already follow this: the order detail shows Cancel order only for those two statuses, and from `preparing` onward it shows a note linking to the seller chat; the product page says "Cancel before preparing". **The server has not changed.** `OrderCancellationService::cancelForBuyer()` and `Buyer\OrderController@cancel` still accept `preparing` and `ready_for_pickup`, so a hand-made request would still cancel the order. Seller cancellation is unchanged. The fix is item 1 of [backend needs](../../../backend-needs.md); this spec's "Current behavior" stays accurate until then.
 
 ## Gaps and acceptance direction
 

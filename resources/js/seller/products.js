@@ -98,6 +98,38 @@ document.addEventListener('submit', async e => {
 /* =========================================================== LIST PAGE */
 const modal = $('#piModal');
 if (modal) initList();
+else if ($('.pi-detail')) initDetailPage();
+
+// Direct visits to a product's details page (for example from a notification) have no modal, so wire the tabs here.
+function initDetailPage() {
+    const root = $('.pi-detail');
+    const activate = name => {
+        $$('[data-tab]', root).forEach(b => {
+            if (!b.closest('.pi-tabs')) return;
+            const on = b.dataset.tab === name;
+            b.classList.toggle('is-active', on);
+            b.setAttribute('aria-selected', on);
+        });
+        $$('[data-tabpanel]', root).forEach(p => { p.hidden = p.dataset.tabpanel !== name; });
+    };
+    activate($('[data-initial-tab]')?.dataset.initialTab || 'details');
+    root.addEventListener('click', e => {
+        const tab = e.target.closest('[data-tab]');
+        if (!tab) return;
+        activate(tab.dataset.tab);
+        if (tab.dataset.restockVariant) {
+            const select = $('select[name="variant_id"]', root);
+            if (select) select.value = tab.dataset.restockVariant;
+        }
+    });
+    const thumbs = $$('[data-gallery-src]', root);
+    root.addEventListener('click', e => {
+        const thumb = e.target.closest('[data-gallery-src]');
+        if (!thumb) return;
+        $('[data-gallery-main]', root).replaceChildren(el('img', { src: thumb.dataset.gallerySrc, alt: thumb.dataset.galleryAlt || '' }));
+        thumbs.forEach(t => t.classList.toggle('is-active', t === thumb));
+    });
+}
 
 function initList() {
     const body = $('#piModalBody');
@@ -157,7 +189,13 @@ function initList() {
             return;
         }
         const tab = e.target.closest('[data-tab]');
-        if (tab && modal.contains(tab)) activateTab(tab.dataset.tab);
+        if (tab && modal.contains(tab)) {
+            activateTab(tab.dataset.tab);
+            if (tab.dataset.restockVariant) {
+                const select = $('select[name="variant_id"]', body);
+                if (select) { select.value = tab.dataset.restockVariant; select.focus({ preventScroll: true }); }
+            }
+        }
         const thumb = e.target.closest('[data-gallery-src]');
         if (thumb) {
             $('[data-gallery-main]', body).replaceChildren(el('img', { src: thumb.dataset.gallerySrc, alt: thumb.dataset.galleryAlt || '' }));
@@ -192,6 +230,58 @@ function initList() {
     });
     addEventListener('scroll', closeMenus, true);
     addEventListener('resize', closeMenus);
+
+    // Delete product: confirm dialog -> DELETE request -> row collapses -> page reloads with a toast.
+    const delDialog = $('#piDeleteDialog');
+    if (delDialog) {
+        const delName = $('[data-delete-name]', delDialog);
+        const delError = $('[data-delete-error]', delDialog);
+        const delConfirm = $('[data-delete-confirm]', delDialog);
+        const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let delUrl = '', delRow = null, delTrigger = null;
+
+        document.addEventListener('click', e => {
+            const trigger = e.target.closest('[data-delete-product]');
+            if (!trigger) return;
+            e.preventDefault();
+            closeMenus();
+            delUrl = trigger.dataset.deleteUrl;
+            delName.textContent = trigger.dataset.deleteName || 'This product';
+            delRow = trigger.closest('tr');
+            delTrigger = delRow?.querySelector('[data-kebab]') || null;
+            delError.classList.remove('is-show');
+            delConfirm.disabled = false; delConfirm.classList.remove('is-loading');
+            delDialog.showModal();
+            $('[data-delete-cancel]', delDialog).focus();
+        });
+
+        $('[data-delete-cancel]', delDialog).addEventListener('click', () => delDialog.close());
+        delDialog.addEventListener('click', e => { if (e.target === delDialog) delDialog.close(); });
+        delDialog.addEventListener('close', () => delTrigger?.focus?.());
+
+        delConfirm.addEventListener('click', async () => {
+            delConfirm.disabled = true; delConfirm.classList.add('is-loading');
+            delError.classList.remove('is-show');
+            try {
+                const res = await fetch(delUrl, { method: 'DELETE', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf() } });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    let message = data.message || 'Unable to delete this product. Please try again.';
+                    if (res.status === 404 || res.status === 405) message = 'Deleting products is not available on the server yet. The delete route still needs to be added.';
+                    if (res.status === 419) message = 'Your session expired. Reload the page and sign in again.';
+                    throw new Error(message);
+                }
+                try { sessionStorage.setItem('sellerOperationMessage', data.message || 'Product deleted.'); } catch { /* optional */ }
+                delDialog.close();
+                if (delRow && !reduceMotion()) { delRow.classList.add('is-removing'); setTimeout(() => location.reload(), 320); }
+                else location.reload();
+            } catch (ex) {
+                delError.textContent = ex.message;
+                delError.classList.add('is-show');
+                delConfirm.disabled = false; delConfirm.classList.remove('is-loading');
+            }
+        });
+    }
 
     // Filters: selects submit instantly, search submits after a short pause.
     const filters = $('#piFilters');
@@ -855,4 +945,4 @@ function initProductForm(form) {
     productDraftReady = true;
     window.addEventListener('pagehide', saveProductDraft);
     refresh();
-}
+}   
