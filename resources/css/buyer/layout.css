@@ -104,28 +104,97 @@
 .vb-img { opacity: 0; transition: opacity 0.5s var(--vb-ease), transform 0.6s var(--vb-ease); }
 .vb-img.is-loaded { opacity: 1; }
 
-/* ---------- Announcement banner ---------- */
-.vb-banner {
-    background-color: #5d3a80;
+/* Thin progress bar that runs while the next page is loading (link click or form submit) */
+.vb-progress {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 190;
+    height: 3px;
+    background: var(--vb-gold);
+    transform: scaleX(0);
+    transform-origin: left;
+    opacity: 0;
+    pointer-events: none;
+}
+.vb-progress.is-running { opacity: 1; transform: scaleX(0.82); transition: transform 6s cubic-bezier(0.1, 0.7, 0.2, 1); }
+
+/* ---------- Scroll reveal (every page load) ---------- */
+/* Hidden only once the layout script has run (html.vb-js), and always shown after 3.5s as a fail-safe. */
+html.vb-js .vb-reveal {
+    opacity: 0;
+    transform: translateY(26px);
+    transition: opacity 0.8s var(--vb-ease), transform 0.8s var(--vb-ease);
+    transition-delay: calc(min(var(--i, 0), 12) * 70ms + 80ms);
+}
+html.vb-js .vb-reveal.is-in { opacity: 1; transform: none; }
+html.vb-js .vb-reveal:not(.is-in) { animation: vb-reveal-failsafe 0s linear 3.5s forwards; }
+@keyframes vb-reveal-failsafe { to { opacity: 1; transform: none; } }
+
+/* Header drops in on every load */
+.vb-header { animation: vb-drop 0.7s var(--vb-ease) both; }
+@keyframes vb-drop { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+html.vb-calm .vb-header { animation: none; }
+
+/* ---------- Hero carousel (announcements) ---------- */
+.vb-hero { background: var(--vb-plum); isolation: isolate; }
+.vb-hero__track { display: flex; transition: transform 0.9s var(--vb-ease); will-change: transform; }
+.vb-hero__slide { position: relative; flex: 0 0 100%; min-width: 0; background: var(--slide-bg, var(--vb-plum)); }
+.vb-hero__art {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
     background-image: var(--banner-art, none);
     background-repeat: no-repeat;
     background-position: right center;
     background-size: cover;
+    opacity: 0.9;
 }
-.vb-slides { display: grid; }
-.vb-slide {
-    grid-area: 1 / 1;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(8px);
-    transition: opacity 0.7s var(--vb-ease), transform 0.7s var(--vb-ease), visibility 0s linear 0.7s;
-}
-.vb-slide.is-active { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+.vb-rise { opacity: 0; }
+.vb-hero__slide.is-active .vb-rise { animation: vb-rise 0.8s var(--vb-ease) both; animation-delay: calc(var(--d, 0) * 90ms + 180ms); }
+@keyframes vb-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+.vb-float { animation: vb-float 7s ease-in-out infinite; }
+.vb-float--slow { animation-duration: 10s; animation-delay: -3s; }
+@keyframes vb-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+
+/* Slide dots double as the autoplay timer: the active dot fills over 6.5s, and when the fill ends the next slide opens. */
+.vb-dot { position: relative; height: 6px; width: 6px; overflow: hidden; border-radius: 999px; background: rgba(255, 255, 255, 0.45); transition: width 0.5s var(--vb-ease), background-color 0.3s; }
+.vb-dot:hover { background: rgba(255, 255, 255, 0.75); }
+.vb-dot.is-active { width: 34px; background: rgba(255, 255, 255, 0.35); }
+.vb-dot__fill { position: absolute; inset: 0; transform-origin: left; transform: scaleX(0); background: #fff; border-radius: 999px; }
+.vb-dot.is-active .vb-dot__fill { animation: vb-dot-fill 6.5s linear forwards; }
+.vb-hero.is-paused .vb-dot__fill { animation-play-state: paused; }
+@keyframes vb-dot-fill { to { transform: scaleX(1); } }
+
+/* ---------- Product card ---------- */
+.vb-card-action { position: relative; z-index: 2; }
+.vb-heart { transition: transform 0.35s var(--vb-ease), background-color 0.2s, color 0.2s; }
+.vb-heart:active { transform: scale(0.88); }
+.vb-heart.is-saved { animation: vb-pop 0.45s var(--vb-ease); }
+
+/* ---------- Favorites panel ---------- */
+.vb-fav-scrim { background: rgba(27, 11, 30, 0.45); }
+
+/* ---------- Back to top ---------- */
+.vb-top { box-shadow: 0 10px 24px -10px rgba(43, 23, 48, 0.7); }
+
+/* ---------- Footer ---------- */
+.vb-footer { background: #2b1730; color: rgba(255, 255, 255, 0.72); }
+.vb-footer a { transition: color 0.2s var(--vb-ease), transform 0.3s var(--vb-ease); }
+.vb-footer a:hover { color: #fff; }
+.vb-footer__link { display: inline-block; padding: 3px 0; }
+.vb-footer__link:hover { transform: translateX(2px); }
+
+/* ---------- Preferences (set in Settings, stored on the device) ---------- */
+html.vb-text-lg body { zoom: 1.08; }
+html.vb-text-xl body { zoom: 1.16; }
 
 /* ---------- Accessibility ---------- */
 .vb-body :focus-visible { outline: 2px solid var(--vb-accent); outline-offset: 2px; }
-.vb-header :focus-visible { outline-color: var(--vb-gold); }
+.vb-header :focus-visible,
+.vb-footer :focus-visible { outline-color: var(--vb-gold); }
 
+/* Honoured for the OS setting and for Settings > Reduce animations (html.vb-calm) */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         transition-duration: 0.01ms !important;
@@ -133,6 +202,253 @@
         animation-delay: 0s !important;
         scroll-behavior: auto !important;
     }
+    .vb-header { animation: none; }
+    .vb-rise, html.vb-js .vb-reveal { opacity: 1; transform: none; }
+    .vb-float { animation: none; }
+    .vb-dot.is-active .vb-dot__fill { animation: none !important; transform: scaleX(1); }
 }
+html.vb-calm *, html.vb-calm *::before, html.vb-calm *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    scroll-behavior: auto !important;
+}
+html.vb-calm .vb-rise, html.vb-calm.vb-js .vb-reveal { opacity: 1; transform: none; }
+html.vb-calm .vb-float { animation: none; }
+html.vb-calm .vb-dot.is-active .vb-dot__fill { animation: none !important; transform: scaleX(1); }
 
 [x-cloak] { display: none !important; }
+
+/* ---------- Buyer seller-chat page (buyer/marketplace-chat.blade.php) ----------
+   The thread markup and script are shared with the Seller side (shared/marketplace-thread.blade.php), so this is a
+   buyer-only skin: every rule is scoped to .mc-page--buyer and nothing here changes the Seller pages. */
+.mc-page--buyer { width: min(100%, 1200px); padding: 16px 16px 40px; }
+.mc-page--buyer .mc-back {
+    display: inline-flex; align-items: center; gap: 6px; height: 32px; margin-bottom: 12px; padding: 0 12px 0 10px;
+    border-radius: 999px; color: #805487; font-size: 13px; font-weight: 500; text-decoration: none;
+    transition: background-color 0.2s var(--vb-ease), color 0.2s var(--vb-ease), transform 0.3s var(--vb-ease);
+}
+.mc-page--buyer .mc-back:hover { background: #f5ecf6; color: #402143; text-decoration: none; transform: translateX(-2px); }
+
+.mc-page--buyer .mc-shell {
+    grid-template-columns: minmax(230px, 290px) minmax(0, 1fr); height: min(78dvh, 820px);
+    border-color: #eee6ef; border-radius: 12px; box-shadow: 0 18px 40px -28px rgba(64, 33, 67, 0.45);
+}
+
+/* Left panel */
+.mc-page--buyer .mc-context { padding: 22px 20px; border-right-color: #f1e8f2; background: #fbf8fc; }
+.mc-page--buyer .mc-eyebrow { margin-bottom: 6px; color: #9a8a9d; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; }
+.mc-page--buyer .mc-context h1 { color: #2b1730; font-size: 19px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.mc-page--buyer .mc-order-link {
+    display: inline-flex; align-items: center; height: 32px; margin-top: 12px; padding: 0 14px; width: fit-content;
+    border: 1px solid #805487; border-radius: 6px; color: #52245b; font-size: 12px; font-weight: 500; text-decoration: none;
+    transition: background-color 0.25s var(--vb-ease), color 0.25s var(--vb-ease);
+}
+.mc-page--buyer .mc-order-link:hover { background: #805487; color: #fff; text-decoration: none; }
+.mc-page--buyer .mc-context__help { margin-top: 20px; padding-top: 16px; border-top: 1px solid #f1e8f2; color: #7a6a7e; font-size: 12px; line-height: 1.7; }
+.mc-page--buyer .mc-report-button {
+    padding: 10px 14px; border-color: #e5dce7; border-radius: 6px; color: #7a6a7e; font-size: 12px; font-weight: 500; text-align: center;
+    transition: background-color 0.2s var(--vb-ease), color 0.2s var(--vb-ease), border-color 0.2s var(--vb-ease);
+}
+.mc-page--buyer .mc-report-button:hover, .mc-page--buyer .mc-report-button:focus-visible { border-color: #e3b4bd; background: #fdf1f3; color: #a32b43; }
+
+/* Thread header + order context */
+.mc-page--buyer .mc-thread__head { padding: 14px 20px; border-bottom-color: #f1e8f2; background: #fff; }
+.mc-page--buyer .mc-avatar { width: 44px; height: 44px; background: #805487; font-size: 16px; font-weight: 600; border: 2px solid #f3e8f5; }
+.mc-page--buyer .mc-thread__head strong { color: #2b1730; font-size: 15px; font-weight: 600; }
+.mc-page--buyer .mc-thread__head small { color: #7a6a7e; font-size: 12px; }
+.mc-page--buyer .mc-order-context { padding: 10px 20px; border-bottom-color: #f1e8f2; border-left: 3px solid #805487; background: #fbf6fc; color: #5b4a60; font-size: 12px; }
+.mc-page--buyer .mc-order-context strong { color: #402143; }
+
+/* Conversation */
+.mc-page--buyer .mc-history { gap: 10px; padding: 20px; background: #fcfafc; scrollbar-width: thin; scrollbar-color: #d8bfdc transparent; }
+.mc-page--buyer .mc-message-row { animation: vb-msg-in 0.45s var(--vb-ease) both; }
+@keyframes vb-msg-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.mc-page--buyer .mc-message-avatar { width: 30px; height: 30px; background: #805487; color: #fff; font-weight: 600; }
+.mc-page--buyer .mc-message {
+    max-width: min(78%, 520px); padding: 10px 14px; border: 1px solid #eee6ef; border-radius: 16px 16px 16px 6px;
+    background: #fff; color: #2b1730; box-shadow: none;
+}
+.mc-page--buyer .mc-message.is-mine { border-color: #402143; border-radius: 16px 16px 6px 16px; background: #402143; color: #fff; }
+.mc-page--buyer .mc-message small { margin-bottom: 2px; font-size: 11px; opacity: 0.7; }
+.mc-page--buyer .mc-message p { margin-top: 2px; font-size: 13px; line-height: 1.55; }
+.mc-page--buyer .mc-message.is-system { border-color: #eadfb8; border-radius: 12px; background: #fbf3dc; color: #7a5a0c; }
+.mc-page--buyer .mc-message.is-system small { color: #8a6d1e; }
+.mc-page--buyer .mc-message__item { display: inline-block; margin-top: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11px; opacity: 0.9; }
+.mc-page--buyer .mc-message img:not(.mc-order-photo) { border-radius: 10px; }
+
+/* Shared order card */
+.mc-page--buyer .mc-message__order { border-color: #eee6ef; border-radius: 10px; transition: border-color 0.2s var(--vb-ease), box-shadow 0.3s var(--vb-ease), transform 0.3s var(--vb-ease); }
+.mc-page--buyer .mc-message__order:hover { border-color: #cfb2d4; box-shadow: 0 12px 22px -16px rgba(64, 33, 67, 0.5); transform: translateY(-1px); }
+.mc-page--buyer .mc-order-card__label { background: #faf5fa; color: #52245b !important; border-bottom-color: #f1e8f2; }
+.mc-page--buyer .mc-order-card__footer small { color: #805487; }
+
+/* Empty state: icon above the existing sentence */
+.mc-page--buyer .mc-empty { max-width: 260px; color: #7a6a7e; font-size: 13px; line-height: 1.6; }
+.mc-page--buyer .mc-empty::before {
+    content: ''; display: block; width: 52px; height: 52px; margin: 0 auto 12px; border-radius: 50%;
+    background: #f3e8f5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23805487' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 5h16v11H9l-5 4z'/%3E%3C/svg%3E") center / 24px no-repeat;
+}
+
+/* Share an order */
+.mc-page--buyer .mc-share-form { gap: 10px; padding: 10px 18px; border-top-color: #f1e8f2; background: #fbf8fc; }
+.mc-page--buyer .mc-share-form label { color: #5b4a60; font-size: 12px; font-weight: 500; }
+.mc-page--buyer .mc-share-form select {
+    height: 36px; padding: 0 10px; border-color: #e5dce7; border-radius: 6px; color: #2b1730; font-size: 12px;
+    transition: border-color 0.2s var(--vb-ease), box-shadow 0.2s var(--vb-ease);
+}
+.mc-page--buyer .mc-share-form select:focus { border-color: #805487; box-shadow: 0 0 0 2px rgba(128, 84, 135, 0.25); outline: 0; }
+.mc-page--buyer .mc-share-form button {
+    height: 36px; padding: 0 16px; border-color: #805487; border-radius: 6px; color: #52245b; font-size: 12px; font-weight: 500;
+    transition: background-color 0.25s var(--vb-ease), color 0.25s var(--vb-ease), transform 0.2s var(--vb-ease);
+}
+.mc-page--buyer .mc-share-form button:hover { background: #805487; color: #fff; }
+.mc-page--buyer .mc-share-form button:active { transform: scale(0.97); }
+
+/* Composer */
+.mc-page--buyer .mc-composer { gap: 10px; padding: 12px 18px 14px; border-top-color: #f1e8f2; background: #fff; }
+.mc-page--buyer .mc-selected { padding: 4px 10px; border-radius: 999px; background: #f3e8f5; color: #52245b; font-size: 12px; width: fit-content; }
+.mc-page--buyer .mc-composer textarea {
+    min-height: 56px; padding: 10px 14px; border: 1px solid #e5dce7; border-radius: 10px; background: #faf7fb; color: #2b1730;
+    font-size: 13px; line-height: 1.5; resize: none;
+    transition: border-color 0.2s var(--vb-ease), background-color 0.2s var(--vb-ease), box-shadow 0.2s var(--vb-ease);
+}
+.mc-page--buyer .mc-composer textarea::placeholder { color: #9a8a9d; }
+.mc-page--buyer .mc-composer textarea:focus { border-color: #805487; background: #fff; box-shadow: 0 0 0 2px rgba(128, 84, 135, 0.25); outline: 0; }
+.mc-page--buyer .mc-composer__actions { align-items: center; }
+.mc-page--buyer .mc-composer__actions label { display: flex; align-items: center; gap: 8px; color: #5b4a60; font-size: 12px; font-weight: 500; }
+.mc-page--buyer .mc-composer__actions input { max-width: 260px; color: #7a6a7e; font-size: 11px; }
+.mc-page--buyer .mc-composer__actions input::file-selector-button {
+    height: 32px; margin-right: 8px; padding: 0 12px; border: 1px solid #e5dce7; border-radius: 6px; background: #fff; color: #52245b;
+    font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: background-color 0.2s var(--vb-ease), border-color 0.2s var(--vb-ease);
+}
+.mc-page--buyer .mc-composer__actions input::file-selector-button:hover { border-color: #c9a9ce; background: #faf5fa; }
+.mc-page--buyer .mc-composer__actions button {
+    height: 40px; padding: 0 24px; border-radius: 6px; background: #402143; font-size: 13px; font-weight: 500;
+    transition: background-color 0.25s var(--vb-ease), transform 0.2s var(--vb-ease);
+}
+.mc-page--buyer .mc-composer__actions button:hover { background: #52245b; }
+.mc-page--buyer .mc-composer__actions button:active { transform: scale(0.97); }
+.mc-page--buyer .mc-notice, .mc-page--buyer .mc-error { margin: 10px 18px 0; border-radius: 6px; font-size: 12px; }
+
+.mc-page--buyer :focus-visible { outline: 2px solid #805487; outline-offset: 2px; }
+
+@media (max-width: 800px) {
+    .mc-page--buyer { padding: 12px 12px 32px; }
+    .mc-page--buyer .mc-shell { grid-template-columns: 1fr; height: auto; border-radius: 12px; }
+    .mc-page--buyer .mc-context { padding: 16px; border-right: 0; border-bottom: 1px solid #f1e8f2; }
+    .mc-page--buyer .mc-context__help { display: none; }
+    .mc-page--buyer .mc-context__actions { margin-top: 12px; }
+    .mc-page--buyer .mc-thread { height: min(72dvh, 720px); }
+    .mc-page--buyer .mc-message { max-width: 88%; }
+}
+@media (prefers-reduced-motion: reduce) { .mc-page--buyer .mc-message-row { animation: none; } }
+html.vb-calm .mc-page--buyer .mc-message-row { animation: none; }
+
+/* ---------- Buyer report modal (shared/user-report-modal.blade.php) ----------
+   The dialog markup and submit script are shared with the Seller side and were not changed. These rules are scoped to
+   .mc-page--buyer so sellers keep their current look. Extras (character counter, file chips, reason hint, Sending...)
+   are added by the small script in buyer/marketplace-chat.blade.php. */
+.mc-page--buyer .ur-dialog {
+    width: min(540px, calc(100vw - 24px)); max-height: min(92dvh, 780px); border: 0; border-radius: 14px;
+    box-shadow: 0 30px 80px -20px rgba(27, 11, 30, 0.55);
+}
+.mc-page--buyer .ur-dialog[open] { animation: vb-dialog-in 0.4s var(--vb-ease) both; }
+.mc-page--buyer .ur-dialog[open]::backdrop { animation: vb-fade-in 0.3s var(--vb-ease) both; }
+.mc-page--buyer .ur-dialog::backdrop { background: rgba(27, 11, 30, 0.55); backdrop-filter: blur(4px); }
+@keyframes vb-dialog-in { from { opacity: 0; transform: translateY(18px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes vb-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.mc-page--buyer .ur-panel { padding: 24px 24px 0; scrollbar-width: thin; scrollbar-color: #d8bfdc transparent; }
+.mc-page--buyer .ur-head { align-items: center; gap: 14px; }
+.mc-page--buyer .ur-head > div { position: relative; padding-left: 54px; min-height: 44px; display: flex; flex-direction: column; justify-content: center; }
+.mc-page--buyer .ur-head > div::before {
+    content: ''; position: absolute; left: 0; top: 50%; width: 44px; height: 44px; transform: translateY(-50%); border-radius: 50%;
+    background: #fdf1f3 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a32b43' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 21V4M5 4h11l-2 4 2 4H5'/%3E%3C/svg%3E") center / 22px no-repeat;
+}
+.mc-page--buyer .ur-eyebrow { margin: 0 0 2px; color: #a32b43; font-size: 11px; letter-spacing: 0.14em; }
+.mc-page--buyer .ur-head h2 { color: #2b1730; font-size: 19px; font-weight: 600; }
+.mc-page--buyer .ur-close {
+    display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 50%; color: #8a7a8e; font-size: 24px;
+    transition: background-color 0.2s var(--vb-ease), color 0.2s var(--vb-ease), transform 0.3s var(--vb-ease);
+}
+.mc-page--buyer .ur-close:hover { background: #f3e8f5; color: #402143; transform: rotate(90deg); }
+.mc-page--buyer .ur-intro {
+    margin: 16px 0 20px; padding: 10px 14px; border-left: 3px solid #805487; border-radius: 0 6px 6px 0;
+    background: #fbf6fc; color: #5b4a60; font-size: 12px; line-height: 1.65;
+}
+
+.mc-page--buyer .ur-field { margin-bottom: 18px; }
+.mc-page--buyer .ur-field > span { margin-bottom: 6px; color: #2b1730; font-size: 13px; font-weight: 600; }
+.mc-page--buyer .ur-field :is(select, textarea, input[type=file]) {
+    border: 1px solid #e5dce7; border-radius: 8px; background-color: #faf7fb; color: #2b1730; font-size: 13px;
+    transition: border-color 0.2s var(--vb-ease), background-color 0.2s var(--vb-ease), box-shadow 0.2s var(--vb-ease);
+}
+.mc-page--buyer .ur-field :is(select, textarea, input[type=file]):hover { border-color: #cfb2d4; }
+.mc-page--buyer .ur-field :is(select, textarea):focus { border-color: #805487; background-color: #fff; box-shadow: 0 0 0 2px rgba(128, 84, 135, 0.25); outline: 0; }
+.mc-page--buyer .ur-field select {
+    height: 44px; padding: 0 40px 0 14px; appearance: none; -webkit-appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23805487' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center; background-size: 16px;
+}
+.mc-page--buyer .ur-field textarea { min-height: 120px; padding: 12px 14px; line-height: 1.55; resize: none; }
+.mc-page--buyer .ur-field textarea::placeholder { color: #9a8a9d; }
+.mc-page--buyer .ur-field small { margin-top: 6px; color: #8a7a8e; font-size: 12px; transition: color 0.2s var(--vb-ease); }
+.mc-page--buyer .ur-field small.is-ok { color: #2e6b46; }
+.mc-page--buyer .ur-hint { margin: 6px 0 0; color: #7a6a7e; font-size: 12px; line-height: 1.55; animation: vb-fade-in 0.3s var(--vb-ease) both; }
+
+/* Evidence picker as a dashed drop area */
+.mc-page--buyer .ur-field input[type=file] { padding: 14px; border: 1.5px dashed #cfb2d4; color: #7a6a7e; font-size: 12px; cursor: pointer; }
+.mc-page--buyer .ur-field input[type=file]:hover { border-color: #805487; background-color: #f5ecf6; }
+.mc-page--buyer .ur-field input[type=file]::file-selector-button {
+    height: 32px; margin-right: 10px; padding: 0 14px; border: 1px solid #805487; border-radius: 6px; background: #fff; color: #52245b;
+    font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: background-color 0.2s var(--vb-ease), color 0.2s var(--vb-ease);
+}
+.mc-page--buyer .ur-field input[type=file]::file-selector-button:hover { background: #805487; color: #fff; }
+.mc-page--buyer .ur-files { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+.mc-page--buyer .ur-files li {
+    display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 10px; border-radius: 999px; background: #f3e8f5; color: #52245b; font-size: 12px;
+    animation: vb-fade-in 0.3s var(--vb-ease) both;
+}
+.mc-page--buyer .ur-files li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-page--buyer .ur-files li em { flex: none; color: #8a7a8e; font-style: normal; }
+.mc-page--buyer .ur-files li.is-bad { background: #fdf1f3; color: #a32b43; }
+
+.mc-page--buyer .ur-error { margin: 0 0 16px; padding: 10px 14px; border-left: 3px solid #a32b43; border-radius: 0 6px 6px 0; background: #fdf1f3; color: #8f2438; font-size: 12px; }
+
+/* Actions stay visible while the form scrolls */
+.mc-page--buyer .ur-actions {
+    position: sticky; bottom: 0; z-index: 1; gap: 10px; margin: 0 -24px; padding: 14px 24px 18px;
+    border-top: 1px solid #f1e8f2; background: #fff;
+}
+.mc-page--buyer .ur-actions button {
+    height: 40px; padding: 0 22px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    transition: background-color 0.25s var(--vb-ease), color 0.25s var(--vb-ease), border-color 0.25s var(--vb-ease), transform 0.2s var(--vb-ease);
+}
+.mc-page--buyer .ur-actions button:active { transform: scale(0.97); }
+.mc-page--buyer .ur-secondary { border-color: #e5dce7; color: #5b4a60; }
+.mc-page--buyer .ur-secondary:hover { border-color: #c9a9ce; background: #faf5fa; }
+.mc-page--buyer .ur-primary { border-color: #402143; background: #402143; }
+.mc-page--buyer .ur-primary:hover:not(:disabled) { border-color: #52245b; background: #52245b; }
+
+/* Confirmation after sending */
+.mc-page--buyer .ur-notice {
+    left: 50%; right: auto; bottom: 24px; display: flex; align-items: center; gap: 10px; width: min(420px, calc(100vw - 32px)); transform: translateX(-50%);
+    padding: 12px 16px; border-radius: 999px; background: #2b1730; color: #fff; font-size: 13px;
+    box-shadow: 0 18px 36px -14px rgba(27, 11, 30, 0.7); animation: vb-notice-in 0.45s var(--vb-ease) both;
+}
+.mc-page--buyer .ur-notice::before {
+    content: ''; flex: none; width: 22px; height: 22px; border-radius: 50%;
+    background: #3f9b64 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 12 4 4 8-9'/%3E%3C/svg%3E") center / 14px no-repeat;
+}
+@keyframes vb-notice-in { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+@media (max-width: 520px) {
+    .mc-page--buyer .ur-panel { padding: 20px 18px 0; }
+    .mc-page--buyer .ur-actions { margin: 0 -18px; padding: 12px 18px 16px; }
+    .mc-page--buyer .ur-actions button { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mc-page--buyer .ur-dialog[open], .mc-page--buyer .ur-dialog[open]::backdrop, .mc-page--buyer .ur-notice { animation: none; }
+}
+html.vb-calm .mc-page--buyer .ur-dialog[open], html.vb-calm .mc-page--buyer .ur-dialog[open]::backdrop, html.vb-calm .mc-page--buyer .ur-notice { animation: none; }

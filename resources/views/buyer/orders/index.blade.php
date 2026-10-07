@@ -17,7 +17,7 @@
         'to_ship' => ['label' => 'To ship', 'statuses' => Order::SHIPMENT_GROUPS['to_ship']],
         'in_transit' => ['label' => 'In transit', 'statuses' => Order::SHIPMENT_GROUPS['in_transit']],
         'delivered' => ['label' => 'Delivered', 'statuses' => Order::SHIPMENT_GROUPS['delivered']],
-        'cancelled' => ['label' => 'Cancelled and returned', 'statuses' => ['cancelled', 'returned']],
+        'cancelled' => ['label' => 'Cancelled', 'statuses' => ['cancelled']],
     ];
     $tabOf = function (string $status) use ($tabs) {
         foreach ($tabs as $key => $tab) {
@@ -30,7 +30,6 @@
     $badge = function (string $status) {
         return match (true) {
             $status === 'cancelled', $status === 'delivery_failed' => 'bg-[#fdf1f3] text-[#a32b43]',
-            $status === 'returned' => 'bg-[#f3eef4] text-[#6d5d71]',
             in_array($status, ['delivered', 'completed'], true) => 'bg-[#eaf5ee] text-[#2e6b46]',
             $status === 'placed' => 'bg-[#fbf3dc] text-[#7a5a0c]',
             default => 'bg-[#f5ecf6] text-[#52245b]',
@@ -44,7 +43,7 @@
         <div class="flex flex-wrap items-end justify-between gap-2">
             <div>
                 <h1 class="text-[20px] font-semibold text-[#2b1730]">My orders</h1>
-                <p class="mt-0.5 text-[13px] text-[#7a6a7e]">Track your orders, cancel them before the seller starts preparing, and rate what you receive.</p>
+                <p class="mt-0.5 text-[13px] text-[#7a6a7e]">Track your orders, cancel them before the seller starts preparing, and rate what you receive. Orders cancelled by you or by the seller are under Cancelled.</p>
             </div>
         </div>
 
@@ -83,6 +82,17 @@
                         $shown = $order->items->take(2);
                         $more = $order->items->count() - $shown->count();
                         $orderNo = $order->number ?? ('#' . $order->id);
+
+                        // Cancelled orders: who cancelled and why. The cancellation service records the note
+                        // "Buyer cancellation reason: ..." or "Seller cancellation reason: ..." on the status event.
+                        // TODO(backend): eager load statusEvents in OrderController@index to avoid one query per cancelled order.
+                        $cancelledBy = null;
+                        $cancelReason = null;
+                        if ($order->status === 'cancelled') {
+                            $note = (string) optional($order->statusEvents->where('to_status', 'cancelled')->last())->note;
+                            $cancelledBy = str_starts_with($note, 'Seller') ? 'the seller' : (str_starts_with($note, 'Buyer') ? 'you' : null);
+                            $cancelReason = Str::contains($note, 'cancellation reason:') ? trim(Str::after($note, 'cancellation reason:')) : null;
+                        }
                     @endphp
                     <article x-show="tab === 'all' || tab === '{{ $group }}'" x-transition.opacity.duration.200ms
                         class="rounded-lg border border-[#eee6ef] bg-white">
@@ -97,9 +107,13 @@
                             </div>
                             <div class="flex items-center gap-3 text-[12px] text-[#7a6a7e]">
                                 <span>Order {{ $orderNo }}</span>
-                                <span class="rounded-full px-2.5 py-0.5 font-medium {{ $badge($order->status) }}">{{ $label }}</span>
+                                <span class="rounded-full px-2.5 py-0.5 font-medium {{ $badge($order->status) }}">{{ $cancelledBy ? 'Cancelled by ' . $cancelledBy : $label }}</span>
                             </div>
                         </header>
+
+                        @if ($order->status === 'cancelled' && $cancelReason)
+                            <p class="border-b border-[#f1e8f2] bg-[#fdf6f7] px-4 py-2 text-[12px] text-[#7d3243] sm:px-5">Reason: {{ $cancelReason }}</p>
+                        @endif
 
                         <a href="{{ route('buyer.orders.show', $order) }}" class="block px-4 py-3 transition-colors duration-200 hover:bg-[#fcfafc] sm:px-5">
                             <ul class="space-y-3">
