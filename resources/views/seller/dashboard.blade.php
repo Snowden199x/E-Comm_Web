@@ -106,7 +106,7 @@
 
             <div class="db-kpis">
                 <div class="db-kpi"><span>6-week sales</span><strong>₱{{ number_format($chartSales, 2) }}</strong></div>
-                <div class="db-kpi"><span>Orders received</span><strong>{{ number_format($chartOrders) }}</strong></div>
+                <div class="db-kpi"><span>Orders, excluding cancelled</span><strong>{{ number_format($chartOrders) }}</strong></div>
                 <div class="db-kpi"><span>Avg. per week</span><strong>₱{{ number_format($chartSales / max(1, count($chart)), 2) }}</strong></div>
             </div>
 

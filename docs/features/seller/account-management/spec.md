@@ -11,6 +11,7 @@
 Show a shop header with the saved banner, profile image, business name and account status. Use a neutral placeholder when an image is absent. The seller can preview how the public-facing header will look before saving. Below it, group contact information, business information, security and approval status. Explain which details are public and which are used only for verification.
 
 An active seller can change their contact number, profile image, shop banner and optional shop description. Each section saves independently. Saved images appear in the account page and topbar without a new login. Password changes require the current password and a confirmed new password.
+Replacing or removing the seller profile photo creates a platform notification for Admin, linked to this account in User Management. The Admin list and profile modal show the current photo. Removing a missing photo does not create a change notification.
 Unsubmitted editable account fields survive a same-tab reload for up to two hours. Passwords and image files are excluded. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
 Email, legal name, registered business name, permit, address and selected categories affect identity or approval. The page shows their current values without an edit control and directs corrections to Vendo Support. An admin-reviewed change request remains future work.
@@ -19,7 +20,7 @@ The public shop header may expose the shop name, description, avatar, banner and
 
 ## Media and storage
 
-The avatar uses `users.profile_picture`; shop content uses `seller_details.shop_banner_path` and `seller_details.shop_description`. The account page previews selected images before upload. The server accepts JPEG, PNG and WebP images, with a 2 MB avatar and 4 MB banner limit. It stores paths in the database and removes replaced shop images after the new upload succeeds. Verification documents stay out of this media workflow.
+The avatar uses `users.profile_picture`; shop content uses `seller_details.shop_banner_path` and `seller_details.shop_description`. The account page previews selected images before upload. The server accepts JPEG, PNG and WebP images, with a 2 MB avatar and 4 MB banner limit. It stores paths in the database and removes replaced shop images after the new upload succeeds. Profile-photo updates and Admin notifications are committed in one database transaction; the previous profile photo is removed after commit. Verification documents stay out of this media workflow.
 
 ## Backend contract
 

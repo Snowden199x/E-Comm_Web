@@ -6,6 +6,9 @@
     $recentBuyerNotifications = \App\Models\Communication\Notification::query()->where('user_id', auth()->id())->latest()->limit(5)->get();
     $buyerUnreadNotifications = \App\Models\Communication\Notification::query()->where('user_id', auth()->id())->whereNull('read_at')->count();
     $buyerUser = Auth::user();
+    $buyerPersonalization = app(\App\Services\BuyerPersonalizationService::class);
+    $buyerSavedItems = $buyerPersonalization->savedItemsFor((int) auth()->id());
+    $buyerStoredPrefs = $buyerPersonalization->preferencesFor((int) auth()->id());
 
     // Category menu data (top-level categories + their subcategories)
     $menuCategories = \App\Models\Category::query()
@@ -25,8 +28,7 @@
     <title>{{ $title }}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    {{-- Device preferences (Account > Settings) and saved items. Stored in this browser only, per user.
-         Runs before first paint so the loading screen and text size apply without a flash. --}}
+    {{-- Account preferences and saved items, with one-time import of previous browser-only data. --}}
     <script>
     (() => {
         const uid = @json((string) auth()->id());
@@ -34,8 +36,37 @@
         const prefKey = 'vendo.prefs.' + uid;
         const favKey = 'vendo.favorites.' + uid;
         const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (_) { return fallback; } };
-        const write = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {} };
         const defaults = { text: 'default', calm: false, sound: true };
+        const storedPrefs = @js($buyerStoredPrefs);
+        const initialItems = @js($buyerSavedItems);
+        const urls = {
+            saved: @js(route('buyer.saved-items.index')),
+            import: @js(route('buyer.saved-items.import')),
+            item: @js(route('buyer.saved-items.store', ['product' => '__ID__'])),
+            clear: @js(route('buyer.saved-items.clear')),
+            settings: @js(route('buyer.settings.update')),
+        };
+        const request = async (url, method, data) => {
+            const response = await fetch(url, {
+                method,
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: data === undefined ? undefined : JSON.stringify(data),
+            });
+            if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || 'Could not save changes. Please try again.');
+            return response.json();
+        };
+        const legacyPrefs = read(prefKey, {});
+        let prefs = storedPrefs ?? {
+            text: ['default', 'lg', 'xl'].includes(legacyPrefs?.text) ? legacyPrefs.text : 'default',
+            calm: legacyPrefs?.calm === true,
+            sound: legacyPrefs?.sound !== false,
+        };
+        let saving = Promise.resolve();
 
         const applyPrefs = (p) => {
             root.classList.toggle('vb-calm', p.calm === true);
@@ -43,18 +74,46 @@
             root.classList.toggle('vb-text-xl', p.text === 'xl');
         };
         root.classList.add('vb-js');
-        applyPrefs({ ...defaults, ...read(prefKey, {}) });
+        applyPrefs(prefs);
+
+        try {
+            if (storedPrefs === null && localStorage.getItem(prefKey) !== null) {
+                saving = request(urls.settings, 'PUT', prefs)
+                    .then(() => localStorage.removeItem(prefKey)).catch(() => {});
+            }
+        } catch (_) {}
 
         window.vendoPrefs = {
             defaults,
-            get: () => ({ ...defaults, ...read(prefKey, {}) }),
-            set(key, value) { const next = { ...this.get(), [key]: value }; write(prefKey, next); applyPrefs(next); return next; },
-            reset() { try { localStorage.removeItem(prefKey); } catch (_) {} applyPrefs(defaults); return { ...defaults }; },
+            get: () => ({ ...prefs }),
+            async set(key, value) {
+                saving = saving.catch(() => {}).then(async () => {
+                    prefs = await request(urls.settings, 'PUT', { ...prefs, [key]: value });
+                    applyPrefs(prefs);
+                    return this.get();
+                });
+                return saving;
+            },
+            async reset() {
+                saving = saving.catch(() => {}).then(async () => {
+                    prefs = await request(urls.settings, 'DELETE');
+                    try { localStorage.removeItem(prefKey); } catch (_) {}
+                    applyPrefs(prefs);
+                    return this.get();
+                });
+                return saving;
+            },
         };
         window.vendoFavStorage = {
             key: favKey,
-            load: () => { const list = read(favKey, []); return Array.isArray(list) ? list : []; },
-            save: (list) => write(favKey, list),
+            initial: initialItems,
+            legacy: () => { const list = read(favKey, []); return Array.isArray(list) ? list : []; },
+            clearLegacy: () => { try { localStorage.removeItem(favKey); } catch (_) {} },
+            refresh: () => request(urls.saved, 'GET'),
+            import: (ids) => request(urls.import, 'POST', { ids }),
+            add: (id) => request(urls.item.replace('__ID__', encodeURIComponent(id)), 'POST'),
+            remove: (id) => request(urls.item.replace('__ID__', encodeURIComponent(id)), 'DELETE'),
+            clear: () => request(urls.clear, 'DELETE'),
         };
     })();
     </script>
@@ -108,7 +167,7 @@
                     <img src="{{ asset('assets/branding/log-in-logo.svg') }}" alt="Vendo" class="h-9 w-auto sm:h-10">
                 </a>
 
-                <!-- Search (products; shops too once the shop search route exists) -->
+                <!-- Search products or approved shops -->
                 @php
                     $shopSearchUrl = \Illuminate\Support\Facades\Route::has('buyer.sellers.index') ? route('buyer.sellers.index') : null;
                     $searchScope = $shopSearchUrl && request()->routeIs('buyer.sellers.index') ? 'shops' : 'products';

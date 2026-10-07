@@ -3,17 +3,15 @@
     Forms and field names are unchanged: orders.cancel (expected_status, reason, reason_details),
     orders.complete, reviews.store (rating, comment).
 
-    Cancel rule shown here: a buyer can cancel only while the order is Placed or Confirmed. Once the seller starts
-    Preparing, the button is replaced by an explanation. The server still decides by
-    OrderCancellationService::CANCELLABLE_STATUSES, so that constant must change too (see the backend note),
-    otherwise a hand-made request could still cancel a Preparing order.
+    Cancel rule: a buyer can cancel only while the order is Placed or Confirmed. Once the seller starts
+    Preparing, the button is replaced by an explanation. The server enforces the same status set.
 --}}
 @php
     use App\Models\Ecommerce\Order;
     use Illuminate\Support\Str;
 
     $fmt = fn ($amount) => '₱' . number_format($amount, 2);
-    $buyerCancellable = ['placed', 'confirmed'];
+    $buyerCancellable = \App\Services\OrderCancellationService::BUYER_CANCELLABLE_STATUSES;
     $canBuyerCancel = in_array($order->status, $buyerCancellable, true);
     $cancelLocked = ! $canBuyerCancel && ! in_array($order->status, ['completed', 'cancelled', 'returned', 'delivery_failed', 'delivered'], true);
     $reopenCancelModal = $errors->has('reason') || $errors->has('reason_details');

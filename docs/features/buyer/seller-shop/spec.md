@@ -1,7 +1,7 @@
 # Buyer Seller Shop and Shop Search
 
-**Status:** Shop page restyled and working on current data; shop search and in-shop search/sort have views but no server support yet (Planned); owner verification pending
-**Reviewed:** 6 October 2026
+**Status:** Shop page, shop search, and in-shop search/sort wired to server queries; owner verification pending
+**Reviewed:** 7 October 2026
 
 ## Current behavior
 
@@ -14,16 +14,15 @@
 
 Shop links appear on the Product page, the Cart, Checkout, My Orders, and Order detail.
 
-## Planned in the views, waiting for the backend
+## Search and sorting
 
-- **Shop search page** (`buyer/sellers/index.blade.php`): search shops by shop name or account name, with shop cards (picture, name, location, product count) with View shop and Chat buttons, and an empty state. It needs the route `buyer.sellers.index`. The Buyer header search shows a Products/Shops selector only when that route exists, so Buyers see no change until it is added.
-- **In-shop search and sort** on the shop page (search text, Latest, Price low to high, Price high to low). The bar appears only when the controller passes `$filters`.
+- **Shop search page** (`buyer.sellers.index`): searches approved, active, non-archived Sellers by shop business name or account name only. The page shows approved product counts, View shop and Chat buttons, and a paginated empty state. The Buyer header has a Products/Shops search selector.
+- **In-shop search and sort:** the shop page filters approved products by name and sorts by latest, ascending price, or descending price, with server-side validation and pagination.
 
-Neither feature is implemented in the server code. See [backend needs](../../../backend-needs.md), items 2 and 3.
+Both use the Buyer session and the same shop visibility rule as the shop profile. Search strings are limited to 100 characters.
 
 ## Gaps and acceptance direction
 
-- Shop search must apply the same visibility rules as the shop page (approved, not archived, active), must not search email or phone, and "account" means the user's name because there is no username field.
 - The shop stats are calculated in the view. Move them into `SellerProfileController`.
 - Shop cards do not show ratings or sold counts until the controller loads card metrics.
 - There is no follow feature, response-rate data, or shop voucher list.
@@ -34,4 +33,4 @@ Neither feature is implemented in the server code. See [backend needs](../../../
 
 ## Related documentation
 
-See [Product detail](../product-detail/spec.md), [Product search](../search/spec.md), [Browse Shop](../browse-shop/spec.md), and [domain status](../../../domain-feature-status.md).
+See [Product detail](../product-detail/spec.md), [Product search](../search/spec.md), [Browse Shop](../browse-shop/spec.md), the [7 October frontend pull review](../../../design/2026-10-07-pulled-frontend-review.md), and [domain status](../../../domain-feature-status.md).

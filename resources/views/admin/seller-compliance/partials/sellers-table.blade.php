@@ -1,8 +1,7 @@
 {{--
     Overview table. Rendered inside #sc-region (scTable scope); needs $sellers.
     Clicking a row opens that seller's popup (products, warnings and violations).
-    The popups read each seller's products here in the view so this works without a controller change;
-    see the backend notes for the leaner eager-loaded version.
+    Popup data is loaded with the page's seller query.
 --}}
 <div class="sc-rows overflow-hidden rounded-2xl border border-[#ece4ec] bg-white shadow-[0_1px_2px_rgba(43,23,48,0.04)]">
     @if ($sellers->isEmpty())
@@ -31,10 +30,12 @@
                 <tbody class="divide-y divide-[#f3edf4]">
                     @foreach ($sellers as $seller)
                         @php
-                            $score = (int) $seller->compliance_score;
-                            $scoreTone = $score >= 80
+                            $score = is_numeric($seller->getAttribute('compliance_score')) ? (int) $seller->getAttribute('compliance_score') : null;
+                            $scoreTone = $score === null
+                                ? ['bg-gray-300', 'text-gray-500']
+                                : ($score >= 80
                                 ? ['bg-green-500', 'text-green-700']
-                                : ($score >= 50 ? ['bg-amber-500', 'text-amber-700'] : ['bg-red-500', 'text-red-700']);
+                                : ($score >= 50 ? ['bg-amber-500', 'text-amber-700'] : ['bg-red-500', 'text-red-700']));
                             $suspended = $seller->account_status === 'suspended';
                         @endphp
                         <tr style="--i: {{ $loop->index }}" tabindex="0" role="button" aria-label="View products of {{ $seller->name }}"
@@ -62,11 +63,11 @@
                                 </div>
                             </td>
                             <td class="w-48 px-4 py-3">
-                                <div class="flex items-center gap-2.5" role="img" aria-label="Compliance score {{ $score }} percent">
+                                <div class="flex items-center gap-2.5" role="img" aria-label="{{ $score === null ? 'Compliance score not defined' : 'Compliance score '.$score.' percent' }}">
                                     <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-[#F1E9F1]">
-                                        <div class="sc-meter h-full rounded-full {{ $scoreTone[0] }}" style="--i: {{ $loop->index }}; width: {{ $score }}%"></div>
+                                        @if ($score !== null)<div class="sc-meter h-full rounded-full {{ $scoreTone[0] }}" style="--i: {{ $loop->index }}; width: {{ $score }}%"></div>@endif
                                     </div>
-                                    <span class="w-9 text-right text-xs font-semibold tabular-nums {{ $scoreTone[1] }}">{{ $score }}%</span>
+                                    <span class="w-9 text-right text-xs font-semibold tabular-nums {{ $scoreTone[1] }}">{{ $score === null ? '—' : $score.'%' }}</span>
                                 </div>
                             </td>
                             <td class="px-4 py-3 text-center">
@@ -119,12 +120,12 @@
 
 @foreach ($sellers as $seller)
     @php
-        $products = $seller->products()->with(['images', 'category'])->latest()->limit(48)->get();
-        $productTotal = $seller->products()->count();
-        $warnings = $seller->productWarnings()->with('product')->latest()->limit(10)->get();
-        $violations = $seller->productViolations()->with('product')->latest()->limit(10)->get();
+        $products = $seller->products;
+        $productTotal = $seller->products_count;
+        $warnings = $seller->productWarnings;
+        $violations = $seller->productViolations;
         $statusCounts = $products->countBy('status');
-        $score = (int) $seller->compliance_score;
+        $score = is_numeric($seller->getAttribute('compliance_score')) ? (int) $seller->getAttribute('compliance_score') : null;
         $suspended = $seller->account_status === 'suspended';
         $filters = collect([['all', 'All', $products->count()]])
             ->concat($statusCounts->map(fn ($n, $s) => [$s, $productStatus[$s][0] ?? ucfirst(str_replace('_', ' ', $s)), $n])->values());
@@ -175,7 +176,7 @@
             <div class="grid grid-cols-2 gap-3 border-b border-[#ece4ec] bg-[#FBF8FB] px-5 py-4 sm:grid-cols-4 sm:px-6">
                 @foreach ([
                     ['Products', number_format($productTotal), 'text-[#2B1730]'],
-                    ['Compliance score', $score . '%', $score >= 80 ? 'text-green-700' : ($score >= 50 ? 'text-amber-700' : 'text-red-700')],
+                    ['Compliance score', $score === null ? 'Not set' : $score . '%', $score === null ? 'text-gray-500' : ($score >= 80 ? 'text-green-700' : ($score >= 50 ? 'text-amber-700' : 'text-red-700'))],
                     ['Warnings', $seller->product_warnings_count, $seller->product_warnings_count > 0 ? 'text-orange-700' : 'text-gray-500'],
                     ['Violations', $seller->product_violations_count, $seller->product_violations_count > 0 ? 'text-red-700' : 'text-gray-500'],
                 ] as [$label, $value, $tone])

@@ -85,10 +85,15 @@
             <div class="space-y-4">
                 <aside class="overflow-hidden rounded-2xl border border-[#ece4ec] bg-white">
                     <div class="flex items-center gap-4 border-b border-[#ece4ec] p-5">
-                        <span aria-hidden="true"
-                            class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1] text-xl font-semibold text-[#5b2963]">
-                            {{ strtoupper(mb_substr($user->name, 0, 1)) }}
-                        </span>
+                        @if ($user->profile_picture)
+                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($user->profile_picture) }}" alt="{{ $user->name }} profile photo" loading="lazy"
+                                class="h-16 w-16 flex-shrink-0 rounded-full bg-[#EFE4F1] object-cover">
+                        @else
+                            <span aria-hidden="true"
+                                class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1] text-xl font-semibold text-[#5b2963]">
+                                {{ strtoupper(mb_substr($user->name, 0, 1)) }}
+                            </span>
+                        @endif
                         <div class="min-w-0">
                             <p class="truncate text-base font-semibold text-[#2B1730]">{{ $user->name }}</p>
                             <p class="mt-0.5 flex items-center gap-1.5 text-[13px] text-gray-600">

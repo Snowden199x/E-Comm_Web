@@ -1891,6 +1891,38 @@ html {
     overflow-wrap: anywhere;
 }
 
+.lg-profile__controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 12px 20px;
+    padding: 0 24px 20px;
+}
+
+.lg-profile__upload {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+}
+
+.lg-profile__upload label {
+    width: 100%;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.lg-profile__upload input {
+    max-width: 250px;
+    font-size: 13px;
+}
+
+.lg-profile__error {
+    width: 100%;
+    color: #9b111e;
+    font-size: 13px;
+}
+
 .lg-facts {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

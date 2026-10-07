@@ -6,8 +6,7 @@
     Forms and field names are unchanged: account.update (name, phone_number, house_no, street, zip_code),
     account.password (current_password, password, password_confirmation), banner and profile-picture upload/remove.
 
-    Settings on this page are stored in the browser (this device only) because the server has no settings table yet.
-    The page says so next to each group. See the backend note for what a saved, per-account version needs.
+    Saved items and preferences are stored with the signed-in Buyer account.
 --}}
 @php
     $user = auth()->user();
@@ -53,14 +52,18 @@
                 url.searchParams.set('tab', t);
                 history.replaceState(null, '', url);
             },
-            setPref(key, value) {
-                this.prefs = window.vendoPrefs.set(key, value);
-                $store.ui.say('Saved on this device');
+            async setPref(key, value) {
+                try {
+                    this.prefs = await window.vendoPrefs.set(key, value);
+                    $store.ui.say('Settings saved');
+                } catch (error) { $store.ui.say(error.message); }
             },
-            resetPrefs() {
-                this.prefs = window.vendoPrefs.reset();
-                this.confirmReset = false;
-                $store.ui.say('Settings reset on this device');
+            async resetPrefs() {
+                try {
+                    this.prefs = await window.vendoPrefs.reset();
+                    this.confirmReset = false;
+                    $store.ui.say('Settings reset');
+                } catch (error) { $store.ui.say(error.message); }
             },
         }">
 
@@ -275,7 +278,7 @@
                     class="{{ $card }}" aria-labelledby="acc-pref-title">
                     <div class="border-b border-[#f1e8f2] p-5">
                         <h2 id="acc-pref-title" class="text-[15px] font-semibold text-[#402143]">Appearance and motion</h2>
-                        <p class="mt-0.5 text-[12px] text-[#7a6a7e]">These are saved on this device and browser only. They do not change your account.</p>
+                        <p class="mt-0.5 text-[12px] text-[#7a6a7e]">These preferences follow your Vendo account.</p>
                     </div>
 
                     <div class="divide-y divide-[#f3ecf4]">
@@ -326,7 +329,7 @@
                         <div class="flex items-center justify-between gap-4 px-5 py-4">
                             <div class="max-w-[420px]">
                                 <p id="pref-sound" class="text-[13px] font-medium text-[#2b1730]">Notification sound</p>
-                                <p class="text-[12px] leading-5 text-[#7a6a7e]">Play a short chime when a new notification arrives while you are on Vendo. Saved on this device.</p>
+                                <p class="text-[12px] leading-5 text-[#7a6a7e]">Play a short chime when a new notification arrives while you are on Vendo.</p>
                             </div>
                             <button type="button" role="switch" :aria-checked="prefs.sound" aria-labelledby="pref-sound" @click="setPref('sound', !prefs.sound)"
                                 :class="prefs.sound ? 'bg-[#805487]' : 'bg-[#d9cfdc]'" class="relative h-6 w-11 flex-shrink-0 rounded-full transition-colors duration-300 ease-vendo">
@@ -348,7 +351,7 @@
                     <div class="flex flex-wrap items-start justify-between gap-3 border-b border-[#f1e8f2] p-5">
                         <div>
                             <h2 id="acc-saved-title" class="text-[15px] font-semibold text-[#402143]">Saved items</h2>
-                            <p class="mt-0.5 text-[12px] text-[#7a6a7e]">Products you saved with the heart, so you can find them again. Saving does not add to your cart. They stay on this device and browser.</p>
+                            <p class="mt-0.5 text-[12px] text-[#7a6a7e]">Products you saved with the heart, so you can find them again. Saving does not add to your cart. They follow your Vendo account.</p>
                         </div>
                         <button type="button" x-show="$store.fav.items.length" x-cloak
                             @click="if (confirmClear) { $store.fav.clear(); confirmClear = false; } else { confirmClear = true; setTimeout(() => confirmClear = false, 3000); }"

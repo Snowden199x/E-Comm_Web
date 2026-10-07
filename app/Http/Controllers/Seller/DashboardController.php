@@ -35,7 +35,8 @@ class DashboardController extends Controller
                 'label' => $weekStart->format('M j'),
                 'sales' => (float) (clone $orders)->whereIn('status', Order::SALES_STATUSES)
                     ->whereBetween('delivered_at', [$weekStart, $weekEnd])->sum('total_amount'),
-                'orders' => (int) (clone $orders)->whereBetween('created_at', [$weekStart, $weekEnd])->count(),
+                'orders' => (int) (clone $orders)->where('status', '!=', 'cancelled')
+                    ->whereBetween('created_at', [$weekStart, $weekEnd])->count(),
             ];
         }
         $topProducts = OrderItem::whereHas('order', fn ($q) => $q->where('seller_id', $sellerId)->whereIn('status', Order::SALES_STATUSES))

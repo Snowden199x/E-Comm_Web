@@ -12,7 +12,7 @@ Cases are of two kinds: an order **complaint** (`kind = complaint`) and an **acc
 
 **Sample case.** "View a sample case" shows one in-memory example (`partials/sample-case.blade.php`); it is never stored. Remove it once real cases exist.
 
-**Case page (`admin.complaints.show`).** Header with the case ID and status; Complaint Summary; Order Information with product detail dialogs; Timeline (newest first); Parties Involved; Supporting Evidence (first three files plus a "+N Other" tile); a Messages panel. Status buttons (Mark in progress, Mark resolved) apply to order complaints; account reports use the review-note form. A confirmation toast follows a status change or decision.
+**Case page (`admin.complaints.show`).** Header with the case ID and status; Complaint Summary; Order Information with product detail dialogs; Timeline (newest first); Parties Involved; Supporting Evidence (first three files plus a "+N Other" tile); and case-linked Buyer/Seller message threads. Admin can send to a case participant, and that participant can reply from a private case page linked by notification. Each thread belongs to one case and one participant; the other participant cannot read it. Messaging closes when the case is resolved. Status buttons (Mark in progress, Mark resolved) apply to order complaints; account reports use the review-note form. A confirmation toast follows a status change or decision.
 
 An unfinished Admin decision note survives a same-tab reload for up to two hours. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
@@ -20,14 +20,15 @@ An unfinished Admin decision note survives a same-tab reload for up to two hours
 
 Define resolution outcomes/refunds and role-facing conversation/notification workflow; enforce allowed transitions.
 
-- **Status and kind filters.** `ComplaintController::filteredComplaints()` ignores `status` and `kind`. The page sends both; until the controller applies them, the browser only hides non-matching rows on the current page, so the stat-card counts and the visible rows can disagree across pages.
-- **Messages and "Message" buttons are not implemented.** The case page's Messages panel (All, Buyer, Seller, Courier) shows an empty state, and the party cards offer an "Email" (`mailto:`) link. Nothing links a conversation to a case, and Admin cannot start one. Do not describe this as case messaging until a case-linked conversation exists.
+- Status and case-kind filters now apply in `ComplaintController::filteredComplaints()` before pagination. Stat cards remain global counts, so they do not change with the current search and filter selection.
+- Courier case messaging remains outside the web UI because Courier is mobile-only. The future Rider API needs its own case-message authorization and notification contract before exposing that participant.
+- Case messaging supports text only. Attachments, shared multi-party threads, read receipts in the case panel, and automatic case-status transitions from messages are future work.
 - Verified by static review only (JavaScript syntax and Blade directive balance). No automated tests, build, or browser walkthrough were run. Owner verification is pending.
 
 ## Source evidence
 
-`app/Http/Controllers/Admin/ComplaintController.php`, `app/Models/Complaints/`, `resources/views/admin/complaints/`, `resources/js/admin/complaints.js`, `resources/css/admin/complaints.css`
+`app/Http/Controllers/Admin/ComplaintController.php`, `app/Http/Controllers/CaseMessageController.php`, `app/Models/Complaints/`, `resources/views/admin/complaints/`, `resources/views/shared/case-messages.blade.php`, `resources/js/admin/complaints.js`, `resources/css/admin/complaints.css`
 
 ## Related documentation
 
-See [Admin UI refresh backend needs](../../../design/2026-10-07-admin-ui-refresh-backend-needs.md), [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+See the [7 October frontend pull review](../../../design/2026-10-07-pulled-frontend-review.md), [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
