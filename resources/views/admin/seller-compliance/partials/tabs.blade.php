@@ -11,6 +11,9 @@
         ['admin.seller-compliance.violations', 'Violations', 'shield-x'],
         ['admin.seller-compliance.suspended-sellers', 'Suspended Sellers', 'ban'],
     ];
+
+    // Number of products waiting for review, shown beside "Products for Review" when above zero.
+    $reviewCount = \App\Models\Ecommerce\Product::where('status', 'for_review')->count();
 @endphp
 
 <nav aria-label="Seller compliance sections" class="sc-tabs thin-scroll mb-6 max-w-full overflow-x-auto pb-1">
@@ -26,6 +29,13 @@
                 @endif
                 <x-admin.icon :name="$icon" class="relative h-[18px] w-[18px]" />
                 <span class="relative">{{ $label }}</span>
+                @if ($route === 'admin.seller-compliance.products-for-review' && $reviewCount > 0)
+                    <span class="relative flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold tabular-nums
+                                 {{ $active ? 'bg-[#e8c874] text-[#2B1730]' : 'bg-[#FEF3C7] text-[#92400E]' }}">
+                        <span class="sr-only">{{ $reviewCount }} waiting for review</span>
+                        <span aria-hidden="true">{{ $reviewCount > 99 ? '99+' : $reviewCount }}</span>
+                    </span>
+                @endif
             </a>
         @endforeach
     </div>

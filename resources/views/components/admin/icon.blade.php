@@ -45,6 +45,16 @@
         'arrow-right' => '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
         'eye' => '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/>',
 
+        // Added for the 2026-10-06 admin refresh
+        'users' => '<circle cx="9" cy="8" r="3.4"/><path d="M2.8 20c0-3.4 2.8-5.4 6.2-5.4s6.2 2 6.2 5.4"/><path d="M16 4.8a3.4 3.4 0 0 1 0 6.4M18.4 14.9c1.9.7 3.1 2.4 3.1 5.1"/>',
+        'user-plus' => '<circle cx="10" cy="8" r="3.8"/><path d="M3 20.5c0-3.8 3.1-6 7-6s7 2.2 7 6"/><path d="M19 8v6M16 11h6"/>',
+        'megaphone' => '<path d="M3.5 10.5v3a1 1 0 0 0 1 1H7l7 4.5v-14L7 9.5H4.5a1 1 0 0 0-1 1Z"/><path d="M17.5 9a4 4 0 0 1 0 6"/><path d="m7 14.5 1.2 4.5"/>',
+        'trending-up' => '<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+        'trending-down' => '<path d="m3 7 6 6 4-4 8 8"/><path d="M15 17h6v-6"/>',
+        'scale' => '<path d="M12 4v16M7 20h10M5 7h14"/><path d="m5 7-3 7a3.5 3.5 0 0 0 6 0L5 7ZM19 7l-3 7a3.5 3.5 0 0 0 6 0l-3-7Z"/>',
+        'flag' => '<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>',
+        'message' => '<path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1h-8l-4.5 3.5V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z"/>',
+
         // Documents and media
         'file' => '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/>',
         'file-text' => '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/>',

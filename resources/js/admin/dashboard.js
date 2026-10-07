@@ -1,90 +1,93 @@
+// Admin dashboard: weekly sales/orders bar chart with a Sales | Orders toggle.
+// Flat colours only. The current (partial) week is the darkest bar.
+// Reads the same data-chart-config the controller already supplies.
+
 const canvas = document.getElementById('salesOverviewChart');
 
 if (canvas && typeof Chart !== 'undefined') {
     const { labels, sales, orders } = JSON.parse(canvas.dataset.chartConfig || '{}');
-    const context = canvas.getContext('2d');
-    const fill = (color, alpha) => {
-        const gradient = context.createLinearGradient(0, 0, 0, 260);
-        gradient.addColorStop(0, `${color}${alpha}`);
-        gradient.addColorStop(1, `${color}05`);
-        return gradient;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const metrics = {
+        sales: { label: 'Sales', data: sales, shade: '#DCCBE0', strong: '#3b1735', money: true },
+        orders: { label: 'Orders', data: orders, shade: '#F1D3C6', strong: '#B4573B', money: false },
     };
 
-    new Chart(canvas, {
-        type: 'line',
+    const colorsFor = metric => metrics[metric].data.map((_, i, all) => (i === all.length - 1 ? metrics[metric].strong : metrics[metric].shade));
+    const formatMoney = value => '₱' + Number(value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formatShort = value => (value >= 1000 ? `${Number(value / 1000).toLocaleString('en-PH', { maximumFractionDigits: 1 })}k` : value);
+
+    let current = 'sales';
+
+    const chart = new Chart(canvas, {
+        type: 'bar',
         data: {
             labels,
-            datasets: [
-                {
-                    label: 'Sales',
-                    data: sales,
-                    borderColor: '#4A2A52',
-                    backgroundColor: fill('#8B6E95', '66'),
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 3,
-                    pointBackgroundColor: '#4A2A52',
-                    pointBorderWidth: 0,
-                    yAxisID: 'y',
-                },
-                {
-                    label: 'Orders',
-                    data: orders,
-                    borderColor: '#C97B5F',
-                    backgroundColor: fill('#E0916F', '55'),
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 3,
-                    pointBackgroundColor: '#C97B5F',
-                    pointBorderWidth: 0,
-                    yAxisID: 'y1',
-                },
-            ],
+            datasets: [{
+                label: metrics.sales.label,
+                data: metrics.sales.data,
+                backgroundColor: colorsFor('sales'),
+                hoverBackgroundColor: metrics.sales.strong,
+                borderRadius: 8,
+                borderSkipped: false,
+                maxBarThickness: 44,
+            }],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: reduceMotion ? false : { duration: 700, easing: 'easeOutQuart' },
             interaction: { mode: 'index', intersect: false },
-            animation: { duration: 900, easing: 'easeOutQuart' },
             plugins: {
                 legend: { display: false },
                 tooltip: {
                     backgroundColor: '#2B1730',
                     padding: 10,
                     cornerRadius: 10,
-                    displayColors: true,
-                    boxPadding: 4,
+                    displayColors: false,
+                    callbacks: {
+                        title: items => `Week of ${items[0].label}`,
+                        label: item => (metrics[current].money ? formatMoney(item.parsed.y) : `${item.parsed.y} orders`),
+                    },
                 },
             },
             scales: {
                 x: {
                     grid: { display: false },
                     border: { display: false },
-                    ticks: { color: '#9CA3AF', font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 },
+                    ticks: { color: '#6b7280', font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 },
                 },
                 y: {
-                    type: 'linear',
-                    position: 'left',
                     beginAtZero: true,
                     border: { display: false },
                     grid: { color: '#F1ECF1' },
                     ticks: {
-                        color: '#9CA3AF',
+                        color: '#6b7280',
                         font: { size: 11 },
-                        callback: value => value >= 1000 ? `${value / 1000}k` : value,
+                        precision: 0,
+                        callback: value => (metrics[current].money ? formatShort(value) : value),
                     },
-                },
-                y1: {
-                    type: 'linear',
-                    position: 'right',
-                    beginAtZero: true,
-                    border: { display: false },
-                    grid: { drawOnChartArea: false },
-                    ticks: { color: '#9CA3AF', font: { size: 11 } },
                 },
             },
         },
+    });
+
+    document.querySelectorAll('[data-chart-metric]').forEach(button => {
+        button.addEventListener('click', () => {
+            const next = button.dataset.chartMetric;
+            if (next === current || !metrics[next]) return;
+
+            current = next;
+            document.querySelectorAll('[data-chart-metric]').forEach(other => {
+                other.setAttribute('aria-pressed', String(other === button));
+            });
+
+            const dataset = chart.data.datasets[0];
+            dataset.label = metrics[next].label;
+            dataset.data = metrics[next].data;
+            dataset.backgroundColor = colorsFor(next);
+            dataset.hoverBackgroundColor = metrics[next].strong;
+            chart.update();
+        });
     });
 }

@@ -1,0 +1,135 @@
+/*
+ * Admin → Complaints and Disputes (list, preview popup, case page).
+ * Prefix: cs-
+ *
+ * Layout, colour and type live in Tailwind utilities in the Blade views.
+ * This file only holds what utilities can't express: keyframes and the
+ * table loading state. Flat colours only. Safe if this file is missing.
+ */
+
+:root {
+    --cs-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Rows settle in after a search, filter or page change (and on first load). */
+@keyframes cs-row-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+
+.cs-fresh [data-case-row],
+.cs-rows [data-case-row] {
+    animation: cs-row-in 0.3s var(--cs-ease) backwards;
+    animation-delay: calc(var(--i, 0) * 30ms);
+}
+
+/* Table is dimmed and inert while a request is in flight. */
+.cs-table-wrap {
+    transition: opacity 0.18s ease;
+}
+
+.cs-table-wrap[aria-busy='true'] {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+/* Thin bar pinned to the top edge of the table card while loading. */
+@keyframes cs-bar-run {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(300%); }
+}
+
+.cs-bar {
+    position: absolute;
+    inset: 0 0 auto 0;
+    z-index: 5;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #efe7f0;
+}
+
+.cs-bar::after {
+    content: '';
+    display: block;
+    height: 100%;
+    width: 36%;
+    border-radius: inherit;
+    background: #3b1735;
+    animation: cs-bar-run 1s ease-in-out infinite;
+}
+
+/* Status tabs: the underline grows in from the left. */
+.cs-tab::after {
+    content: '';
+    position: absolute;
+    inset: auto 12px 0 12px;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+    background: #3b1735;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.3s var(--cs-ease);
+}
+
+.cs-tab[aria-selected='true']::after {
+    transform: scaleX(1);
+}
+
+/* Empty-state badge floats gently. */
+@keyframes cs-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
+.cs-float {
+    animation: cs-float 3.2s ease-in-out infinite;
+}
+
+/* Timeline connector on the case page. */
+.cs-timeline > li:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 34px;
+    bottom: -6px;
+    width: 2px;
+    background: #ece4ec;
+}
+
+
+/* Stat cards and case-page cards rise one after another, and lift on hover.
+   Same motion as the Seller Compliance cards. Set style="--i: n" on each card. */
+@keyframes cs-rise {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+}
+
+.cs-card {
+    animation: cs-rise 0.4s var(--cs-ease) backwards;
+    animation-delay: calc(var(--i, 0) * 60ms);
+    transition: transform 0.25s var(--cs-ease), box-shadow 0.25s var(--cs-ease), border-color 0.2s ease, background-color 0.2s ease;
+}
+
+button.cs-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 30px -22px rgba(43, 23, 48, 0.55);
+}
+
+button.cs-card:active {
+    transform: translateY(0) scale(0.99);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cs-card,
+    .cs-fresh [data-case-row],
+    .cs-rows [data-case-row],
+    .cs-bar::after,
+    .cs-float {
+        animation: none !important;
+    }
+
+    .cs-tab::after {
+        transition: none;
+    }
+}

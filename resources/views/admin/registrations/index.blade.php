@@ -8,24 +8,11 @@
         $initialType = request()->string('user_type', 'all')->toString();
         $initialType = in_array($initialType, ['all', 'seller', 'buyer', 'logistics_center'], true) ? $initialType : 'all';
 
-        // New icons are exported from the mockup into public/assets/icons/registration/.
-        // Until they exist, fall back to the icons already in the repo.
-        $stat = function (string $file, string $fallback): array {
-            $native = file_exists(public_path('assets/icons/registration/' . $file));
-
-            return [
-                'native' => $native,
-                'src' => $native
-                    ? asset('assets/icons/registration/' . $file)
-                    : asset('assets/icons/dashboard/' . $fallback),
-            ];
-        };
-
         $cards = [
-            ['key' => 'all', 'label' => 'Pending Requests', 'value' => $stats['pending_request'], 'icon' => $stat('pending-request-icon.svg', 'total-orders-icon.svg')],
-            ['key' => 'seller', 'label' => 'Pending Sellers', 'value' => $stats['pending_sellers'], 'icon' => $stat('pending-seller-icon.svg', 'sellers-registrations.svg')],
-            ['key' => 'buyer', 'label' => 'Pending Buyers', 'value' => $stats['pending_buyers'], 'icon' => $stat('pending-buyer-icon.svg', 'buyers-registrations.svg')],
-            ['key' => 'logistics_center', 'label' => 'Pending Logistics', 'value' => $stats['pending_logistics_centers'], 'icon' => $stat('pending-logistics-icon.svg', 'couriers-registrations.svg')],
+            ['key' => 'all', 'label' => 'Pending Requests', 'value' => $stats['pending_request'], 'icon' => 'clock', 'tone' => 'purple'],
+            ['key' => 'seller', 'label' => 'Pending Sellers', 'value' => $stats['pending_sellers'], 'icon' => 'store', 'tone' => 'plum'],
+            ['key' => 'buyer', 'label' => 'Pending Buyers', 'value' => $stats['pending_buyers'], 'icon' => 'user', 'tone' => 'gold'],
+            ['key' => 'logistics_center', 'label' => 'Pending Logistics', 'value' => $stats['pending_logistics_centers'], 'icon' => 'package', 'tone' => 'terracotta'],
         ];
     @endphp
 
@@ -146,29 +133,7 @@
         </div>
 
         {{-- Pending counts. Each card also filters the table to that user type. --}}
-        <div class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            @foreach ($cards as $card)
-                <button type="button" @click="type = '{{ $card['key'] }}'; apply()"
-                    :aria-pressed="type === '{{ $card['key'] }}'"
-                    :class="type === '{{ $card['key'] }}'
-                        ? 'border-[#3b1735] bg-[#F7F1F7] ring-1 ring-[#3b1735]/20'
-                        : 'border-[#ece4ec] bg-white hover:border-[#cdbbd2]'"
-                    class="flex items-center gap-3 rounded-2xl border p-3.5 text-left transition duration-200 ease-vendo
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40 active:scale-[0.99] sm:p-4">
-                    @if ($card['icon']['native'])
-                        <img src="{{ $card['icon']['src'] }}" alt="" class="h-11 w-11 flex-shrink-0">
-                    @else
-                        <span class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1]">
-                            <img src="{{ $card['icon']['src'] }}" alt="" class="h-6 w-6">
-                        </span>
-                    @endif
-                    <span class="min-w-0">
-                        <span class="block truncate text-[13px] text-gray-500">{{ $card['label'] }}</span>
-                        <span class="block text-2xl font-semibold leading-tight tracking-tight text-[#2B1730]">{{ number_format($card['value']) }}</span>
-                    </span>
-                </button>
-            @endforeach
-        </div>
+        @include('admin.partials.filter-stat-cards', ['cards' => $cards])
 
         @if (session('success'))
             <div role="status" class="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-2.5 text-sm text-green-700">

@@ -1,100 +1,155 @@
-<x-admin.layout>
-    <div class="p-4 sm:p-5 lg:p-6">
-        <div class="mb-6">
-            <h2 class="text-2xl font-bold text-gray-900">{{ $complaint->kind === 'user_report' ? 'Account Report Details' : 'Complaint Details' }}</h2>
+<x-admin.layout title="Complaint Details">
+    @vite('resources/css/admin/complaints.css')
+
+    @php
+        $isReport = $complaint->kind === 'user_report';
+        $caseNo = 'CMP-' . $complaint->created_at->format('Y') . '-' . str_pad($complaint->id, 5, '0', STR_PAD_LEFT);
+        $roleLabel = fn ($role) => $role === 'logistics_center' ? 'Logistics' : ucfirst((string) $role);
+        $card = 'rounded-2xl border border-[#ece4ec] bg-white p-5';
+        $flash = [
+            'status_updated' => 'Case status updated.',
+            'report_reviewed' => 'Report decision saved.',
+        ][session('confirmation')] ?? null;
+        $timeline = $complaint->activities->sortByDesc('created_at')->values();
+        $evidences = $complaint->evidences;
+    @endphp
+
+    <div class="mx-auto w-full max-w-[1280px] p-4 sm:p-6"
+        x-data="{ toast: @js($flash), init() { if (this.toast) setTimeout(() => this.toast = null, 4000); } }">
+
+        {{-- Confirmation after a status change or decision --}}
+        <div x-show="toast" x-cloak x-transition.opacity role="status"
+            class="fixed right-4 top-24 z-50 flex items-center gap-2 rounded-xl bg-[#2B1730] px-4 py-3 text-sm font-medium text-white shadow-lg">
+            <x-admin.icon name="check-circle" class="h-4 w-4 text-[#e8c874]" />
+            <span x-text="toast"></span>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <a href="{{ route('admin.complaints.index') }}" x-target.push="main-content sidebar"
+            class="mb-2 inline-flex items-center gap-1.5 rounded-lg text-sm font-medium text-[#3b1735] hover:underline
+                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+            <x-admin.icon name="chevron-left" class="h-4 w-4" /> All complaints and disputes
+        </a>
+        <h1 class="mb-5 font-display text-2xl font-semibold text-[#2B1730] sm:text-3xl">Complaint Details</h1>
 
-            <div class="lg:col-span-2 space-y-4">
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                    <div class="flex items-center gap-2">
-                        @include('admin.complaints.partials.type-badge')
-                        @include('admin.complaints.partials.status-badge')
+        <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+
+            {{-- ================= LEFT ================= --}}
+            <div class="space-y-5">
+
+                {{-- Header card --}}
+                <section class="{{ $card }} cs-card flex flex-wrap items-center gap-4" style="--i: 0" aria-label="Case header">
+                    <span class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-[#C98585] text-[#7A1414]">
+                        <x-admin.icon :name="$isReport ? 'flag' : 'alert-circle'" class="h-8 w-8" />
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs text-gray-500">{{ $isReport ? 'Report ID' : 'Complaint ID' }}</p>
+                        <p class="font-display text-2xl font-semibold leading-tight text-[#9B111E]">{{ $caseNo }}</p>
+                        <p class="mt-1 text-xs text-gray-500">Filed on {{ $complaint->created_at->format('M j, Y · g:i A') }}</p>
                     </div>
+                    <div class="flex-shrink-0">@include('admin.complaints.partials.status-badge')</div>
+                </section>
 
-                    @if ($complaint->kind !== 'user_report' && $complaint->status !== 'resolved')
-                        <div class="flex gap-3 mt-4 pt-4 border-t border-gray-100">
+                {{-- Case actions (order complaints) --}}
+                @if (! $isReport && $complaint->status !== 'resolved')
+                    <section class="{{ $card }} cs-card flex flex-wrap items-center justify-between gap-3" style="--i: 1" aria-label="Case actions">
+                        <p class="text-sm text-gray-600">Update where this case stands.</p>
+                        <div class="flex flex-wrap gap-2.5">
                             @if ($complaint->status === 'open')
                                 <form method="POST" action="{{ route('admin.complaints.update-status', $complaint) }}">
                                     @csrf
                                     <input type="hidden" name="status" value="in_review">
                                     <button type="submit"
-                                        class="px-4 py-2 rounded-lg border border-blue-300 text-blue-700 text-sm font-medium hover:bg-blue-50">Mark
-                                        In Progress</button>
+                                        class="h-10 rounded-xl border border-[#ddd0e0] bg-white px-4 text-sm font-medium text-[#3b1735] transition-colors duration-150 hover:bg-[#F7F1F7]
+                                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">Mark in progress</button>
                                 </form>
                             @endif
                             <form method="POST" action="{{ route('admin.complaints.update-status', $complaint) }}">
                                 @csrf
                                 <input type="hidden" name="status" value="resolved">
                                 <button type="submit"
-                                    class="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700">Mark
-                                    Resolved</button>
+                                    class="h-10 rounded-xl bg-green-700 px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-green-800
+                                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-700/40 focus-visible:ring-offset-2">Mark resolved</button>
                             </form>
                         </div>
-                    @endif
-                </div>
+                    </section>
+                @endif
 
-                @if($complaint->kind === 'user_report')
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                        <h3 class="mb-2 font-bold text-gray-900">Report review</h3>
-                        @if($complaint->decision)
-                            <p class="text-sm text-gray-700">Decision: <strong>{{ ucfirst($complaint->decision) }}</strong> on {{ $complaint->reviewed_at?->format('M j, Y g:i A') }}.</p>
+                {{-- Account report decision --}}
+                @if ($isReport)
+                    <section class="{{ $card }} cs-card" style="--i: 1" aria-labelledby="review-title">
+                        <h2 id="review-title" class="mb-2 font-display text-base font-semibold text-[#2B1730]">Report review</h2>
+                        @if ($complaint->decision)
+                            <p class="flex items-center gap-2 text-sm text-gray-700">
+                                <x-admin.icon :name="$complaint->decision === 'approved' ? 'shield-check' : 'x-circle'" class="h-4 w-4 {{ $complaint->decision === 'approved' ? 'text-green-700' : 'text-gray-500' }}" />
+                                Decision: <strong>{{ ucfirst($complaint->decision) }}</strong> on {{ $complaint->reviewed_at?->format('M j, Y g:i A') }}.
+                            </p>
                         @else
-                            <p class="mb-4 text-sm text-gray-600">Review the description and order context before deciding. Approval sends a warning to the reported account.</p>
-                            @if($complaint->status === 'open')
-                                <form method="POST" action="{{ route('admin.complaints.update-status', $complaint) }}" class="mb-3">
+                            <p class="mb-4 text-sm text-gray-600">Review the description and order context before deciding. Approving sends a warning to the reported account.</p>
+                            @if ($complaint->status === 'open')
+                                <form method="POST" action="{{ route('admin.complaints.update-status', $complaint) }}" class="mb-4">
                                     @csrf<input type="hidden" name="status" value="in_review">
-                                    <button type="submit" class="rounded-lg border border-blue-300 px-3 py-2 text-sm text-blue-700">Mark in progress</button>
+                                    <button type="submit" class="h-10 rounded-xl border border-[#ddd0e0] px-4 text-sm font-medium text-[#3b1735] hover:bg-[#F7F1F7]">Mark in progress</button>
                                 </form>
                             @endif
-                            <form method="POST" action="{{ route('admin.complaints.decision', $complaint) }}" data-draft-key="admin-{{ auth('admin')->id() }}-complaint-decision-{{ $complaint->id }}">
+                            <form method="POST" action="{{ route('admin.complaints.decision', $complaint) }}" data-draft-key="admin-{{ auth('admin')->id() }}-complaint-decision-{{ $complaint->id }}"
+                                x-data="{ note: @js(old('note', '')) }">
                                 @csrf
-                                <label for="reviewNote" class="mb-1 block text-sm font-medium text-gray-700">Review note</label>
-                                <textarea id="reviewNote" name="note" minlength="10" maxlength="500" rows="3" required class="mb-3 w-full rounded-lg border border-gray-200 p-3 text-sm" placeholder="Explain the decision for the case record.">{{ old('note') }}</textarea>
-                                <div class="flex flex-wrap gap-2">
-                                    <button type="submit" name="decision" value="approved" class="rounded-lg bg-[#3b1735] px-4 py-2 text-sm font-semibold text-white">Approve and warn</button>
-                                    <button type="submit" name="decision" value="rejected" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700">Reject report</button>
+                                <label for="reviewNote" class="mb-1.5 block text-sm font-medium text-gray-700">Review note</label>
+                                <textarea id="reviewNote" name="note" x-model="note" minlength="10" maxlength="500" rows="3" required
+                                    class="mb-1 w-full rounded-xl border border-[#ddd0e0] p-3 text-sm text-[#2B1730] placeholder:text-gray-400 focus:border-[#3b1735] focus:outline-none focus:ring-2 focus:ring-[#3b1735]/20"
+                                    placeholder="Explain the decision for the case record."></textarea>
+                                <p class="mb-3 text-right text-xs tabular-nums text-gray-400"><span x-text="note.length">0</span>/500 · at least 10 characters</p>
+                                @error('note')<p class="mb-3 text-sm text-red-600">{{ $message }}</p>@enderror
+                                <div class="flex flex-wrap gap-2.5">
+                                    <button type="submit" name="decision" value="approved" class="h-10 rounded-xl bg-[#3b1735] px-4 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[#4d1f45]">Approve and warn</button>
+                                    <button type="submit" name="decision" value="rejected" class="h-10 rounded-xl border border-[#ddd0e0] px-4 text-sm font-semibold text-gray-700 transition-colors duration-150 hover:bg-[#F7F1F7]">Reject report</button>
                                 </div>
                             </form>
                         @endif
-                    </div>
+                    </section>
                 @endif
 
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                    <h3 class="font-bold text-gray-900 mb-4">{{ $complaint->kind === 'user_report' ? 'Report Summary' : 'Complaint Summary' }}</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 text-sm">
+                {{-- Summary --}}
+                <section class="{{ $card }} cs-card" style="--i: 2" aria-labelledby="summary-title">
+                    <h2 id="summary-title" class="mb-4 font-display text-base font-semibold text-[#2B1730]">{{ $isReport ? 'Report Summary' : 'Complaint Summary' }}</h2>
+                    <dl class="mb-5 grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
                         <div>
-                            <p class="text-gray-400 text-xs mb-1">Complaint Type</p>
-                            @include('admin.complaints.partials.type-badge')
+                            <dt class="mb-1.5 text-xs text-gray-500">{{ $isReport ? 'Report Type' : 'Complaint Type' }}</dt>
+                            <dd>@include('admin.complaints.partials.type-badge')</dd>
                         </div>
                         <div>
-                            <p class="text-gray-400 text-xs mb-1">Order ID</p>
-                            <p class="text-red-600 font-medium">
-                                {{ $complaint->order ? 'ORD-' . str_pad($complaint->order->id, 4, '0', STR_PAD_LEFT) : '—' }}
-                            </p>
+                            <dt class="mb-1.5 text-xs text-gray-500">Order ID</dt>
+                            <dd class="font-medium text-[#9B111E]">{{ $complaint->order ? 'ORD-' . str_pad($complaint->order->id, 4, '0', STR_PAD_LEFT) : 'Not linked to an order' }}</dd>
                         </div>
                         <div>
-                            <p class="text-gray-400 text-xs mb-1">Amount</p>
-                            <p class="font-semibold text-gray-900">
-                                ₱{{ number_format($complaint->order->total_amount ?? 0, 2) }}</p>
+                            <dt class="mb-1.5 text-xs text-gray-500">Amount</dt>
+                            <dd class="font-medium tabular-nums text-[#2B1730]">{{ $complaint->order ? '₱' . number_format($complaint->order->total_amount ?? 0, 2) : '—' }}</dd>
                         </div>
-                    </div>
-                    <p class="text-gray-400 text-xs mb-1">Description</p>
-                    <p class="whitespace-pre-wrap break-words text-sm text-gray-800 [overflow-wrap:anywhere]">{{ $complaint->description }}</p>
-                </div>
+                    </dl>
+                    <h3 class="mb-1.5 text-xs text-gray-500">Description</h3>
+                    @if (filled($complaint->description))
+                        <p class="whitespace-pre-wrap text-sm font-medium leading-relaxed text-[#2B1730] [overflow-wrap:anywhere]">{{ $complaint->description }}</p>
+                    @else
+                        <p class="rounded-xl border border-dashed border-[#e2d6e5] p-4 text-sm text-gray-500">No description was provided.</p>
+                    @endif
+                </section>
 
+                {{-- Order information --}}
                 @if ($complaint->order)
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                        <h3 class="font-bold text-gray-900 mb-4">Order Information</h3>
+                    <section class="{{ $card }} cs-card" style="--i: 3" aria-labelledby="order-title">
+                        <h2 id="order-title" class="mb-4 font-display text-base font-semibold text-[#2B1730]">Order Information</h2>
                         @foreach ($complaint->order->items as $item)
-                            @if($item->product)
-                                <button type="button" onclick="document.getElementById('complaintProduct{{ $item->id }}').showModal()" class="mb-3 flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-purple-50 focus-visible:outline-2 focus-visible:outline-[#603168]">
+                            @if ($item->product)
+                                <button type="button" onclick="document.getElementById('complaintProduct{{ $item->id }}').showModal()"
+                                    class="mb-2 flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-[#FBF8FB] focus-visible:outline-2 focus-visible:outline-[#603168]">
                                     <span class="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
-                                        @if($item->product->images->first())<img src="{{ Storage::url($item->product->images->first()->path) }}" alt="{{ $item->product->name }}" class="h-full w-full object-cover">@endif
+                                        @if ($item->product->images->first())<img src="{{ Storage::url($item->product->images->first()->path) }}" alt="" class="h-full w-full object-cover">@endif
                                     </span>
-                                    <span class="min-w-0 flex-1"><strong class="block truncate text-sm text-gray-900">{{ $item->product->name }}</strong><small class="block text-xs text-gray-500">Qty: {{ $item->quantity }} · View product details</small></span>
-                                    <span class="text-sm font-semibold text-gray-900">₱{{ number_format($item->price, 2) }}</span>
+                                    <span class="min-w-0 flex-1">
+                                        <strong class="block text-sm text-[#2B1730] [overflow-wrap:anywhere]">{{ $item->product->name }}</strong>
+                                        <small class="block text-xs text-gray-500">Qty {{ $item->quantity }} · View product details</small>
+                                    </span>
+                                    <span class="text-sm font-semibold tabular-nums text-[#2B1730]">₱{{ number_format($item->price, 2) }}</span>
                                 </button>
                                 <dialog id="complaintProduct{{ $item->id }}" class="w-[min(680px,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-gray-100 p-0 text-gray-900 shadow-2xl backdrop:bg-black/55" aria-labelledby="complaintProductTitle{{ $item->id }}">
                                     <div class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-4">
@@ -102,138 +157,151 @@
                                         <button type="button" onclick="this.closest('dialog').close()" aria-label="Close product details" class="ml-4 text-2xl leading-none text-gray-500">&times;</button>
                                     </div>
                                     <div class="space-y-5 p-5">
-                                        @if($item->product->images->isNotEmpty())
+                                        @if ($item->product->images->isNotEmpty())
                                             <div class="flex gap-2 overflow-x-auto">
-                                                @foreach($item->product->images as $image)<img src="{{ Storage::url($image->path) }}" alt="{{ $item->product->name }} photo {{ $loop->iteration }}" class="h-32 w-32 flex-none rounded-lg bg-gray-100 object-cover">@endforeach
+                                                @foreach ($item->product->images as $image)<img src="{{ Storage::url($image->path) }}" alt="{{ $item->product->name }} photo {{ $loop->iteration }}" class="h-32 w-32 flex-none rounded-lg bg-gray-100 object-cover">@endforeach
                                             </div>
                                         @endif
                                         <div class="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
                                             <div><span class="block text-xs text-gray-500">Unit price</span><strong>₱{{ number_format($item->price, 2) }}</strong></div>
                                             <div><span class="block text-xs text-gray-500">Quantity</span><strong>{{ $item->quantity }}</strong></div>
-                                            @if($item->color)<div><span class="block text-xs text-gray-500">Color</span><strong>{{ $item->color }}</strong></div>@endif
-                                            @if($item->size)<div><span class="block text-xs text-gray-500">Size</span><strong>{{ $item->size }}</strong></div>@endif
-                                            @if($item->product->brand)<div><span class="block text-xs text-gray-500">Brand</span><strong>{{ $item->product->brand }}</strong></div>@endif
-                                            @if($item->product->material)<div><span class="block text-xs text-gray-500">Material</span><strong>{{ $item->product->material }}</strong></div>@endif
-                                            @if($item->product->weight)<div><span class="block text-xs text-gray-500">Weight</span><strong>{{ $item->product->weight }}</strong></div>@endif
-                                            @if($item->product->country_of_origin)<div><span class="block text-xs text-gray-500">Country of origin</span><strong>{{ $item->product->country_of_origin }}</strong></div>@endif
+                                            @if ($item->color)<div><span class="block text-xs text-gray-500">Color</span><strong>{{ $item->color }}</strong></div>@endif
+                                            @if ($item->size)<div><span class="block text-xs text-gray-500">Size</span><strong>{{ $item->size }}</strong></div>@endif
+                                            @if ($item->product->brand)<div><span class="block text-xs text-gray-500">Brand</span><strong>{{ $item->product->brand }}</strong></div>@endif
+                                            @if ($item->product->material)<div><span class="block text-xs text-gray-500">Material</span><strong>{{ $item->product->material }}</strong></div>@endif
+                                            @if ($item->product->weight)<div><span class="block text-xs text-gray-500">Weight</span><strong>{{ $item->product->weight }}</strong></div>@endif
+                                            @if ($item->product->country_of_origin)<div><span class="block text-xs text-gray-500">Country of origin</span><strong>{{ $item->product->country_of_origin }}</strong></div>@endif
                                         </div>
                                         <div><h5 class="mb-2 text-sm font-semibold">Description</h5><p class="whitespace-pre-wrap break-words text-sm leading-6 text-gray-700">{{ $item->product->description ?: 'No description provided.' }}</p></div>
                                     </div>
                                 </dialog>
                             @else
-                                <div class="mb-3 flex items-center justify-between rounded-xl bg-gray-50 p-3 text-sm"><span>Product removed · Qty: {{ $item->quantity }}</span><strong>₱{{ number_format($item->price, 2) }}</strong></div>
+                                <div class="mb-2 flex items-center justify-between rounded-xl bg-[#FBF8FB] p-3 text-sm"><span>Product removed · Qty {{ $item->quantity }}</span><strong class="tabular-nums">₱{{ number_format($item->price, 2) }}</strong></div>
                             @endif
                         @endforeach
-                        <div class="border-t border-gray-100 mt-4 pt-4 grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <p class="text-gray-400 text-xs mb-1">Order Date</p>
-                                <p class="font-medium text-gray-900">
-                                    {{ $complaint->order->created_at->format('M d, Y g:i A') }}</p>
-                            </div>
-                            <div>
-                                <p class="text-gray-400 text-xs mb-1">Payment Method</p>
-                                <p class="font-medium text-gray-900">{{ $complaint->order->payment_mode ?? '—' }}</p>
-                            </div>
-                        </div>
-                    </div>
+                        <dl class="mt-4 grid grid-cols-2 gap-4 border-t border-[#f3edf4] pt-4 text-sm">
+                            <div><dt class="mb-1 text-xs text-gray-500">Order Date</dt><dd class="font-medium text-[#2B1730]">{{ $complaint->order->created_at->format('M j, Y · g:i A') }}</dd></div>
+                            <div><dt class="mb-1 text-xs text-gray-500">Payment Method</dt><dd class="font-medium text-[#2B1730]">{{ $complaint->order->payment_mode ?? '—' }}</dd></div>
+                        </dl>
+                    </section>
                 @endif
 
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                    <h3 class="font-bold text-gray-900 mb-4">Timeline</h3>
-                    <div class="space-y-4">
-                        @forelse ($complaint->activities as $activity)
-                            <div class="flex gap-3">
-                                <div
-                                    class="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0 text-[#3b1735] text-xs">
-                                    ●</div>
-                                <div>
-                                    <p class="text-xs text-gray-400">
-                                        {{ $activity->created_at->format('M d, Y g:i A') }}</p>
-                                    <p class="text-sm text-gray-800">{{ $activity->action }}</p>
+                {{-- Timeline (newest first) --}}
+                <section class="{{ $card }} cs-card" style="--i: 4" aria-labelledby="timeline-title">
+                    <h2 id="timeline-title" class="mb-5 font-display text-base font-semibold text-[#2B1730]">Timeline</h2>
+                    <ol class="cs-timeline space-y-5">
+                        @forelse ($timeline as $activity)
+                            @php
+                                $actionText = strtolower($activity->action);
+                                $activityIcon = str_contains($actionText, 'status') ? 'refresh' : (str_contains($actionText, 'submitted') ? 'flag' : 'shield-check');
+                            @endphp
+                            <li class="relative flex gap-3">
+                                <span class="z-[1] flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#EDE3F0] text-[#5b2963]"><x-admin.icon :name="$activityIcon" class="h-4 w-4" /></span>
+                                <div class="min-w-0 pt-0.5">
+                                    <p class="text-sm font-medium text-gray-700">{{ $activity->created_at->format('F j, Y g:i A') }}</p>
+                                    <p class="mt-0.5 text-sm text-gray-600 [overflow-wrap:anywhere]">{{ $activity->action }}@if ($activity->actor) <span class="text-gray-400">· {{ $activity->actor }}</span>@endif</p>
                                 </div>
-                            </div>
+                            </li>
                         @empty
-                            <div class="flex gap-3">
-                                <div
-                                    class="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0 text-[#3b1735] text-xs">
-                                    ●</div>
-                                <div>
-                                    <p class="text-xs text-gray-400">
-                                        {{ $complaint->created_at->format('M d, Y g:i A') }}</p>
-                                    <p class="text-sm text-gray-800">Complaint submitted by
-                                        {{ $complaint->complainant->name }}</p>
+                            <li class="relative flex gap-3">
+                                <span class="z-[1] flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#EDE3F0] text-[#5b2963]"><x-admin.icon name="flag" class="h-4 w-4" /></span>
+                                <div class="min-w-0 pt-0.5">
+                                    <p class="text-sm font-medium text-gray-700">{{ $complaint->created_at->format('F j, Y g:i A') }}</p>
+                                    <p class="mt-0.5 text-sm text-gray-600">{{ $isReport ? 'Report' : 'Complaint' }} submitted by {{ $complaint->complainant->name }}</p>
                                 </div>
-                            </div>
+                            </li>
                         @endforelse
-                    </div>
-                </div>
+                    </ol>
+                </section>
             </div>
 
-            <div class="space-y-4">
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                    <h3 class="font-bold text-gray-900 mb-4">Parties Involved</h3>
+            {{-- ================= RIGHT ================= --}}
+            <div class="space-y-5">
 
-                    <div class="mb-4 pb-4 border-b border-gray-100">
-                        <p class="text-xs text-gray-400 mb-2">{{ ucfirst($complaint->complainant->role) }} · Reporter</p>
-                        <div class="flex items-center gap-2 mb-2">
-                            <div
-                                class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
-                                {{ strtoupper(substr($complaint->complainant->name, 0, 1)) }}
+                {{-- Parties involved --}}
+                <section class="{{ $card }} cs-card" style="--i: 1" aria-labelledby="people-title">
+                    <h2 id="people-title" class="mb-4 font-display text-base font-semibold text-[#2B1730]">Parties Involved</h2>
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        @foreach ([$complaint->complainant, $complaint->respondent] as $person)
+                            <div class="flex flex-col rounded-xl border border-[#ece4ec] p-4">
+                                <div class="mb-3 flex items-start gap-3">
+                                    <span aria-hidden="true" class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#E4E0E4] text-sm font-semibold text-[#5b2963]">{{ strtoupper(mb_substr($person->name, 0, 1)) }}</span>
+                                    <div class="min-w-0 leading-tight">
+                                        <p class="text-xs text-gray-500">{{ $roleLabel($person->role) }}</p>
+                                        <p class="text-[15px] font-semibold text-[#2B1730] [overflow-wrap:anywhere]">{{ $person->name }}</p>
+                                        <p class="mt-0.5 text-xs text-gray-500 [overflow-wrap:anywhere]">{{ $person->email }}</p>
+                                    </div>
+                                </div>
+                                @if ($person->phone_number)
+                                    <p class="mb-3 text-xs text-gray-500">{{ $person->phone_number }}</p>
+                                @endif
+                                {{-- Email for now: starting a case conversation needs backend support (see backend notes). --}}
+                                <a href="mailto:{{ $person->email }}"
+                                    class="mt-auto inline-flex h-9 w-fit items-center gap-2 rounded-lg border border-[#ddd0e0] px-3 text-xs font-medium text-[#2B1730] transition-colors duration-150 hover:bg-[#F7F1F7]
+                                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                                    <x-admin.icon name="message" class="h-3.5 w-3.5" /> Email
+                                </a>
                             </div>
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">{{ $complaint->complainant->name }}</p>
-                                <p class="text-xs text-gray-400">{{ $complaint->complainant->email }}</p>
-                            </div>
-                        </div>
-                        @if ($complaint->complainant->phone_number)
-                            <p class="text-xs text-gray-500 mb-2">{{ $complaint->complainant->phone_number }}</p>
-                        @endif
-                        <button type="button" disabled
-                            class="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-medium">Message</button>
+                        @endforeach
                     </div>
+                </section>
 
-                    <div>
-                        <p class="text-xs text-gray-400 mb-2">{{ ucfirst($complaint->respondent->role) }} · Reported account</p>
-                        <div class="flex items-center gap-2 mb-2">
-                            <div
-                                class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
-                                {{ strtoupper(substr($complaint->respondent->name, 0, 1)) }}
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">{{ $complaint->respondent->name }}</p>
-                                <p class="text-xs text-gray-400">{{ $complaint->respondent->email }}</p>
-                            </div>
+                {{-- Supporting evidence --}}
+                <section class="{{ $card }} cs-card" style="--i: 2" aria-labelledby="evidence-title" x-data="{ all: false }">
+                    <h2 id="evidence-title" class="mb-4 font-display text-base font-semibold text-[#2B1730]">Supporting Evidence</h2>
+                    @if ($evidences->isEmpty())
+                        <div class="flex flex-col items-center rounded-xl border border-dashed border-[#e2d6e5] bg-[#FBF8FB] px-4 py-8 text-center">
+                            <x-admin.icon name="image" class="mb-2 h-6 w-6 text-[#b9a4bd]" />
+                            <p class="text-sm font-medium text-[#2B1730]">No evidence uploaded</p>
+                            <p class="mt-0.5 text-xs text-gray-500">Photos and files attached to the case appear here.</p>
                         </div>
-                        @if ($complaint->respondent->phone_number)
-                            <p class="text-xs text-gray-500 mb-2">{{ $complaint->respondent->phone_number }}</p>
-                        @endif
-                        <button type="button" disabled
-                            class="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-medium">Message</button>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                    <h3 class="font-bold text-gray-900 mb-4">Supporting Evidence</h3>
-                    @if ($complaint->evidences->isEmpty())
-                        <p class="text-sm text-gray-400">No evidence uploaded.</p>
                     @else
-                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                            @foreach ($complaint->evidences as $evidence)
+                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            @foreach ($evidences as $evidence)
                                 @php $isPdf = str_ends_with(strtolower($evidence->original_filename ?? $evidence->path), '.pdf'); @endphp
-                                <a href="{{ route('admin.complaints.evidence', [$complaint, $evidence]) }}" target="_blank" rel="noopener" class="group min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:border-[#704278]">
-                                    @if($isPdf)
-                                        <span class="grid h-24 place-items-center text-lg font-bold text-[#603168]">PDF</span>
-                                    @else
-                                        <img src="{{ route('admin.complaints.evidence', [$complaint, $evidence]) }}" alt="Evidence {{ $loop->iteration }}" class="h-24 w-full object-cover">
-                                    @endif
-                                    <span class="block truncate px-2 py-1.5 text-xs text-gray-700" title="{{ $evidence->original_filename }}">{{ $evidence->original_filename ?: 'Evidence '.$loop->iteration }}</span>
+                                <a href="{{ route('admin.complaints.evidence', [$complaint, $evidence]) }}" target="_blank" rel="noopener"
+                                    @if ($loop->index >= 3) x-show="all" x-cloak @endif
+                                    class="group min-w-0 focus-visible:outline-none">
+                                    <span class="block aspect-square overflow-hidden rounded-lg bg-[#E4E0E4] transition duration-150 group-hover:ring-2 group-hover:ring-[#704278] group-focus-visible:ring-2 group-focus-visible:ring-[#3b1735]">
+                                        @if ($isPdf)
+                                            <span class="grid h-full place-items-center text-lg font-bold text-[#603168]">PDF</span>
+                                        @else
+                                            <img src="{{ route('admin.complaints.evidence', [$complaint, $evidence]) }}" alt="Evidence {{ $loop->iteration }}" loading="lazy" class="h-full w-full object-cover">
+                                        @endif
+                                    </span>
+                                    <span class="mt-1 block truncate text-center text-[11px] text-gray-500" title="{{ $evidence->original_filename }}">{{ $evidence->original_filename ?: 'Evidence ' . $loop->iteration }}</span>
                                 </a>
                             @endforeach
+
+                            @if ($evidences->count() > 3)
+                                <button type="button" x-show="!all" @click="all = true"
+                                    class="min-w-0 focus-visible:outline-none" aria-label="Show {{ $evidences->count() - 3 }} more files">
+                                    <span class="flex aspect-square items-center justify-center rounded-lg bg-[#E4E0E4] text-lg font-semibold text-[#2B1730] transition duration-150 hover:bg-[#d9d3d9]">+{{ $evidences->count() - 3 }}</span>
+                                    <span class="mt-1 block text-center text-[11px] text-gray-500">Other</span>
+                                </button>
+                            @endif
                         </div>
                     @endif
-                </div>
-            </div>
+                </section>
 
+                {{-- Messages (needs backend: see docs/design/2026-10-07-admin-ui-refresh-backend-needs.md) --}}
+                <section class="{{ $card }} cs-card" style="--i: 3" aria-labelledby="messages-title" x-data="{ who: 'all' }">
+                    <h2 id="messages-title" class="mb-3 font-display text-base font-semibold text-[#2B1730]">Messages</h2>
+                    <div role="tablist" aria-label="Filter messages by person" class="mb-4 flex gap-1 border-b border-[#ece4ec]">
+                        @foreach (['all' => 'All', 'buyer' => 'Buyer', 'seller' => 'Seller', 'courier' => 'Courier'] as $id => $label)
+                            <button type="button" role="tab" @click="who = '{{ $id }}'" :aria-selected="who === '{{ $id }}'"
+                                class="relative px-3.5 py-2 text-sm font-medium text-gray-500 transition-colors duration-150 hover:text-[#3b1735] aria-selected:text-[#2B1730]
+                                       after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:origin-left after:scale-x-0 after:bg-[#2B1730] after:transition-transform after:duration-300
+                                       aria-selected:after:scale-x-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#3b1735]/40">{{ $label }}</button>
+                        @endforeach
+                    </div>
+                    <div class="flex flex-col items-center px-4 py-10 text-center">
+                        <span class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#F1E9F1] text-[#5b2963]"><x-admin.icon name="message" class="h-5 w-5" /></span>
+                        <p class="text-sm font-medium text-[#2B1730]">No messages for this case yet</p>
+                        <p class="mt-1 max-w-xs text-xs text-gray-500">Conversations with the buyer, seller and courier will appear here once case messaging is connected.</p>
+                    </div>
+                </section>
+            </div>
         </div>
     </div>
 </x-admin.layout>
