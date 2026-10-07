@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 class OrderCancellationService
 {
     public const CANCELLABLE_STATUSES = ['placed', 'confirmed', 'preparing', 'ready_for_pickup'];
+    public const BUYER_CANCELLABLE_STATUSES = ['placed', 'confirmed'];
 
     public const BUYER_REASONS = [
         'changed_mind' => 'Changed my mind',
@@ -37,7 +38,7 @@ class OrderCancellationService
         DB::transaction(function () use ($buyer, $orderId, $expectedStatus, $reason) {
             $order = Order::query()->where('buyer_id', $buyer->id)->lockForUpdate()->findOrFail($orderId);
             abort_unless($order->status === $expectedStatus, 409, 'This order has changed. Reload its details.');
-            abort_unless(in_array($order->status, self::CANCELLABLE_STATUSES, true), 409, 'This order can no longer be cancelled.');
+            abort_unless(in_array($order->status, self::BUYER_CANCELLABLE_STATUSES, true), 409, 'The seller has started preparing this order, so it can no longer be cancelled by the buyer.');
 
             $this->cancelLocked($order, $buyer, $reason);
         }, 3);
@@ -56,6 +57,7 @@ class OrderCancellationService
     public function cancelLocked(Order $order, User $actor, string $reason): void
     {
         abort_unless(in_array($actor->role, ['buyer', 'seller'], true), 403);
+        abort_if($actor->role === 'buyer' && ! in_array($order->status, self::BUYER_CANCELLABLE_STATUSES, true), 409, 'The seller has started preparing this order, so it can no longer be cancelled by the buyer.');
         $reason = trim($reason);
         abort_unless($reason !== '', 422, 'Choose or enter a cancellation reason.');
         abort_unless(in_array($order->status, self::CANCELLABLE_STATUSES, true), 409, 'This order can no longer be cancelled.');

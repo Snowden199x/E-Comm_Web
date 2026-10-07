@@ -1,7 +1,7 @@
 # Admin Messaging
 
 **Status:** Implemented basic conversation operations  
-**Reviewed:** 26 September 2026
+**Reviewed:** 7 October 2026
 
 ## Current behavior
 
@@ -11,7 +11,7 @@ Admin can delete a support conversation and its stored attachments from the supp
 
 ## Gaps and acceptance direction
 
-Confirm participant authorization, attachment handling, moderation, and complaint linkage rules.
+Ordinary support threads remain separate from case threads. Admin case messages are sent from the complaint page through `CaseMessageController`; Buyer/Seller recipients receive a private case link and can reply there. Each case conversation is scoped by complaint and participant. The ordinary support thread list excludes case conversations, and the ordinary support deletion endpoint cannot delete a case conversation. Courier mobile case messaging, case attachments, and moderation remain future work.
 
 ## Source evidence
 

@@ -1,7 +1,7 @@
 # Buyer Dashboard and Storefront Shell
 
 **Status:** Dashboard data, parent-category browse, cart recommendations and variant commerce wired in code; owner verification pending
-**Reviewed:** 6 October 2026
+**Reviewed:** 7 October 2026
 
 ## Current behavior
 
@@ -20,6 +20,10 @@ Product cards are shared (`buyer/partials/product-card.blade.php`). On the Dashb
 Parent-category browse includes directly assigned products and products in child categories. Cart recommendations use six approved products from cart categories, excluding cart products. Buyer product detail now lists stored variants. A variant choice is required before adding a variant product to cart; product cards take Buyers to the detail page for this choice. Cart and checkout use variant prices, and checkout locks variant rows, checks stock, stores the variant on order items, and deducts the selected variant's quantity. Legacy simple products and color/size choices remain supported.
 
 The optional `compare_at_price` column exists, but the Seller form has no input for it yet. Shipping quotation remains future work; shipping stays zero at checkout. Header category caching is still optional. Owner browser/device verification and migration are pending.
+
+## 7 October follow-up
+
+The refreshed Dashboard adds an announcement carousel, Saved for later row, quick links, benefits strip, and footer. Saved products now come from the signed-in Buyer's `buyer_saved_items` rows through the shared layout and Alpine store. Browser-local saved IDs are imported once after the new migration. The carousel and page motion follow account-stored appearance settings. Owner verification remains pending.
 
 ## Source evidence
 

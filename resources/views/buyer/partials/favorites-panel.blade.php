@@ -1,9 +1,7 @@
 {{--
     Saved items (favorites), small toast, and back-to-top. Included once by components/buyer/layout.blade.php.
 
-    Saved items are kept in this browser only (localStorage, per user), because the server has no wishlist yet.
-    They do not follow the buyer to another device and can be cleared by the browser. See the backend note:
-    a wishlist table, endpoints, and a server-rendered list would replace this store (docs/features/buyer/wishlist).
+    Saved items are persisted to the signed-in Buyer account. Earlier browser-only items are imported once.
     The store: Alpine.store('fav') with items, has(id), toggle(product), remove(id), clear().
     A product is saved as { id, name, price, image, url, shop }.
 --}}
@@ -20,35 +18,45 @@
         });
 
         Alpine.store('fav', {
-            items: [],
+            items: window.vendoFavStorage.initial,
             init() {
-                this.items = window.vendoFavStorage.load();
-                window.addEventListener('storage', (e) => {
-                    if (e.key === window.vendoFavStorage.key) this.items = window.vendoFavStorage.load();
-                });
+                const legacyIds = window.vendoFavStorage.legacy().map((item) => Number(item.id)).filter((id) => Number.isInteger(id) && id > 0).slice(0, 60);
+                if (legacyIds.length) {
+                    window.vendoFavStorage.import([...new Set(legacyIds)])
+                        .then((data) => { this.items = data.items; window.vendoFavStorage.clearLegacy(); })
+                        .catch(() => Alpine.store('ui').say('Could not sync saved items. Please reload.'));
+                } else {
+                    window.vendoFavStorage.clearLegacy();
+                }
+                window.addEventListener('focus', () => window.vendoFavStorage.refresh()
+                    .then((data) => { this.items = data.items; }).catch(() => {}));
             },
             has(id) { return this.items.some((item) => item.id === id); },
             href(item) {
                 const url = String(item.url || '');
                 return url.startsWith('/') || url.startsWith(location.origin) ? url : '#';
             },
-            toggle(product) {
+            async toggle(product) {
                 if (this.has(product.id)) {
-                    this.remove(product.id);
-                    Alpine.store('ui').say('Removed from saved items');
+                    await this.remove(product.id);
                     return;
                 }
-                this.items = [{ ...product, savedAt: Date.now() }, ...this.items].slice(0, 60);
-                window.vendoFavStorage.save(this.items);
-                Alpine.store('ui').say('Saved for later');
+                try {
+                    this.items = (await window.vendoFavStorage.add(product.id)).items;
+                    Alpine.store('ui').say('Saved for later');
+                } catch (error) { Alpine.store('ui').say(error.message); }
             },
-            remove(id) {
-                this.items = this.items.filter((item) => item.id !== id);
-                window.vendoFavStorage.save(this.items);
+            async remove(id) {
+                try {
+                    this.items = (await window.vendoFavStorage.remove(id)).items;
+                    Alpine.store('ui').say('Removed from saved items');
+                } catch (error) { Alpine.store('ui').say(error.message); }
             },
-            clear() {
-                this.items = [];
-                window.vendoFavStorage.save(this.items);
+            async clear() {
+                try {
+                    this.items = (await window.vendoFavStorage.clear()).items;
+                    Alpine.store('ui').say('Saved items cleared');
+                } catch (error) { Alpine.store('ui').say(error.message); }
             },
         });
     });
@@ -123,7 +131,7 @@
             </div>
 
             <footer class="border-t border-[#f1e8f2] px-5 py-3">
-                <p class="text-[11px] leading-4 text-[#9a8a9d]">Saved items stay on this device and browser. They are not added to your cart.</p>
+                <p class="text-[11px] leading-4 text-[#9a8a9d]">Saved items follow your Vendo account. They are not added to your cart.</p>
                 <div x-show="$store.fav.items.length" class="mt-2.5 flex items-center justify-between gap-3">
                     <a href="{{ route('buyer.account.index', ['tab' => 'saved']) }}" class="text-[12px] font-medium text-[#805487] transition-colors duration-200 hover:text-[#402143]">Manage in Settings</a>
                     <button type="button" @click="if (confirmClear) { $store.fav.clear(); confirmClear = false; } else { confirmClear = true; setTimeout(() => confirmClear = false, 3000); }"

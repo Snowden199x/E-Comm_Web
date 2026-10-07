@@ -26,6 +26,7 @@ Rider Management now has a dedicated center-scoped `logistics.riders.index` page
 
 - The shell keeps Vendo's plum sidebar with a gold active marker. On desktop it is expanded by default and collapses to an icon rail with the topbar menu button; the choice is saved in `localStorage` under `vendo.logistics.nav`. A collapsed sidebar expands on hover. Below 960px it becomes a slide-out drawer with a backdrop that closes on backdrop click, Escape, or link tap. Delivery Assignments and Delivery Monitoring are two flat links under Parcels; there is no expanding Delivery group.
 - The topbar shows a breadcrumb, today's date, and an account menu (Account Management, Logout). The bell links to a center-owner notification inbox and polls its unread count every 30 seconds.
+- Account Management now lets an approved, active Logistics Center upload or remove its profile photo; see [account management](../account-management/spec.md).
 - Flash messages (`success`, rider `confirmation`, and validation errors) render once as toasts from the layout, so individual pages no longer print them.
 - Typography and spacing follow an e-commerce scale: Poppins, 14px body, 24px page titles, and an 8px spacing grid. Transitions cover page and card entrance, sidebar width, dialogs and menus, toasts, count-up numbers, and the parcel tracker, and all respect `prefers-reduced-motion`.
 - Dispatch and monitoring now apply search, status, area, date and stage filters in center-scoped database queries; stage counts cover matching records beyond the current page.

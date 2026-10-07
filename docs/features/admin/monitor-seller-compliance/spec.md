@@ -13,7 +13,7 @@ Admin can browse products for review, approve, reject, or warn, inspect warnings
 
 **Empty states.** Each tab has its own message when there is nothing to show (for example "You're all caught up" for Products for Review) and a separate "No results" message with "Clear filters" when a search or filter is active.
 
-**Overview.** Approved sellers with avatar initial, category badges, a compliance score bar (80+ green, 50–79 amber, below 50 red), warning and violation counts, a Compliant or Suspended pill, and a link to the seller in User Management. Search matches seller name or email.
+**Overview.** Approved sellers with avatar initial, category badges, a compliance score column, warning and violation counts, a Compliant or Suspended pill, and a link to the seller in User Management. No score source exists yet, so that column shows an unset value instead of a fabricated percentage. Search matches seller name or email.
 
 **Seller popup (Overview).** Selecting a row (or pressing Enter or Space on it) opens a popup for that seller: avatar, name, email, Compliant or Suspended pill, category badges, and a summary of products, compliance score, warnings, and violations. A **Products** tab lists the seller's latest 48 products (photo, name, category, price, stock, status) with status filter chips; a **Warnings and violations** tab lists up to 10 of each with reason, details, date, and product. Each tab has an empty state ("No products yet", "Clean record"). The popup links to the seller in User Management; the arrow at the end of the row does the same without opening the popup. Open state is `sellerId` in `scTable`, so it closes on each table swap and on Esc.
 
@@ -36,9 +36,9 @@ Reject and warn drafts survive a same-tab reload for up to two hours (`data-draf
 ## Gaps and acceptance direction
 
 - Confirm remaining action authorization, appeal, and remediation requirements; ensure rejected products cannot be sold.
-- The card counts include sellers that are not approved while the tables list approved sellers only, and "Compliant" counts sellers without violations even if they are suspended. See [Admin backend needs](../../../design/2026-10-06-admin-backend-needs.md).
-- The seller popup reads each listed seller's products, warnings, and violations inside `sellers-table.blade.php` (about five queries per row, eight rows per page), and the tab count is one query in `tabs.blade.php`. Replace them with an eager-loaded or lazily fetched response. See [Admin UI refresh backend needs](../../../design/2026-10-07-admin-ui-refresh-backend-needs.md).
-- The compliance score runs one query per row. Warnings, Violations, and Suspended Sellers have no live-update banner (Overview and Products for Review do).
+- The card counts include sellers that are not approved while the tables list approved sellers only, and "Compliant" counts sellers without violations even if they are suspended. Aligning these definitions is still open.
+- The Overview controller now eager loads each page seller's latest 48 products, 10 warnings and 10 violations, plus counts. The popup reads those loaded relations instead of issuing per-row relation queries. The tab count remains a separate query in `tabs.blade.php`.
+- No `compliance_score` column or accessor exists. The Overview now shows an unset score instead of falsely reporting 0%; define the scoring rule before adding a real metric. Warnings, Violations, and Suspended Sellers have no live-update banner (Overview and Products for Review do).
 - The escalation thresholds appear only in `escalateSuspension()`; the UI describes the "every third warning" rule but does not list the 3/6/9 thresholds.
 - Verified by static review only (JavaScript syntax and Blade directive balance). No automated tests, build, or browser walkthrough were run. Owner verification is pending.
 

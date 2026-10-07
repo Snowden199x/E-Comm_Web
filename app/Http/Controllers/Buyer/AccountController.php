@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Profiles\BuyerDetail;
+use App\Services\ProfilePhotoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -18,7 +19,7 @@ class AccountController extends Controller
         return view('buyer.account', compact('buyerDetail', 'policies'));
     }
 
-    public function update(Request $request)
+    public function update(Request $request, ProfilePhotoService $photos)
     {
         $request->validate([
             'name' => 'required|string|max:255',
@@ -34,10 +35,6 @@ class AccountController extends Controller
             'name' => $request->name,
             'phone_number' => $request->phone_number,
         ];
-
-        if ($request->hasFile('profile_picture')) {
-            $userData['profile_picture'] = $request->file('profile_picture')->store('profile-pictures', 'public');
-        }
 
         auth()->user()->update($userData);
 
@@ -57,16 +54,18 @@ class AccountController extends Controller
             $buyerDetail->update($detailData);
         }
 
+        if ($request->hasFile('profile_picture')) {
+            $photos->replace($request->user(), $request->file('profile_picture'), 'profile-pictures/buyers');
+        }
+
         return back()->with('success', 'Profile updated.');
     }
 
-    public function uploadProfilePicture(Request $request)
+    public function uploadProfilePicture(Request $request, ProfilePhotoService $photos)
     {
         $request->validate(['profile_picture' => 'required|image|max:2048']);
 
-        auth()->user()->update([
-            'profile_picture' => $request->file('profile_picture')->store('profile-pictures', 'public'),
-        ]);
+        $photos->replace($request->user(), $request->file('profile_picture'), 'profile-pictures/buyers');
 
         return back()->with('success', 'Profile picture updated.');
     }
@@ -86,11 +85,11 @@ class AccountController extends Controller
         return back()->with('success', 'Banner updated.');
     }
 
-    public function removeProfilePicture()
+    public function removeProfilePicture(Request $request, ProfilePhotoService $photos)
     {
-        auth()->user()->update(['profile_picture' => null]);
+        $removed = $photos->remove($request->user());
 
-        return back()->with('success', 'Profile picture removed.');
+        return back()->with('success', $removed ? 'Profile picture removed.' : 'No profile picture to remove.');
     }
 
     public function removeBanner()
@@ -130,4 +129,4 @@ class AccountController extends Controller
 
     return back()->with('password_success', 'Password updated successfully!');
 }
-}   
+}

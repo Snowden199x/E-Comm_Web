@@ -40,8 +40,13 @@ class SellerComplianceController extends Controller
             $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
         }
 
-        return $query->withCount(['productWarnings', 'productViolations'])
-            ->with(['sellerDetail', 'categories'])
+        return $query->withCount(['products', 'productWarnings', 'productViolations'])
+            ->with([
+                'sellerDetail', 'categories',
+                'products' => fn ($products) => $products->with(['images', 'category'])->latest()->limit(48),
+                'productWarnings' => fn ($warnings) => $warnings->with('product')->latest()->limit(10),
+                'productViolations' => fn ($violations) => $violations->with('product')->latest()->limit(10),
+            ])
             ->latest()
             ->paginate(8)
             ->withQueryString();

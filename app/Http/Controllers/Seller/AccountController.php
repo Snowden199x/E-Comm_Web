@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
+use App\Services\ProfilePhotoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -32,35 +33,19 @@ class AccountController extends Controller
         return back()->with('success', 'Profile updated.');
     }
 
-    public function avatar(Request $request)
+    public function avatar(Request $request, ProfilePhotoService $photos)
     {
         $request->validate(['avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']]);
-        $seller = $request->user();
-        $old = $seller->profile_picture;
-        $path = $request->file('avatar')->store('profile-pictures/sellers', 'public');
-        try {
-            $seller->update(['profile_picture' => $path]);
-        } catch (\Throwable $e) {
-            Storage::disk('public')->delete($path);
-            throw $e;
-        }
-        if ($old && str_starts_with($old, 'profile-pictures/sellers/')) {
-            Storage::disk('public')->delete($old);
-        }
+        $photos->replace($request->user(), $request->file('avatar'), 'profile-pictures/sellers');
 
         return back()->with('success', 'Profile photo updated.');
     }
 
-    public function removeAvatar(Request $request)
+    public function removeAvatar(Request $request, ProfilePhotoService $photos)
     {
-        $seller = $request->user();
-        $old = $seller->profile_picture;
-        $seller->update(['profile_picture' => null]);
-        if ($old && str_starts_with($old, 'profile-pictures/sellers/')) {
-            Storage::disk('public')->delete($old);
-        }
+        $removed = $photos->remove($request->user());
 
-        return back()->with('success', 'Profile photo removed.');
+        return back()->with('success', $removed ? 'Profile photo removed.' : 'No profile photo to remove.');
     }
 
     public function banner(Request $request)

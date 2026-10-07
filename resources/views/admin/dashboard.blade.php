@@ -4,20 +4,6 @@
         $hour = (int) now()->format('G');
         $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good evening');
 
-        /*
-         * "Needs your attention" counts. The controller does not pass these yet, so they are read here.
-         * Move them into DashboardController and pass $attention when convenient (see backend notes).
-         */
-        $attention = $attention ?? [
-            ['label' => 'Registrations to review', 'count' => array_sum($pendingRegistrations ?? []), 'icon' => 'user-plus',
-                'href' => route('admin.registrations.index'), 'clear' => 'No one is waiting'],
-            ['label' => 'Products awaiting review', 'count' => \App\Models\Ecommerce\Product::where('status', 'for_review')->count(), 'icon' => 'clipboard-check',
-                'href' => route('admin.seller-compliance.products-for-review'), 'clear' => 'Review queue is empty'],
-            ['label' => 'Open complaints', 'count' => \App\Models\Complaints\Complaint::where('status', 'open')->count(), 'icon' => 'scale',
-                'href' => route('admin.complaints.index'), 'clear' => 'No unanswered cases'],
-            ['label' => 'Suspended sellers', 'count' => \App\Models\User::where('role', 'seller')->where('status', 'approved')->where('account_status', 'suspended')->count(), 'icon' => 'ban',
-                'href' => route('admin.seller-compliance.suspended-sellers'), 'clear' => 'No active suspensions'],
-        ];
         $attentionTotal = collect($attention)->sum('count');
 
         // Week-over-week movement, taken from the six weekly buckets already supplied for the chart.

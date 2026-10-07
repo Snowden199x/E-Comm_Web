@@ -3,6 +3,7 @@
 namespace App\Models\Complaints;
 
 use App\Models\Ecommerce\Order;
+use App\Models\Communication\Conversation;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -35,6 +36,11 @@ class Complaint extends Model
     public function activities()
     {
         return $this->hasMany(ComplaintActivity::class)->latest();
+    }
+
+    public function conversations()
+    {
+        return $this->hasMany(Conversation::class);
     }
 
     public function getTypeColorsAttribute(): array

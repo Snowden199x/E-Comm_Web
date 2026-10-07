@@ -30,8 +30,9 @@ class MessageController extends Controller
         return view('admin.messages.partials.conversation-list', compact('conversations', 'activeId'));
     }
 
-        public function thread(Conversation $conversation): View
+    public function thread(Conversation $conversation): View
     {
+        abort_unless($conversation->complaint_id === null, 404);
         $conversation->load(['user', 'complaint', 'messages.sender', 'messages.attachments']);
 
         $conversation->messages()
@@ -44,6 +45,7 @@ class MessageController extends Controller
 
     public function fetchMessages(Conversation $conversation)
     {
+        abort_unless($conversation->complaint_id === null, 404);
         $conversation->messages()
             ->whereNull('read_at')
             ->where('sender_id', '!=', Auth::guard('admin')->id())
@@ -69,6 +71,7 @@ class MessageController extends Controller
 
     public function send(Request $request, Conversation $conversation)
     {
+        abort_unless($conversation->complaint_id === null, 404);
         $request->validate([
             'body' => 'nullable|string|max:2000',
             'attachment' => 'nullable|file|max:5120',
@@ -112,7 +115,7 @@ class MessageController extends Controller
 
     private function filteredConversations(Request $request)
     {
-        $query = Conversation::with(['user', 'latestMessage'])
+        $query = Conversation::whereNull('complaint_id')->with(['user', 'latestMessage'])
             ->withCount(['messages as unread_count' => function ($q) {
                 $q->whereNull('read_at')->where('sender_id', '!=', Auth::guard('admin')->id());
             }]);
