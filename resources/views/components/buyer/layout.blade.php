@@ -1,4 +1,4 @@
-@props(['title' => 'Vendo — Buyer'])
+@props(['title' => 'Vendo — Buyer', 'footer' => true])
 
 @php
     use Illuminate\Support\Str;
@@ -25,6 +25,40 @@
     <title>{{ $title }}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    {{-- Device preferences (Account > Settings) and saved items. Stored in this browser only, per user.
+         Runs before first paint so the loading screen and text size apply without a flash. --}}
+    <script>
+    (() => {
+        const uid = @json((string) auth()->id());
+        const root = document.documentElement;
+        const prefKey = 'vendo.prefs.' + uid;
+        const favKey = 'vendo.favorites.' + uid;
+        const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (_) { return fallback; } };
+        const write = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {} };
+        const defaults = { text: 'default', calm: false, sound: true };
+
+        const applyPrefs = (p) => {
+            root.classList.toggle('vb-calm', p.calm === true);
+            root.classList.toggle('vb-text-lg', p.text === 'lg');
+            root.classList.toggle('vb-text-xl', p.text === 'xl');
+        };
+        root.classList.add('vb-js');
+        applyPrefs({ ...defaults, ...read(prefKey, {}) });
+
+        window.vendoPrefs = {
+            defaults,
+            get: () => ({ ...defaults, ...read(prefKey, {}) }),
+            set(key, value) { const next = { ...this.get(), [key]: value }; write(prefKey, next); applyPrefs(next); return next; },
+            reset() { try { localStorage.removeItem(prefKey); } catch (_) {} applyPrefs(defaults); return { ...defaults }; },
+        };
+        window.vendoFavStorage = {
+            key: favKey,
+            load: () => { const list = read(favKey, []); return Array.isArray(list) ? list : []; },
+            save: (list) => write(favKey, list),
+        };
+    })();
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -34,7 +68,13 @@
     @if(request()->routeIs('buyer.cart.index'))<link rel="stylesheet" href="{{ asset('assets/css/cart.css') }}">@endif
 </head>
 
-<body class="vb-body min-h-screen" x-data>
+<body class="vb-body flex min-h-screen flex-col" x-data>
+
+    <div id="vb-progress" class="vb-progress" aria-hidden="true"></div>
+    <script>
+    // Coming back with the browser's Back button restores the page from memory: reset the progress bar.
+    window.addEventListener('pageshow', (e) => { if (e.persisted) document.getElementById('vb-progress')?.classList.remove('is-running'); });
+    </script>
 
     <!-- ===================== Header ===================== -->
     <header class="sticky top-0 z-40 text-white"
@@ -97,19 +137,28 @@
 
                 <div class="ml-auto flex flex-shrink-0 items-center gap-0.5 sm:ml-0 sm:gap-1">
 
+                    <!-- Saved items (favorites) -->
+                    <button type="button" aria-label="Saved items" aria-haspopup="dialog"
+                        x-data @click="$dispatch('open-favorites')"
+                        class="relative hidden h-10 w-10 place-items-center rounded-full text-white/90 transition-colors duration-200 hover:bg-white/10 hover:text-white min-[400px]:grid">
+                        <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.4s-7.6-4.6-9.2-9.5C1.7 7.5 3.8 4.6 6.9 4.6c1.9 0 3.6 1 5.1 3 1.5-2 3.2-3 5.1-3 3.1 0 5.2 2.9 4.1 6.3-1.6 4.9-9.2 9.5-9.2 9.5z" /></svg>
+                        <span x-show="$store.fav.items.length" x-cloak x-text="$store.fav.items.length > 99 ? '99+' : $store.fav.items.length"
+                            class="vb-pop absolute right-0 top-0 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#e8c874] px-1 text-[10px] font-semibold leading-none text-[#402143]"></span>
+                    </button>
+
                     <!-- Messages -->
                     <a href="{{ route('buyer.messages.index') }}" aria-label="Messages"
-                        class="grid h-10 w-10 place-items-center rounded-full text-white transition-colors duration-200 hover:bg-white/10">
-                        <span class="vb-icon h-5 w-5"
+                        class="grid h-10 w-10 place-items-center rounded-full text-white/90 transition-colors duration-200 hover:bg-white/10 hover:text-white">
+                        <span class="vb-icon h-[22px] w-[22px]"
                             style="--icon: url('{{ asset('assets/icons/buyer/messages-icon.svg') }}')"></span>
                     </a>
 
-                    <!-- Cart -->
+                    <!-- Cart. #cart-badge is display:contents so it is not a second grid row (that pushed the icon up). -->
                     <a href="{{ route('buyer.cart.index') }}" aria-label="Cart"
                         class="relative grid h-10 w-10 place-items-center rounded-full text-white/90 transition-colors duration-200 hover:bg-white/10 hover:text-white">
-                        <span class="vb-icon h-6 w-6"
+                        <span class="vb-icon h-[22px] w-[22px]"
                             style="--icon: url('{{ asset('assets/icons/buyer/cart-icon.svg') }}')"></span>
-                        <span id="cart-badge">
+                        <span id="cart-badge" class="contents">
                             @if ($cartCount > 0)
                                 <span
                                     class="vb-pop absolute right-0 top-0 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#e8c874] px-1 text-[10px] font-semibold leading-none text-[#402143]">{{ $cartCount > 99 ? '99+' : $cartCount }}</span>
@@ -122,10 +171,10 @@
                         <button type="button" id="buyerBellBtn" aria-label="Notifications" aria-controls="buyerBellMenu"
                             aria-expanded="false"
                             class="relative grid h-10 w-10 place-items-center rounded-full text-white/90 transition-colors duration-200 hover:bg-white/10 hover:text-white">
-                            <span class="vb-icon h-6 w-6"
+                            <span class="vb-icon h-[22px] w-[22px]"
                                 style="--icon: url('{{ asset('assets/icons/buyer/notifications-icon.svg') }}')"></span>
                             <span id="buyerBellCount"
-                                class="absolute right-0 top-0 rounded-full bg-[#e8c874] px-1 text-[10px] font-semibold leading-[18px] text-[#402143]"
+                                class="absolute right-0 top-0 h-[18px] min-w-[18px] rounded-full bg-[#e8c874] px-1 text-center text-[10px] font-semibold leading-[18px] text-[#402143]"
                                 @if(!$buyerUnreadNotifications) hidden @endif>{{ $buyerUnreadNotifications > 99 ? '99+' : $buyerUnreadNotifications }}</span>
                         </button>
                         <div id="buyerBellMenu"
@@ -164,7 +213,12 @@
                                 <p class="text-[11px] text-[#9a8a9d]">Buyer account</p>
                             </div>
                             <a href="{{ route('buyer.orders.index') }}" class="block px-4 py-2.5 transition-colors duration-150 hover:bg-[#f7eff8]">My Orders</a>
+                            <button type="button" @click="o = false; $dispatch('open-favorites')" class="flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors duration-150 hover:bg-[#f7eff8]">
+                                Saved items
+                                <span x-show="$store.fav.items.length" x-cloak x-text="$store.fav.items.length" class="rounded-full bg-[#f3e8f5] px-1.5 text-[11px] font-medium leading-[18px] text-[#52245b]"></span>
+                            </button>
                             <a href="{{ route('buyer.account.index') }}" class="block px-4 py-2.5 transition-colors duration-150 hover:bg-[#f7eff8]">Account Management</a>
+                            <a href="{{ route('buyer.account.index', ['tab' => 'settings']) }}" class="block px-4 py-2.5 transition-colors duration-150 hover:bg-[#f7eff8]">Settings</a>
                             <form method="POST" action="{{ route('buyer.logout') }}" class="border-t border-[#f1e8f2]">
                                 @csrf
                                 <button type="submit" class="block w-full px-4 py-2.5 text-left text-[#a32b43] transition-colors duration-150 hover:bg-[#fdf1f3]">Logout</button>
@@ -285,7 +339,14 @@
         </div>
     </header>
 
-    <main>{{ $slot }}</main>
+    <main class="flex-1">{{ $slot }}</main>
+
+    @if ($footer)
+        @include('buyer.partials.storefront-footer')
+    @endif
+
+    {{-- Saved items panel, back to top, small toast --}}
+    @include('buyer.partials.favorites-panel')
 
     <script>
     (() => {
@@ -304,6 +365,7 @@
         document.addEventListener('pointerdown', unlock, {once: true});
         document.addEventListener('keydown', unlock, {once: true});
         const chime = () => {
+            if (window.vendoPrefs && window.vendoPrefs.get().sound === false) return;
             unlock();
             if (!audioContext || audioContext.state !== 'running') return;
             [740, 980].forEach((frequency, index) => {
@@ -337,6 +399,42 @@
         };
         setInterval(refresh, 3000);
         document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+    })();
+    </script>
+    <script>
+    // Page transitions: progress bar while the next page loads, and fade-up reveal for sections as they scroll in.
+    (() => {
+        const bar = document.getElementById('vb-progress');
+        const run = () => { if (bar) { bar.classList.remove('is-running'); void bar.offsetWidth; bar.classList.add('is-running'); } };
+        document.addEventListener('click', (e) => {
+            const a = e.target.closest('a[href]');
+            if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            if (a.target && a.target !== '_self') return;
+            if (a.hasAttribute('download') || a.getAttribute('href').startsWith('#')) return;
+            const url = new URL(a.href, location.href);
+            if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search)) return;
+            run();
+        });
+        document.addEventListener('submit', (e) => { if (!e.defaultPrevented && !e.target.hasAttribute('x-target')) run(); });
+
+        // Pages that do not mark their own sections get their main blocks animated automatically.
+        const main = document.querySelector('main');
+        if (main && !main.querySelector('.vb-reveal')) {
+            const root = main.children.length === 1 ? main.firstElementChild : main;
+            [...root.children]
+                .filter((el) => !['SCRIPT', 'TEMPLATE', 'STYLE'].includes(el.tagName) && el.getBoundingClientRect().height > 0 && getComputedStyle(el).position !== 'fixed')
+                .slice(0, 14)
+                .forEach((el, i) => { el.classList.add('vb-reveal'); el.style.setProperty('--i', i); });
+        }
+
+        const items = [...document.querySelectorAll('.vb-reveal')];
+        const show = (el) => el.classList.add('is-in');
+        if (!('IntersectionObserver' in window)) { items.forEach(show); return; }
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => { if (entry.isIntersecting) { show(entry.target); io.unobserve(entry.target); } });
+        }, { rootMargin: '0px 0px -6% 0px', threshold: 0.05 });
+        // Start on the next frame so the hidden state paints first, then everything on screen moves in.
+        requestAnimationFrame(() => requestAnimationFrame(() => items.forEach((el) => io.observe(el))));
     })();
     </script>
     @include('shared.live-revision-script')
