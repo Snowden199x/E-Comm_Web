@@ -26,7 +26,7 @@ This overview is derived from Eloquent models and migrations, not a replacement 
 - `notifications` may be user-targeted or platform-level. `announcements` support publication/audience/scheduling; `platform_policies` store policy content/versioning.
 - `conversations`, `messages`, and `message_attachments` support messaging and optional complaint linkage. Case-linked conversations now hold private Buyer/Seller and Admin text threads; ordinary support threads have `complaint_id = null`. Conversations can be open/closed.
 - `complaints`, `complaint_evidences`, `complaint_activities` represent dispute intake, attachments, and status history.
-- `commission_settings` stores category commission configuration; seller commission screens aggregate order data.
+- `commission_settings` stores the global commission rate (10.00% default); Admin commission screens calculate the product commission from order items. `categories.commission_rate` also exists but is not currently used. No immutable Admin rate snapshot, shipping quote, Logistics/Rider allocation, or settlement ledger exists.
 - `product_warnings` and `product_violations` record compliance actions. `admin_login_sessions` records admin login/device/session information.
 
 ## Important integrity notes

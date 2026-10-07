@@ -16,6 +16,7 @@ This documentation describes the Laravel web application as it exists in the rep
 - [Rider registration API](features/courier/registration-api/spec.md), [rider scan API](features/courier/scan-api/spec.md), [Logistics navigation](features/logistics/navigation/spec.md), and [Logistics account management](features/logistics/account-management/spec.md) — current backend contracts and center account/sidebar scope.
 - [Google sign-in](features/shared/google-auth/spec.md) — verified web and Rider token exchange, registration continuation, configuration, and platform limits.
 - [Shared site branding](features/shared/site-branding/spec.md) — the Vendo browser tab icon and Buyer product video display.
+- [Commission and settlement design](design/commission-calculation-and-settlement.md) — current Vendo commission behavior and an Aisley-referenced design for future shipping allocation and settlement.
 - [Web form reload recovery](features/shared/form-draft-recovery/spec.md) — which forms retain unfinished work in the current tab and which inputs must be re-entered.
 - [Role workspace redesign](design/2026-10-04-role-workspace-redesign.md) — design and implementation boundaries for the 4 October Buyer, Seller, Logistics, and Admin UI update.
 - [7 October frontend pull review](design/2026-10-07-pulled-frontend-review.md) — review of the recent frontend merges, UI-only boundaries, missing backend work, and suggested implementation order.
