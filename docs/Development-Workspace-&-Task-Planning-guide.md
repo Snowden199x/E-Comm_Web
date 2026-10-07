@@ -1,0 +1,37 @@
+# Development Workspace and Task Planning Guide
+
+For Codex work, follow the repository [AGENTS.md](../AGENTS.md): every code change gets a same-day docs log, and the project owner handles testing unless they explicitly delegate it.
+
+## Repository snapshot
+
+Vendo is a Laravel web application using Blade views, Eloquent models, Laravel migrations, and Vite-managed JavaScript/CSS. Current web route groups serve Admin, Buyer, Seller, and Logistics Center experiences. Courier/rider/truck operations are mobile-only; this web repository supplies the protected APIs and data workflows, not operator dashboards. The existing rider client lives in the separate E-Comm_Mobile repository. A future SubHub scanner app will have its own repository and docs.
+
+## Local development
+
+1. Install PHP/Composer and Node.js/npm versions compatible with `composer.json` and `package.json`.
+2. Install PHP dependencies with `composer install` and JavaScript dependencies with `npm install`.
+3. Create a local `.env`, generate an application key, and configure a development database, cache, session, filesystem, and mail transport. Never commit `.env` or copy real credentials into docs, issue trackers, screenshots, or test fixtures.
+4. Run `php artisan migrate` against the intended local database. This is additive schema work; do not use `migrate:fresh` against a database containing data you need.
+5. Use separate terminals for `php artisan serve` and `npm run dev`, or build assets with `npm run build`.
+6. Create an admin through the project’s documented local process or seeder; create seller demo data with `php artisan db:seed --class=SellerDemoSeeder` only in a local/testing environment. That seeder creates a new randomized demo batch on each run.
+7. The project owner runs focused tests with `php artisan test`. Frontend checks currently include `tests/Frontend/buyer-registration.test.cjs`.
+
+The actual credential names and service settings belong in local environment configuration and must not be copied into this guide.
+
+## Before starting a task
+
+- Read this guide, [domain-feature-status.md](domain-feature-status.md), the relevant domain page, and that feature’s spec.
+- Inspect the route, controller, model, migration, view, and tests before changing behavior.
+- Preserve existing teammate UI where the request is to connect a hardcoded page.
+- Identify which actor owns each transition and which database records must change together.
+- Keep work scoped. Do not mark adjacent placeholder links as implemented just because they share a page.
+
+## Task completion checklist
+
+- The documented behavior matches routes and server code.
+- Authorization is enforced server-side and resources are scoped to their owner/tenant.
+- Database changes have forward and rollback migrations where practical.
+- Sensitive files are stored outside public paths and validated.
+- The project owner tests happy-path and important ownership/invalid-transition cases.
+- The project owner checks assets, rendered views, and the affected local flow.
+- Feature spec and domain status are updated; risks and external dependencies are recorded.

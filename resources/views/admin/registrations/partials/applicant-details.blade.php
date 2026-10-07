@@ -1,222 +1,265 @@
+{{--
+    Applicant profile + tabbed details.
+    Used by admin/registrations/show and by the Dashboard "Recent Registrations" modal,
+    so it must stay self-contained (own Alpine scope, Tailwind utilities only).
+    ID and permit files open in the shared document viewer popup (admin/partials/document-viewer.blade.php).
+    Required: $user (with sellerDetail / logisticsCenterDetail / buyerDetail / categories).
+--}}
 @php
-    $details = $user->sellerDetail ?? $user->courierDetail ?? $user->buyerDetail;
+    $details = $user->sellerDetail ?? $user->logisticsCenterDetail ?? $user->buyerDetail;
+    $role = $user->role;
+    $roleLabel = ucwords(str_replace('_', ' ', $role));
+    $hasBusiness = in_array($role, ['seller', 'logistics_center'], true);
+    $uid = 'rg' . $user->id; // unique ids: the Dashboard renders several of these on one page
+
+    $ext = fn (?string $path, string $fallback) => strtolower(pathinfo((string) $path, PATHINFO_EXTENSION)) ?: $fallback;
+
+    $statusChip = [
+        'pending' => ['Pending review', 'bg-[#FDF3E2] text-[#B45309] ring-[#F3D9A6]'],
+        'approved' => ['Approved', 'bg-green-50 text-green-700 ring-green-200'],
+        'disapproved' => ['Rejected', 'bg-red-50 text-red-600 ring-red-200'],
+    ][$user->status] ?? [ucfirst((string) $user->status), 'bg-gray-100 text-gray-600 ring-gray-200'];
+
+    $tabs = [
+        ['personal', 'Personal Information', 'personal-information-icon.svg'],
+        ['address', 'User Address', 'address-icon.svg'],
+    ];
+    if ($hasBusiness) {
+        $tabs[] = ['business', 'Business Information', 'business-information-icon.svg'];
+    }
+    $tabKeys = array_column($tabs, 0);
+
+    $dash = '—';
+    $personalRows = $details ? [
+        ['Last Name', $details->last_name],
+        ['First Name', $details->first_name],
+        ['Middle Name', $details->middle_name ?: $dash],
+        ['Sex', $details->sex ? ucfirst($details->sex) : $dash],
+        ['Birthday', $details->birthday ? $details->birthday->format('F j, Y') : $dash],
+        ['Age', $details->birthday ? $details->age : $dash],
+        ['Email', $user->email],
+        ['Phone Number', $user->phone_number ?: $dash],
+    ] : [];
+
+    $streetLine = $details ? trim(($details->house_no ?? '') . ' ' . ($details->street ?? '')) : '';
+    $addressRows = $details ? [
+        ['Province', $details->province ?: $dash],
+        ['Municipality', $details->municipality ?: $dash],
+        ['Barangay', $details->barangay ?: $dash],
+        ['Street / House No.', $streetLine !== '' ? $streetLine : $dash],
+        ['Zip Code', $details->zip_code ?: $dash],
+    ] : [];
+
+    $panelBase = 'col-start-1 row-start-1 rounded-2xl border border-[#ece4ec] bg-white p-5 transition-[opacity,transform,visibility] duration-300 ease-vendo sm:p-6';
+    $dtClass = 'text-[13px] text-gray-500';
+    $ddClass = 'min-w-0 break-words text-sm font-medium text-[#2B1730]';
 @endphp
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start" x-data="{ tab: 'personal' }">
-    <!-- Left: Profile Card -->
-    <div class="bg-white rounded-2xl p-5 shadow-sm h-fit">
-        <div class="flex items-center gap-3 mb-4 pb-4 border-b border-gray-200">
-            <div class="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center text-lg font-semibold text-gray-600">
-                {{ strtoupper(substr($user->name, 0, 1)) }}
-            </div>
-            <div>
-                <p class="font-bold text-gray-900">{{ $user->name }}</p>
-                <p class="text-sm text-gray-500 capitalize">{{ $user->role }} Applicant</p>
+<div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[320px_minmax(0,1fr)]" x-data="{
+    tab: 'personal',
+    ready: false,
+    ind: { x: 0, w: 0 },
+    order: @js($tabKeys),
+
+    move() {
+        const el = this.$refs['tab_' + this.tab];
+        if (!el || !el.offsetWidth) return;
+        this.ind = { x: el.offsetLeft, w: el.offsetWidth };
+        if (!this.ready) requestAnimationFrame(() => this.ready = true);
+    },
+    select(key) {
+        this.tab = key;
+        this.move();
+    },
+    keynav(e) {
+        let i = this.order.indexOf(this.tab);
+        if (e.key === 'ArrowRight') i = (i + 1) % this.order.length;
+        else if (e.key === 'ArrowLeft') i = (i - 1 + this.order.length) % this.order.length;
+        else return;
+        e.preventDefault();
+        this.select(this.order[i]);
+        this.$refs['tab_' + this.tab].focus();
+    },
+}" x-init="if ($refs.tabbar) { new ResizeObserver(() => move()).observe($refs.tabbar); $nextTick(() => move()); }">
+
+    {{-- ============ Profile card ============ --}}
+    <aside class="overflow-hidden rounded-2xl border border-[#ece4ec] bg-white lg:sticky lg:top-6">
+        <div class="flex items-center gap-4 border-b border-[#ece4ec] p-5">
+            <span aria-hidden="true"
+                class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1] text-xl font-semibold text-[#5b2963]">
+                {{ strtoupper(mb_substr($user->name, 0, 1)) }}
+            </span>
+            <div class="min-w-0">
+                <p class="truncate text-base font-semibold text-[#2B1730]">{{ $user->name }}</p>
+                <p class="text-[13px] text-gray-500">{{ $roleLabel }} Applicant</p>
+                <span class="mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset {{ $statusChip[1] }}">
+                    {{ $statusChip[0] }}
+                </span>
             </div>
         </div>
 
-        <div class="space-y-5 text-sm">
-            <div class="flex items-center gap-2">
-                <img src="{{ asset('assets/icons/registration/user-email-icon.svg') }}" alt="" class="w-4 h-4">
-                <span class="text-gray-700">{{ $user->email }}</span>
+        <dl class="divide-y divide-[#f3edf4] px-5 text-[13px]">
+            <div class="flex items-start justify-between gap-4 py-3.5">
+                <dt class="flex flex-shrink-0 items-center gap-2 text-gray-500">
+                    <img src="{{ asset('assets/icons/registration/user-email-icon.svg') }}" alt="" class="h-4 w-4"> Email
+                </dt>
+                <dd class="min-w-0 break-all text-right font-medium text-[#2B1730]">{{ $user->email }}</dd>
             </div>
-            <div class="flex items-center gap-2">
-                <img src="{{ asset('assets/icons/registration/user-phone-icon.svg') }}" alt="" class="w-4 h-4">
-                <span class="text-gray-700">{{ $user->phone_number ?? '—' }}</span>
+            <div class="flex items-start justify-between gap-4 py-3.5">
+                <dt class="flex flex-shrink-0 items-center gap-2 text-gray-500">
+                    <img src="{{ asset('assets/icons/registration/user-phone-icon.svg') }}" alt="" class="h-4 w-4"> Phone
+                </dt>
+                <dd class="min-w-0 text-right font-medium text-[#2B1730]">{{ $user->phone_number ?: $dash }}</dd>
             </div>
-            @if ($user->role === 'seller' && $user->sellerDetail)
-                <div class="flex items-center gap-2">
-                    <img src="{{ asset('assets/icons/registration/user-business-name-icon.svg') }}" alt="" class="w-4 h-4">
-                    <span class="text-gray-700">{{ $user->sellerDetail->business_name }}</span>
-                </div>
-            @elseif ($user->role === 'courier' && $user->courierDetail)
-                <div class="flex items-center gap-2">
-                    <img src="{{ asset('assets/icons/registration/vehicle-type-icon.svg') }}" alt="" class="w-4 h-4">
-                    <span class="text-gray-700">{{ $user->courierDetail->vehicle_type }}</span>
+            @if ($hasBusiness && $details)
+                <div class="flex items-start justify-between gap-4 py-3.5">
+                    <dt class="flex flex-shrink-0 items-center gap-2 text-gray-500">
+                        <img src="{{ asset('assets/icons/registration/user-business-name-icon.svg') }}" alt="" class="h-4 w-4"> Business
+                    </dt>
+                    <dd class="min-w-0 break-words text-right font-medium text-[#2B1730]">{{ $details->business_name ?: $dash }}</dd>
                 </div>
             @endif
-            <div class="flex items-center gap-2">
-                <img src="{{ asset('assets/icons/registration/user-date-applied-icon.svg') }}" alt="" class="w-4 h-4">
-                <span class="text-gray-700">{{ $user->created_at->format('M d, Y') }}</span>
+            <div class="flex items-start justify-between gap-4 py-3.5">
+                <dt class="flex flex-shrink-0 items-center gap-2 text-gray-500">
+                    <img src="{{ asset('assets/icons/registration/user-date-applied-icon.svg') }}" alt="" class="h-4 w-4"> Date Applied
+                </dt>
+                <dd class="min-w-0 text-right font-medium text-[#2B1730]">{{ $user->created_at->format('M j, Y') }}</dd>
+            </div>
+        </dl>
+    </aside>
+
+    {{-- ============ Tabs + panels ============ --}}
+    <div class="min-w-0">
+
+        @if ($details)
+        <div class="mb-3 overflow-x-auto pb-1 thin-scroll">
+            <div x-ref="tabbar" role="tablist" aria-label="Application sections" @keydown="keynav($event)"
+                class="relative inline-flex gap-1 rounded-full border border-[#ece4ec] bg-white p-1">
+
+                {{-- Sliding highlight --}}
+                <span aria-hidden="true"
+                    class="absolute inset-y-1 left-0 rounded-full bg-[#3b1735] shadow-sm"
+                    :class="ready ? 'transition-[transform,width] duration-300 ease-vendo' : ''"
+                    :style="`width:${ind.w}px;transform:translateX(${ind.x}px);opacity:${ind.w ? 1 : 0}`"></span>
+
+                @foreach ($tabs as [$key, $label])
+                    <button type="button" role="tab" id="{{ $uid }}-tab-{{ $key }}" x-ref="tab_{{ $key }}"
+                        aria-controls="{{ $uid }}-panel-{{ $key }}"
+                        :aria-selected="tab === '{{ $key }}'" :tabindex="tab === '{{ $key }}' ? 0 : -1"
+                        @click="select('{{ $key }}')"
+                        :class="tab === '{{ $key }}' ? 'text-white' : 'text-gray-600 hover:text-[#3b1735]'"
+                        class="relative z-10 whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-medium transition-colors duration-200
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                        {{ $label }}
+                    </button>
+                @endforeach
             </div>
         </div>
-    </div>
-
-    <!-- Right: Tabbed Content -->
-    <div class="lg:col-span-2">
-
-        <!-- Tabs -->
-        <div class="flex flex-wrap gap-2 mb-4">
-            <button type="button" @click="tab = 'personal'"
-                :class="tab === 'personal' ? 'bg-[#3b1735] text-white' : 'bg-white text-gray-600 border border-gray-200'"
-                class="px-4 py-2 rounded-full text-sm font-medium">
-                Personal Information
-            </button>
-            <button type="button" @click="tab = 'address'"
-                :class="tab === 'address' ? 'bg-[#3b1735] text-white' : 'bg-white text-gray-600 border border-gray-200'"
-                class="px-4 py-2 rounded-full text-sm font-medium">
-                User Address
-            </button>
-            @if ($user->role === 'seller')
-                <button type="button" @click="tab = 'business'"
-                    :class="tab === 'business' ? 'bg-[#3b1735] text-white' : 'bg-white text-gray-600 border border-gray-200'"
-                    class="px-4 py-2 rounded-full text-sm font-medium">
-                    Business Information
-                </button>
-            @elseif ($user->role === 'courier')
-                <button type="button" @click="tab = 'vehicle'"
-                    :class="tab === 'vehicle' ? 'bg-[#3b1735] text-white' : 'bg-white text-gray-600 border border-gray-200'"
-                    class="px-4 py-2 rounded-full text-sm font-medium">
-                    Vehicle Information
-                </button>
-            @endif
-        </div>
-
-        @if (! $details)
-            <div class="bg-white rounded-2xl p-8 shadow-sm text-center text-gray-400">
-                No additional details submitted yet for this applicant.
-            </div>
-        @else
-            <div class="bg-white rounded-2xl p-5 shadow-sm">
-
-                <!-- Personal Information Tab -->
-                <div x-show="tab === 'personal'">
-                    <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <img src="{{ asset('assets/icons/registration/personal-information-icon.svg') }}" alt="" class="w-5 h-5">
-                        Personal Information
-                    </h3>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                        <div class="sm:col-span-2 space-y-4 text-sm">
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Last Name</span><span class="font-medium text-gray-900">{{ $details->last_name }}</span></div>
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">First Name</span><span class="font-medium text-gray-900">{{ $details->first_name }}</span></div>
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Middle Name</span><span class="font-medium text-gray-900">{{ $details->middle_name ?? '—' }}</span></div>
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Sex</span><span class="font-medium text-gray-900 capitalize">{{ $details->sex }}</span></div>
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Birthday</span><span class="font-medium text-gray-900">{{ $details->birthday->format('F j, Y') }}</span></div>
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Age</span><span class="font-medium text-gray-900">{{ $details->age }}</span></div>
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Email</span><span class="font-medium text-gray-900">{{ $user->email }}</span></div>
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Phone Number</span><span class="font-medium text-gray-900">{{ $user->phone_number ?? '—' }}</span></div>
-                        </div>
-
-                        <div class="sm:col-span-1 text-center">
-                            <p class="text-sm font-semibold text-gray-700 mb-3">Valid Id</p>
-                            @if ($details->valid_id_path)
-                                <img src="{{ Storage::url($details->valid_id_path) }}" alt="Valid ID" class="rounded-lg border w-full mb-3">
-                                <a href="{{ Storage::url($details->valid_id_path) }}" target="_blank"
-                                   class="inline-block text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50">
-                                    View File
-                                </a>
-                            @else
-                                <p class="text-sm text-gray-400">No ID uploaded.</p>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-
-                <!-- User Address Tab -->
-                <div x-show="tab === 'address'" x-cloak>
-                    <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <img src="{{ asset('assets/icons/registration/address-icon.svg') }}" alt="" class="w-5 h-5">
-                        Address
-                    </h3>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                        <div class="sm:col-span-2 space-y-4 text-sm">
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Province</span><span class="font-medium text-gray-900">{{ $details->province }}</span></div>
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Municipality</span><span class="font-medium text-gray-900">{{ $details->municipality }}</span></div>
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Barangay</span><span class="font-medium text-gray-900">{{ $details->barangay }}</span></div>
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Street</span><span class="font-medium text-gray-900">{{ $details->street ?? '—' }}</span></div>
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">House No.</span><span class="font-medium text-gray-900">{{ $details->house_no ?? '—' }}</span></div>
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Zip Code</span><span class="font-medium text-gray-900">{{ $details->zip_code ?? '—' }}</span></div>
-                        </div>
-
-                        <div class="sm:col-span-1 text-center">
-                            <p class="text-sm font-semibold text-gray-700 mb-3">Valid Id</p>
-                            @if ($details->valid_id_path)
-                                <img src="{{ Storage::url($details->valid_id_path) }}" alt="Valid ID" class="rounded-lg border w-full mb-3">
-                            @endif
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Business Information Tab (Seller only) -->
-                @if ($user->role === 'seller')
-                    <div x-show="tab === 'business'" x-cloak>
-                        <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                            <img src="{{ asset('assets/icons/registration/business-information-icon.svg') }}" alt="" class="w-5 h-5">
-                            Business Information
-                        </h3>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
-                            <div class="sm:col-span-2 space-y-4 text-sm">
-                                <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Business Name</span><span class="font-medium text-gray-900">{{ $details->business_name }}</span></div>
-                                <div class="flex gap-40 items-center">
-                                    <span class="text-gray-500 w-32 flex-shrink-0">Business Permit</span>
-                                    @if ($details->business_permit_path)
-                                        <a href="{{ Storage::url($details->business_permit_path) }}" target="_blank"
-                                           class="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50">
-                                            View File
-                                        </a>
-                                    @else
-                                        <span class="text-gray-400">Not submitted</span>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-
-                        <p class="text-sm text-gray-500 mb-2">Categories</p>
-                        <div class="flex flex-wrap gap-2">
-                            @forelse ($user->categories as $category)
-                                <span class="px-3 py-1.5 rounded-full bg-purple-50 border border-[#3b1735] text-xs font-medium text-[#3b1735]">
-                                    {{ $category->name }}
-                                </span>
-                            @empty
-                                <span class="text-sm text-gray-400">No categories selected.</span>
-                            @endforelse
-                        </div>
-                    </div>
-                @endif
-
-                <!-- Vehicle Information Tab (Courier only) -->
-                @if ($user->role === 'courier')
-                    <div x-show="tab === 'vehicle'" x-cloak>
-                        <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                            <img src="{{ asset('assets/icons/registration/vehicle-type-icon.svg') }}" alt="" class="w-5 h-5">
-                            Vehicle Information
-                        </h3>
-
-                        <div class="space-y-4 text-sm">
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Vehicle type</span><span class="font-medium text-gray-900">{{ $details->vehicle_type }}</span></div>
-                            <div class="flex gap-40"><span class="text-gray-500 w-32 flex-shrink-0">Plate Number</span><span class="font-medium text-gray-900">{{ $details->plate_number }}</span></div>
-                            <div class="flex gap-40 items-center">
-                                <span class="text-gray-500 w-32 flex-shrink-0">Driver's License</span>
-                                @if ($details->drivers_license_path)
-                                    <a href="{{ Storage::url($details->drivers_license_path) }}" target="_blank"
-                                       class="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50">
-                                        View File
-                                    </a>
-                                @else
-                                    <span class="text-gray-400">Not submitted</span>
-                                @endif
-                            </div>
-                            <div class="flex gap-40 items-center">
-                                <span class="text-gray-500 w-32 flex-shrink-0">OR/CR</span>
-                                @if ($details->or_cr_path)
-                                    <a href="{{ Storage::url($details->or_cr_path) }}" target="_blank"
-                                       class="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50">
-                                        View File
-                                    </a>
-                                @else
-                                    <span class="text-gray-400">Not submitted</span>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                @endif
-
-            </div>
         @endif
 
-    </div>
+        @if (! $details)
+            <div class="rounded-2xl border border-[#ece4ec] bg-white px-6 py-14 text-center">
+                <p class="text-base font-semibold text-[#2B1730]">No details submitted yet</p>
+                <p class="mt-1 text-sm text-gray-500">This applicant hasn't completed their profile, so there's nothing to review.</p>
+            </div>
+        @else
+            {{-- Panels share one grid cell, so switching tabs cross-fades without the card changing height. --}}
+            <div class="grid">
 
+                {{-- Personal --}}
+                <section role="tabpanel" id="{{ $uid }}-panel-personal" aria-labelledby="{{ $uid }}-tab-personal"
+                    :aria-hidden="tab !== 'personal'" :inert="tab !== 'personal'"
+                    :class="tab === 'personal' ? 'visible translate-y-0 opacity-100' : 'pointer-events-none invisible translate-y-1.5 opacity-0'"
+                    class="{{ $panelBase }}">
+                    <h3 class="mb-5 flex items-center gap-2.5 text-base font-semibold text-[#3b1735]">
+                        <img src="{{ asset('assets/icons/registration/personal-information-icon.svg') }}" alt="" class="h-5 w-5">
+                        Personal Information
+                    </h3>
+                    <div class="grid gap-6 md:grid-cols-[minmax(0,1fr)_260px]">
+                        <dl class="grid grid-cols-[110px_minmax(0,1fr)] content-start gap-x-4 gap-y-3.5">
+                            @foreach ($personalRows as [$label, $value])
+                                <dt class="{{ $dtClass }}">{{ $label }}</dt>
+                                <dd class="{{ $ddClass }}">{{ $value }}</dd>
+                            @endforeach
+                        </dl>
+                        @include('admin.registrations.partials.id-preview')
+                    </div>
+                </section>
+
+                {{-- Address --}}
+                <section role="tabpanel" id="{{ $uid }}-panel-address" aria-labelledby="{{ $uid }}-tab-address"
+                    :aria-hidden="tab !== 'address'" :inert="tab !== 'address'"
+                    :class="tab === 'address' ? 'visible translate-y-0 opacity-100' : 'pointer-events-none invisible translate-y-1.5 opacity-0'"
+                    class="{{ $panelBase }}">
+                    <h3 class="mb-5 flex items-center gap-2.5 text-base font-semibold text-[#3b1735]">
+                        <img src="{{ asset('assets/icons/registration/address-icon.svg') }}" alt="" class="h-5 w-5">
+                        Address
+                    </h3>
+                    <div class="grid gap-6 md:grid-cols-[minmax(0,1fr)_260px]">
+                        <dl class="grid grid-cols-[130px_minmax(0,1fr)] content-start gap-x-4 gap-y-3.5">
+                            @foreach ($addressRows as [$label, $value])
+                                <dt class="{{ $dtClass }}">{{ $label }}</dt>
+                                <dd class="{{ $ddClass }}">{{ $value }}</dd>
+                            @endforeach
+                        </dl>
+                        @include('admin.registrations.partials.id-preview')
+                    </div>
+                </section>
+
+                {{-- Business (sellers and logistics centers) --}}
+                @if ($hasBusiness)
+                    <section role="tabpanel" id="{{ $uid }}-panel-business" aria-labelledby="{{ $uid }}-tab-business"
+                        :aria-hidden="tab !== 'business'" :inert="tab !== 'business'"
+                        :class="tab === 'business' ? 'visible translate-y-0 opacity-100' : 'pointer-events-none invisible translate-y-1.5 opacity-0'"
+                        class="{{ $panelBase }}">
+                        <h3 class="mb-5 flex items-center gap-2.5 text-base font-semibold text-[#3b1735]">
+                            <img src="{{ asset('assets/icons/registration/business-information-icon.svg') }}" alt="" class="h-5 w-5">
+                            Business Information
+                        </h3>
+                        <dl class="grid grid-cols-[130px_minmax(0,1fr)] content-start gap-x-4 gap-y-3.5">
+                            <dt class="{{ $dtClass }}">Business Name</dt>
+                            <dd class="{{ $ddClass }}">{{ $details->business_name ?: $dash }}</dd>
+
+                            @if ($role === 'seller')
+                                <dt class="{{ $dtClass }}">Categories</dt>
+                                <dd class="min-w-0">
+                                    <div class="flex flex-wrap gap-2">
+                                        @forelse ($user->categories as $category)
+                                            <span class="rounded-full border border-[#d9ccdc] bg-[#F7F1F7] px-3 py-1 text-xs font-medium text-[#3b1735]">{{ $category->name }}</span>
+                                        @empty
+                                            <span class="text-sm text-gray-400">None selected</span>
+                                        @endforelse
+                                    </div>
+                                </dd>
+                            @endif
+
+                            <dt class="{{ $dtClass }}">Business Permit</dt>
+                            <dd class="min-w-0">
+                                @if ($details->business_permit_path)
+                                    @php
+                                        $permitExt = $ext($details->business_permit_path, 'pdf');
+                                        $permitPayload = [
+                                            'url' => route('admin.verification-documents.show', [$user, 'business-permit']),
+                                            'title' => 'Business Permit',
+                                            'subtitle' => $user->name,
+                                            'filename' => 'business_permit.' . $permitExt,
+                                            'kind' => $permitExt === 'pdf' ? 'pdf' : 'image',
+                                        ];
+                                    @endphp
+                                    <button type="button" aria-haspopup="dialog" @click="$dispatch('open-document', @js($permitPayload))"
+                                        class="inline-flex max-w-full items-center gap-2 rounded-lg border border-[#d9ccdc] px-3 py-1.5 text-[13px] font-normal text-[#3b1735]
+                                               transition duration-200 hover:bg-[#F7F1F7] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                                        <x-admin.icon name="file" class="h-4 w-4 flex-shrink-0" />
+                                        <span class="truncate">business_permit.{{ $permitExt }}</span>
+                                    </button>
+                                @else
+                                    <span class="text-sm text-gray-400">Not submitted</span>
+                                @endif
+                            </dd>
+                        </dl>
+                    </section>
+                @endif
+            </div>
+        @endif
+    </div>
 </div>

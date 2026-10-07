@@ -1,0 +1,37 @@
+.notification-menu-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.notification-menu-actions form {
+    display: flex;
+    align-items: center;
+    margin: 0;
+}
+
+.notification-menu-actions button,
+.notification-menu-actions a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #5b2963;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.notification-menu-actions button:hover,
+.notification-menu-actions button:focus-visible,
+.notification-menu-actions a:hover,
+.notification-menu-actions a:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}

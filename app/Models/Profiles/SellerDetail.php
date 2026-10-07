@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 #[Fillable([
     'user_id', 'last_name', 'first_name', 'middle_name', 'sex', 'birthday', 'valid_id_path',
     'province', 'municipality', 'barangay', 'street', 'house_no', 'zip_code',
-    'business_name', 'business_permit_path',
+    'business_name', 'business_permit_path', 'shop_banner_path', 'shop_description',
 ])]
 class SellerDetail extends Model
 {

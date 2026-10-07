@@ -8,7 +8,13 @@
                     modules: { toolbar: [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['clean']] },
                 });
                 quill.root.innerHTML = this.content;
-                quill.on('text-change', () => { this.content = quill.root.innerHTML; });
+                quill.on('text-change', () => {
+                    this.content = quill.root.innerHTML;
+                    this.$nextTick(() => this.$refs.contentField.dispatchEvent(new Event('input', { bubbles: true })));
+                });
+                this.$watch('content', value => {
+                    if (quill.root.innerHTML !== value) quill.root.innerHTML = value;
+                });
             });
         }
     }"
@@ -20,7 +26,7 @@
             <button type="button" @click="editPolicyId = null" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
 
-        <form method="POST" action="{{ route('platform-settings.policies.update', $policy) }}">
+        <form method="POST" action="{{ route('admin.platform-settings.policies.update', $policy) }}" data-draft-key="admin-{{ auth('admin')->id() }}-policy-{{ $policy->id }}" data-draft-hidden="content">
             @csrf
             @method('PUT')
 
@@ -32,7 +38,7 @@
 
             <label class="text-sm font-medium text-gray-900 mb-1 block">Content</label>
             <div x-ref="editor" style="min-height: 220px;" class="bg-white rounded-lg border border-gray-200 mb-4"></div>
-            <input type="hidden" name="content" x-model="content">
+            <input type="hidden" name="content" x-model="content" x-ref="contentField">
 
             <div class="flex gap-3">
                 <button type="button" @click="editPolicyId = null" class="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium">Cancel</button>

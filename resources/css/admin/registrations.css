@@ -1,0 +1,121 @@
+/*
+ * Admin → Registrations (list + details).
+ * Prefix: rg-
+ *
+ * Layout, colour and type live in Tailwind utilities in the Blade views.
+ * This file only holds what utilities can't express: keyframes and the
+ * table loading state. Everything degrades cleanly if this file is missing.
+ */
+
+/* Page enter: one short settle when the screen opens. */
+@keyframes rg-page-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.rg-page {
+    /* "backwards" only: no lingering transform, so fixed modals stay viewport-anchored. */
+    animation: rg-page-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* Table refresh: rows settle in one after another after a search/filter/page change. */
+@keyframes rg-row-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.rg-fresh tbody tr {
+    animation: rg-row-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 28ms);
+}
+
+/* Table is dimmed and inert while a request is in flight. */
+.rg-table-wrap {
+    transition: opacity 0.18s ease;
+}
+
+.rg-table-wrap[aria-busy='true'] {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+/* Thin indeterminate bar pinned to the top edge of the table region. */
+@keyframes rg-bar-run {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(300%);
+    }
+}
+
+.rg-bar {
+    position: absolute;
+    inset: 0 0 auto 0;
+    z-index: 2;
+    height: 2px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: rgba(125, 85, 128, 0.15);
+}
+
+.rg-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 35%;
+    border-radius: 2px;
+    background: #7d5580;
+    animation: rg-bar-run 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+
+/* Stat cards (shared with Seller Compliance look): rise one after another, lift on hover.
+   Set style="--i: n" on each card. Used by admin/partials/filter-stat-cards. */
+@keyframes rg-rise {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.rg-card {
+    animation: rg-rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 60ms);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.rg-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 30px -22px rgba(43, 23, 48, 0.55);
+}
+
+.rg-card:active {
+    transform: translateY(0) scale(0.99);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rg-card,
+    .rg-page,
+    .rg-fresh tbody tr,
+    .rg-bar::after {
+        animation: none;
+        transform: none;
+    }
+}

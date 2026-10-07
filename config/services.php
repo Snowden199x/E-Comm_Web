@@ -28,6 +28,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'google' => [
+        'web_client_id' => env('GOOGLE_WEB_CLIENT_ID'),
+        'allowed_client_ids' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('GOOGLE_ALLOWED_CLIENT_IDS', env('GOOGLE_WEB_CLIENT_ID', ''))),
+        ))),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

@@ -1,0 +1,95 @@
+body {
+    font-family: 'DejaVu Sans', sans-serif;
+    color: #1f2937;
+    font-size: 12px;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    border-bottom: 2px solid #3b1735;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+}
+
+.header img {
+    height: 40px;
+    margin-right: 12px;
+}
+
+.header .title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #3b1735;
+}
+
+.header .subtitle {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+h3 {
+    color: #3b1735;
+    font-size: 13px;
+    margin-top: 24px;
+    margin-bottom: 10px;
+}
+
+.grid {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+}
+
+.grid td {
+    width: 33%;
+    padding: 8px;
+}
+
+.card {
+    background: #f9fafb;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.card .label {
+    font-size: 10px;
+    color: #6b7280;
+}
+
+.card .value {
+    font-size: 14px;
+    font-weight: bold;
+    color: #111827;
+}
+
+table.data {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+table.data th {
+    text-align: left;
+    border-bottom: 1px solid #d1d5db;
+    padding: 6px 4px;
+    color: #6b7280;
+}
+
+table.data td {
+    padding: 6px 4px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+table.data tfoot td {
+    border-top: 2px solid #d1d5db;
+    font-weight: bold;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.green {
+    color: #15803d;
+}

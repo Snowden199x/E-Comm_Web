@@ -27,7 +27,7 @@ class Notification extends Model
     public function icon(): string
     {
         return match ($this->type) {
-            'new_seller_registration', 'new_buyer_registration' => 'new-register-notif.svg',
+            'new_seller_registration', 'new_buyer_registration', 'new_logistics_registration' => 'new-register-notif.svg',
             'new_courier_registration' => 'new-courier-notif.svg',
             'complaint_submitted' => 'complaint-notif.svg',
             'seller_compliance_warning' => 'compliance-notif.svg',

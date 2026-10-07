@@ -13,18 +13,21 @@ class PasswordResetLinkController extends Controller
 {
     public function create(): View
     {
-        return view('auth.forgot-password');
+        return view('admin.auth.forgot-password');
     }
 
     public function store(Request $request): RedirectResponse
     {
         $request->validate(['email' => 'required|email']);
 
-        $admin = User::where('email', $request->email)
-            ->where('role', 'admin')
+        $admin = User::where('role', 'admin')
+            ->where(function ($query) use ($request) {
+                $query->where('email', $request->email)
+                    ->orWhere('recovery_email', $request->email);
+            })
             ->first();
 
-        if ($admin) {
+        if ($admin && ! empty($admin->recovery_email)) {
             Password::sendResetLink(['email' => $admin->email]);
         }
 

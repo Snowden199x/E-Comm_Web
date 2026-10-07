@@ -1,92 +1,251 @@
-<x-admin-layout>
-    <div class="p-4 sm:p-5 lg:p-6" x-data="{ openId: null, suspendId: null, deactivateId: null, activateId: null }">
+<x-admin.layout title="User Management">
+    {{-- Shared Registrations/User Management motion + loading styles (rg- prefix). --}}
+    @vite('resources/css/admin/registrations.css')
 
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-2">
-            <div>
-                <h2 class="text-2xl font-bold text-gray-900">User Management</h2>
-                <p class="text-gray-500">Manage and control user accounts here.</p>
-            </div>
-        </div>
+    @php
+        $initialSearch = request()->string('search')->trim()->toString();
+        $initialDate = request()->string('date')->toString();
+        $initialType = request()->string('user_type', 'all')->toString();
+        $initialType = in_array($initialType, ['all', 'seller', 'buyer', 'logistics_center'], true) ? $initialType : 'all';
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div class="bg-purple-50 border-2 border-[#3b1735] rounded-2xl p-4 flex items-center gap-3">
-                <img src="{{ asset('assets/icons/dashboard/total-users-icon.svg') }}" alt="" class="w-10 h-10">
-                <div>
-                    <p class="text-xs text-gray-600">Total Users</p>
-                    <p class="text-xl font-bold text-gray-900">{{ number_format($stats['total_users']) }}</p>
-                </div>
-            </div>
-            <div class="bg-purple-50 border-2 border-[#3b1735] rounded-2xl p-4 flex items-center gap-3">
-                <img src="{{ asset('assets/icons/user-management/seller-icon.svg') }}" alt="" class="w-10 h-10">
-                <div>
-                    <p class="text-xs text-gray-600">Sellers</p>
-                    <p class="text-xl font-bold text-gray-900">{{ number_format($stats['sellers']) }}</p>
-                </div>
-            </div>
-            <div class="bg-purple-50 border-2 border-[#3b1735] rounded-2xl p-4 flex items-center gap-3">
-                <img src="{{ asset('assets/icons/user-management/buyer-icon.svg') }}" alt="" class="w-10 h-10">
-                <div>
-                    <p class="text-xs text-gray-600">Buyers</p>
-                    <p class="text-xl font-bold text-gray-900">{{ number_format($stats['buyers']) }}</p>
-                </div>
-            </div>
-        </div>
+        $cards = [
+            ['key' => 'all', 'label' => 'Total Users', 'value' => $stats['total_users'], 'icon' => 'users', 'tone' => 'purple'],
+            ['key' => 'seller', 'label' => 'Sellers', 'value' => $stats['sellers'], 'icon' => 'store', 'tone' => 'plum'],
+            ['key' => 'buyer', 'label' => 'Buyers', 'value' => $stats['buyers'], 'icon' => 'user', 'tone' => 'gold'],
+            ['key' => 'logistics_center', 'label' => 'Logistics Centers', 'value' => $stats['logistics_centers'], 'icon' => 'package', 'tone' => 'terracotta'],
+        ];
+    @endphp
 
-        <div x-data="{
-            q: '{{ request('search') }}',
-            dateVal: '{{ request('date') }}',
-            userType: '{{ request('user_type', 'all') }}',
-            timer: null,
-            search() {
-                clearTimeout(this.timer);
-                this.timer = setTimeout(() => {
-                    const params = new URLSearchParams({ search: this.q, date: this.dateVal, user_type: this.userType, rejected: '{{ $showRejected ? 1 : 0 }}' });
-                    fetch('{{ route('user-management.table') }}?' + params)
-                        .then(r => r.text()).then(html => { document.getElementById('users-table-wrap').innerHTML = html; });
-                }, 250);
+    <div class="rg-page mx-auto w-full max-w-[1280px] p-4 sm:p-6" x-data="{
+        // Modals (profile + actions). Their markup lives inside #um-region.
+        openId: null, suspendId: null, deactivateId: null, activateId: null,
+
+        // Filters
+        q: @js($initialSearch),
+        date: @js($initialDate),
+        type: @js($initialType),
+        rejected: {{ $showRejected ? 'true' : 'false' }},
+        page: {{ (int) $users->currentPage() }},
+        loading: false,
+        failed: false,
+        typeOpen: false,
+        timer: null,
+        ctrl: null,
+        pageUrl: @js(route('admin.user-management.index')),
+        types: [
+            { v: 'all', l: 'All users' },
+            { v: 'seller', l: 'Sellers' },
+            { v: 'buyer', l: 'Buyers' },
+            { v: 'logistics_center', l: 'Logistics centers' },
+        ],
+
+        get typeLabel() {
+            const t = this.types.find(t => t.v === this.type);
+            return t ? t.l : 'All users';
+        },
+        get dateLabel() {
+            if (!this.date) return 'All dates';
+            const [y, m, d] = this.date.split('-').map(Number);
+            return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        },
+        get filtered() {
+            return this.q.trim() !== '' || this.date !== '' || this.type !== 'all';
+        },
+
+        params() {
+            const p = new URLSearchParams();
+            if (this.q.trim()) p.set('search', this.q.trim());
+            if (this.date) p.set('date', this.date);
+            if (this.type !== 'all') p.set('user_type', this.type);
+            if (this.rejected) p.set('rejected', '1');
+            if (this.page > 1) p.set('page', this.page);
+            return p;
+        },
+
+        onSearch() {
+            clearTimeout(this.timer);
+            this.page = 1;
+            this.timer = setTimeout(() => this.load(), 300);
+        },
+        apply() {
+            clearTimeout(this.timer);
+            this.page = 1;
+            this.load();
+        },
+        clearAll() {
+            this.q = '';
+            this.date = '';
+            this.type = 'all';
+            this.apply();
+        },
+        pickDate() {
+            const el = this.$refs.date;
+            if (el.showPicker) el.showPicker(); else el.click();
+        },
+        pickType(value) {
+            this.type = value;
+            this.typeOpen = false;
+            this.apply();
+        },
+        onRegionClick(event) {
+            const btn = event.target.closest('[data-page]');
+            if (!btn || btn.disabled) return;
+            this.page = Number(btn.dataset.page);
+            this.load(true);
+        },
+
+        // Fetches the same page and swaps only #um-region, so the table and the
+        // per-user modals always describe the same rows (no full page reload).
+        async load(scrollToTable = false) {
+            if (this.ctrl) this.ctrl.abort();
+            const ctrl = new AbortController();
+            this.ctrl = ctrl;
+            this.loading = true;
+            this.failed = false;
+
+            const qs = this.params().toString();
+            const url = this.pageUrl + (qs ? '?' + qs : '');
+            try {
+                const res = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' },
+                    signal: ctrl.signal,
+                });
+                if (res.redirected && res.url !== new URL(url, location.origin).href) { window.location.href = res.url; return; }
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+
+                const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+                const next = doc.getElementById('um-region');
+                if (!next) throw new Error('Missing region');
+                if (ctrl.signal.aborted) return;
+
+                this.openId = this.suspendId = this.deactivateId = this.activateId = null;
+                const region = this.$refs.region;
+                region.innerHTML = next.innerHTML;
+                region.classList.remove('rg-fresh');
+                void region.offsetWidth; // restart the row animation
+                region.classList.add('rg-fresh');
+
+                history.replaceState(null, '', url);
+                if (scrollToTable) region.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            } catch (e) {
+                if (e.name !== 'AbortError') this.failed = true;
+            } finally {
+                if (this.ctrl === ctrl) this.loading = false;
             }
-        }" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-            <div class="relative w-80">
+        },
+    }" @keydown.escape.window="typeOpen = false">
+
+        {{-- Header --}}
+        <div class="mb-6">
+            <h1 class="font-display text-2xl font-semibold text-[#2B1730]">User Management</h1>
+            <p class="mt-1 text-sm text-gray-500">Manage and control buyer, seller, and logistics center accounts.</p>
+        </div>
+
+        {{-- Counts. Each card also filters the table to that user type. --}}
+        @include('admin.partials.filter-stat-cards', ['cards' => $cards])
+
+        {{-- Search + filters --}}
+        <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+
+            <div class="relative w-full lg:max-w-md">
                 <img src="{{ asset('assets/icons/user-management/search-icon.svg') }}" alt=""
-                    class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-50">
-                <input type="text" x-model="q" @input="search" autocomplete="off"
-                    placeholder="Search seller name or email..."
-                    class="w-full pl-9 pr-4 py-2.5 rounded-full border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]">
+                    class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 opacity-60">
+                <input type="text" x-model="q" @input="onSearch()" @keydown.escape="q = ''; onSearch()"
+                    autocomplete="off" aria-label="Search users" placeholder="Search by name or email"
+                    class="h-11 w-full rounded-full border border-[#ddd0e0] bg-white pl-10 pr-10 text-sm text-[#2B1730] placeholder:text-gray-400
+                           transition duration-200 focus:border-[#3b1735] focus:outline-none focus:ring-2 focus:ring-[#3b1735]/20">
+                <button type="button" x-show="q !== ''" x-cloak @click="q = ''; apply()" aria-label="Clear search"
+                    x-transition:enter="transition duration-150" x-transition:enter-start="opacity-0 scale-75"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    class="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition hover:bg-[#F1E9F1] hover:text-[#3b1735]">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
             </div>
 
-            <div class="flex gap-3">
-                <input type="date" x-model="dateVal" @change="search"
-                    class="px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]">
+            <div class="flex flex-wrap items-center gap-2.5">
 
-                <select x-model="userType" @change="search"
-                    class="appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:12px] px-3 pr-9 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]"
-                    style="background-image: url('{{ asset('assets/icons/user-management/down-arrow-icon.svg') }}');">
-                    <option value="all">All Users</option>
-                    <option value="seller">Sellers</option>
-                    <option value="buyer">Buyers</option>
-                </select>
+                {{-- Date --}}
+                <div class="relative inline-flex h-11 items-center rounded-full border border-[#ddd0e0] bg-white transition duration-200 hover:border-[#cdbbd2]">
+                    <button type="button" @click="pickDate()" aria-label="Filter by date joined"
+                        class="flex h-full items-center gap-2 rounded-full pl-4 text-sm text-[#2B1730] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40"
+                        :class="date ? 'pr-2' : 'pr-4'">
+                        <img src="{{ asset('assets/icons/user-management/date-filter-icon.svg') }}" alt="" class="h-4 w-4">
+                        <span x-text="dateLabel"></span>
+                    </button>
+                    <button type="button" x-show="date" x-cloak @click="date = ''; apply()" aria-label="Clear date filter"
+                        class="mr-2 flex h-6 w-6 items-center justify-center rounded-full text-gray-400 transition hover:bg-[#F1E9F1] hover:text-[#3b1735]">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
+                    </button>
+                    <input type="date" x-ref="date" x-model="date" @change="apply()" tabindex="-1" aria-hidden="true"
+                        class="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0">
+                </div>
 
-                <a href="{{ route('user-management.index', array_merge(request()->except('rejected'), ['rejected' => $showRejected ? 0 : 1])) }}"
-                    class="flex items-center gap-2 px-4 py-2.5 rounded-lg border {{ $showRejected ? 'bg-[#3b1735] text-white border-[#3b1735]' : 'border-gray-200 text-gray-700' }} text-sm font-medium whitespace-nowrap">
-                    <img src="{{ asset('assets/icons/user-management/document-icon.svg') }}" alt=""
-                        class="w-4 h-4 {{ $showRejected ? 'brightness-0 invert' : '' }}">
+                {{-- User type --}}
+                <div class="relative" @click.outside="typeOpen = false">
+                    <button type="button" @click="typeOpen = !typeOpen" aria-haspopup="listbox" :aria-expanded="typeOpen"
+                        class="inline-flex h-11 items-center gap-2 rounded-full border border-[#ddd0e0] bg-white pl-4 pr-3.5 text-sm text-[#2B1730]
+                               transition duration-200 hover:border-[#cdbbd2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                        <span x-text="typeLabel"></span>
+                        <img src="{{ asset('assets/icons/user-management/down-arrow-icon.svg') }}" alt=""
+                            class="h-3 w-3 transition-transform duration-200 ease-vendo" :class="typeOpen ? 'rotate-180' : ''">
+                    </button>
+
+                    <div x-show="typeOpen" x-cloak role="listbox" aria-label="User type"
+                        x-transition:enter="transition duration-150 ease-out"
+                        x-transition:enter-start="opacity-0 -translate-y-1 scale-95"
+                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave="transition duration-100 ease-in"
+                        x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                        class="absolute right-0 z-30 mt-2 w-52 origin-top-right rounded-2xl border border-[#ece4ec] bg-white p-1.5
+                               shadow-[0_18px_40px_-20px_rgba(43,23,48,0.4)]">
+                        <template x-for="t in types" :key="t.v">
+                            <button type="button" role="option" :aria-selected="type === t.v" @click="pickType(t.v)"
+                                :class="type === t.v ? 'bg-[#F7F1F7] font-medium text-[#3b1735]' : 'text-gray-700 hover:bg-[#FBF8FB]'"
+                                class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors duration-150">
+                                <span x-text="t.l"></span>
+                                <svg x-show="type === t.v" class="h-4 w-4 text-[#3b1735]" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Rejected users toggle --}}
+                <button type="button" @click="rejected = !rejected; apply()" :aria-pressed="rejected"
+                    :class="rejected
+                        ? 'border-[#3b1735] bg-[#3b1735] text-white'
+                        : 'border-[#ddd0e0] bg-white text-[#2B1730] hover:border-[#cdbbd2]'"
+                    class="inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm transition duration-200 active:scale-[0.98]
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                    <img src="{{ asset('assets/icons/user-management/document-icon.svg') }}" alt="" class="h-4 w-4 transition duration-200"
+                        :class="rejected ? 'brightness-0 invert' : ''">
                     Rejected users
-                </a>
+                </button>
             </div>
         </div>
 
-        <div id="users-table-wrap">
-            @include('admin.user-management.partials.users-table')
+        <div x-show="failed" x-cloak x-transition.opacity role="alert"
+            class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
+            <span>Couldn't load users. Check your connection and try again.</span>
+            <button type="button" @click="load()" class="font-semibold underline underline-offset-2 hover:text-red-800">Try again</button>
         </div>
 
-        @foreach ($users as $u)
-            @include('admin.user-management.partials.profile-modal', ['user' => $u])
-            @include('admin.user-management.partials.suspend-modal', ['user' => $u])
-            @include('admin.user-management.partials.deactivate-modal', ['user' => $u])
-            @include('admin.user-management.partials.activate-modal', ['user' => $u])
-        @endforeach
+        {{-- Table + per-user modals (swapped together on every filter/page change) --}}
+        <div class="relative">
+            <div x-show="loading" x-cloak x-transition.opacity class="rg-bar" role="progressbar" aria-label="Loading users"></div>
+            <div id="um-region" x-ref="region" class="rg-table-wrap" :aria-busy="loading" @click="onRegionClick($event)">
+                @include('admin.user-management.partials.users-table')
+
+                @foreach ($users as $u)
+                    @include('admin.user-management.partials.profile-modal', ['user' => $u])
+                    @include('admin.user-management.partials.suspend-modal', ['user' => $u])
+                    @include('admin.user-management.partials.deactivate-modal', ['user' => $u])
+                    @include('admin.user-management.partials.activate-modal', ['user' => $u])
+                @endforeach
+            </div>
+        </div>
 
         @include('admin.user-management.partials.confirmation-modal')
-
     </div>
-</x-admin-layout>
+
+    @include('shared.live-revision', ['endpoint' => route('admin.live', 'accounts'), 'mode' => 'reload'])
+</x-admin.layout>

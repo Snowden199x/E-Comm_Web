@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('last_name');
             $table->string('first_name');
             $table->string('middle_name')->nullable();
-            $table->enum('sex', ['male', 'female']);
+            $table->enum('sex', ['male', 'female', 'prefer_not_to_say']);;
             $table->date('birthday');
             $table->string('valid_id_path')->nullable();
 

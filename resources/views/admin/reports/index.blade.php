@@ -1,5 +1,7 @@
-<x-admin-layout>
-    <div class="p-4 sm:p-5 lg:p-6" x-data="{
+<x-admin.layout>
+    <div id="adminReportsPage" class="p-4 sm:p-5 lg:p-6"
+        data-chart-config="{{ json_encode(['labels' => $chartLabels, 'sales' => $chartSales, 'commission' => $chartCommission], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
+        x-data="{
         view: '{{ $view }}',
         dateFilter: '{{ $dateFilter }}',
         customDate: '{{ $customDate }}',
@@ -25,7 +27,7 @@
                 this.customDate = localStorage.getItem('reports_custom_date') || '';
             }
             const params = new URLSearchParams(this.params());
-            window.location = '{{ route('reports.index') }}?' + params;
+            window.location = '{{ route('admin.reports.index') }}?' + params;
         },
         previewMenuOpen: false,
         downloadMenuOpen: false,
@@ -36,7 +38,7 @@
         },
         loadPreview(period) {
             const params = new URLSearchParams(this.rangeParams(period));
-            fetch('{{ route('reports.preview') }}?' + params)
+            fetch('{{ route('admin.reports.preview') }}?' + params)
                 .then(r => r.text())
                 .then(html => {
                     document.getElementById('report-preview').innerHTML = html;
@@ -45,7 +47,7 @@
         },
         downloadUrlFor(period) {
             const params = new URLSearchParams(this.rangeParams(period));
-            return '{{ route('reports.download') }}?' + params;
+            return '{{ route('admin.reports.download') }}?' + params;
         }
     }">
         <div class="mb-6">
@@ -56,13 +58,13 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div class="flex items-center gap-3">
                 <div class="flex bg-white border border-gray-200 rounded-lg p-1">
-                    <a href="{{ route('reports.index', ['view' => 'daily', 'date_filter' => session('last_date_filter', 'today'), 'custom_date' => session('last_custom_date', '')]) }}"
+                    <a href="{{ route('admin.reports.index', ['view' => 'daily', 'date_filter' => session('last_date_filter', 'today'), 'custom_date' => session('last_custom_date', '')]) }}"
                         @class([
                             'px-3 py-1.5 rounded-md text-sm font-medium',
                             'bg-[#3b1735] text-white' => $view === 'daily',
                             'text-gray-600' => $view !== 'daily',
                         ])>Daily</a>
-                    <a href="{{ route('reports.index', ['view' => 'monthly', 'year' => $year]) }}"
+                    <a href="{{ route('admin.reports.index', ['view' => 'monthly', 'year' => $year]) }}"
                         @class([
                             'px-3 py-1.5 rounded-md text-sm font-medium',
                             'bg-[#3b1735] text-white' => $view === 'monthly',
@@ -210,71 +212,5 @@
         </div>
     </div>
 
-    <script>
-        (function() {
-            const salesCtx = document.getElementById('salesChart');
-            const commissionCtx = document.getElementById('commissionChart');
-            if (!salesCtx || !commissionCtx) return;
-
-            const labels = @json($chartLabels);
-
-            new Chart(salesCtx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Sales',
-                        data: @json($chartSales),
-                        borderColor: '#7a6a9e',
-                        backgroundColor: 'rgba(122, 106, 158, 0.15)',
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-
-            new Chart(commissionCtx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Commission',
-                        data: @json($chartCommission),
-                        borderColor: '#15803d',
-                        backgroundColor: 'rgba(21, 128, 61, 0.15)',
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        })();
-    </script>
-</x-admin-layout>
+    @vite('resources/js/admin/reports.js')
+</x-admin.layout>

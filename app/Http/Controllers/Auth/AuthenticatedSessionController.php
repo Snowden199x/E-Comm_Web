@@ -14,21 +14,37 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): View
+        public function create(): View
     {
-        return view('auth.login');
+        return view('admin.auth.login');
     }
 
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+        public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $admin = \Illuminate\Support\Facades\Auth::guard('admin')->user();
+
+        $admin->update([
+            'last_login_at' => now(),
+        ]);
+
+        $admin->loginSessions()->create([
+            'login_at' => now(),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        if ($admin->must_change_password) {
+            return redirect()->route('admin.account-management.force-password');
+        }
+
+        return redirect()->route('admin.dashboard');
     }
 
     /**
@@ -36,10 +52,24 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        Auth::guard('web')->logout();
+        $admin = Auth::guard('admin')->user();
+
+        if ($admin) {
+            $session = $admin->loginSessions()
+                ->whereNull('logged_out_at')
+                ->latest('login_at')
+                ->first();
+
+            if ($session) {
+                $session->update([
+                    'logged_out_at' => now(),
+                ]);
+            }
+        }
+
+        Auth::guard('admin')->logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
         return redirect('/admin');

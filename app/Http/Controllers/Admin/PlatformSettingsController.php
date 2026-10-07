@@ -8,6 +8,7 @@ use App\Models\Communication\PlatformPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use App\Models\Communication\ChatSetting;
 
 class PlatformSettingsController extends Controller
 {
@@ -15,6 +16,7 @@ class PlatformSettingsController extends Controller
     {
         $announcements = $this->filteredAnnouncements($request);
         $policies = PlatformPolicy::latest()->paginate(8, ['*'], 'policies_page');
+        $chatSetting = ChatSetting::first();
 
         $stats = [
             'total' => Announcement::count(),
@@ -23,9 +25,23 @@ class PlatformSettingsController extends Controller
             'drafts' => Announcement::where('status', 'draft')->count(),
         ];
 
-        return view('admin.platform-settings.index', compact('announcements', 'policies', 'stats'));
+        return view('admin.platform-settings.index', compact('announcements', 'policies', 'stats', 'chatSetting'));
     }
 
+    public function updateChatWelcome(Request $request): RedirectResponse
+    {
+        $request->validate(['welcome_message' => 'required|string|max:1000']);
+
+        $setting = ChatSetting::first();
+
+        if ($setting) {
+            $setting->update(['welcome_message' => $request->welcome_message]);
+        } else {
+            ChatSetting::create(['welcome_message' => $request->welcome_message]);
+        }
+
+        return back()->with('confirmation', 'chat_welcome_updated');
+    }
     public function announcementsTable(Request $request): View
     {
         $announcements = $this->filteredAnnouncements($request);

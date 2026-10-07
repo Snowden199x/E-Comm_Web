@@ -1,0 +1,22 @@
+.ur-dialog { width: min(520px, calc(100vw - 28px)); max-height: min(92dvh, 760px); margin: auto; padding: 0; border: 1px solid #e8dce9; border-radius: 18px; background: #fff; color: #241928; box-shadow: 0 22px 70px rgba(24, 10, 29, .22); }
+.ur-dialog::backdrop { background: rgba(28, 12, 33, .55); backdrop-filter: blur(3px); }
+.ur-panel { padding: 24px; overflow-y: auto; max-height: min(92dvh, 760px); font-family: Poppins, system-ui, sans-serif; }
+.ur-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.ur-eyebrow { margin: 0 0 4px; color: #80598a; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.ur-head h2 { margin: 0; font-size: 23px; line-height: 1.25; }
+.ur-close { border: 0; background: transparent; color: #715b76; font-size: 28px; line-height: 1; cursor: pointer; }
+.ur-intro { margin: 12px 0 20px; color: #665b69; font-size: 12px; line-height: 1.6; }
+.ur-field { display: block; margin: 0 0 16px; }
+.ur-field > span { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; }
+.ur-field :is(select, textarea, input[type=file]) { display: block; width: 100%; border: 1px solid #d8c9db; border-radius: 9px; background: #fff; padding: 10px 12px; color: #241928; font: inherit; font-size: 13px; }
+.ur-field textarea { min-height: 116px; resize: vertical; }
+.ur-field :is(select, textarea, input[type=file]):focus-visible { outline: 2px solid #8a5c95; outline-offset: 2px; }
+.ur-field small { display: block; margin-top: 5px; color: #7c7281; font-size: 11px; }
+.ur-error { margin: 0 0 14px; padding: 10px 12px; border-radius: 8px; background: #fff0f1; color: #9a253b; font-size: 12px; }
+.ur-error[hidden], .ur-notice[hidden] { display: none; }
+.ur-actions { display: flex; justify-content: flex-end; gap: 9px; }
+.ur-actions button { border-radius: 8px; padding: 10px 14px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.ur-secondary { border: 1px solid #d7c5d9; background: #fff; color: #4b2c50; }
+.ur-primary { border: 1px solid #512459; background: #512459; color: #fff; }
+.ur-primary:disabled { opacity: .55; cursor: wait; }
+.ur-notice { position: fixed; right: 16px; bottom: 16px; z-index: 80; width: min(350px, calc(100vw - 32px)); padding: 12px 14px; border-radius: 10px; background: #e9f8ee; color: #1f6c3e; box-shadow: 0 10px 28px rgba(24, 10, 29, .15); font: 12px/1.5 Poppins, system-ui, sans-serif; }

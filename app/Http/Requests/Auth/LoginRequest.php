@@ -42,7 +42,7 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        if (! Auth::guard('admin')->attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -50,13 +50,27 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        if (Auth::user()->role !== 'admin') {
-            Auth::logout();
+                $admin = Auth::guard('admin')->user();
+
+        if ($admin->role !== 'admin') {
+            Auth::guard('admin')->logout();
 
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
                 'email' => 'This login is restricted to administrators only.',
+            ]);
+        }
+
+        if ($admin->account_status !== 'active') {
+            Auth::guard('admin')->logout();
+
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => $admin->account_status === 'suspended'
+                    ? 'Your admin account has been suspended.'
+                    : 'Your admin account has been deactivated.',
             ]);
         }
 

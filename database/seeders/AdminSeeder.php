@@ -19,19 +19,17 @@ class AdminSeeder extends Seeder
         ];
 
         foreach ($admins as $admin) {
-            $user = User::firstOrCreate(
+            User::updateOrCreate(
                 ['email' => $admin['email']],
                 [
                     'name' => $admin['name'],
                     'password' => Hash::make($admin['password']),
                     'role' => 'admin',
                     'status' => 'approved',
+                    'is_super_admin' => true,
+                    'email_verified_at' => now(),
                 ]
             );
-
-            if (! $user->hasVerifiedEmail()) {
-                $user->sendEmailVerificationNotification();
-            }
         }
     }
 }

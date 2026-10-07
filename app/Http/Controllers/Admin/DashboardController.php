@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
+use App\Models\Ecommerce\Product;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use App\Models\Communication\Announcement;
@@ -17,7 +18,7 @@ class DashboardController extends Controller
         $stats = [
             'total_orders' => Order::count(),
             'total_sales' => Order::where('status', '!=', 'cancelled')->sum('total_amount'),
-            'total_users' => User::where('role', 'buyer')->count(),
+            'total_users' => User::whereIn('role', ['buyer', 'seller', 'logistics_center'])->count(),
             'total_sellers' => User::where('role', 'seller')->count(),
         ];
 
@@ -26,7 +27,7 @@ class DashboardController extends Controller
             'gross_sales' => Order::where('status', '!=', 'cancelled')->sum('total_amount'),
             'total_orders' => Order::count(),
             'average_order_value' => Order::where('status', '!=', 'cancelled')->avg('total_amount') ?? 0,
-            'completed_orders' => Order::where('status', 'delivered')->count(),
+            'completed_orders' => Order::whereIn('status', ['delivered','completed'])->count(),
             'return_refund' => Order::where('status', 'returned')->count(),
         ];
 
@@ -56,14 +57,26 @@ class DashboardController extends Controller
         $pendingRegistrations = [
             'sellers' => User::where('role', 'seller')->where('status', 'pending')->count(),
             'buyers' => User::where('role', 'buyer')->where('status', 'pending')->count(),
+            'logistics_centers' => User::where('role', 'logistics_center')->where('status', 'pending')->count(),
+        ];
+
+        $attention = [
+            ['label' => 'Registrations to review', 'count' => array_sum($pendingRegistrations), 'icon' => 'user-plus',
+                'href' => route('admin.registrations.index'), 'clear' => 'No one is waiting'],
+            ['label' => 'Products awaiting review', 'count' => Product::where('status', 'for_review')->count(), 'icon' => 'clipboard-check',
+                'href' => route('admin.seller-compliance.products-for-review'), 'clear' => 'Review queue is empty'],
+            ['label' => 'Open complaints', 'count' => Complaint::where('status', 'open')->count(), 'icon' => 'scale',
+                'href' => route('admin.complaints.index'), 'clear' => 'No unanswered cases'],
+            ['label' => 'Suspended sellers', 'count' => User::where('role', 'seller')->where('status', 'approved')->where('account_status', 'suspended')->count(), 'icon' => 'ban',
+                'href' => route('admin.seller-compliance.suspended-sellers'), 'clear' => 'No active suspensions'],
         ];
 
         // Latest Notifications
-        $notifications = Notification::latest()->take(5)->get();
+        $notifications = Notification::whereNull('user_id')->where('type', '!=', 'new_order')->latest()->take(5)->get();
 
         // Recent Registrations
-        $recentRegistrations = User::with(['sellerDetail', 'buyerDetail', 'categories'])
-            ->whereIn('role', ['seller', 'buyer'])
+        $recentRegistrations = User::with(['sellerDetail', 'buyerDetail', 'logisticsCenterDetail', 'categories'])
+            ->whereIn('role', ['seller', 'buyer', 'logistics_center'])
             ->latest()
             ->take(5)
             ->get();
@@ -85,6 +98,7 @@ class DashboardController extends Controller
             'salesSummary',
             'chartData',
             'pendingRegistrations',
+            'attention',
             'notifications',
             'recentRegistrations',
             'recentComplaints',

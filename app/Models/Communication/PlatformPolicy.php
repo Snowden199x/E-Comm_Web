@@ -8,6 +8,24 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 #[Fillable(['name', 'version', 'content'])]
 class PlatformPolicy extends Model
 {
+    public static function availableForRole(string $role): \Illuminate\Database\Eloquent\Collection
+    {
+        $name = match ($role) {
+            'seller' => 'Seller Policy',
+            'buyer' => 'Buyer Policy',
+            'logistics_center', 'courier' => 'Logistics Policy',
+            default => null,
+        };
+
+        return static::query()->whereIn('name', $name ? [$name, 'Prohibited Item Policy'] : [])
+            ->orderByRaw('CASE WHEN name = ? THEN 0 ELSE 1 END', [$name ?? ''])
+            ->get()->filter(function (self $policy) {
+                $text = html_entity_decode(strip_tags(\App\Support\PolicyContent::render($policy->content)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+                return trim(str_replace("\u{00A0}", ' ', $text)) !== '';
+            })->values();
+    }
+
     public function getIconAttribute(): array
     {
         $map = [

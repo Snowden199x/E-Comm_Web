@@ -1,4 +1,4 @@
-<x-admin-layout>
+<x-admin.layout>
     <div class="p-4 sm:p-5 lg:p-6" x-data="{
         editRateOpen: false,
         sellerDetailOpen: false,
@@ -76,7 +76,7 @@
                 clearTimeout(this.timer);
                 this.timer = setTimeout(() => {
                     const params = new URLSearchParams({ search: this.q, month: this.month });
-                    fetch('{{ route('commission.table') }}?' + params)
+                    fetch('{{ route('admin.commission.table') }}?' + params)
                         .then(r => r.text()).then(html => { document.getElementById('commission-table-wrap').innerHTML = html; });
                 }, 250);
             }
@@ -102,4 +102,4 @@
         @include('admin.commission.partials.edit-rate-modal')
         @include('admin.commission.partials.seller-detail-modal')
     </div>
-</x-admin-layout>
+</x-admin.layout>
