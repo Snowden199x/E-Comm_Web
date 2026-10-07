@@ -9,10 +9,10 @@
         $initialType = in_array($initialType, ['all', 'seller', 'buyer', 'logistics_center'], true) ? $initialType : 'all';
 
         $cards = [
-            ['key' => 'all', 'label' => 'Total Users', 'value' => $stats['total_users'], 'icon' => asset('assets/icons/dashboard/total-users-icon.svg')],
-            ['key' => 'seller', 'label' => 'Sellers', 'value' => $stats['sellers'], 'icon' => asset('assets/icons/user-management/seller-icon.svg')],
-            ['key' => 'buyer', 'label' => 'Buyers', 'value' => $stats['buyers'], 'icon' => asset('assets/icons/user-management/buyer-icon.svg')],
-            ['key' => 'logistics_center', 'label' => 'Logistics Centers', 'value' => $stats['logistics_centers'], 'icon' => asset('assets/icons/user-management/courier-icon.svg')],
+            ['key' => 'all', 'label' => 'Total Users', 'value' => $stats['total_users'], 'icon' => 'users', 'tone' => 'purple'],
+            ['key' => 'seller', 'label' => 'Sellers', 'value' => $stats['sellers'], 'icon' => 'store', 'tone' => 'plum'],
+            ['key' => 'buyer', 'label' => 'Buyers', 'value' => $stats['buyers'], 'icon' => 'user', 'tone' => 'gold'],
+            ['key' => 'logistics_center', 'label' => 'Logistics Centers', 'value' => $stats['logistics_centers'], 'icon' => 'package', 'tone' => 'terracotta'],
         ];
     @endphp
 
@@ -142,25 +142,7 @@
         </div>
 
         {{-- Counts. Each card also filters the table to that user type. --}}
-        <div class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            @foreach ($cards as $card)
-                <button type="button" @click="type = '{{ $card['key'] }}'; apply()"
-                    :aria-pressed="type === '{{ $card['key'] }}'"
-                    :class="type === '{{ $card['key'] }}'
-                        ? 'border-[#3b1735] bg-[#F7F1F7] ring-1 ring-[#3b1735]/20'
-                        : 'border-[#ece4ec] bg-white hover:border-[#cdbbd2]'"
-                    class="flex items-center gap-3 rounded-2xl border p-3.5 text-left transition duration-200 ease-vendo
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40 active:scale-[0.99] sm:p-4">
-                    <span class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1]">
-                        <img src="{{ $card['icon'] }}" alt="" class="h-6 w-6">
-                    </span>
-                    <span class="min-w-0">
-                        <span class="block truncate text-[13px] text-gray-500">{{ $card['label'] }}</span>
-                        <span class="block text-2xl font-semibold leading-tight tracking-tight text-[#2B1730]">{{ number_format($card['value']) }}</span>
-                    </span>
-                </button>
-            @endforeach
-        </div>
+        @include('admin.partials.filter-stat-cards', ['cards' => $cards])
 
         {{-- Search + filters --}}
         <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

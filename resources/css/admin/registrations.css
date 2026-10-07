@@ -81,10 +81,41 @@
     animation: rg-bar-run 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
+
+/* Stat cards (shared with Seller Compliance look): rise one after another, lift on hover.
+   Set style="--i: n" on each card. Used by admin/partials/filter-stat-cards. */
+@keyframes rg-rise {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.rg-card {
+    animation: rg-rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 60ms);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.rg-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 30px -22px rgba(43, 23, 48, 0.55);
+}
+
+.rg-card:active {
+    transform: translateY(0) scale(0.99);
+}
+
 @media (prefers-reduced-motion: reduce) {
+    .rg-card,
     .rg-page,
     .rg-fresh tbody tr,
     .rg-bar::after {
         animation: none;
+        transform: none;
     }
 }

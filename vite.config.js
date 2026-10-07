@@ -15,9 +15,11 @@ export default defineConfig({
                 "resources/js/auth/google-signin.js",
 
                 // Admin
-                "resources/css/admin/layout.css",
+                 "resources/css/admin/layout.css",
                 "resources/css/admin/registrations.css",
                 "resources/css/admin/seller-compliance.css",
+                "resources/css/admin/motion.css",
+                "resources/css/admin/complaints.css",
                 "resources/js/admin/sidebar.js",
                 "resources/js/admin/layout.js",
                 "resources/js/admin/dashboard.js",

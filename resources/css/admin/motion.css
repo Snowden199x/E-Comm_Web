@@ -1,0 +1,176 @@
+/*
+ * Admin shell motion: loading screen, navigation progress bar, page entrance.
+ * Prefix: vd-
+ *
+ * Flat colours only (no gradients). Everything is switched off for
+ * prefers-reduced-motion, and the page still works if this file is missing.
+ */
+
+:root {
+    --vd-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --vd-plum: #3b1735;
+    --vd-gold: #e8c874;
+}
+
+/* ---------- Loading screen (shown on every full page load) ---------- */
+.vd-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--vd-plum);
+    opacity: 1;
+    transition: opacity 0.45s var(--vd-ease), visibility 0s linear 0.45s;
+}
+
+.vd-splash.is-done {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.vd-splash__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    transition: transform 0.45s var(--vd-ease);
+}
+
+.vd-splash.is-done .vd-splash__inner {
+    transform: translateY(-8px) scale(0.98);
+}
+
+.vd-splash__logo {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    animation: vd-breathe 1.6s ease-in-out infinite;
+}
+
+.vd-splash__text {
+    margin: 0;
+    font: 500 13px/1.4 "Inter", system-ui, sans-serif;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.vd-splash__track {
+    width: 168px;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.vd-splash__track > span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    border-radius: inherit;
+    background: var(--vd-gold);
+    transform-origin: left center;
+    animation: vd-fill 1.1s var(--vd-ease) forwards;
+}
+
+@keyframes vd-breathe {
+    0%, 100% { transform: scale(1); opacity: 0.92; }
+    50% { transform: scale(1.06); opacity: 1; }
+}
+
+@keyframes vd-fill {
+    from { transform: scaleX(0.04); }
+    to { transform: scaleX(0.92); }
+}
+
+/* ---------- Navigation progress bar (sidebar / link clicks that swap content) ---------- */
+.vd-progress {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 90;
+    height: 3px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.vd-progress > span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    background: var(--vd-gold);
+    transform: scaleX(0);
+    transform-origin: left center;
+}
+
+.vd-progress.is-active {
+    opacity: 1;
+}
+
+.vd-progress.is-active > span {
+    animation: vd-progress-run 6s cubic-bezier(0.1, 0.7, 0.2, 1) forwards;
+}
+
+@keyframes vd-progress-run {
+    from { transform: scaleX(0.05); }
+    to { transform: scaleX(0.9); }
+}
+
+/* Content dims a little while the next page loads. */
+.vd-main {
+    transition: opacity 0.2s ease;
+}
+
+.vd-main.is-loading {
+    opacity: 0.6;
+}
+
+/* ---------- Page entrance (first load and every content swap) ---------- */
+@keyframes vd-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* "backwards" only: no lingering transform, so fixed dialogs stay viewport-anchored. */
+.vd-enter {
+    animation: vd-enter 0.4s var(--vd-ease) backwards;
+}
+
+/* Stagger helper: set style="--i: n" on each item. */
+@keyframes vd-rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+}
+
+.vd-rise {
+    animation: vd-rise 0.45s var(--vd-ease) backwards;
+    animation-delay: calc(var(--i, 0) * 55ms + 120ms);
+}
+
+/* Placeholder blocks while content loads (flat opacity pulse, no shimmer gradient). */
+@keyframes vd-pulse {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+}
+
+.vd-skeleton {
+    border-radius: 8px;
+    background: #efe7f0;
+    animation: vd-pulse 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vd-splash {
+        display: none;
+    }
+
+    .vd-splash__logo,
+    .vd-splash__track > span,
+    .vd-progress.is-active > span,
+    .vd-enter,
+    .vd-rise,
+    .vd-skeleton {
+        animation: none !important;
+    }
+}

@@ -1,13 +1,13 @@
 # User Management
 
 **Status:** Implemented for buyer, seller and logistics-center accounts (UI redesigned 4 October 2026; file popups added 6 October 2026; owner verification pending)  
-**Reviewed:** 6 October 2026
+**Reviewed:** 7 October 2026
 
 ## Current behavior
 
 The Admin User Management list and counts cover buyer, seller, and logistics-center accounts with `status = approved`. Their `account_status` distinguishes active, suspended, and deactivated accounts. The "Rejected users" toggle switches it to rejected (`status = disapproved`) accounts. Pending applications stay in Admin Registrations.
 
-**List (`admin.user-management.index`).** Count cards for all users, sellers, buyers, and logistics centers; selecting a card filters the list to that type. Search by name or email, a date filter, a user-type filter, and the Rejected toggle refresh the list **in place**: the browser fetches the index page and swaps only `#um-region`, which holds the table and every per-user dialog together, so the dialogs always match the visible rows. Open dialogs are closed on each refresh. Eight rows per page, a windowed page list, and the URL is kept in sync. Status pills read Active, Suspended, Deactivated, or Rejected. Selecting a row or a name opens that user's profile.
+**List (`admin.user-management.index`).** Count cards for all users, sellers, buyers, and logistics centers; selecting a card filters the list to that type. The cards use the shared `admin/partials/filter-stat-cards.blade.php` (the same look and motion as Seller Compliance) with stroke icons from `<x-admin.icon>`; the earlier `assets/icons/user-management/*-icon.svg` card images are no longer used there. Search by name or email, a date filter, a user-type filter, and the Rejected toggle refresh the list **in place**: the browser fetches the index page and swaps only `#um-region`, which holds the table and every per-user dialog together, so the dialogs always match the visible rows. Open dialogs are closed on each refresh. Eight rows per page, a windowed page list, and the URL is kept in sync. Status pills read Active, Suspended, Deactivated, or Rejected. Selecting a row or a name opens that user's profile.
 
 **Profile (modal only, never a separate page).** A left card shows the avatar initial, role, status, email, phone, business name (sellers and logistics centers), category chips colored by `Category::colors` (sellers), and Date Joined. Below it are the actions for the user's status. The right side stacks Personal Information (with the valid ID preview and enlarge viewer), Address, and, for sellers and logistics centers, Business Information. Street and house number display as one "Street / House No." line. IDs and permits open through the protected Admin document route **in the shared document popup** (no new tab); images and PDFs both display, and a missing file shows a specific reason. See [Admin document viewer](../document-viewer/spec.md).
 

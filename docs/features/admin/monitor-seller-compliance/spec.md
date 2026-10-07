@@ -1,7 +1,7 @@
 # Seller Compliance
 
-**Status:** Implemented core review actions (UI redesigned 6 October 2026; owner verification pending)  
-**Reviewed:** 6 October 2026
+**Status:** Implemented core review actions (UI redesigned 6 October 2026; seller popup added 7 October 2026; owner verification pending)  
+**Reviewed:** 7 October 2026
 
 ## Current behavior
 
@@ -15,7 +15,9 @@ Admin can browse products for review, approve, reject, or warn, inspect warnings
 
 **Overview.** Approved sellers with avatar initial, category badges, a compliance score bar (80+ green, 50–79 amber, below 50 red), warning and violation counts, a Compliant or Suspended pill, and a link to the seller in User Management. Search matches seller name or email.
 
-**Products for Review.** Only `for_review` products are listed. Search matches product name or seller name; the category filter uses the seller-registered category. Selecting a row opens the review dialog: photo gallery, price, stock, category, seller and shop, description, product information, category details and specifications, variations, video, and a sticky action bar.
+**Seller popup (Overview).** Selecting a row (or pressing Enter or Space on it) opens a popup for that seller: avatar, name, email, Compliant or Suspended pill, category badges, and a summary of products, compliance score, warnings, and violations. A **Products** tab lists the seller's latest 48 products (photo, name, category, price, stock, status) with status filter chips; a **Warnings and violations** tab lists up to 10 of each with reason, details, date, and product. Each tab has an empty state ("No products yet", "Clean record"). The popup links to the seller in User Management; the arrow at the end of the row does the same without opening the popup. Open state is `sellerId` in `scTable`, so it closes on each table swap and on Esc.
+
+**Products for Review.** Only `for_review` products are listed. Search matches product name or seller name; the category filter uses the seller-registered category. The tab shows a count of products waiting for review beside its label when above zero. Selecting a row opens the review dialog: photo gallery, price, stock, category, seller and shop, description, product information, category details and specifications, variations, video, and a sticky action bar.
 - **Approve** sets `approved` and notifies the Seller.
 - **Reject** requires a reason and details (up to 500 characters), sets `rejected`, notifies the Seller, and records a violation.
 - **Issue warning** requires a reason and details, records a warning, sets `warned`, and notifies the Seller. Every third warning also records an automatic violation.
@@ -35,6 +37,7 @@ Reject and warn drafts survive a same-tab reload for up to two hours (`data-draf
 
 - Confirm remaining action authorization, appeal, and remediation requirements; ensure rejected products cannot be sold.
 - The card counts include sellers that are not approved while the tables list approved sellers only, and "Compliant" counts sellers without violations even if they are suspended. See [Admin backend needs](../../../design/2026-10-06-admin-backend-needs.md).
+- The seller popup reads each listed seller's products, warnings, and violations inside `sellers-table.blade.php` (about five queries per row, eight rows per page), and the tab count is one query in `tabs.blade.php`. Replace them with an eager-loaded or lazily fetched response. See [Admin UI refresh backend needs](../../../design/2026-10-07-admin-ui-refresh-backend-needs.md).
 - The compliance score runs one query per row. Warnings, Violations, and Suspended Sellers have no live-update banner (Overview and Products for Review do).
 - The escalation thresholds appear only in `escalateSuspension()`; the UI describes the "every third warning" rule but does not list the 3/6/9 thresholds.
 - Verified by static review only (JavaScript syntax and Blade directive balance). No automated tests, build, or browser walkthrough were run. Owner verification is pending.
