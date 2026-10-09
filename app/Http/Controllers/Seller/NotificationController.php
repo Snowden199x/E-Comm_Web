@@ -85,7 +85,7 @@ class NotificationController extends Controller
 
             return $order ? route('seller.orders.show', $order) : route('seller.orders.index');
         }
-        if (! is_string($path) || ! preg_match('~^/seller/(dashboard|orders|products|shipments|completed-orders|feedback|messages|reports|account|notifications)(/|$)~', $path)) {
+        if (! is_string($path) || ! preg_match('~^/seller/(dashboard|orders|products|shipments|completed-orders|feedback|messages|case-messages|reports|account|notifications)(/|$)~', $path)) {
             return route('seller.notifications.index');
         }
 

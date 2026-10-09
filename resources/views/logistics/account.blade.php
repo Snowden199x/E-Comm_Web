@@ -29,6 +29,24 @@
                 <span class="lg-pill lg-pill--green" style="margin-left: auto; margin-bottom: 6px;">{{ ucfirst($user->status) }}</span>
             </div>
 
+            <div class="lg-profile__controls">
+                <form method="POST" action="{{ route('logistics.account.avatar') }}" enctype="multipart/form-data" class="lg-profile__upload">
+                    @csrf
+                    <label for="logistics-avatar">Profile photo</label>
+                    <input id="logistics-avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/webp" required>
+                    <button type="submit" class="lg-btn lg-btn--outline lg-btn--sm">Upload photo</button>
+                    @error('avatar')<p class="lg-profile__error" role="alert">{{ $message }}</p>@enderror
+                </form>
+                @if ($user->profile_picture)
+                    <form method="POST" action="{{ route('logistics.account.avatar.remove') }}">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="lg-btn lg-btn--ghost lg-btn--sm">Remove photo</button>
+                    </form>
+                @endif
+                <p class="lg-muted">JPG, PNG or WebP. Up to 2 MB.</p>
+            </div>
+
             <dl class="lg-facts">
                 <div>
                     <dt>Registered name</dt>

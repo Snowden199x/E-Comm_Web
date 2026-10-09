@@ -235,12 +235,13 @@
                                 @if ($person->phone_number)
                                     <p class="mb-3 text-xs text-gray-500">{{ $person->phone_number }}</p>
                                 @endif
-                                {{-- Email for now: starting a case conversation needs backend support (see backend notes). --}}
-                                <a href="mailto:{{ $person->email }}"
+                                @if (in_array($person->role, ['buyer', 'seller'], true))
+                                <a href="#case-message-{{ $person->id }}"
                                     class="mt-auto inline-flex h-9 w-fit items-center gap-2 rounded-lg border border-[#ddd0e0] px-3 text-xs font-medium text-[#2B1730] transition-colors duration-150 hover:bg-[#F7F1F7]
                                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
-                                    <x-admin.icon name="message" class="h-3.5 w-3.5" /> Email
+                                    <x-admin.icon name="message" class="h-3.5 w-3.5" /> Message
                                 </a>
+                                @endif
                             </div>
                         @endforeach
                     </div>
@@ -284,21 +285,55 @@
                     @endif
                 </section>
 
-                {{-- Messages (needs backend: see docs/design/2026-10-07-admin-ui-refresh-backend-needs.md) --}}
+                {{-- Case conversations are private to Admin and each participant. --}}
                 <section class="{{ $card }} cs-card" style="--i: 3" aria-labelledby="messages-title" x-data="{ who: 'all' }">
                     <h2 id="messages-title" class="mb-3 font-display text-base font-semibold text-[#2B1730]">Messages</h2>
                     <div role="tablist" aria-label="Filter messages by person" class="mb-4 flex gap-1 border-b border-[#ece4ec]">
-                        @foreach (['all' => 'All', 'buyer' => 'Buyer', 'seller' => 'Seller', 'courier' => 'Courier'] as $id => $label)
+                        @foreach (['all' => 'All', 'buyer' => 'Buyer', 'seller' => 'Seller'] as $id => $label)
                             <button type="button" role="tab" @click="who = '{{ $id }}'" :aria-selected="who === '{{ $id }}'"
                                 class="relative px-3.5 py-2 text-sm font-medium text-gray-500 transition-colors duration-150 hover:text-[#3b1735] aria-selected:text-[#2B1730]
                                        after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:origin-left after:scale-x-0 after:bg-[#2B1730] after:transition-transform after:duration-300
                                        aria-selected:after:scale-x-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#3b1735]/40">{{ $label }}</button>
                         @endforeach
                     </div>
-                    <div class="flex flex-col items-center px-4 py-10 text-center">
-                        <span class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#F1E9F1] text-[#5b2963]"><x-admin.icon name="message" class="h-5 w-5" /></span>
-                        <p class="text-sm font-medium text-[#2B1730]">No messages for this case yet</p>
-                        <p class="mt-1 max-w-xs text-xs text-gray-500">Conversations with the buyer, seller and courier will appear here once case messaging is connected.</p>
+                    @if (session('case_message_sent'))
+                        <p class="mb-4 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800" role="status">Case message sent.</p>
+                    @endif
+                    <div class="space-y-5">
+                        @foreach (collect([$complaint->complainant, $complaint->respondent])->filter()->unique('id') as $person)
+                            @continue(! in_array($person->role, ['buyer', 'seller'], true))
+                            @php $thread = $complaint->conversations->firstWhere('user_id', $person->id); @endphp
+                            <div id="case-message-{{ $person->id }}" x-show="who === 'all' || who === '{{ $person->role }}'" class="rounded-lg border border-[#ece4ec] p-4">
+                                <h3 class="text-sm font-semibold text-[#2B1730]">{{ $person->name }} <span class="font-normal text-gray-500">({{ ucfirst($person->role) }})</span></h3>
+                                @if ($thread && $thread->messages->isNotEmpty())
+                                    <div class="mt-3 max-h-72 divide-y divide-[#ece4ec] overflow-y-auto border-y border-[#ece4ec]">
+                                        @foreach ($thread->messages as $caseMessage)
+                                            <div class="py-3">
+                                                <div class="flex justify-between gap-3 text-xs text-gray-500">
+                                                    <strong class="text-[#402143]">{{ $caseMessage->sender_id === $person->id ? $person->name : 'Vendo Admin' }}</strong>
+                                                    <time datetime="{{ $caseMessage->created_at->toIso8601String() }}">{{ $caseMessage->created_at->format('M j, Y g:i A') }}</time>
+                                                </div>
+                                                <p class="mt-1 whitespace-pre-wrap break-words text-sm text-[#2B1730]">{{ $caseMessage->body }}</p>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <p class="mt-3 text-sm text-gray-500">No messages with this participant yet.</p>
+                                @endif
+                                @if ($complaint->status !== 'resolved')
+                                    <form method="POST" action="{{ route('admin.complaints.messages.store', $complaint) }}" class="mt-4 space-y-2">
+                                        @csrf
+                                        <input type="hidden" name="recipient_id" value="{{ $person->id }}">
+                                        <label for="case-message-body-{{ $person->id }}" class="block text-sm font-medium text-[#2B1730]">Send a message to {{ $person->name }}</label>
+                                        <textarea id="case-message-body-{{ $person->id }}" name="body" rows="3" required maxlength="2000" class="w-full rounded-md border-[#d9cddd] focus:border-[#805487] focus:ring-[#805487]">{{ old('recipient_id') == $person->id ? old('body') : '' }}</textarea>
+                                        @if (old('recipient_id') == $person->id) @error('body')<p class="text-sm text-red-700">{{ $message }}</p>@enderror @endif
+                                        <button type="submit" class="rounded-md bg-[#402143] px-4 py-2 text-sm font-medium text-white hover:bg-[#52245b]">Send message</button>
+                                    </form>
+                                @else
+                                    <p class="mt-3 text-xs text-gray-500">This case is resolved. Messaging is closed.</p>
+                                @endif
+                            </div>
+                        @endforeach
                     </div>
                 </section>
             </div>

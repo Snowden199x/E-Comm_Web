@@ -159,6 +159,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/{complaint}/evidence/{evidence}', [ComplaintController::class, 'evidence'])->name('evidence');
             Route::post('/{complaint}/status', [ComplaintController::class, 'updateStatus'])->name('update-status');
             Route::post('/{complaint}/decision', [ComplaintController::class, 'decide'])->name('decision');
+            Route::post('/{complaint}/messages', [\App\Http\Controllers\CaseMessageController::class, 'adminStore'])->middleware('throttle:20,1')->whereNumber('complaint')->name('messages.store');
         });
 
         Route::prefix('platform-settings')->name('platform-settings.')->group(function () {
@@ -231,7 +232,17 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/categories', [BuyerCategoryController::class, 'index'])->middleware('auth')->name('categories');
     Route::get('/products', [BuyerProductController::class, 'index'])->middleware('auth')->name('products.index');
     Route::get('/products/{product}', [BuyerProductController::class, 'show'])->middleware('auth')->name('products.show');
+    Route::get('/sellers', [BuyerSellerProfileController::class, 'index'])->middleware('auth')->name('sellers.index');
     Route::get('/sellers/{seller}', [BuyerSellerProfileController::class, 'show'])->middleware('auth')->whereNumber('seller')->name('sellers.show');
+    Route::get('/saved-items', [\App\Http\Controllers\Buyer\PersonalizationController::class, 'savedItems'])->name('saved-items.index');
+    Route::get('/case-messages/{complaint}', [\App\Http\Controllers\CaseMessageController::class, 'show'])->whereNumber('complaint')->name('case-messages.show');
+    Route::post('/case-messages/{complaint}', [\App\Http\Controllers\CaseMessageController::class, 'store'])->middleware('throttle:20,1')->whereNumber('complaint')->name('case-messages.store');
+    Route::post('/saved-items/import', [\App\Http\Controllers\Buyer\PersonalizationController::class, 'import'])->middleware('throttle:10,1')->name('saved-items.import');
+    Route::post('/saved-items/{product}', [\App\Http\Controllers\Buyer\PersonalizationController::class, 'save'])->whereNumber('product')->name('saved-items.store');
+    Route::delete('/saved-items/{product}', [\App\Http\Controllers\Buyer\PersonalizationController::class, 'remove'])->whereNumber('product')->name('saved-items.destroy');
+    Route::delete('/saved-items', [\App\Http\Controllers\Buyer\PersonalizationController::class, 'clear'])->name('saved-items.clear');
+    Route::put('/settings', [\App\Http\Controllers\Buyer\PersonalizationController::class, 'updateSettings'])->name('settings.update');
+    Route::delete('/settings', [\App\Http\Controllers\Buyer\PersonalizationController::class, 'resetSettings'])->name('settings.reset');
     Route::get('/cart', [BuyerCartController::class, 'index'])->middleware('auth')->name('cart.index');
     Route::post('/cart', [BuyerCartController::class, 'store'])->middleware('auth')->name('cart.store');
     Route::patch('/cart/{cartItem}', [BuyerCartController::class, 'update'])->middleware('auth')->name('cart.update');
@@ -316,6 +327,8 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::get('/reports/preview', [SellerReportController::class, 'preview'])->name('reports.preview');
         Route::get('/reports/download', [SellerReportController::class, 'download'])->name('reports.download');
         Route::get('/messages', [SellerMessageController::class, 'index'])->name('messages.index');
+        Route::get('/case-messages/{complaint}', [\App\Http\Controllers\CaseMessageController::class, 'show'])->whereNumber('complaint')->name('case-messages.show');
+        Route::post('/case-messages/{complaint}', [\App\Http\Controllers\CaseMessageController::class, 'store'])->middleware('throttle:20,1')->whereNumber('complaint')->name('case-messages.store');
         Route::get('/messages/customer-list', [SellerMessageController::class, 'customerList'])->name('messages.customer-list');
         Route::get('/messages/orders/{conversation}', [MarketplaceMessageController::class, 'sellerShow'])->whereNumber('conversation')->name('marketplace-messages.show');
         Route::post('/messages/orders/{conversation}', [MarketplaceMessageController::class, 'sellerStore'])->middleware('throttle:20,1')->whereNumber('conversation')->name('marketplace-messages.store');
@@ -382,6 +395,8 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
         Route::get('/reports/export', [LogisticsOperationsController::class, 'exportReport'])->name('reports.export');
         Route::get('/messages', fn () => view('logistics.placeholder', ['title' => 'Messages']))->name('messages');
         Route::get('/account', [\App\Http\Controllers\Logistics\AccountController::class, 'index'])->name('account.index');
+        Route::post('/account/avatar', [\App\Http\Controllers\Logistics\AccountController::class, 'avatar'])->name('account.avatar');
+        Route::delete('/account/avatar', [\App\Http\Controllers\Logistics\AccountController::class, 'removeAvatar'])->name('account.avatar.remove');
         Route::get('/riders/{courierDetail}/verification-documents/{document}', [VerificationDocumentController::class, 'logistics'])
             ->whereNumber('courierDetail')->whereIn('document', ['valid-id', 'drivers-license', 'or-cr'])
             ->name('riders.verification-documents.show');

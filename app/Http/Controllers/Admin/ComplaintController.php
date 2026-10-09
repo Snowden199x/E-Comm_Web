@@ -34,7 +34,7 @@ class ComplaintController extends Controller
 
     public function show(Complaint $complaint): View
     {
-        $complaint->load(['order.items.product.images', 'complainant', 'respondent', 'evidences', 'activities']);
+        $complaint->load(['order.items.product.images', 'complainant', 'respondent', 'evidences', 'activities', 'conversations.messages.sender']);
 
         return view('admin.complaints.show', compact('complaint'));
     }
@@ -50,24 +50,40 @@ class ComplaintController extends Controller
 
     private function filteredComplaints(Request $request)
     {
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'type' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', 'in:open,in_review,resolved'],
+            'kind' => ['nullable', 'in:complaint,user_report'],
+            'date_filter' => ['nullable', 'in:all,today,week,month,custom'],
+            'custom_date' => ['nullable', 'date'],
+        ]);
         $query = Complaint::with(['order', 'complainant', 'respondent']);
 
-        if ($request->filled('search')) {
-            $search = $request->search;
+        if (filled($filters['search'] ?? null)) {
+            $search = trim($filters['search']);
             $query->where(fn($q) => $q->whereHas('complainant', fn($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
                 ->orWhereHas('respondent', fn($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")));
         }
 
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
+        if (filled($filters['type'] ?? null)) {
+            $query->where('type', $filters['type']);
         }
 
-        $filter = $request->get('date_filter', 'all');
+        if (filled($filters['status'] ?? null)) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (filled($filters['kind'] ?? null)) {
+            $query->where('kind', $filters['kind']);
+        }
+
+        $filter = $filters['date_filter'] ?? 'all';
         match ($filter) {
             'today' => $query->whereDate('created_at', now()->toDateString()),
             'week' => $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]),
             'month' => $query->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()]),
-            'custom' => $request->filled('custom_date') ? $query->whereDate('created_at', $request->custom_date) : null,
+            'custom' => filled($filters['custom_date'] ?? null) ? $query->whereDate('created_at', $filters['custom_date']) : null,
             default => null,
         };
 

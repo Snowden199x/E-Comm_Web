@@ -1,9 +1,8 @@
 {{--
-    Shop search (new page). Needs the route buyer.sellers.index and a controller method that passes:
+    Shop search. BuyerSellerProfileController@index passes:
       $sellers  paginator of approved, active seller Users with sellerDetail loaded
       $search   the search text (string, may be empty)
-    Optional: $seller->approved_products_count (withCount) to show how many products each shop sells.
-    See the backend note. The header search switches to "Shops" and sends here once the route exists.
+    $seller->approved_products_count is eager-counted for each shop.
 --}}
 @php
     use Illuminate\Support\Facades\Storage;

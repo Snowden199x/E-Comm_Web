@@ -13,7 +13,7 @@ Shows platform order/sales/user counts, a six-week summary, pending Buyer/Seller
 
 Confirm whether gross sales should include cancelled, returned, or unpaid orders; use shared reporting definitions. The week-over-week change and the completed/returned rates inherit whatever definition that review settles on.
 
-- The "Needs your attention" counts are read inside `dashboard.blade.php` (the view uses `$attention` if the controller passes it). Move them into `DashboardController`. See [Admin UI refresh backend needs](../../../design/2026-10-07-admin-ui-refresh-backend-needs.md).
+- `DashboardController` now supplies the four "Needs your attention" counts; the view renders that data. Reporting definitions still need review. See the [7 October frontend pull review](../../../design/2026-10-07-pulled-frontend-review.md).
 - Verified by static review only (JavaScript syntax and Blade directive balance). No automated tests, build, or browser walkthrough were run. Owner verification is pending.
 
 ## Source evidence

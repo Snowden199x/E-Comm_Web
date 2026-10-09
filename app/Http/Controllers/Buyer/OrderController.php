@@ -35,7 +35,7 @@ class OrderController extends Controller
     public function cancel(Request $request, int $order, OrderCancellationService $cancellations)
     {
         $data = $request->validate([
-            'expected_status' => ['required', Rule::in(OrderCancellationService::CANCELLABLE_STATUSES)],
+            'expected_status' => ['required', Rule::in(OrderCancellationService::BUYER_CANCELLABLE_STATUSES)],
             'reason' => ['required', Rule::in(array_keys(OrderCancellationService::BUYER_REASONS))],
             'reason_details' => ['required_if:reason,other', 'nullable', 'string', 'max:450'],
         ]);

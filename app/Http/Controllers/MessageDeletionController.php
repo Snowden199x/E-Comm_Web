@@ -15,6 +15,7 @@ class MessageDeletionController extends Controller
     {
         $user = $request->user('admin') ?? $request->user();
         abort_unless($user && $user->role === 'admin', 404);
+        abort_unless($conversation->complaint_id === null, 404);
 
         $paths = DB::transaction(function () use ($conversation) {
             $paths = $conversation->messages()->with('attachments')->get()

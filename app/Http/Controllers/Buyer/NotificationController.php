@@ -85,7 +85,7 @@ class NotificationController extends Controller
     {
         $path = parse_url((string) $notification->link, PHP_URL_PATH);
         $query = parse_url((string) $notification->link, PHP_URL_QUERY);
-        if (! is_string($path) || ! preg_match('~^/buyer/(dashboard|orders|products|sellers|messages|account|notifications)(/|$)~', $path)) {
+        if (! is_string($path) || ! preg_match('~^/buyer/(dashboard|orders|products|sellers|messages|case-messages|account|notifications)(/|$)~', $path)) {
             return route('buyer.notifications.index');
         }
         return url($path.($query ? '?'.$query : ''));

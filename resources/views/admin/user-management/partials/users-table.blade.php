@@ -75,7 +75,15 @@
                                    focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#3b1735]/40">
                             <td class="px-5 py-3">
                                 <div class="flex items-center gap-3">
-                                    <x-admin.avatar :user="$u" />
+                                    @if ($u->profile_picture)
+                                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($u->profile_picture) }}" alt="" loading="lazy"
+                                            class="h-9 w-9 flex-shrink-0 rounded-full bg-[#EFE4F1] object-cover">
+                                    @else
+                                        <span aria-hidden="true"
+                                            class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1] text-[13px] font-semibold text-[#5b2963]">
+                                            {{ strtoupper(mb_substr($u->name, 0, 1)) }}
+                                        </span>
+                                    @endif
                                     <button type="button" aria-haspopup="dialog" @click.stop="openId = {{ $u->id }}"
                                         class="max-w-[220px] truncate rounded text-left font-medium text-[#2B1730] hover:text-[#3b1735] hover:underline
                                                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">

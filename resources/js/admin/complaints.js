@@ -2,9 +2,7 @@
 // refresh only the table region (the existing admin.complaints.table route).
 // Imported from resources/js/admin/layout.js so it registers before Alpine starts.
 //
-// status and kind are sent as query parameters. Until ComplaintController::filteredComplaints()
-// honours them (see backend notes), the rows on the current page are also filtered here,
-// so the tabs still behave sensibly instead of doing nothing.
+// status and kind are applied by ComplaintController before pagination.
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('casesPage', (config = {}) => {
@@ -25,7 +23,7 @@ document.addEventListener('alpine:init', () => {
 
             drawerId: null, // case id (or 'sample') whose drawer is open
             sample: false, // sample case preview is shown
-            clientEmpty: false, // every row on this page is hidden by the status/kind tabs
+            clientEmpty: false,
 
             init() {
                 this.$nextTick(() => this.clientFilter());
@@ -62,7 +60,7 @@ document.addEventListener('alpine:init', () => {
                 return p;
             },
 
-            // Hides rows that do not match the status/kind tabs (fallback until the server does it).
+            // Keeps the visible rows aligned with the active controls during partial refresh.
             clientFilter() {
                 const rows = this.$refs.region ? this.$refs.region.querySelectorAll('[data-case-row]') : [];
                 let visible = 0;

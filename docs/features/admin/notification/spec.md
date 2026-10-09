@@ -4,6 +4,7 @@
 **Reviewed:** 4 October 2026
 
 Admin notifications use records with `user_id = null`. Buyer- and seller-targeted notifications are excluded from the admin dashboard, bell and inbox. Admin receives notifications for new buyer, seller, and Logistics Center registrations; new product submissions and resubmissions for review; account reports submitted through `UserReportController`; product-review reports; and incoming Buyer/Seller support conversations or messages. The Logistics Center registration notification opens Registrations with the Logistics Center filter selected. A product submission notification opens Products for Review filtered to the product name. Saving a product as a draft does not notify Admin. Rider applications notify the assigned Logistics Center, which owns rider approval.
+Admin also receives a platform notification when an approved Buyer, Seller, or Logistics Center replaces or removes a profile photo. Its link filters User Management to that account's role and email; the current image is visible in the list and profile modal. A no-op removal does not notify Admin. The notification records the event time but does not retain the old image.
 
 The Admin complaints screen has status and decision actions, but this review found no Buyer/Seller order-complaint submission route that creates a standard complaint record. The existing “Raise a Concern” support flow creates a support conversation and does notify Admin. A separate order-complaint intake event will need to create a complaint and notification if that workflow is added.
 

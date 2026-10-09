@@ -25,6 +25,7 @@ Each notification should link to the relevant seller-owned order, product, revie
 | Low or out of stock | Implemented | Product detail; emitted when stock crosses the threshold. |
 | Shipment status or delivery outcome | Implemented | Opens the seller-owned order in the full Orders workspace, including scan history. Existing notification links to Shipments/Delivered Orders detail are redirected to that order. |
 | Admin support reply | Implemented | Opens the seller's support thread. |
+| Admin case message | Implemented | Opens the seller's private case thread after participant authorization. |
 
 Stock and shipment events are emitted on changes rather than page reads. A stable event key for broader retry deduplication remains future work. Notification text avoids private buyer contact information. Email and push settings can follow when those channels exist.
 

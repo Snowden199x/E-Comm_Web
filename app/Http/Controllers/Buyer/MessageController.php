@@ -56,7 +56,7 @@ class MessageController extends Controller
 
     public function close(Conversation $conversation)
     {
-        abort_unless($conversation->user_id === auth()->id(), 403);
+        abort_unless($conversation->user_id === auth()->id() && $conversation->complaint_id === null, 404);
 
         $conversation->update(['status' => 'closed']);
 
@@ -65,7 +65,7 @@ class MessageController extends Controller
 
     public function fetch(Conversation $conversation)
     {
-        abort_unless($conversation->user_id === auth()->id(), 403);
+        abort_unless($conversation->user_id === auth()->id() && $conversation->complaint_id === null, 404);
 
         $conversation->load('messages.attachments', 'messages.sender');
 
@@ -88,7 +88,7 @@ class MessageController extends Controller
 
     public function store(Request $request, Conversation $conversation)
     {
-        abort_unless($conversation->user_id === auth()->id(), 403);
+        abort_unless($conversation->user_id === auth()->id() && $conversation->complaint_id === null, 404);
         abort_if($conversation->status === 'closed', 400, 'This conversation is closed.');
 
         $request->validate([
