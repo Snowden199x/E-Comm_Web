@@ -43,19 +43,19 @@
         <div class="ops-bottom-panels">
             <section class="ops-card"><header class="ops-card-head"><h2>Delivery Performance</h2></header>
                 @php
-                    $outcomeTotal = array_sum($outcomes);
-                    $colors = ['delivered' => '#187744', 'returned' => '#bc7a18', 'cancelled' => '#b53842', 'delivery_failed' => '#81558b'];
+                    // Returns are no longer surfaced to sellers (owner decision, 7 Oct 2026).
+                    $outcomeTotal = $outcomes['delivered'] + $outcomes['cancelled'] + $outcomes['delivery_failed'];
+                    $colors = ['delivered' => '#187744', 'cancelled' => '#b53842', 'delivery_failed' => '#81558b'];
                     $deliveredEnd = $outcomeTotal ? round($outcomes['delivered'] / $outcomeTotal * 100, 1) : 0;
-                    $returnedEnd = $outcomeTotal ? round(($outcomes['delivered'] + $outcomes['returned']) / $outcomeTotal * 100, 1) : 0;
-                    $cancelledEnd = $outcomeTotal ? round(($outcomes['delivered'] + $outcomes['returned'] + $outcomes['cancelled']) / $outcomeTotal * 100, 1) : 0;
+                    $cancelledEnd = $outcomeTotal ? round(($outcomes['delivered'] + $outcomes['cancelled']) / $outcomeTotal * 100, 1) : 0;
                     $chart = $outcomeTotal
-                        ? "conic-gradient(#187744 0 {$deliveredEnd}%, #bc7a18 {$deliveredEnd}% {$returnedEnd}%, #b53842 {$returnedEnd}% {$cancelledEnd}%, #81558b {$cancelledEnd}% 100%)"
+                        ? "conic-gradient(#187744 0 {$deliveredEnd}%, #b53842 {$deliveredEnd}% {$cancelledEnd}%, #81558b {$cancelledEnd}% 100%)"
                         : 'conic-gradient(#e1dce2 0 100%)';
                 @endphp
                 <div class="ops-chart-row">
                     <div class="ops-donut" style="--chart: {{ $chart }}"><span><strong>{{ $stats['completion_rate'] }}%</strong><small>Delivered</small></span></div>
                     <ul class="ops-chart-key">
-                        @foreach(['delivered' => 'Delivered', 'returned' => 'Returned', 'cancelled' => 'Cancelled', 'delivery_failed' => 'Failed Delivery'] as $key => $label)
+                        @foreach(['delivered' => 'Delivered', 'cancelled' => 'Cancelled', 'delivery_failed' => 'Failed Delivery'] as $key => $label)
                             <li><span><i style="background:{{ $colors[$key] }}"></i><span><strong>{{ $label }}</strong><small>{{ number_format($outcomes[$key]) }} · {{ $outcomeTotal ? round($outcomes[$key] / $outcomeTotal * 100) : 0 }}%</small></span></span></li>
                         @endforeach
                     </ul>

@@ -4,7 +4,7 @@
     <div class="sw-stat"><span>Units sold</span><strong>{{ number_format($stats['units']) }}</strong></div>
     <div class="sw-stat"><span>Average order value</span><strong>{{ $stats['average'] === null ? '—' : '₱'.number_format($stats['average'], 2) }}</strong></div>
 </div>
-<div class="sw-outcomes"><span>Other outcomes in this period:</span><span>Returned {{ $outcomes['returned'] }}</span><span>Cancelled {{ $outcomes['cancelled'] }}</span><span>Failed delivery {{ $outcomes['delivery_failed'] }}</span></div>
+<div class="sw-outcomes"><span>Other outcomes in this period:</span><span>Cancelled {{ $outcomes['cancelled'] }}</span><span>Failed delivery {{ $outcomes['delivery_failed'] }}</span></div>
 <div class="sw-grid">
     <section class="sw-card"><h2>Sales over time</h2><p class="sw-muted">Based on recorded delivery times.</p>
         <div class="sw-bars" role="img" aria-label="Sales by {{ $period === 'today' ? 'hour' : ($period === 'year' ? 'month' : 'day') }}">

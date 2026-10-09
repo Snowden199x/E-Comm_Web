@@ -32,6 +32,7 @@ document.addEventListener('alpine:init', () => {
 
             // Dialog state. The dialogs themselves are rendered inside the swapped region.
             sellerId: null, // seller whose products popup is open (Overview tab)
+            detailId: null, // warning / violation / suspended-seller row whose details popup is open
             openProductId: null,
             rejectId: null,
             warnId: null,
@@ -39,11 +40,11 @@ document.addEventListener('alpine:init', () => {
             confirmation: config.confirmation || null,
 
             get anyDialog() {
-                return !!(this.sellerId || this.openProductId || this.rejectId || this.warnId || this.activateId || this.confirmation);
+                return !!(this.sellerId || this.detailId || this.openProductId || this.rejectId || this.warnId || this.activateId || this.confirmation);
             },
 
             closeDialogs() {
-                this.sellerId = this.openProductId = this.rejectId = this.warnId = this.activateId = null;
+                this.sellerId = this.detailId = this.openProductId = this.rejectId = this.warnId = this.activateId = null;
                 this.confirmation = null;
             },
 

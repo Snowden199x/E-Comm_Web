@@ -430,3 +430,4 @@ Route::post('/forgot-password', [UserPasswordResetLinkController::class, 'store'
 Route::get('/reset-password/{token}', [UserNewPasswordController::class, 'create'])->name('password.reset');
 Route::post('/reset-password', [UserNewPasswordController::class, 'store'])->name('password.store');
 require __DIR__.'/auth.php';
+require __DIR__.'/logistics_preview.php';

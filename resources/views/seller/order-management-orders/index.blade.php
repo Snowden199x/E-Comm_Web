@@ -7,12 +7,12 @@
     ];
     $tabs = [
         ['all', 'All'], ['new', 'New'], ['pack', 'To Pack'], ['pickup', 'Ready for Pickup'], ['pending', 'Pending Delivery'],
-        ['completed', 'Delivered / Completed'], ['cancelled', 'Cancelled'], ['returned', 'Returned'],
+        ['completed', 'Delivered / Completed'], ['cancelled', 'Cancelled'],
     ];
     $chevron = '<svg class="omo-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 @endphp
 <x-seller.layout title="Orders">
-    @vite('resources/css/seller/order-management-orders.css')
+    @vite(['resources/css/seller/order-management-orders.css', 'resources/css/seller/orders-enhance.css'])
 
     <div class="omo-content" id="omoApp" data-endpoint="{{ route('seller.orders.index') }}" data-order-base="{{ url('/seller/orders') }}" data-today="{{ now()->toDateString() }}">
         <p id="omoError" role="alert" class="omo-error" hidden></p>

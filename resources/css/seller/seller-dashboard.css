@@ -64,7 +64,7 @@
     transition: width .18s ease;
 }
 
-.sd-sidebar:hover,
+.sd-sidebar:not(.sd-sidebar--settle):hover,
 body.sd-sidebar-pinned .sd-sidebar {
     width: var(--sidebar-w);
     box-shadow: 4px 0 24px rgba(20, 5, 25, .28);
@@ -96,9 +96,9 @@ body.sd-sidebar-pinned .sd-sidebar { box-shadow: none; }
 .sd-brand__icon { opacity: 1; transition: opacity .12s ease; }
 .sd-brand__full { opacity: 0; transition: opacity .12s ease; }
 
-.sd-sidebar:hover .sd-brand__icon,
+.sd-sidebar:not(.sd-sidebar--settle):hover .sd-brand__icon,
 body.sd-sidebar-pinned .sd-brand__icon { opacity: 0; }
-.sd-sidebar:hover .sd-brand__full,
+.sd-sidebar:not(.sd-sidebar--settle):hover .sd-brand__full,
 body.sd-sidebar-pinned .sd-brand__full { opacity: 1; }
 
 .sd-nav { display: flex; flex-direction: column; justify-content: center; gap: 6px; flex: 1; }
@@ -132,7 +132,7 @@ body.sd-sidebar-pinned .sd-brand__full { opacity: 1; }
     opacity: 0;
     transition: opacity .1s ease;
 }
-.sd-sidebar:hover .sd-nav__item span,
+.sd-sidebar:not(.sd-sidebar--settle):hover .sd-nav__item span,
 body.sd-sidebar-pinned .sd-nav__item span { opacity: 1; }
 
 .sd-nav__item:hover { background: rgba(255, 255, 255, .08); color: #fff; }
@@ -146,7 +146,7 @@ body.sd-sidebar-pinned .sd-nav__item span { opacity: 1; }
 .sd-nav__item.is-active img { opacity: 1; }
 
 .sd-nav__chevron { margin-left: auto; flex: none; opacity: 0; transition: opacity .1s ease, transform .2s; }
-.sd-sidebar:hover .sd-nav__chevron,
+.sd-sidebar:not(.sd-sidebar--settle):hover .sd-nav__chevron,
 body.sd-sidebar-pinned .sd-nav__chevron { opacity: 1; }
 .sd-nav__toggle[aria-expanded="false"] .sd-nav__chevron { transform: rotate(-90deg); }
 
@@ -163,7 +163,7 @@ body.sd-sidebar-pinned .sd-nav__chevron { opacity: 1; }
 /* Collapsed rail: submenu stays fully collapsed.
    Expands automatically once the sidebar itself is hovered/pinned open
    (hovering the Order Management row counts, since it's inside the sidebar). */
-.sd-sidebar:hover .sd-submenu,
+.sd-sidebar:not(.sd-sidebar--settle):hover .sd-submenu,
 body.sd-sidebar-pinned .sd-submenu {
     max-height: 340px;
     opacity: 1;
@@ -555,7 +555,7 @@ body.sd-sidebar-pinned .sd-topbar__menu { background: rgba(0, 0, 0, .06); }
         transition: transform .25s ease;
     }
     body.sd-sidebar-open .sd-sidebar { transform: none; box-shadow: 0 0 40px rgba(0, 0, 0, .3); }
-    .sd-sidebar:hover { width: var(--sidebar-w); }
+    .sd-sidebar:not(.sd-sidebar--settle):hover { width: var(--sidebar-w); }
     .sd-sidebar .sd-brand__icon { display: none; }
     .sd-sidebar .sd-brand__full { opacity: 1; }
     .sd-sidebar .sd-nav__item span,
@@ -617,7 +617,7 @@ body.sd-sidebar-pinned .sd-topbar__menu { background: rgba(0, 0, 0, .06); }
    EXPANDED SIDEBAR LOGO
    ========================================= */
 
-.sd-sidebar:hover .sd-brand__full,
+.sd-sidebar:not(.sd-sidebar--settle):hover .sd-brand__full,
 body.sd-sidebar-pinned .sd-brand__full {
     height: 70px !important;
     width: auto !important;
@@ -806,3 +806,7 @@ body.sd-sidebar-pinned .sd-brand__full {
 .sd-body .db-stats { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: #d8cddc transparent; }
 .sd-body .db-stat { flex: 0 0 218px; scroll-snap-align: start; }
 }
+/* Inline SVG nav icons (Vouchers) sized like the PNG icons */
+.sd-nav__svg { width: 22px; height: 22px; flex: none; color: #fff; }
+.sd-nav__svg { opacity: .55; transition: opacity .15s; }
+.sd-nav__item:hover .sd-nav__svg, .sd-nav__item.is-active .sd-nav__svg { opacity: 1; }

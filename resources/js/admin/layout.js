@@ -3,6 +3,7 @@
 import './document-viewer.js';
 import './seller-compliance.js';
 import './complaints.js';
+import './reports.js';
 import './motion.js';
 
 const { body } = document;

@@ -225,7 +225,7 @@
                         @foreach ([$complaint->complainant, $complaint->respondent] as $person)
                             <div class="flex flex-col rounded-xl border border-[#ece4ec] p-4">
                                 <div class="mb-3 flex items-start gap-3">
-                                    <span aria-hidden="true" class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#E4E0E4] text-sm font-semibold text-[#5b2963]">{{ strtoupper(mb_substr($person->name, 0, 1)) }}</span>
+                                    <x-admin.avatar :user="$person" size="h-11 w-11" text="text-sm" />
                                     <div class="min-w-0 leading-tight">
                                         <p class="text-xs text-gray-500">{{ $roleLabel($person->role) }}</p>
                                         <p class="text-[15px] font-semibold text-[#2B1730] [overflow-wrap:anywhere]">{{ $person->name }}</p>

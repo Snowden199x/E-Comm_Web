@@ -9,6 +9,8 @@
     $role = $user->role;
     $roleLabel = ucwords(str_replace('_', ' ', $role));
     $hasBusiness = in_array($role, ['seller', 'logistics_center'], true);
+    // Two IDs (Buyer, secondary ID option): the ID block goes full width under the rows so both are readable.
+    $hasSecondId = $role === 'buyer' && $details && ! empty($details->valid_id_path_2);
     $titleId = 'profile-title-' . $user->id;
     $dash = '—';
 
@@ -85,10 +87,7 @@
             <div class="space-y-4">
                 <aside class="overflow-hidden rounded-2xl border border-[#ece4ec] bg-white">
                     <div class="flex items-center gap-4 border-b border-[#ece4ec] p-5">
-                        <span aria-hidden="true"
-                            class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1] text-xl font-semibold text-[#5b2963]">
-                            {{ strtoupper(mb_substr($user->name, 0, 1)) }}
-                        </span>
+                        <x-admin.avatar :user="$user" size="h-16 w-16" text="text-xl" />
                         <div class="min-w-0">
                             <p class="truncate text-base font-semibold text-[#2B1730]">{{ $user->name }}</p>
                             <p class="mt-0.5 flex items-center gap-1.5 text-[13px] text-gray-600">
@@ -216,7 +215,7 @@
                             <img src="{{ asset('assets/icons/user-management/personal-information-icon.svg') }}" alt="" class="h-5 w-5">
                             Personal Information
                         </h4>
-                        <div class="grid gap-6 md:grid-cols-[minmax(0,1fr)_240px]">
+                        <div class="grid gap-6 {{ $hasSecondId ? '' : 'md:grid-cols-[minmax(0,1fr)_240px]' }}">
                             <dl class="grid grid-cols-[110px_minmax(0,1fr)] content-start gap-x-4 gap-y-3.5">
                                 @foreach ($personalRows as [$label, $value])
                                     <dt class="{{ $dtClass }}">{{ $label }}</dt>
