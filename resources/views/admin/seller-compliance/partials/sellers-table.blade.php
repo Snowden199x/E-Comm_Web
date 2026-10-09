@@ -44,9 +44,7 @@
                                    focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#3b1735]/40">
                             <td class="px-5 py-3">
                                 <div class="flex items-center gap-3">
-                                    <span aria-hidden="true" class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1] text-[13px] font-semibold text-[#5b2963]">
-                                        {{ strtoupper(mb_substr($seller->name, 0, 1)) }}
-                                    </span>
+                                    <x-admin.avatar :user="$seller" />
                                     <div class="min-w-0">
                                         <p class="max-w-[220px] truncate font-medium text-[#2B1730]" title="{{ $seller->name }}">{{ $seller->name }}</p>
                                         <p class="max-w-[220px] truncate text-xs text-gray-500" title="{{ $seller->email }}">{{ $seller->email }}</p>
@@ -148,9 +146,7 @@
 
             {{-- Header --}}
             <div class="flex items-start gap-4 border-b border-[#ece4ec] px-5 py-4 sm:px-6">
-                <span aria-hidden="true" class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1] text-lg font-semibold text-[#5b2963]">
-                    {{ strtoupper(mb_substr($seller->name, 0, 1)) }}
-                </span>
+                <x-admin.avatar :user="$seller" size="h-12 w-12" text="text-lg" />
                 <div class="min-w-0 flex-1">
                     <h3 id="sc-seller-title-{{ $seller->id }}" class="font-display text-lg font-semibold leading-tight text-[#2B1730] [overflow-wrap:anywhere]">{{ $seller->name }}</h3>
                     <p class="text-sm text-gray-500 [overflow-wrap:anywhere]">{{ $seller->email }}</p>
@@ -185,6 +181,7 @@
                         <p class="text-xl font-semibold tabular-nums {{ $tone }}">{{ $value }}</p>
                     </div>
                 @endforeach
+                <div class="col-span-2 sm:col-span-4">@include('admin.seller-compliance.partials.score-note')</div>
             </div>
 
             {{-- Tabs --}}

@@ -10,6 +10,8 @@
     $role = $user->role;
     $roleLabel = ucwords(str_replace('_', ' ', $role));
     $hasBusiness = in_array($role, ['seller', 'logistics_center'], true);
+    // Two IDs (Buyer, secondary ID option): the ID block goes full width under the rows so both are readable.
+    $hasSecondId = $role === 'buyer' && $details && ! empty($details->valid_id_path_2);
     $uid = 'rg' . $user->id; // unique ids: the Dashboard renders several of these on one page
 
     $ext = fn (?string $path, string $fallback) => strtolower(pathinfo((string) $path, PATHINFO_EXTENSION)) ?: $fallback;
@@ -85,10 +87,7 @@
     {{-- ============ Profile card ============ --}}
     <aside class="overflow-hidden rounded-2xl border border-[#ece4ec] bg-white lg:sticky lg:top-6">
         <div class="flex items-center gap-4 border-b border-[#ece4ec] p-5">
-            <span aria-hidden="true"
-                class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1] text-xl font-semibold text-[#5b2963]">
-                {{ strtoupper(mb_substr($user->name, 0, 1)) }}
-            </span>
+            <x-admin.avatar :user="$user" size="h-16 w-16" text="text-xl" />
             <div class="min-w-0">
                 <p class="truncate text-base font-semibold text-[#2B1730]">{{ $user->name }}</p>
                 <p class="text-[13px] text-gray-500">{{ $roleLabel }} Applicant</p>
@@ -175,7 +174,7 @@
                         <img src="{{ asset('assets/icons/registration/personal-information-icon.svg') }}" alt="" class="h-5 w-5">
                         Personal Information
                     </h3>
-                    <div class="grid gap-6 md:grid-cols-[minmax(0,1fr)_260px]">
+                    <div class="grid gap-6 {{ $hasSecondId ? '' : 'md:grid-cols-[minmax(0,1fr)_260px]' }}">
                         <dl class="grid grid-cols-[110px_minmax(0,1fr)] content-start gap-x-4 gap-y-3.5">
                             @foreach ($personalRows as [$label, $value])
                                 <dt class="{{ $dtClass }}">{{ $label }}</dt>
@@ -195,7 +194,7 @@
                         <img src="{{ asset('assets/icons/registration/address-icon.svg') }}" alt="" class="h-5 w-5">
                         Address
                     </h3>
-                    <div class="grid gap-6 md:grid-cols-[minmax(0,1fr)_260px]">
+                    <div class="grid gap-6 {{ $hasSecondId ? '' : 'md:grid-cols-[minmax(0,1fr)_260px]' }}">
                         <dl class="grid grid-cols-[130px_minmax(0,1fr)] content-start gap-x-4 gap-y-3.5">
                             @foreach ($addressRows as [$label, $value])
                                 <dt class="{{ $dtClass }}">{{ $label }}</dt>

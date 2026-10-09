@@ -44,7 +44,7 @@
     @else
         <div class="overflow-x-auto thin-scroll">
             <table class="w-full min-w-[820px] text-left text-sm">
-                <caption class="sr-only">Pending registrations</caption>
+                <caption class="sr-only">Pending registrations. Select a row to review the application.</caption>
                 <thead>
                     <tr class="border-b border-[#ece4ec] bg-[#FBF8FB] text-[13px] text-gray-500">
                         <th scope="col" class="px-5 py-3 font-medium">Applicant</th>
@@ -57,13 +57,17 @@
                 </thead>
                 <tbody class="divide-y divide-[#f3edf4]">
                     @foreach ($registrations as $reg)
-                        <tr style="--i: {{ $loop->index }}" class="transition-colors duration-150 hover:bg-[#FBF8FB]">
+                        {{-- The whole row opens the application. Clicks on the name link or the View button keep their own behavior;
+                             the row click simply triggers the View link so the same in-app navigation (x-target) runs. --}}
+                        <tr style="--i: {{ $loop->index }}" tabindex="0"
+                            aria-label="Review application from {{ $reg->name }}"
+                            @click="if (!$event.target.closest('a, button')) $el.querySelector('[data-open-application]').click()"
+                            @keydown.enter.self="$el.querySelector('[data-open-application]').click()"
+                            class="cursor-pointer transition-colors duration-150 hover:bg-[#FBF8FB] focus-visible:bg-[#FBF8FB]
+                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#3b1735]/40">
                             <td class="px-5 py-3">
                                 <div class="flex items-center gap-3">
-                                    <span aria-hidden="true"
-                                        class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1] text-[13px] font-semibold text-[#5b2963]">
-                                        {{ strtoupper(mb_substr($reg->name, 0, 1)) }}
-                                    </span>
+                                    <x-admin.avatar :user="$reg" />
                                     <a href="{{ route('admin.registrations.show', $reg) }}" x-target.push="main-content sidebar"
                                         class="max-w-[220px] truncate font-medium text-[#2B1730] hover:text-[#3b1735] hover:underline">
                                         {{ $reg->name }}
@@ -79,7 +83,7 @@
                             <td class="whitespace-nowrap px-4 py-3 text-gray-600">{{ $reg->phone_number ?? '—' }}</td>
                             <td class="whitespace-nowrap px-4 py-3 text-gray-600">{{ $reg->created_at->format('M j, Y') }}</td>
                             <td class="px-5 py-3 text-right">
-                                <a href="{{ route('admin.registrations.show', $reg) }}" x-target.push="main-content sidebar"
+                                <a href="{{ route('admin.registrations.show', $reg) }}" x-target.push="main-content sidebar" data-open-application
                                     aria-label="View application from {{ $reg->name }}"
                                     class="inline-flex h-8 items-center rounded-full border border-[#cdbbd2] px-4 text-[13px] font-medium text-[#3b1735]
                                            transition duration-200 hover:bg-[#3b1735] hover:text-white active:scale-95

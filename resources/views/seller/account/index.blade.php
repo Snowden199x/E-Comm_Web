@@ -33,6 +33,7 @@
                 <a class="sw-button sw-button--outline" href="{{ route('seller.messages.index') }}">Contact support</a>
             </section>
         </div>
+        @include('seller.account.partials.categories')
         <x-account-policies :policies="$policies" />
         <section class="sw-card sw-security"><h2>Change password</h2><form class="sw-form" method="POST" action="{{ route('seller.account.password') }}">@csrf @method('PATCH')<label>Current password<input type="password" name="current_password" autocomplete="current-password" required></label><label>New password<input type="password" name="password" autocomplete="new-password" required></label><label>Confirm new password<input type="password" name="password_confirmation" autocomplete="new-password" required></label><p class="sw-muted">Use at least 8 characters with upper and lower case letters, a number and a symbol.</p><button class="sw-button" type="submit">Update password</button></form></section>
     </section>

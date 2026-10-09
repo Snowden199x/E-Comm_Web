@@ -8,6 +8,11 @@
         $initialType = request()->string('user_type', 'all')->toString();
         $initialType = in_array($initialType, ['all', 'seller', 'buyer', 'logistics_center'], true) ? $initialType : 'all';
 
+        // One Status filter replaces the old "Rejected users" toggle. "rejected" still sends the existing
+        // `rejected=1` parameter; active / suspended / deactivated send `account_status` (see the backend notes).
+        $initialStatus = $showRejected ? 'rejected' : request()->string('account_status', 'all')->toString();
+        $initialStatus = in_array($initialStatus, ['all', 'active', 'suspended', 'deactivated', 'rejected'], true) ? $initialStatus : 'all';
+
         $cards = [
             ['key' => 'all', 'label' => 'Total Users', 'value' => $stats['total_users'], 'icon' => 'users', 'tone' => 'purple'],
             ['key' => 'seller', 'label' => 'Sellers', 'value' => $stats['sellers'], 'icon' => 'store', 'tone' => 'plum'],
@@ -24,7 +29,12 @@
         q: @js($initialSearch),
         date: @js($initialDate),
         type: @js($initialType),
-        rejected: {{ $showRejected ? 'true' : 'false' }},
+        status: @js($initialStatus),
+        statusOpen: false,
+        // Set to true once UserManagementController::filteredUsers() honors `account_status`
+        // (docs/design/2026-10-07-admin-uiux-backend-needs.md). Until then the Status filter for
+        // Active / Suspended / Deactivated can only hide rows on the page that is showing.
+        serverStatusFilter: false,
         page: {{ (int) $users->currentPage() }},
         loading: false,
         failed: false,
@@ -38,6 +48,33 @@
             { v: 'buyer', l: 'Buyers' },
             { v: 'logistics_center', l: 'Logistics centers' },
         ],
+        statuses: [
+            { v: 'all', l: 'All statuses', dot: 'bg-gray-300' },
+            { v: 'active', l: 'Active', dot: 'bg-green-500' },
+            { v: 'suspended', l: 'Suspended', dot: 'bg-red-500' },
+            { v: 'deactivated', l: 'Deactivated', dot: 'bg-[#d9826b]' },
+            { v: 'rejected', l: 'Rejected', dot: 'bg-orange-500' },
+        ],
+
+        get rejected() {
+            return this.status === 'rejected';
+        },
+        get statusLabel() {
+            const s = this.statuses.find(s => s.v === this.status);
+            return s ? s.l : 'All statuses';
+        },
+        get statusDot() {
+            const s = this.statuses.find(s => s.v === this.status);
+            return s ? s.dot : 'bg-gray-300';
+        },
+        // True when the Status filter can only act on the rows already on screen.
+        get statusPageOnly() {
+            return !this.serverStatusFilter && ['active', 'suspended', 'deactivated'].includes(this.status);
+        },
+        // Row visibility. Once the server filters by status every row matches, so this is always true.
+        statusMatch(state) {
+            return !this.statusPageOnly || state === this.status;
+        },
 
         get typeLabel() {
             const t = this.types.find(t => t.v === this.type);
@@ -49,7 +86,7 @@
             return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         },
         get filtered() {
-            return this.q.trim() !== '' || this.date !== '' || this.type !== 'all';
+            return this.q.trim() !== '' || this.date !== '' || this.type !== 'all' || this.status !== 'all';
         },
 
         params() {
@@ -57,7 +94,8 @@
             if (this.q.trim()) p.set('search', this.q.trim());
             if (this.date) p.set('date', this.date);
             if (this.type !== 'all') p.set('user_type', this.type);
-            if (this.rejected) p.set('rejected', '1');
+            if (this.status === 'rejected') p.set('rejected', '1');
+            else if (this.status !== 'all') p.set('account_status', this.status);
             if (this.page > 1) p.set('page', this.page);
             return p;
         },
@@ -76,6 +114,12 @@
             this.q = '';
             this.date = '';
             this.type = 'all';
+            this.status = 'all';
+            this.apply();
+        },
+        pickStatus(value) {
+            this.status = value;
+            this.statusOpen = false;
             this.apply();
         },
         pickDate() {
@@ -85,6 +129,7 @@
         pickType(value) {
             this.type = value;
             this.typeOpen = false;
+            this.statusOpen = false;
             this.apply();
         },
         onRegionClick(event) {
@@ -119,6 +164,7 @@
                 if (ctrl.signal.aborted) return;
 
                 this.openId = this.suspendId = this.deactivateId = this.activateId = null;
+                this.statusOpen = false;
                 const region = this.$refs.region;
                 region.innerHTML = next.innerHTML;
                 region.classList.remove('rg-fresh');
@@ -133,7 +179,7 @@
                 if (this.ctrl === ctrl) this.loading = false;
             }
         },
-    }" @keydown.escape.window="typeOpen = false">
+    }" @keydown.escape.window="typeOpen = false; statusOpen = false">
 
         {{-- Header --}}
         <div class="mb-6">
@@ -209,16 +255,43 @@
                     </div>
                 </div>
 
-                {{-- Rejected users toggle --}}
-                <button type="button" @click="rejected = !rejected; apply()" :aria-pressed="rejected"
-                    :class="rejected
-                        ? 'border-[#3b1735] bg-[#3b1735] text-white'
-                        : 'border-[#ddd0e0] bg-white text-[#2B1730] hover:border-[#cdbbd2]'"
-                    class="inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm transition duration-200 active:scale-[0.98]
+                {{-- Status --}}
+                <div class="relative" @click.outside="statusOpen = false">
+                    <button type="button" @click="statusOpen = !statusOpen; typeOpen = false" aria-haspopup="listbox" :aria-expanded="statusOpen"
+                        :class="status !== 'all' ? 'border-[#3b1735] bg-[#F7F1F7]' : 'border-[#ddd0e0] bg-white hover:border-[#cdbbd2]'"
+                        class="inline-flex h-11 items-center gap-2 rounded-full border pl-4 pr-3.5 text-sm text-[#2B1730] transition duration-200
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                        <span class="h-2.5 w-2.5 flex-shrink-0 rounded-full" :class="statusDot" aria-hidden="true"></span>
+                        <span x-text="statusLabel">All statuses</span>
+                        <x-admin.icon name="chevron-down" class="h-3.5 w-3.5 text-gray-500 transition-transform duration-200 ease-vendo" x-bind:class="statusOpen ? 'rotate-180' : ''" />
+                    </button>
+
+                    <div x-show="statusOpen" x-cloak role="listbox" aria-label="Account status"
+                        x-transition:enter="transition duration-150 ease-out"
+                        x-transition:enter-start="opacity-0 -translate-y-1 scale-95"
+                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave="transition duration-100 ease-in"
+                        x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                        class="absolute right-0 z-30 mt-2 w-56 origin-top-right rounded-2xl border border-[#ece4ec] bg-white p-1.5
+                               shadow-[0_18px_40px_-20px_rgba(43,23,48,0.4)]">
+                        <template x-for="s in statuses" :key="s.v">
+                            <button type="button" role="option" :aria-selected="status === s.v" @click="pickStatus(s.v)"
+                                :class="status === s.v ? 'bg-[#F7F1F7] font-medium text-[#3b1735]' : 'text-gray-700 hover:bg-[#FBF8FB]'"
+                                class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors duration-150">
+                                <span class="flex items-center gap-2.5">
+                                    <span class="h-2.5 w-2.5 rounded-full" :class="s.dot" aria-hidden="true"></span>
+                                    <span x-text="s.l"></span>
+                                </span>
+                                <svg x-show="status === s.v" class="h-4 w-4 text-[#3b1735]" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <button type="button" x-show="filtered" x-cloak @click="clearAll()"
+                    class="inline-flex h-11 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium text-[#3b1735] transition duration-200 hover:bg-[#F1E9F1]
                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
-                    <img src="{{ asset('assets/icons/user-management/document-icon.svg') }}" alt="" class="h-4 w-4 transition duration-200"
-                        :class="rejected ? 'brightness-0 invert' : ''">
-                    Rejected users
+                    <x-admin.icon name="x" class="h-4 w-4" /> Clear
                 </button>
             </div>
         </div>
@@ -228,6 +301,13 @@
             <span>Couldn't load users. Check your connection and try again.</span>
             <button type="button" @click="load()" class="font-semibold underline underline-offset-2 hover:text-red-800">Try again</button>
         </div>
+
+        {{-- Honest note while the server cannot filter by account status yet (see serverStatusFilter above). --}}
+        <p x-show="statusPageOnly" x-cloak x-transition.opacity role="status"
+            class="mb-3 flex items-start gap-2 rounded-xl border border-[#F3D9A6] bg-[#FDF3E2] px-3.5 py-2.5 text-[13px] text-[#8a5614]">
+            <x-admin.icon name="info" class="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <span>The status filter currently hides rows on this page only. The page count and other pages are not filtered yet.</span>
+        </p>
 
         {{-- Table + per-user modals (swapped together on every filter/page change) --}}
         <div class="relative">

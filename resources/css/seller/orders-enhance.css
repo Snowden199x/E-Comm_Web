@@ -1,0 +1,60 @@
+/* Seller Orders — roomier details drawer, buyer message, payment tags.
+   Loaded after order-management-orders.css so these rules win. */
+
+/* ---- The drawer is a wide slide-over at every width, so the table is never squeezed ---- */
+@media (min-width: 981px) {
+    .omo-layout { display: block; }
+    .omo-drawer { position: fixed; z-index: 110; top: 0; right: 0; bottom: 0; width: min(640px, 100%); margin: 0; opacity: 1; overflow: visible; transform: translateX(105%); visibility: hidden; transition: transform .34s var(--omo-ease), visibility 0s .34s; }
+    .omo-layout.is-open .omo-drawer { width: min(640px, 100%); margin: 0; transform: none; visibility: visible; transition-delay: 0s; }
+    .omo-drawer__inner { width: 100%; height: 100%; max-height: none; border-radius: 18px 0 0 18px; }
+    .omo-backdrop { display: block; position: fixed; inset: 0; z-index: 100; background: rgba(28, 12, 32, .5); backdrop-filter: blur(2px); opacity: 0; pointer-events: none; transition: opacity .28s; }
+    .omo-backdrop.is-show { opacity: 1; pointer-events: auto; }
+}
+@media (min-width: 641px) { .omo-drawer__head { padding: 22px 28px 14px; } .omo-drawer__body { padding: 4px 28px 22px; } .omo-drawer__actions { padding: 16px 28px 20px; } }
+.omo-drawer__head { position: relative; }
+.omo-drawer__actions { gap: 10px; align-items: center; box-shadow: 0 -8px 20px rgba(60, 20, 70, .06); }
+.omo-drawer__actions > .omo-hint { order: -1; }
+
+/* ---- Summary ---- */
+.omo-hero { align-items: center; gap: 14px; padding: 14px 16px; }
+.omo-hero__left { display: grid; gap: 8px; justify-items: start; min-width: 0; }
+.omo-hero__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.omo-hero__total strong { font-size: 22px; }
+.omo-chip--cod { background: #fde9d6; color: #b4570f; }
+.omo-chip--paid { background: #d9f1df; color: #247244; }
+.omo-chip--voucher { background: #f7eef9; color: #6a2f74; border: 1px dashed #b98bc0; }
+
+/* ---- Buyer message ---- */
+.omo-note { display: flex; gap: 12px; align-items: flex-start; margin: 0 0 14px; padding: 14px 16px; border: 1px solid #e3cfe8; border-left: 4px solid var(--plum-700, #5a1d63); border-radius: 12px; background: #faf3fc; }
+.omo-note__icon { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #efe0f3; color: var(--plum-700, #5a1d63); }
+.omo-note strong { display: block; font-size: 12.5px; color: var(--plum-text, #3e1c46); }
+.omo-note p { margin: 4px 0 0; font-size: 13px; line-height: 1.65; color: #3b2f40; white-space: pre-line; overflow-wrap: anywhere; }
+
+/* ---- Two-up cards, then products ---- */
+.omo-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-top: 4px; }
+.omo-section--card { padding: 16px; border: 1px solid var(--line, #e6dde8); border-radius: 14px; background: #fff; margin: 0; }
+.omo-section--card .omo-info-grid--2 { grid-template-columns: minmax(0, 1fr); }
+.omo-section--card .omo-person { flex-wrap: wrap; }
+.omo-section--card .omo-payment { flex-direction: column; gap: 12px; }
+.omo-section--card .omo-payment__lines { max-width: none; }
+.omo-payment__method dd small { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; color: var(--muted, #7a7080); }
+.omo-payment__line--voucher { color: #6a2f74; }
+.omo-products { gap: 10px; }
+.omo-product { padding: 12px; }
+.omo-product__img { width: 64px; height: 64px; }
+.omo-fold > summary { cursor: pointer; list-style: none; margin-bottom: 0; }
+.omo-fold > summary::-webkit-details-marker { display: none; }
+.omo-fold[open] > summary { margin-bottom: 12px; }
+.omo-fold > summary::after { content: "›"; margin-left: 8px; font-size: 18px; line-height: 1; color: var(--muted, #7a7080); transition: transform .2s; }
+.omo-fold[open] > summary::after { transform: rotate(90deg); }
+.omo-fold > summary .omo-count { margin-left: 8px; }
+.omo-section { margin-top: 14px; }
+
+/* ---- Table additions ---- */
+.omo-customer { position: relative; }
+.omo-note-flag { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-left: 6px; border-radius: 50%; background: #efe0f3; color: var(--plum-700, #5a1d63); flex: none; }
+.omo-paytag { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 600; letter-spacing: .02em; }
+.omo-paytag--cod { color: #c4640f; } .omo-paytag--paid { color: #247244; }
+
+@media (max-width: 700px) { .omo-cols { grid-template-columns: minmax(0, 1fr); } .omo-hero { flex-wrap: wrap; } }
+@media (prefers-reduced-motion: reduce) { .omo-fold > summary::after { transition: none; } }

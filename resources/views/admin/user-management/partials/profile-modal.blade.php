@@ -9,6 +9,8 @@
     $role = $user->role;
     $roleLabel = ucwords(str_replace('_', ' ', $role));
     $hasBusiness = in_array($role, ['seller', 'logistics_center'], true);
+    // Two IDs (Buyer, secondary ID option): the ID block goes full width under the rows so both are readable.
+    $hasSecondId = $role === 'buyer' && $details && ! empty($details->valid_id_path_2);
     $titleId = 'profile-title-' . $user->id;
     $dash = '—';
 
@@ -221,7 +223,7 @@
                             <img src="{{ asset('assets/icons/user-management/personal-information-icon.svg') }}" alt="" class="h-5 w-5">
                             Personal Information
                         </h4>
-                        <div class="grid gap-6 md:grid-cols-[minmax(0,1fr)_240px]">
+                        <div class="grid gap-6 {{ $hasSecondId ? '' : 'md:grid-cols-[minmax(0,1fr)_240px]' }}">
                             <dl class="grid grid-cols-[110px_minmax(0,1fr)] content-start gap-x-4 gap-y-3.5">
                                 @foreach ($personalRows as [$label, $value])
                                     <dt class="{{ $dtClass }}">{{ $label }}</dt>

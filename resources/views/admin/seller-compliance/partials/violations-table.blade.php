@@ -1,4 +1,14 @@
-{{-- Violations table. Rendered inside #sc-region (scTable scope); needs $violations. --}}
+{{-- Violations table. Rendered inside #sc-region (scTable scope); needs $violations.
+    Clicking a row opens that violation's details popup (issue-detail-modal). --}}
+@php
+    // Details popups: load what they show in a few batched queries per page (not per row).
+    $items = $violations->getCollection();
+    $items->loadMissing(['product.images', 'product.category']);
+    $sellerIds = $items->pluck('seller_id')->unique()->filter()->values();
+    $warnCounts = \App\Models\Compliance\ProductWarning::whereIn('seller_id', $sellerIds)->selectRaw('seller_id, COUNT(*) as c')->groupBy('seller_id')->pluck('c', 'seller_id');
+    $violCounts = \App\Models\Compliance\ProductViolation::whereIn('seller_id', $sellerIds)->selectRaw('seller_id, COUNT(*) as c')->groupBy('seller_id')->pluck('c', 'seller_id');
+@endphp
+
 <div class="sc-rows overflow-hidden rounded-2xl border border-[#ece4ec] bg-white shadow-[0_1px_2px_rgba(43,23,48,0.04)]">
     @if ($violations->isEmpty())
         @include('admin.seller-compliance.partials.empty-state', [
@@ -12,7 +22,7 @@
     @else
         <div class="thin-scroll overflow-x-auto">
             <table class="w-full min-w-[860px] text-left text-sm">
-                <caption class="sr-only">Violations committed by sellers</caption>
+                <caption class="sr-only">Violations committed by sellers. Select a row to see its details.</caption>
                 <thead>
                     <tr class="border-b border-[#ece4ec] bg-[#FBF8FB] text-[13px] text-gray-500">
                         <th scope="col" class="px-5 py-3 font-medium">Product</th>
@@ -20,19 +30,21 @@
                         <th scope="col" class="px-4 py-3 font-medium">Reason</th>
                         <th scope="col" class="px-4 py-3 font-medium">Details</th>
                         <th scope="col" class="px-5 py-3 font-medium">Date</th>
+                        <th scope="col" class="w-10 px-3 py-3"><span class="sr-only">Details</span></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-[#f3edf4]">
                     @foreach ($violations as $violation)
-                        <tr style="--i: {{ $loop->index }}" class="transition-colors duration-150 hover:bg-[#FBF8FB]">
+                        <tr style="--i: {{ $loop->index }}" tabindex="0" role="button" aria-label="View violation details for {{ $violation->product->name ?? 'this product' }}"
+                            @click="detailId = {{ $violation->id }}" @keydown.enter="detailId = {{ $violation->id }}" @keydown.space.prevent="detailId = {{ $violation->id }}"
+                            class="cursor-pointer transition-colors duration-150 hover:bg-[#FBF8FB] focus-visible:bg-[#FBF8FB] focus-visible:outline-none
+                                   focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#3b1735]/40">
                             <td class="px-5 py-3">
                                 <p class="max-w-[220px] truncate font-medium text-[#2B1730]">{{ $violation->product->name ?? '—' }}</p>
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2.5">
-                                    <span aria-hidden="true" class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1] text-xs font-semibold text-[#5b2963]">
-                                        {{ strtoupper(mb_substr($violation->seller->name ?? '?', 0, 1)) }}
-                                    </span>
+                                    <x-admin.avatar :user="$violation->seller" size="h-8 w-8" text="text-xs" />
                                     <span class="max-w-[160px] truncate text-gray-700">{{ $violation->seller->name ?? '—' }}</span>
                                 </div>
                             </td>
@@ -49,6 +61,7 @@
                                 <p class="text-gray-700">{{ $violation->created_at->format('M d, Y') }}</p>
                                 <p class="text-xs text-gray-500">{{ $violation->created_at->format('g:i A') }}</p>
                             </td>
+                            <td class="px-3 py-3 text-gray-400" aria-hidden="true"><x-admin.icon name="chevron-right" class="h-4 w-4" /></td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -56,5 +69,14 @@
         </div>
 
         @include('admin.seller-compliance.partials.pagination', ['paginator' => $violations])
+
+        @foreach ($violations as $violation)
+            @include('admin.seller-compliance.partials.issue-detail-modal', [
+                'item' => $violation,
+                'kind' => 'violation',
+                'warnCount' => (int) ($warnCounts[$violation->seller_id] ?? 0),
+                'violCount' => (int) ($violCounts[$violation->seller_id] ?? 0),
+            ])
+        @endforeach
     @endif
 </div>

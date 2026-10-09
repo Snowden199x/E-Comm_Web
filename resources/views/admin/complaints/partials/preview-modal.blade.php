@@ -84,9 +84,7 @@
                         <div class="space-y-2">
                             @foreach ([$complaint->complainant, $complaint->respondent] as $person)
                                 <div class="flex items-center gap-3 rounded-xl border border-[#ece4ec] px-3 py-2.5">
-                                    <span aria-hidden="true" class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#E4E0E4] text-xs font-semibold text-[#5b2963]">
-                                        {{ strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}
-                                    </span>
+                                    <x-admin.avatar :user="$person" size="h-8 w-8" text="text-xs" />
                                     <div class="min-w-0 leading-tight">
                                         <p class="text-[13px] font-semibold text-[#2B1730]">{{ $roleLabel($person->role ?? '') }}</p>
                                         <p class="text-xs text-gray-600 [overflow-wrap:anywhere]">{{ $person->name ?? 'Deleted account' }}</p>

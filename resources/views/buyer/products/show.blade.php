@@ -4,6 +4,10 @@
     ($product, $reviews, $ratingSummary, $attributeLabels, $recommendedProducts).
     Optional extras show only when present: $product->sold_count (withCardMetrics) and compare_at_price.
     Form fields posted to buyer.cart.store are unchanged: product_id, variant_id, color, size, quantity.
+    Variations: each variation type (Color, then Size, ...) is its own row, read from the saved options of the variants.
+    A hidden variant_id is filled once every type is chosen. Later rows only offer what is in stock for the earlier choices.
+    Shipping fee: shows $shippingFee when the controller passes it, otherwise the current rate (0), same as checkout.
+    Add to Favorites uses the Saved items store (browser storage) from favorites-panel.blade.php.
 --}}
 @php
     use Illuminate\Support\Str;
@@ -31,8 +35,27 @@
             'label' => $variant->label,
             'price' => (float) $variant->price,
             'stock' => (int) $variant->stock,
+            'options' => (object) (array) $variant->options,
         ])->values()
         : collect();
+
+    // Variation types (Color, Size, ...) in the order the seller set them, with their values
+    $variantTypeMap = [];
+    foreach ($product->has_variations ? $product->variants : [] as $variant) {
+        foreach ((array) $variant->options as $typeName => $optionValue) {
+            $variantTypeMap[$typeName] = $variantTypeMap[$typeName] ?? [];
+            if (! in_array($optionValue, $variantTypeMap[$typeName], true)) {
+                $variantTypeMap[$typeName][] = $optionValue;
+            }
+        }
+    }
+    $variantTypes = collect($variantTypeMap)
+        ->map(fn ($values, $name) => ['name' => (string) $name, 'values' => array_values($values)])->values();
+    $stepped = $variantTypes->isNotEmpty(); // false for old variants that only have a label: the single list is used
+
+    // Shipping fee shown before checkout. Checkout currently charges 0 (no quotes yet), so 0 is the honest default.
+    $shippingFee = isset($shippingFee) ? (float) $shippingFee : 0.0;
+    $shippingFeeText = '₱' . number_format($shippingFee, 2);
     $variantPrices = $variantData->pluck('price');
     $startPrice = $variantPrices->isNotEmpty() ? $variantPrices->min() : (float) $product->price;
     $basePriceText = ($variantPrices->isNotEmpty() && $variantPrices->min() != $variantPrices->max())
@@ -43,6 +66,16 @@
     $compareAt = ! $product->has_variations ? ($product->compare_at_price ?? null) : null;
     $showCompare = $compareAt && $compareAt > $product->price;
     $discount = $showCompare ? (int) round((1 - $product->price / $compareAt) * 100) : 0;
+
+    $firstPhoto = $photos->first();
+    $favorite = [
+        'id' => $product->id,
+        'name' => $product->name,
+        'price' => $basePriceText,
+        'image' => $firstPhoto ? asset('storage/' . $firstPhoto->path) : asset('images/products/tote-bag.jpg'),
+        'url' => parse_url(route('buyer.products.show', $product), PHP_URL_PATH) ?: route('buyer.products.show', $product),
+        'shop' => $shopName,
+    ];
 
     $avg = (float) ($ratingSummary?->average_rating ?? 0);
     $ratingTotal = (int) ($ratingSummary?->total_reviews ?? 0);
@@ -88,6 +121,7 @@
     }
 
     $chip = 'inline-flex min-h-[36px] items-center rounded-md border border-[#e5dce7] bg-white px-3 py-1.5 text-[13px] text-[#3d2a42] transition-colors duration-200 ease-vendo hover:border-[#c9a9ce] peer-checked:border-[#805487] peer-checked:bg-[#f5ecf6] peer-checked:text-[#52245b] peer-checked:shadow-[inset_0_0_0_1px_#805487] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#805487] peer-disabled:cursor-not-allowed peer-disabled:border-dashed peer-disabled:bg-[#faf7fb] peer-disabled:text-[#b7a9ba] peer-disabled:line-through';
+    $chipBase = 'inline-flex min-h-[36px] items-center rounded-md border px-3 py-1.5 text-[13px] transition-colors duration-200 ease-vendo focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#805487]';
     $sectionBar = 'rounded-t-lg bg-[#f6f2f7] px-4 py-2.5 text-[15px] font-semibold text-[#402143] sm:px-5';
 @endphp
 
@@ -128,9 +162,54 @@
                 qty: {{ max(1, (int) old('quantity', 1)) }},
                 stock: {{ (int) $product->stock }},
                 basePrice: @js($basePriceText),
-                get variant() { return this.variants.find(v => v.id === this.variantId) || null; },
+                baseNumber: {{ (float) $product->price }},
+                types: @js($variantTypes),
+                picks: {},
+                attempted: false,
+                shipping: {{ $shippingFee }},
+                fav: @js($favorite),
+                init() {
+                    const start = this.variants.find(v => v.id === this.variantId);
+                    if (start && this.types.length) { this.picks = { ...start.options }; }
+                },
+                isPicked(i, value) { return this.picks[this.types[i].name] === value; },
+                pool(i) {
+                    return this.variants.filter(v => v.stock > 0 && this.types.slice(0, i).every(t => !this.picks[t.name] || v.options[t.name] === this.picks[t.name]));
+                },
+                available(i, value) { const name = this.types[i].name; return this.pool(i).some(v => v.options[name] === value); },
+                choose(i, value) {
+                    if (!this.available(i, value)) { return; }
+                    this.picks = { ...this.picks, [this.types[i].name]: value };
+                    this.types.forEach((t, j) => {
+                        if (j > i && this.picks[t.name] && !this.available(j, this.picks[t.name])) {
+                            const next = { ...this.picks }; delete next[t.name]; this.picks = next;
+                        }
+                    });
+                    this.clamp();
+                },
+                get missing() { return this.types.filter(t => !this.picks[t.name]).map(t => t.name.toLowerCase()); },
+                get unitPrice() { if (this.variant) { return this.variant.price; } return this.variants.length ? null : this.baseNumber; },
+                get lineTotal() { return this.unitPrice === null ? null : this.unitPrice * (Number(this.qty) || 1) + this.shipping; },
+                get variant() {
+                    if (!this.variants.length) { return null; }
+                    if (this.types.length) {
+                        if (this.missing.length) { return null; }
+                        return this.variants.find(v => this.types.every(t => v.options[t.name] === this.picks[t.name])) || null;
+                    }
+                    return this.variants.find(v => v.id === this.variantId) || null;
+                },
                 get maxQty() { return this.variant ? this.variant.stock : this.stock; },
-                get priceText() { return this.variant ? this.money(this.variant.price) : this.basePrice; },
+                get priceText() {
+                    if (this.variant) { return this.money(this.variant.price); }
+                    if (this.types.length) {
+                        const prices = this.variants.filter(v => this.types.every(t => !this.picks[t.name] || v.options[t.name] === this.picks[t.name])).map(v => v.price);
+                        if (prices.length) {
+                            const lo = Math.min(...prices), hi = Math.max(...prices);
+                            return lo === hi ? this.money(lo) : this.money(lo) + ' – ' + this.money(hi);
+                        }
+                    }
+                    return this.basePrice;
+                },
                 money(n) { n = Number(n); return '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 }); },
                 step(d) { this.qty = Math.min(Math.max(1, (Number(this.qty) || 1) + d), Math.max(1, this.maxQty)); },
                 clamp() { this.qty = Math.min(Math.max(1, Math.floor(Number(this.qty)) || 1), Math.max(1, this.maxQty)); },
@@ -228,7 +307,8 @@
                         @endif
                     </div>
 
-                    <form action="{{ route('buyer.cart.store') }}" method="POST" class="mt-5">
+                    <form action="{{ route('buyer.cart.store') }}" method="POST" class="mt-5"
+                        @submit="if (types.length && !variant) { $event.preventDefault(); attempted = true; $nextTick(() => document.getElementById('variation-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); }">
                         @csrf
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
 
@@ -237,7 +317,17 @@
                                 <dt class="pt-0.5 text-[#8a7a8e]">Delivery</dt>
                                 <dd class="text-[#2b1730]">
                                     @if ($shipsFrom)<span class="block">Ships from {{ $shipsFrom }}</span>@endif
-                                    <span class="block text-[12px] text-[#8a7a8e]">The shipping fee is added when you check out.</span>
+                                    <span class="mt-1 flex flex-wrap items-baseline gap-x-2">
+                                        <span class="text-[#5b4a60]">Shipping fee</span>
+                                        <span class="text-[15px] font-semibold text-[#52245b]">{{ $shippingFeeText }}</span>
+                                    </span>
+                                    <span class="mt-0.5 block text-[12px] text-[#6f5f73]">
+                                        @if ($shippingFee > 0)
+                                            Added to your total at checkout.
+                                        @else
+                                            Shipping quotes are not available yet, so no shipping fee is charged.
+                                        @endif
+                                    </span>
                                 </dd>
                             </div>
                             <div class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[104px_minmax(0,1fr)]">
@@ -247,6 +337,37 @@
 
                             @if ($product->stock > 0)
                                 @if ($product->has_variations && $variantData->isNotEmpty())
+                                    @if ($stepped)
+                                        @foreach ($variantTypes as $i => $type)
+                                            <div @if ($loop->first) id="variation-block" @endif class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[104px_minmax(0,1fr)]">
+                                                <dt class="pt-2 text-[#8a7a8e]" id="variation-label-{{ $i }}">{{ $type['name'] }}</dt>
+                                                <dd>
+                                                    <div class="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="variation-label-{{ $i }}">
+                                                        @foreach ($type['values'] as $value)
+                                                            <button type="button" role="radio"
+                                                                @click="choose({{ $i }}, @js($value))"
+                                                                :aria-checked="isPicked({{ $i }}, @js($value))"
+                                                                :disabled="!available({{ $i }}, @js($value))"
+                                                                :class="isPicked({{ $i }}, @js($value))
+                                                                    ? 'border-[#805487] bg-[#f5ecf6] text-[#52245b] shadow-[inset_0_0_0_1px_#805487]'
+                                                                    : (available({{ $i }}, @js($value))
+                                                                        ? 'border-[#e5dce7] bg-white text-[#3d2a42] hover:border-[#c9a9ce]'
+                                                                        : 'cursor-not-allowed border-dashed border-[#e5dce7] bg-[#faf7fb] text-[#b7a9ba] line-through')"
+                                                                class="{{ $chipBase }}">
+                                                                <svg x-show="isPicked({{ $i }}, @js($value))" x-cloak class="mr-1 h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
+                                                                {{ $value }}
+                                                            </button>
+                                                        @endforeach
+                                                    </div>
+                                                    @if (! $loop->first)
+                                                        <p x-show="!picks[types[{{ $i - 1 }}].name]" class="mt-1.5 text-[12px] text-[#6f5f73]">Choose a {{ \Illuminate\Support\Str::lower($variantTypes[$i - 1]['name']) }} first to see what is in stock.</p>
+                                                    @endif
+                                                    <p x-show="attempted && !picks[types[{{ $i }}].name]" x-cloak class="mt-1.5 text-[12px] text-[#a32b43]" role="alert">Select a {{ \Illuminate\Support\Str::lower($type['name']) }}.</p>
+                                                </dd>
+                                            </div>
+                                        @endforeach
+                                        <input type="hidden" name="variant_id" :value="variant ? variant.id : ''">
+                                    @else
                                     <div class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[104px_minmax(0,1fr)]">
                                         <dt class="pt-2 text-[#8a7a8e]" id="variation-label">Variation</dt>
                                         <dd><div class="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="variation-label">
@@ -259,6 +380,7 @@
                                             @endforeach
                                         </div></dd>
                                     </div>
+                                                                    @endif
                                 @endif
 
                                 @if ($colors && ! $product->has_variations)
@@ -308,8 +430,19 @@
                                         <span class="text-[12px] text-[#2e6b46]" x-text="variants.length && !variant ? stock + ' in stock in total' : maxQty + ' available'">{{ $product->stock }} available</span>
                                     </dd>
                                 </div>
+                                <div class="grid grid-cols-[88px_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[104px_minmax(0,1fr)]">
+                                    <dt class="text-[#8a7a8e]">Order total</dt>
+                                    <dd class="flex flex-wrap items-baseline gap-x-2">
+                                        <span x-show="lineTotal !== null" x-text="lineTotal === null ? '' : money(lineTotal)" class="text-[16px] font-semibold text-[#52245b]"></span>
+                                        <span x-show="lineTotal !== null" class="text-[12px] text-[#6f5f73]">item price and shipping fee</span>
+                                        <span x-show="lineTotal === null" x-cloak class="text-[12px] text-[#6f5f73]" x-text="'Choose ' + missing.join(' and ') + ' to see your total.'"></span>
+                                    </dd>
+                                </div>
                             @endif
                         </dl>
+
+                        <p x-show="attempted && types.length && !variant" x-cloak class="mt-4 rounded-md border border-[#f0c9d0] bg-[#fdf1f3] px-3 py-2 text-[13px] text-[#a32b43]" role="alert"
+                            x-text="'Please choose ' + missing.join(' and ') + ' before adding to your cart.'"></p>
 
                         @if ($errors->any())
                             <p class="mt-4 rounded-md border border-[#f0c9d0] bg-[#fdf1f3] px-3 py-2 text-[13px] text-[#a32b43]" role="alert">{{ $errors->first() }}</p>
@@ -325,6 +458,12 @@
                                     Add to Cart
                                 </button>
                             @endif
+                            <button type="button" @click="$store.fav.toggle(fav)" :aria-pressed="$store.fav.has(fav.id)"
+                                :class="$store.fav.has(fav.id) ? 'border-[#c0395b] bg-[#fdf1f3] text-[#a32b43]' : 'border-[#e5dce7] text-[#3d2a42] hover:border-[#c9a9ce] hover:bg-[#faf5fa]'"
+                                class="flex h-11 items-center justify-center gap-2 rounded-md border px-5 text-[14px] font-medium transition-all duration-200 ease-vendo active:scale-[0.98]">
+                                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" :fill="$store.fav.has(fav.id) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.4s-7.6-4.6-9.2-9.5C1.7 7.5 3.8 4.6 6.9 4.6c1.9 0 3.6 1 5.1 3 1.5-2 3.2-3 5.1-3 3.1 0 5.2 2.9 4.1 6.3-1.6 4.9-9.2 9.5-9.2 9.5z" /></svg>
+                                <span x-text="$store.fav.has(fav.id) ? 'Added to Favorites' : 'Add to Favorites'">Add to Favorites</span>
+                            </button>
                             @if ($seller)
                                 <a href="{{ route('buyer.marketplace-messages.seller.show', $seller) }}"
                                     class="flex h-11 items-center justify-center gap-2 rounded-md border border-[#805487] px-5 text-[14px] font-medium text-[#52245b] transition-colors duration-200 hover:bg-[#f5ecf6]">

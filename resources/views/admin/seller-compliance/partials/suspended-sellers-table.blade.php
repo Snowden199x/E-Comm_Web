@@ -2,7 +2,16 @@
     Suspended sellers table + activate dialogs. Rendered inside #sc-region (scTable scope);
     needs $sellers. Dialog state (activateId) comes from the scope. The activate form posts to the
     existing admin.user-management.activate route.
+    Clicking a row opens that seller's suspension details popup (suspension-detail-modal).
 --}}
+@php
+    // Details popups: batched queries per page, not per row.
+    $sellerIds = $sellers->getCollection()->pluck('id');
+    $warnCounts = \App\Models\Compliance\ProductWarning::whereIn('seller_id', $sellerIds)->selectRaw('seller_id, COUNT(*) as c')->groupBy('seller_id')->pluck('c', 'seller_id');
+    $violCounts = \App\Models\Compliance\ProductViolation::whereIn('seller_id', $sellerIds)->selectRaw('seller_id, COUNT(*) as c')->groupBy('seller_id')->pluck('c', 'seller_id');
+    $productCounts = \App\Models\Ecommerce\Product::whereIn('seller_id', $sellerIds)->selectRaw('seller_id, COUNT(*) as c')->groupBy('seller_id')->pluck('c', 'seller_id');
+    $latestViolations = \App\Models\Compliance\ProductViolation::with('product')->whereIn('seller_id', $sellerIds)->latest()->get()->groupBy('seller_id');
+@endphp
 <div class="sc-rows overflow-hidden rounded-2xl border border-[#ece4ec] bg-white shadow-[0_1px_2px_rgba(43,23,48,0.04)]">
     @if ($sellers->isEmpty())
         @include('admin.seller-compliance.partials.empty-state', [
@@ -16,7 +25,7 @@
     @else
         <div class="thin-scroll overflow-x-auto">
             <table class="w-full min-w-[860px] text-left text-sm">
-                <caption class="sr-only">Suspended sellers</caption>
+                <caption class="sr-only">Suspended sellers. Select a row to see the suspension details.</caption>
                 <thead>
                     <tr class="border-b border-[#ece4ec] bg-[#FBF8FB] text-[13px] text-gray-500">
                         <th scope="col" class="px-5 py-3 font-medium">Seller</th>
@@ -27,12 +36,13 @@
                 </thead>
                 <tbody class="divide-y divide-[#f3edf4]">
                     @foreach ($sellers as $seller)
-                        <tr style="--i: {{ $loop->index }}" class="transition-colors duration-150 hover:bg-[#FBF8FB]">
+                        <tr style="--i: {{ $loop->index }}" tabindex="0" role="button" aria-label="View suspension details for {{ $seller->name }}"
+                            @click="detailId = {{ $seller->id }}" @keydown.enter.self="detailId = {{ $seller->id }}" @keydown.space.self.prevent="detailId = {{ $seller->id }}"
+                            class="cursor-pointer transition-colors duration-150 hover:bg-[#FBF8FB] focus-visible:bg-[#FBF8FB] focus-visible:outline-none
+                                   focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#3b1735]/40">
                             <td class="px-5 py-3">
                                 <div class="flex items-center gap-3">
-                                    <span aria-hidden="true" class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1] text-[13px] font-semibold text-[#5b2963]">
-                                        {{ strtoupper(mb_substr($seller->name, 0, 1)) }}
-                                    </span>
+                                    <x-admin.avatar :user="$seller" />
                                     <div class="min-w-0">
                                         <p class="max-w-[220px] truncate font-medium text-[#2B1730]">{{ $seller->name }}</p>
                                         <p class="max-w-[220px] truncate text-xs text-gray-500">{{ $seller->email }}</p>
@@ -75,7 +85,7 @@
                                 @endif
                             </td>
                             <td class="px-5 py-3 text-right">
-                                <button type="button" aria-haspopup="dialog" @click="activateId = {{ $seller->id }}"
+                                <button type="button" aria-haspopup="dialog" @click.stop="activateId = {{ $seller->id }}"
                                     class="inline-flex h-9 items-center gap-1.5 rounded-xl border border-green-600/60 bg-green-50 px-3.5 text-[13px] font-semibold text-green-700
                                            transition duration-200 hover:bg-green-100 active:scale-[0.97]
                                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600/30">
@@ -91,6 +101,17 @@
         @include('admin.seller-compliance.partials.pagination', ['paginator' => $sellers])
     @endif
 </div>
+
+{{-- Details popups come first in the DOM so the activate dialog below stacks on top of them. --}}
+@foreach ($sellers as $seller)
+    @include('admin.seller-compliance.partials.suspension-detail-modal', [
+        'seller' => $seller,
+        'violations' => ($latestViolations[$seller->id] ?? collect())->take(5),
+        'warnCount' => (int) ($warnCounts[$seller->id] ?? 0),
+        'violCount' => (int) ($violCounts[$seller->id] ?? 0),
+        'productCount' => (int) ($productCounts[$seller->id] ?? 0),
+    ])
+@endforeach
 
 @foreach ($sellers as $seller)
     @php $titleId = 'activate-seller-title-' . $seller->id; @endphp

@@ -1,5 +1,5 @@
 @php
-    // Progress track. Cancelled / returned orders show a notice instead of the track.
+    // Progress track. Cancelled orders show a notice instead of the track.
     $flow = ['Placed', 'Accepted', 'Packing', 'Ready', 'In transit', 'Delivered'];
     $stage = match (true) {
         $order->status === 'placed' => 0,
@@ -14,6 +14,10 @@
     $initials = \Illuminate\Support\Str::of($buyerName)->explode(' ')->filter()->take(2)->map(fn ($part) => mb_strtoupper(mb_substr($part, 0, 1)))->implode('');
     $itemsSubtotal = $order->items->sum(fn ($item) => $item->quantity * $item->price);
     $itemCount = $order->items->sum('quantity');
+    $buyerNote = trim((string) ($order->buyer_note ?? ''));      // exists once the checkout note is built (backend-needs-2026-10-07.md)
+    $voucherCode = $order->voucher_code ?? null;                 // exists once vouchers are built
+    $voucherDiscount = (float) ($order->voucher_discount ?? 0);
+    $mode = strtoupper($order->payment_mode ?? 'COD');
 @endphp
 <div class="omo-drawer__inner">
     <div class="omo-drawer__head">
@@ -29,9 +33,19 @@
 
     <div class="omo-drawer__body">
         <div class="omo-hero">
-            <span class="omo-pill omo-pill--{{ $order->seller_group }}"><i aria-hidden="true"></i>{{ $order->status_label }}</span>
+            <div class="omo-hero__left">
+                <span class="omo-pill omo-pill--{{ $order->seller_group }}"><i aria-hidden="true"></i>{{ $order->status_label }}</span>
+                <span class="omo-hero__chips"><span class="omo-chip">{{ $itemCount }} {{ $itemCount === 1 ? 'item' : 'items' }}</span><span class="omo-chip omo-chip--{{ $mode === 'COD' ? 'cod' : 'paid' }}">{{ $mode }}</span>@if($voucherCode)<span class="omo-chip omo-chip--voucher">Voucher {{ $voucherCode }}</span>@endif</span>
+            </div>
             <div class="omo-hero__total"><span>Total</span><strong>₱{{ number_format($order->total_amount, 2) }}</strong></div>
         </div>
+
+        @if($buyerNote !== '')
+            <aside class="omo-note" aria-label="Message from the buyer">
+                <span class="omo-note__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/></svg></span>
+                <div><strong>Message from {{ $order->buyer?->name ?? 'the buyer' }}</strong><p>{{ $buyerNote }}</p></div>
+            </aside>
+        @endif
 
         @if($stage !== null)
             <ol class="omo-track" aria-label="Order progress">
@@ -46,7 +60,8 @@
             <p class="omo-notice omo-notice--{{ $order->seller_group }}" role="status">This order was {{ strtolower($order->status_label) }}. No further seller action is needed.</p>
         @endif
 
-        <section class="omo-section">
+        <div class="omo-cols">
+        <section class="omo-section omo-section--card">
             <h3 class="omo-section__head">Customer</h3>
             <div class="omo-person">
                 <span class="omo-customer__avatar omo-customer__avatar--lg" aria-hidden="true">{{ $initials ?: '?' }}</span>
@@ -62,6 +77,21 @@
                 @if($order->delivery_courier_id)<div><dt>Delivery rider</dt><dd>{{ $order->deliveryCourier?->name ?? 'Unavailable' }}</dd></div>@endif
             </dl>
         </section>
+
+        <section class="omo-section omo-section--card">
+            <h3 class="omo-section__head">Payment</h3>
+            <div class="omo-payment">
+                <dl class="omo-payment__method"><dt>Method</dt><dd>{{ $mode }}<small>{{ $mode === 'COD' ? 'Buyer pays the rider on delivery' : 'Paid online' }}</small></dd></dl>
+                <div class="omo-payment__lines">
+                    <div class="omo-payment__line"><span>Items subtotal</span><span>₱{{ number_format($itemsSubtotal, 2) }}</span></div>
+                    @if((float) $order->shipping_fee > 0)<div class="omo-payment__line"><span>Shipping</span><span>₱{{ number_format($order->shipping_fee, 2) }}</span></div>@endif
+                    @if($voucherCode && $voucherDiscount > 0)<div class="omo-payment__line omo-payment__line--voucher"><span>Voucher {{ $voucherCode }}</span><span>−₱{{ number_format($voucherDiscount, 2) }}</span></div>@endif
+                    <div class="omo-payment__line omo-payment__line--total"><span>Total amount</span><span>₱{{ number_format($order->total_amount, 2) }}</span></div>
+                </div>
+            </div>
+        </section>
+
+        </div>
 
         <section class="omo-section">
             <h3 class="omo-section__head">Products <span class="omo-count">{{ $itemCount }} {{ $itemCount === 1 ? 'item' : 'items' }}</span></h3>
@@ -86,21 +116,9 @@
             </ul>
         </section>
 
-        <section class="omo-section">
-            <h3 class="omo-section__head">Payment</h3>
-            <div class="omo-payment">
-                <dl class="omo-payment__method"><dt>Method</dt><dd>{{ strtoupper($order->payment_mode ?? 'Not provided') }}</dd></dl>
-                <div class="omo-payment__lines">
-                    <div class="omo-payment__line"><span>Items subtotal</span><span>₱{{ number_format($itemsSubtotal, 2) }}</span></div>
-                    @if((float) $order->shipping_fee > 0)<div class="omo-payment__line"><span>Shipping</span><span>₱{{ number_format($order->shipping_fee, 2) }}</span></div>@endif
-                    <div class="omo-payment__line omo-payment__line--total"><span>Total amount</span><span>₱{{ number_format($order->total_amount, 2) }}</span></div>
-                </div>
-            </div>
-        </section>
-
         @if($order->statusEvents->isNotEmpty())
-            <section class="omo-section">
-                <h3 class="omo-section__head">Order history</h3>
+            <details class="omo-section omo-fold">
+                <summary class="omo-section__head">Order history <span class="omo-count">{{ $order->statusEvents->count() }}</span></summary>
                 <ol class="omo-timeline">
                     @foreach($order->statusEvents->reverse() as $event)
                         <li class="omo-timeline__item">
@@ -110,23 +128,23 @@
                         </li>
                     @endforeach
                 </ol>
-            </section>
+            </details>
         @endif
 
-        @if($order->canPrintShippingLabel())
-            <a class="omo-btn omo-btn--ghost omo-btn--block" href="{{ route('seller.orders.waybill', $order) }}" target="_blank" rel="noopener">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg>
-                Print shipping label
-            </a>
-        @elseif(in_array($order->status, ['placed', 'confirmed', 'preparing', 'ready_for_pickup'], true))
-            <button class="omo-btn omo-btn--ghost omo-btn--block" type="button" disabled>Print shipping label</button>
-            <p class="omo-hint">{{ $order->status === 'ready_for_pickup' ? 'Waiting for pickup logistics assignment. Existing ready orders may need routing.' : 'Available after the order is ready for pickup and its pickup logistics is assigned.' }}</p>
-        @endif
         <p id="omoActionError" class="omo-error" role="alert" hidden></p>
     </div>
 
     <form id="omoActionForm" class="omo-drawer__actions" data-url="{{ route('seller.orders.update', $order) }}" data-draft-key="seller-{{ auth()->id() }}-order-action-{{ $order->id }}-{{ $order->status }}" data-draft-ajax>
         <input type="hidden" name="expected_status" value="{{ $order->status }}">
+                @if($order->canPrintShippingLabel())
+                    <a class="omo-btn omo-btn--ghost" href="{{ route('seller.orders.waybill', $order) }}" data-waybill data-waybill-title="{{ $order->number }}">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg>
+                        Print shipping label
+                    </a>
+                @elseif(in_array($order->status, ['placed', 'confirmed', 'preparing', 'ready_for_pickup'], true))
+                    <button class="omo-btn omo-btn--ghost" type="button" disabled>Print shipping label</button>
+                    <p class="omo-hint">{{ $order->status === 'ready_for_pickup' ? 'Waiting for pickup logistics assignment. Existing ready orders may need routing.' : 'Available after the order is ready for pickup and its pickup logistics is assigned.' }}</p>
+                @endif
         @if($order->status === 'placed')
             <button class="omo-btn omo-btn--primary" name="action" value="accept">Accept order</button>
             <button class="omo-btn omo-btn--ghost" type="button" data-omo-cancel-open="decline">Decline</button>
