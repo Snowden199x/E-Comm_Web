@@ -6,6 +6,6 @@
     <div class="sw-table-wrap"><table class="sw-table"><thead><tr><th>Period</th><th>Product revenue</th></tr></thead><tbody>@foreach($chart as $point)<tr><td>{{ $point['label'] }}</td><td>₱{{ number_format($point['value'], 2) }}</td></tr>@endforeach</tbody></table></div>
     <h3>Top products</h3>
     <div class="sw-table-wrap"><table class="sw-table"><thead><tr><th>Product</th><th>Units</th><th>Revenue</th></tr></thead><tbody>@forelse($topProducts as $item)<tr><td>{{ $item->product?->name ?? 'Unavailable product' }}</td><td>{{ $item->units_sold }}</td><td>₱{{ number_format($item->revenue, 2) }}</td></tr>@empty<tr><td colspan="3">No sales in this period.</td></tr>@endforelse</tbody></table></div>
-    <p class="sw-footnote">{{ $outcomes['returned'] }} returned · {{ $outcomes['cancelled'] }} cancelled · {{ $outcomes['delivery_failed'] }} failed delivery. Generated {{ $generatedAt->format('M j, Y g:i A') }} (Asia/Manila). Totals include all qualifying orders.</p>
+    <p class="sw-footnote">{{ $outcomes['cancelled'] }} cancelled · {{ $outcomes['delivery_failed'] }} failed delivery. Generated {{ $generatedAt->format('M j, Y g:i A') }} (Asia/Manila). Totals include all qualifying orders.</p>
     <a class="sw-button" href="{{ route('seller.reports.download', ['period' => $period]) }}">Download this PDF</a>
 </div>

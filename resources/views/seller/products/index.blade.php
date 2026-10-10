@@ -8,9 +8,22 @@
         'out_of_stock' => ['Out of Stock', 'out-of-stock-icon.svg'],
     ];
     $activeStat = $filters['stock_status'] ?? '';
+
+    // Category and Subcategory are separate filters. They travel as ONE request value (`category`): the subcategory when
+    // one is chosen, otherwise the category. Existing controller semantics keep working (see backend-needs-2026-10-07.md).
+    $topCats = $categories->map(fn ($c) => $c->parent ?? $c)->unique('id')->sortBy('name')->values();
+    $subCats = $categories->filter(fn ($c) => $c->parent_id)->sortBy('name')->values();
+    $selId = $filters['category'] ?? null;
+    $selSub = $selId ? $subCats->firstWhere('id', (int) $selId) : null;
+    $selTop = $selSub ? $topCats->firstWhere('id', $selSub->parent_id) : ($selId ? $topCats->firstWhere('id', (int) $selId) : null);
+    $activeCount = ($selTop ? 1 : 0) + ($selSub ? 1 : 0) + ($activeStat !== '' ? 1 : 0);
+    $hasFilters = $activeCount > 0 || ! empty($filters['search']);
+    $without = fn (array $drop, array $set = []) => route('seller.products.index', array_filter(array_merge(request()->except(array_merge(['page'], $drop)), $set), fn ($v) => $v !== null && $v !== ''));
+    $stockChipLabel = $activeStat === 'alerts' ? 'Inventory alerts' : ($stockLabels[$activeStat] ?? null);
+    $voucherPage = \Illuminate\Support\Facades\Route::has('seller.vouchers.index');
 @endphp
 <x-seller.layout title="Products & Inventory">
-    @vite(['resources/css/seller/products.css', 'resources/js/seller/products.js'])
+    @vite(['resources/css/seller/products.css', 'resources/css/seller/products-filters.css', 'resources/js/seller/products.js', 'resources/js/seller/products-filters.js'])
     <section class="pi-page">
         <header class="pi-head">
             <div><h1>Products &amp; Inventory</h1><p>Manage your products, stock levels and categories.</p></div>
@@ -28,23 +41,63 @@
             @endforeach
         </div>
 
-        <form method="GET" action="{{ route('seller.products.index') }}" class="pi-filters" id="piFilters">
-            <label class="pi-search">
-                <span class="pi-sr">Search products</span>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                <input class="pi-input" style="border-radius:999px" type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Search products or SKU…" maxlength="100">
-            </label>
-            <label><span class="pi-sr">Category</span>
-                <select class="pi-input pi-pill-select" name="category"><option value="">All categories</option>
-                    @foreach($categories as $category)<option value="{{ $category->id }}" @selected(($filters['category'] ?? '') == $category->id)>{{ $category->name }}</option>@endforeach
-                </select></label>
-            <label><span class="pi-sr">Stock status</span>
-                <select class="pi-input pi-pill-select" name="stock_status"><option value="">All status</option><option value="alerts" @selected($activeStat === 'alerts')>Inventory alerts</option>
-                    @foreach($stockLabels as $key => $label)<option value="{{ $key }}" @selected($activeStat === $key)>{{ $label }}</option>@endforeach
-                </select></label>
-            <noscript><button class="pi-btn" type="submit">Apply</button></noscript>
-            @if(request()->query())<a class="pi-link" href="{{ route('seller.products.index') }}">Clear filters</a>@endif
-        </form>
+        <div class="pi-filters">
+            {{-- Search stays in the form; the filter panel's fields join it through the form="piFilters" attribute. --}}
+            <form method="GET" action="{{ route('seller.products.index') }}" id="piFilters" class="pi-filters__form">
+                <label class="pi-search">
+                    <span class="pi-sr">Search products</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                    <input class="pi-input" style="border-radius:999px" type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Search products or SKU…" maxlength="100">
+                </label>
+                <input type="hidden" name="category" id="piCategoryValue" value="{{ $selId }}">
+                <noscript><button class="pi-btn" type="submit">Search</button></noscript>
+            </form>
+
+            <details class="pi-fpop" id="piFPop">
+                <summary class="pi-fbtn @if($activeCount) is-on @endif" aria-label="Filters{{ $activeCount ? ', '.$activeCount.' applied' : '' }}">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+                    <span>Filters</span>
+                    @if($activeCount)<b class="pi-fbadge">{{ $activeCount }}</b>@endif
+                </summary>
+                <div class="pi-fpanel" role="group" aria-label="Product filters">
+                    <header class="pi-fpanel__head"><strong>Filter products</strong><span>Narrow the list by category and stock.</span></header>
+                    <label class="pi-ffield"><span>Category</span>
+                        <select class="pi-input" id="piCat">
+                            <option value="">All categories</option>
+                            @foreach($topCats as $cat)<option value="{{ $cat->id }}" @selected($selTop?->id === $cat->id)>{{ $cat->name }}</option>@endforeach
+                        </select>
+                    </label>
+                    <label class="pi-ffield"><span>Subcategory</span>
+                        <select class="pi-input" id="piSub">
+                            <option value="">All subcategories</option>
+                            @foreach($subCats as $sub)<option value="{{ $sub->id }}" data-parent="{{ $sub->parent_id }}" @selected($selSub?->id === $sub->id)>{{ $sub->name }}</option>@endforeach
+                        </select>
+                        <small id="piSubHint">Pick a category first to see its subcategories.</small>
+                    </label>
+                    <label class="pi-ffield"><span>Stock status</span>
+                        <select class="pi-input" name="stock_status" form="piFilters">
+                            <option value="">All stock levels</option><option value="alerts" @selected($activeStat === 'alerts')>Inventory alerts</option>
+                            @foreach($stockLabels as $key => $label)<option value="{{ $key }}" @selected($activeStat === $key)>{{ $label }}</option>@endforeach
+                        </select>
+                    </label>
+                    <footer class="pi-fpanel__foot">
+                        <a class="pi-link" href="{{ route('seller.products.index', array_filter(['search' => $filters['search'] ?? null])) }}">Reset</a>
+                        <button type="submit" form="piFilters" class="pi-btn pi-btn--primary">Apply filters</button>
+                    </footer>
+                </div>
+            </details>
+
+            @if($hasFilters)<a class="pi-link" href="{{ route('seller.products.index') }}">Clear all</a>@endif
+        </div>
+
+        @if($hasFilters)
+            <ul class="pi-chips" aria-label="Active filters">
+                @if(! empty($filters['search']))<li><span>Search: {{ $filters['search'] }}</span><a href="{{ $without(['search']) }}" aria-label="Remove search filter">×</a></li>@endif
+                @if($selTop)<li><span>Category: {{ $selTop->name }}</span><a href="{{ $without(['category']) }}" aria-label="Remove category filter">×</a></li>@endif
+                @if($selSub)<li><span>Subcategory: {{ $selSub->name }}</span><a href="{{ $without(['category'], ['category' => $selTop?->id]) }}" aria-label="Remove subcategory filter">×</a></li>@endif
+                @if($stockChipLabel)<li><span>Stock: {{ $stockChipLabel }}</span><a href="{{ $without(['stock_status']) }}" aria-label="Remove stock filter">×</a></li>@endif
+            </ul>
+        @endif
 
         @if($errors->any())<p class="pi-callout" role="alert">{{ $errors->first() }}</p>@endif
 
@@ -52,7 +105,7 @@
             <section class="pi-card pi-table-card" aria-label="Products">
                 <div class="pi-table-scroll">
                     <table class="pi-table">
-                        <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th><span class="pi-sr">Actions</span></th></tr></thead>
+                        <thead><tr><th scope="col">Product</th><th scope="col">Category</th><th scope="col">Subcategory</th><th scope="col">Price</th><th scope="col">Stock</th><th scope="col">Stock status</th><th scope="col">Listing</th><th scope="col">Vouchers</th><th scope="col">Last updated</th><th scope="col"><span class="pi-sr">Actions</span></th></tr></thead>
                         <tbody>
                         @forelse($products as $product)
                             @php
@@ -66,13 +119,21 @@
                                         <span><strong>{{ $product->name }}</strong><small>{{ $product->status === 'draft' ? 'SKU assigned after submission' : 'SKU: '.$product->product_code }}</small></span>
                                     </button>
                                 </td>
-                                <td><span class="pi-pill" style="color: {{ $colors['border'] }}; border-color: {{ $colors['border'] }}; background: {{ $colors['bg'] }}">{{ $main?->name ?? 'Uncategorized' }}</span>@if($cat?->parent)<small class="pi-subcat">{{ $cat->name }}</small>@endif</td>
+                                <td><span class="pi-pill" style="color: {{ $colors['border'] }}; border-color: {{ $colors['border'] }}; background: {{ $colors['bg'] }}">{{ $main?->name ?? 'Uncategorized' }}</span></td>
+                                <td>@if($cat?->parent)<span class="pi-subpill">{{ $cat->name }}</span>@else<span class="pi-dash">—</span>@endif</td>
                                 <td class="pi-nowrap pi-price">₱{{ number_format($product->price, 2) }}</td>
                                 <td>{{ number_format($product->stock) }}</td>
+                                <td><span class="pi-pill pi-pill--{{ $product->stock_status }}">{{ $stockLabels[$product->stock_status] }}</span></td>
+                                <td>@if(isset($listing[$product->status]))<span class="pi-review pi-review--{{ $product->status }}">{{ $listing[$product->status] }}</span>@else<span class="pi-live"><i aria-hidden="true"></i>Live</span>@endif</td>
                                 <td>
-                                    <span class="pi-pill pi-pill--{{ $product->stock_status }}">{{ $stockLabels[$product->stock_status] }}</span>
-                                    @if(isset($listing[$product->status]))<span class="pi-review pi-review--{{ $product->status }}">{{ $listing[$product->status] }}</span>@endif
+                                    @php $voucherCount = (int) ($product->vouchers_count ?? 0); @endphp
+                                    @if($voucherCount > 0)
+                                        <a class="pi-vbadge" href="{{ $voucherPage ? route('seller.vouchers.index', ['product' => $product->id]) : '#' }}" aria-label="{{ $voucherCount }} {{ \Illuminate\Support\Str::plural('voucher', $voucherCount) }} apply to {{ $product->name }}">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 002-2V6h14v1a2 2 0 002 2v6a2 2 0 00-2 2v1H5v-1a2 2 0 00-2-2z"/><path d="M12 7v10" stroke-dasharray="2 2"/></svg>{{ $voucherCount }}
+                                        </a>
+                                    @else<span class="pi-dash">—</span>@endif
                                 </td>
+                                <td class="pi-nowrap pi-updated">{{ $product->updated_at->format('M j, Y') }}<small>{{ $product->updated_at->diffForHumans() }}</small></td>
                                 <td>
                                     <button type="button" class="pi-kebab" data-kebab="pi-menu-{{ $product->id }}" aria-label="Actions for {{ $product->name }}" aria-haspopup="true">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
@@ -81,6 +142,7 @@
                                         <button type="button" role="menuitem" data-product-modal="{{ route('seller.products.show', $product) }}">View details</button>
                                         <a role="menuitem" href="{{ route('seller.products.show', [$product, 'mode' => 'edit']) }}">Edit product</a>
                                         <button type="button" role="menuitem" data-product-modal="{{ route('seller.products.show', [$product, 'mode' => 'restock']) }}" data-tab="restock" data-modal-title="Restock Product">Restock</button>
+                                        @if($voucherPage)<a role="menuitem" href="{{ route('seller.vouchers.index', ['create' => 1, 'product' => $product->id]) }}">Add to a voucher</a>@endif
                                         <span class="pi-menu-sep" role="separator"></span>
                                         {{-- Backend pending: DELETE /seller/products/{product} (see handoff notes). --}}
                                         <button type="button" role="menuitem" class="pi-menu-danger" data-delete-product data-delete-url="{{ url('/seller/products/'.$product->id) }}" data-delete-name="{{ $product->name }}">
@@ -91,10 +153,10 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="pi-empty">
+                            <tr><td colspan="10" class="pi-empty">
                                 <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg>
-                                <h3>{{ request()->query() ? 'No products match your filters' : 'No products yet' }}</h3>
-                                <p>{{ request()->query() ? 'Try a different search or clear the filters.' : 'Add your first product to start selling on Vendo.' }}</p>
+                                <h3>{{ $hasFilters ? 'No products match your filters' : 'No products yet' }}</h3>
+                                <p>{{ $hasFilters ? 'Try a different search or clear the filters.' : 'Add your first product to start selling on Vendo.' }}</p>
                             </td></tr>
                         @endforelse
                         </tbody>

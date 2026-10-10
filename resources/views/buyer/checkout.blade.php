@@ -4,11 +4,16 @@
       items[], checkout_revision, shipping_address, shipping_province_code, shipping_city_code, payment_mode=cod.
     The address chosen on this page fills the three shipping_* fields. There is no saved address book on the
     server yet, so extra addresses a buyer adds live in this browser tab (sessionStorage) until they place the order.
+
+    Message for the seller: one optional note per shop (posted as seller_notes[<seller id>]). It is shown only when
+    the controller passes $sellerNotesEnabled = true, because nothing on the server stores a note yet. Showing the box
+    before that would let a buyer write a note that is silently thrown away. See the backend note.
 --}}
 @php
     use Illuminate\Support\Str;
 
     $buyer = auth()->user();
+    $sellerNotesEnabled = (bool) ($sellerNotesEnabled ?? false);
     $fmt = fn ($amount) => '₱' . number_format($amount, 2);
     $itemCount = (int) $cartItems->sum('quantity');
     $subtotal = $cartItems->sum(fn ($item) => $item->quantity * $item->unit_price);
@@ -163,7 +168,7 @@
                     </div>
 
                     <div class="divide-y divide-[#f1e8f2]">
-                        @foreach ($sellerGroups as $sellerItems)
+                        @foreach ($sellerGroups as $sellerKey => $sellerItems)
                             @php
                                 $seller = $sellerItems->first()->product->seller;
                                 $shopName = $seller?->sellerDetail?->business_name ?: ($seller?->name ?? 'Store');
@@ -204,6 +209,20 @@
                                         </li>
                                     @endforeach
                                 </ul>
+
+                                @if ($sellerNotesEnabled)
+                                    <div class="mt-3" x-data="{ note: @js((string) old('seller_notes.' . $sellerKey, '')) }">
+                                        <label for="seller-note-{{ $sellerKey }}" class="text-[12px] font-medium text-[#5b4a60]">Message for the seller <span class="font-normal text-[#6f5f73]">(optional)</span></label>
+                                        <textarea id="seller-note-{{ $sellerKey }}" name="seller_notes[{{ $sellerKey }}]" x-model="note" rows="2" maxlength="300"
+                                            placeholder="Anything {{ $shopName }} should know, like a preferred delivery time or a gift message"
+                                            class="{{ $fieldClass }}"></textarea>
+                                        <p class="mt-1 flex justify-between gap-3 text-[11px] text-[#6f5f73]">
+                                            <span>The seller sees this with your order.</span>
+                                            <span><span x-text="note.length">0</span>/300</span>
+                                        </p>
+                                        @error('seller_notes.' . $sellerKey)<p class="mt-1 text-[12px] text-[#a32b43]" role="alert">{{ $message }}</p>@enderror
+                                    </div>
+                                @endif
 
                                 @if ($sellerGroups->count() > 1)
                                     <p class="mt-3 flex justify-between border-t border-dashed border-[#e5dce7] pt-3 text-[12px] text-[#5b4a60]">

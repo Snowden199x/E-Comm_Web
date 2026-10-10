@@ -1,7 +1,10 @@
 {{--
     Expects the Alpine scope from user-management/index.blade.php
-    (openId, filtered, clearAll, rejected). Pagination uses data-page buttons
+    (openId, filtered, clearAll, status, statusLabel, statusMatch). Pagination uses data-page buttons
     handled by that scope.
+
+    Status filter: statusMatch() hides rows whose state does not match while the server cannot filter by
+    account status yet. $pageStates tells the "no match on this page" message whether anything is left to show.
 --}}
 @php
     $roleChip = [
@@ -15,6 +18,9 @@
         'deactivated' => ['Deactivated', 'border-[#d9826b]/70 bg-[#FBF1EE] text-[#b4452a]'],
         'disapproved' => ['Rejected', 'border-orange-500/60 bg-orange-50 text-orange-700'],
     ];
+
+    $stateOf = fn ($u) => $u->status === 'disapproved' ? 'disapproved' : ($u->account_status ?: 'active');
+    $pageStates = $users->getCollection()->map($stateOf)->unique()->values()->all();
 
     $current = $users->currentPage();
     $last = $users->lastPage();
@@ -32,11 +38,12 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.13a6 6 0 00-12 0M9 11a4 4 0 100-8 4 4 0 000 8zm12 8.13a6 6 0 00-4.5-5.8M16 3.2a4 4 0 010 7.6" />
                 </svg>
             </span>
-            <p class="text-base font-semibold text-[#2B1730]" x-text="rejected ? 'No rejected users' : 'No users found'">No users found</p>
+            <p class="text-base font-semibold text-[#2B1730]"
+                x-text="status !== 'all' ? 'No ' + statusLabel.toLowerCase() + ' users' : 'No users found'">No users found</p>
             <p class="mt-1 max-w-sm text-sm text-gray-500" x-cloak
                 x-text="filtered
-                    ? 'Nothing matches these filters. Try a different name, date, or user type.'
-                    : (rejected ? 'Rejected applications will be listed here.' : 'Approved accounts will be listed here.')">
+                    ? 'Nothing matches these filters. Try a different name, date, user type, or status.'
+                    : 'Approved accounts will be listed here.'">
                 Approved accounts will be listed here.
             </p>
             <button type="button" x-show="filtered" x-cloak @click="clearAll()"
@@ -61,9 +68,11 @@
                 </thead>
                 <tbody class="divide-y divide-[#f3edf4]">
                     @foreach ($users as $u)
-                        @php $accountState = $u->status === 'disapproved' ? 'disapproved' : ($u->account_status ?: 'active'); $pill = $statusPill[$accountState] ?? [ucfirst((string) $accountState), 'border-gray-300 bg-gray-50 text-gray-600']; @endphp
-                        <tr style="--i: {{ $loop->index }}" @click="openId = {{ $u->id }}"
-                            class="cursor-pointer transition-colors duration-150 hover:bg-[#FBF8FB]">
+                        @php $accountState = $stateOf($u); $pill = $statusPill[$accountState] ?? [ucfirst((string) $accountState), 'border-gray-300 bg-gray-50 text-gray-600']; @endphp
+                        <tr style="--i: {{ $loop->index }}" x-show="statusMatch('{{ $accountState }}')" @click="openId = {{ $u->id }}"
+                            tabindex="0" aria-label="Open profile of {{ $u->name }}" @keydown.enter.self="openId = {{ $u->id }}"
+                            class="cursor-pointer transition-colors duration-150 hover:bg-[#FBF8FB] focus-visible:bg-[#FBF8FB] focus-visible:outline-none
+                                   focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#3b1735]/40">
                             <td class="px-5 py-3">
                                 <div class="flex items-center gap-3">
                                     @if ($u->profile_picture)
@@ -91,7 +100,8 @@
                             <td class="whitespace-nowrap px-4 py-3 text-gray-600">{{ $u->phone_number ?? '—' }}</td>
                             <td class="whitespace-nowrap px-4 py-3 text-gray-600">{{ $u->created_at->format('M j, Y') }}</td>
                             <td class="px-5 py-3">
-                                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium {{ $pill[1] }}">
+                                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium {{ $pill[1] }}"
+                                    @if ($accountState === 'suspended') title="{{ $u->suspended_until ? 'Suspended until ' . $u->suspended_until->format('M j, Y') : 'Suspended with no end date' }}" @endif>
                                     {{ $pill[0] }}
                                 </span>
                             </td>
@@ -99,6 +109,17 @@
                     @endforeach
                 </tbody>
             </table>
+
+            <div x-show="statusPageOnly && !@js($pageStates).includes(status)" x-cloak
+                class="flex flex-col items-center px-6 py-14 text-center">
+                <p class="text-base font-semibold text-[#2B1730]" x-text="'No ' + statusLabel.toLowerCase() + ' users on this page'"></p>
+                <p class="mt-1 max-w-sm text-sm text-gray-500">Try the next page, or clear the status filter to see everyone again.</p>
+                <button type="button" @click="status = 'all'; apply()"
+                    class="mt-5 inline-flex h-10 items-center rounded-full border border-[#cdbbd2] px-5 text-sm font-medium text-[#3b1735]
+                           transition duration-200 hover:bg-[#3b1735] hover:text-white active:scale-95">
+                    Show all statuses
+                </button>
+            </div>
         </div>
 
         <div class="flex flex-col items-center justify-between gap-3 border-t border-[#ece4ec] px-5 py-3.5 sm:flex-row">

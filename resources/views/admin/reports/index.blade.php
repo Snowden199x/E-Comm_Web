@@ -1,216 +1,137 @@
-<x-admin.layout>
-    <div id="adminReportsPage" class="p-4 sm:p-5 lg:p-6"
-        data-chart-config="{{ json_encode(['labels' => $chartLabels, 'sales' => $chartSales, 'commission' => $chartCommission], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}"
-        x-data="{
-        view: '{{ $view }}',
-        dateFilter: '{{ $dateFilter }}',
-        customDate: '{{ $customDate }}',
-        year: '{{ $year }}',
-        dateOpen: false,
-        previewOpen: false,
-        dateLabel() {
-            return { today: 'Today', week: 'This Week', month: 'This Month', custom: this.customDate || 'Custom Date' } [this.dateFilter];
-        },
-        params() {
-            return this.view === 'monthly' ? { view: this.view, year: this.year } : { view: this.view, date_filter: this.dateFilter, custom_date: this.customDate };
-        },
-        reload() {
-            if (this.view === 'daily') {
-                localStorage.setItem('reports_date_filter', this.dateFilter);
-                localStorage.setItem('reports_custom_date', this.customDate);
-            }
-            if (this.view === 'monthly') {
-                localStorage.setItem('reports_year', this.year);
-            }
-            if (this.view === 'daily' && !{{ $dateFilter ? 'true' : 'false' }}) {
-                this.dateFilter = localStorage.getItem('reports_date_filter') || 'today';
-                this.customDate = localStorage.getItem('reports_custom_date') || '';
-            }
-            const params = new URLSearchParams(this.params());
-            window.location = '{{ route('admin.reports.index') }}?' + params;
-        },
-        previewMenuOpen: false,
-        downloadMenuOpen: false,
-        rangeParams(period) {
-            return period === 'year' ?
-                { view: 'monthly', year: '{{ now()->format('Y') }}' } :
-                { view: 'daily', date_filter: period };
-        },
-        loadPreview(period) {
-            const params = new URLSearchParams(this.rangeParams(period));
-            fetch('{{ route('admin.reports.preview') }}?' + params)
-                .then(r => r.text())
-                .then(html => {
-                    document.getElementById('report-preview').innerHTML = html;
-                    this.previewOpen = true;
-                });
-        },
-        downloadUrlFor(period) {
-            const params = new URLSearchParams(this.rangeParams(period));
-            return '{{ route('admin.reports.download') }}?' + params;
-        }
-    }">
-        <div class="mb-6">
-            <h2 class="text-2xl font-bold text-gray-900">Reports</h2>
-            <p class="text-gray-500">Generate sales and commission reports.</p>
-        </div>
+<x-admin.layout title="Reports">
+    {{-- Shared Registrations/User Management motion + loading styles (rg- prefix). --}}
+    @vite('resources/css/admin/registrations.css')
 
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-            <div class="flex items-center gap-3">
-                <div class="flex bg-white border border-gray-200 rounded-lg p-1">
-                    <a href="{{ route('admin.reports.index', ['view' => 'daily', 'date_filter' => session('last_date_filter', 'today'), 'custom_date' => session('last_custom_date', '')]) }}"
-                        @class([
-                            'px-3 py-1.5 rounded-md text-sm font-medium',
-                            'bg-[#3b1735] text-white' => $view === 'daily',
-                            'text-gray-600' => $view !== 'daily',
-                        ])>Daily</a>
-                    <a href="{{ route('admin.reports.index', ['view' => 'monthly', 'year' => $year]) }}"
-                        @class([
-                            'px-3 py-1.5 rounded-md text-sm font-medium',
-                            'bg-[#3b1735] text-white' => $view === 'monthly',
-                            'text-gray-600' => $view !== 'monthly',
-                        ])>Monthly</a>
-                </div>
+    @php
+        $reportConfig = [
+            'indexUrl' => route('admin.reports.index'),
+            'previewUrl' => route('admin.reports.preview'),
+            'downloadUrl' => route('admin.reports.download'),
+            'view' => $view,
+            'dateFilter' => $dateFilter === 'monthly' ? 'month' : $dateFilter,
+            'customDate' => $customDate ?: now()->toDateString(),
+            'year' => (string) $year,
+        ];
+        $years = range((int) now()->format('Y'), (int) now()->format('Y') - 4);
+    @endphp
 
-                <div x-show="view === 'daily'" class="relative" @click.outside="dateOpen = false">
-                    <button type="button" @click="dateOpen = !dateOpen"
-                        class="px-3 py-2.5 rounded-lg border border-gray-200 text-sm flex items-center gap-2 min-w-[140px] justify-between">
-                        <span x-text="dateLabel()"></span>
-                        <span class="text-gray-400">&#9662;</span>
-                    </button>
-                    <div x-show="dateOpen" x-cloak
-                        class="absolute z-10 mt-1 w-56 bg-white rounded-lg border border-gray-100 shadow-lg p-2">
-                        <button type="button" @click="dateFilter = 'today'; dateOpen = false; reload()"
-                            class="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-sm">Today</button>
-                        <button type="button" @click="dateFilter = 'week'; dateOpen = false; reload()"
-                            class="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-sm">This Week</button>
-                        <button type="button" @click="dateFilter = 'month'; dateOpen = false; reload()"
-                            class="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-sm">This Month</button>
-                        <div class="border-t border-gray-100 my-1"></div>
-                        <label class="block px-3 py-1 text-xs text-gray-400">Custom Date</label>
-                        <input type="date" x-model="customDate"
-                            @change="dateFilter = 'custom'; dateOpen = false; reload()"
-                            class="w-full px-3 py-2 rounded border border-gray-200 text-sm">
-                    </div>
-                </div>
+    {{--
+        Reports (UI pass 2, 7 Oct). The script lives in resources/js/admin/reports.js (Alpine component `reportsPage`,
+        imported by layout.js). Everything dynamic sits in #rp-region (partials/report-body) so a period change swaps
+        only that part. Preview, Download and CSV always act on the period that is on screen; before, the Preview and
+        Download menus had their own period list that could disagree with the page.
+    --}}
+    <div class="rg-page mx-auto w-full max-w-[1280px] p-4 sm:p-6" x-data="reportsPage(@js($reportConfig))"
+        @keydown.escape.window="previewOpen = false">
 
-                <input type="number" x-show="view === 'monthly'" x-model="year" @change="reload()" min="2020"
-                    max="2100"
-                    class="w-28 px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#3b1735]">
+        {{-- Header --}}
+        <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <h1 class="font-display text-2xl font-semibold text-[#2B1730]">Reports</h1>
+                <p class="mt-1 text-sm text-gray-500">Sales and commission for the period you pick. Exports match what you see.</p>
             </div>
-
-            <div class="flex gap-3">
-                <div class="relative" @click.outside="previewMenuOpen = false">
-                    <button type="button" @click="previewMenuOpen = !previewMenuOpen"
-                        class="px-4 py-2.5 rounded-lg border border-[#3b1735] text-[#3b1735] text-sm font-medium hover:bg-purple-50">
-                        Preview
-                    </button>
-                    <div x-show="previewMenuOpen" x-cloak
-                        class="absolute right-0 z-10 mt-1 w-40 bg-white rounded-lg border border-gray-100 shadow-lg p-2">
-                        <button type="button" @click="previewMenuOpen = false; loadPreview('today')"
-                            class="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-sm">Today</button>
-                        <button type="button" @click="previewMenuOpen = false; loadPreview('week')"
-                            class="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-sm">This Week</button>
-                        <button type="button" @click="previewMenuOpen = false; loadPreview('month')"
-                            class="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-sm">This Month</button>
-                        <button type="button" @click="previewMenuOpen = false; loadPreview('year')"
-                            class="w-full text-left px-3 py-2 rounded hover:bg-gray-50 text-sm">This Year</button>
-                    </div>
-                </div>
-
-                <div class="relative" @click.outside="downloadMenuOpen = false">
-                    <button type="button" @click="downloadMenuOpen = !downloadMenuOpen"
-                        class="px-4 py-2.5 rounded-lg bg-[#3b1735] text-white text-sm font-medium hover:opacity-90">
-                        Download PDF
-                    </button>
-                    <div x-show="downloadMenuOpen" x-cloak
-                        class="absolute right-0 z-10 mt-1 w-40 bg-white rounded-lg border border-gray-100 shadow-lg p-2">
-                        <a :href="downloadUrlFor('today')"
-                            class="block px-3 py-2 rounded hover:bg-gray-50 text-sm text-gray-700">Today</a>
-                        <a :href="downloadUrlFor('week')"
-                            class="block px-3 py-2 rounded hover:bg-gray-50 text-sm text-gray-700">This Week</a>
-                        <a :href="downloadUrlFor('month')"
-                            class="block px-3 py-2 rounded hover:bg-gray-50 text-sm text-gray-700">This Month</a>
-                        <a :href="downloadUrlFor('year')"
-                            class="block px-3 py-2 rounded hover:bg-gray-50 text-sm text-gray-700">This Year</a>
-                    </div>
-                </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" @click="openPreview()" aria-haspopup="dialog"
+                    class="inline-flex h-11 items-center gap-2 rounded-full border border-[#cdbbd2] bg-white px-5 text-sm font-medium text-[#3b1735] transition duration-200
+                           hover:bg-[#F7F1F7] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                    <x-admin.icon name="eye" class="h-4 w-4" /> Preview
+                </button>
+                <button type="button" @click="exportCsv()" :disabled="report.sellers.length === 0"
+                    class="inline-flex h-11 items-center gap-2 rounded-full border border-[#cdbbd2] bg-white px-5 text-sm font-medium text-[#3b1735] transition duration-200
+                           hover:bg-[#F7F1F7] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                    <x-admin.icon name="file" class="h-4 w-4" /> Export CSV
+                </button>
+                <a :href="downloadHref"
+                    class="inline-flex h-11 items-center gap-2 rounded-full bg-[#3b1735] px-5 text-sm font-medium text-white transition duration-200 hover:bg-[#2B1730] active:scale-95
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40 focus-visible:ring-offset-2">
+                    <x-admin.icon name="file-text" class="h-4 w-4" /> Download PDF
+                </a>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-            <div class="bg-purple-50 border-2 border-[#3b1735] rounded-2xl p-4">
-                <p class="text-xs text-gray-600">Gross Sales ({{ $periodLabel }})</p>
-                <p class="text-xl font-bold text-gray-900">₱{{ number_format($salesSummary['gross_sales'], 2) }}</p>
+        {{-- Period --}}
+        <div class="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div role="group" aria-label="Report period" class="thin-scroll inline-flex max-w-full overflow-x-auto rounded-full border border-[#ddd0e0] bg-white p-1">
+                <template x-for="p in periods" :key="p.v">
+                    <button type="button" @click="setPeriod(p.v)" :aria-pressed="period === p.v"
+                        :class="period === p.v ? 'bg-[#3b1735] text-white shadow-sm' : 'text-gray-600 hover:bg-[#F1E9F1]'"
+                        class="h-9 flex-shrink-0 whitespace-nowrap rounded-full px-4 text-sm font-medium transition duration-200
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40" x-text="p.l"></button>
+                </template>
             </div>
-            <div class="bg-green-50 border-2 border-green-500 rounded-2xl p-4">
-                <p class="text-xs text-gray-600">Total Commission</p>
-                <p class="text-xl font-bold text-gray-900">₱{{ number_format($totalCommission, 2) }}</p>
+
+            <div x-show="period === 'custom'" x-cloak x-transition.opacity>
+                <label class="sr-only" for="rp-date">Report date</label>
+                <input id="rp-date" type="date" x-model="customDate" @change="load()" :max="new Date().toISOString().slice(0, 10)"
+                    class="h-11 rounded-full border border-[#ddd0e0] bg-white px-4 text-sm text-[#2B1730] transition duration-200 hover:border-[#cdbbd2]
+                           focus:border-[#3b1735] focus:outline-none focus:ring-2 focus:ring-[#3b1735]/20">
             </div>
-            <div class="bg-orange-50 border-2 border-orange-500 rounded-2xl p-4">
-                <p class="text-xs text-gray-600">Top Seller</p>
-                <p class="text-xl font-bold text-gray-900">{{ $topSeller['name'] ?? '—' }}</p>
-                @if ($topSeller)
-                    <p class="text-xs text-gray-500">₱{{ number_format($topSeller['sales'], 2) }} in sales</p>
-                @endif
+            <div x-show="period === 'year'" x-cloak x-transition.opacity>
+                <label class="sr-only" for="rp-year">Report year</label>
+                <select id="rp-year" x-model="year" @change="load()"
+                    class="h-11 rounded-full border border-[#ddd0e0] bg-white px-4 text-sm text-[#2B1730] transition duration-200 hover:border-[#cdbbd2]
+                           focus:border-[#3b1735] focus:outline-none focus:ring-2 focus:ring-[#3b1735]/20">
+                    @foreach ($years as $y)
+                        <option value="{{ $y }}">{{ $y }}</option>
+                    @endforeach
+                </select>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-            <div class="bg-white rounded-2xl p-5 shadow-sm">
-                <h3 class="font-bold text-gray-900 mb-3">{{ $breakdownTitle }} — Sales ({{ $periodLabel }})</h3>
-                <div style="height: 240px;">
-                    <canvas id="salesChart"></canvas>
-                </div>
+        <div class="relative">
+            <div x-show="loading" x-cloak x-transition.opacity class="rg-bar" role="progressbar" aria-label="Loading report"></div>
+
+            <div id="rp-region" x-ref="region" class="rg-table-wrap" :aria-busy="loading">
+                @include('admin.reports.partials.report-body')
             </div>
-            <div class="bg-white rounded-2xl p-5 shadow-sm">
-                <h3 class="font-bold text-gray-900 mb-3">{{ $breakdownTitle }} — Commission ({{ $periodLabel }})</h3>
-                <div style="height: 240px;">
-                    <canvas id="commissionChart"></canvas>
-                </div>
+
+            <div x-show="failed" x-cloak role="alert"
+                class="mt-4 flex flex-col items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 sm:flex-row sm:items-center">
+                <span>We couldn't load this report. Check your connection and try again.</span>
+                <button type="button" @click="load()" class="rounded-full border border-red-300 bg-white px-4 py-1.5 text-[13px] font-medium text-red-700 hover:bg-red-100">Try again</button>
             </div>
         </div>
 
-        <div class="bg-white rounded-2xl p-5 shadow-sm overflow-x-auto">
-            <h3 class="font-bold text-gray-900 mb-3">Sellers Ranked by Sales</h3>
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-gray-500 border-b">
-                        <th class="pb-2 font-medium">Seller</th>
-                        <th class="pb-2 font-medium text-right">Sales</th>
-                        <th class="pb-2 font-medium text-right">Commission</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($sellers as $seller)
-                        <tr class="border-b last:border-0">
-                            <td class="py-2 text-gray-900">{{ $seller['name'] }}</td>
-                            <td class="py-2 text-gray-700 text-right">₱{{ number_format($seller['sales'], 2) }}</td>
-                            <td class="py-2 text-green-700 font-semibold text-right">
-                                ₱{{ number_format($seller['commission'], 2) }}</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="3" class="py-6 text-center text-gray-400">No sales recorded.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
+        {{-- Preview dialog (same HTML the PDF is built from) --}}
         <div x-show="previewOpen" x-cloak
-            class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            @click.self="previewOpen = false">
-            <div class="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto relative" @click.stop>
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-bold text-lg text-gray-900">Report Preview</h3>
-                    <button type="button" @click="previewOpen = false"
-                        class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+            x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+            @click.self="previewOpen = false"
+            class="fixed inset-0 z-50 flex items-end justify-center bg-[#2B1730]/50 p-0 sm:items-center sm:p-4"
+            role="dialog" aria-modal="true" aria-labelledby="rp-preview-title">
+            <div x-show="previewOpen" @click.stop
+                x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-y-6 opacity-0 sm:scale-95" x-transition:enter-end="translate-y-0 opacity-100 sm:scale-100"
+                x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="translate-y-4 opacity-0"
+                class="flex max-h-[min(92dvh,860px)] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
+                <div class="flex items-center justify-between gap-4 border-b border-[#ece4ec] px-5 py-4 sm:px-6">
+                    <div>
+                        <h3 id="rp-preview-title" class="font-display text-lg font-semibold text-[#2B1730]">Report preview</h3>
+                        <p class="text-sm text-gray-500" x-text="report.periodLabel"></p>
+                    </div>
+                    <button type="button" @click="previewOpen = false" aria-label="Close preview"
+                        class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors duration-150 hover:bg-[#F1E9F1] hover:text-[#3b1735]
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                        <x-admin.icon name="x" class="h-5 w-5" />
+                    </button>
                 </div>
-                <div id="report-preview"></div>
+                <div class="thin-scroll flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+                    <div x-show="previewLoading" x-cloak class="space-y-3" role="status" aria-label="Loading preview">
+                        <div class="h-12 animate-pulse rounded-xl bg-[#F4EEF4]"></div><div class="h-28 animate-pulse rounded-xl bg-[#F4EEF4]"></div><div class="h-40 animate-pulse rounded-xl bg-[#F4EEF4]"></div>
+                    </div>
+                    <p x-show="previewFailed" x-cloak role="alert" class="rounded-xl bg-red-50 px-4 py-6 text-center text-sm text-red-700">The preview couldn't load. Close this and try again.</p>
+                    <div x-show="!previewLoading && !previewFailed" x-html="previewHtml"></div>
+                </div>
+                <div class="flex flex-col-reverse gap-2 border-t border-[#ece4ec] bg-[#FBF8FB] px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6">
+                    <button type="button" @click="previewOpen = false"
+                        class="inline-flex h-10 items-center justify-center rounded-full border border-[#d9ccdc] bg-white px-5 text-sm font-medium text-gray-700 transition duration-200 hover:bg-[#F7F1F7] active:scale-95
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">Close</button>
+                    <a :href="downloadHref"
+                        class="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-[#3b1735] px-5 text-sm font-medium text-white transition duration-200 hover:bg-[#2B1730] active:scale-95
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40 focus-visible:ring-offset-2">
+                        <x-admin.icon name="file-text" class="h-4 w-4" /> Download PDF
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-
-    @vite('resources/js/admin/reports.js')
 </x-admin.layout>

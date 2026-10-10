@@ -8,11 +8,11 @@
     const el = id => document.getElementById(id);
     const initial = JSON.parse(el('omoInitial').textContent);
     const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const isOverlay = () => window.matchMedia('(max-width: 980px)').matches;
+    const isOverlay = () => true; // the details drawer is a wide slide-over at every screen size (see orders-enhance.css)
 
     const STATUS_LABELS = {
         all: 'All status', new: 'New', pack: 'To Pack', pickup: 'Ready for Pickup', pending: 'Pending Delivery',
-        completed: 'Delivered / Completed', cancelled: 'Cancelled', returned: 'Returned',
+        completed: 'Delivered / Completed', cancelled: 'Cancelled',
     };
     const ACTION_MESSAGES = {
         accept: 'Order accepted.', decline: 'Order declined.', prepare: 'Order moved to packing.',

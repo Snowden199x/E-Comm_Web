@@ -44,6 +44,18 @@ export default defineConfig({
                 "resources/js/seller/order-management-orders/index.js",
                 "resources/css/seller/products.css",
                 "resources/js/seller/products.js",
+                "resources/css/seller/shipments.css",
+                "resources/css/seller/vouchers.css",
+                "resources/js/seller/vouchers.js",
+                "resources/css/seller/products-filters.css",
+                "resources/js/seller/products-filters.js",
+                "resources/css/seller/orders-enhance.css",
+                "resources/css/seller/waybill-modal.css",
+                "resources/js/seller/waybill-modal.js",
+                "resources/js/seller/shipments.js",
+                "resources/css/seller/complaints.css",
+                "resources/css/seller/category-requests.css",
+                "resources/js/seller/category-requests.js",
 
                 // Logistics
                 "resources/js/logistics/workspace.js"

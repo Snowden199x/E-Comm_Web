@@ -1,0 +1,42 @@
+/* Seller category requests (Account Management). Builds on the sw- workspace tokens. */
+.cr-card { margin-top: 16px; }
+.cr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.cr-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; padding: 0; }
+.cr-chips li { padding: 5px 12px; border: 1px solid var(--b); background: var(--bg); color: var(--b); border-radius: 999px; font-size: 12px; font-weight: 500; }
+.cr-chips .cr-chips__empty { border-style: dashed; border-color: #cdbfd1; background: transparent; color: #8a7a8e; }
+.cr-sub { font-size: 13px; margin: 22px 0 8px; }
+.cr-requests { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cr-request { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding: 12px 14px; border: 1px solid #e8e1ea; border-radius: 12px; background: #fff; }
+.cr-request small { display: block; color: #8a7a8e; margin-top: 3px; font-size: 11px; }
+.cr-request--rejected { border-color: #e8bcc4; background: #fdf6f7; }
+.cr-note { margin: 8px 0 0; color: #983c4c; font-size: 12px; line-height: 1.5; }
+.cr-pill { padding: 3px 11px; border-radius: 999px; border: 1px solid; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.cr-pill--pending { color: #906414; background: #fff0c9; border-color: #ebcf8f; }
+.cr-pill--approved { color: #236539; background: #d5f2d5; border-color: #96ce9b; }
+.cr-pill--rejected { color: #983c4c; background: #f8dce3; border-color: #deb1bb; }
+
+.cr-dialog { width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 40px); padding: 0; border: 0; border-radius: 18px; box-shadow: 0 24px 60px rgba(30, 10, 36, .3); color: #2d2330; }
+.cr-dialog::backdrop { background: rgba(30, 10, 36, .45); }
+.cr-dialog__head { display: flex; justify-content: space-between; gap: 14px; padding: 20px 22px 14px; border-bottom: 1px solid #f0ebf1; }
+.cr-dialog__head h2 { font-size: 16px; }
+.cr-dialog__head p { color: #716b75; font-size: 12px; margin-top: 4px; line-height: 1.5; }
+.cr-x { width: 36px; height: 36px; border: 0; border-radius: 50%; background: #f4eef5; color: #512258; font-size: 20px; cursor: pointer; flex-shrink: 0; }
+.cr-dialog__body { padding: 16px 22px; display: grid; gap: 16px; }
+.cr-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.cr-fieldset legend { font-weight: 600; font-size: 13px; padding: 0; margin-bottom: 8px; }
+.cr-fieldset legend span { color: #8a7a8e; font-weight: 400; margin-left: 6px; }
+.cr-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 220px; overflow-y: auto; padding: 2px; }
+.cr-option { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 12px; border: 1px solid #ddd2e0; border-radius: 10px; cursor: pointer; font-size: 12px; }
+.cr-option:hover { background: #f8f4f9; }
+.cr-option:has(input:checked) { border-color: #87588e; background: #f3ebf5; }
+.cr-option:has(input:focus-visible) { outline: 2px solid #512258; outline-offset: 2px; }
+.cr-option.is-disabled { opacity: .55; cursor: not-allowed; }
+.cr-option small { display: block; color: #8a7a8e; font-size: 10px; }
+.cr-field { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
+.cr-field em { font-weight: 400; color: #8a7a8e; font-style: normal; }
+.cr-field small { font-weight: 400; color: #8a7a8e; font-size: 11px; line-height: 1.5; }
+.cr-field input[type="file"], .cr-field textarea { font: inherit; font-size: 12px; font-weight: 400; border: 1px solid #cdbfd1; border-radius: 10px; padding: 10px 12px; background: #fff; }
+.cr-error { margin: 0; padding: 10px 12px; border-radius: 10px; background: #fdecec; color: #a12828; font-size: 12px; line-height: 1.5; }
+.cr-dialog__foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px 20px; border-top: 1px solid #f0ebf1; }
+
+@media (max-width: 520px) { .cr-options { grid-template-columns: 1fr; } .cr-request { flex-direction: column; } }

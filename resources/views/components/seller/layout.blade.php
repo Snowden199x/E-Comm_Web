@@ -21,10 +21,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     @vite('resources/css/seller/seller-dashboard.css')
+    @vite(['resources/css/seller/waybill-modal.css', 'resources/js/seller/waybill-modal.js'])
     @vite('resources/js/shared/form-drafts.js')
     <link rel="stylesheet" href="{{ asset('assets/css/notification-actions.css') }}">
 </head>
-<body class="sd-body @if(request()->routeIs('seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.feedback.*', 'seller.reports.*', 'seller.messages.*', 'seller.marketplace-messages.*', 'seller.account.*', 'seller.notifications.*')) sd-sidebar-pinned @endif">
+<body class="sd-body">
+    {{-- Sidebar rests collapsed on every page. Only the hamburger pins it open, and that choice is remembered across pages. --}}
+    <script>
+        try { if (localStorage.getItem('vendo.sellerSidebarPinned') === '1' && !window.matchMedia('(max-width: 900px)').matches) document.body.classList.add('sd-sidebar-pinned'); } catch (e) {}
+    </script>
 
     {{-- ============ SIDEBAR ============ --}}
     {{-- Rests collapsed (icons only). Hovering expands it as an overlay.
@@ -71,6 +76,20 @@
                 </a>
             </div>
 
+            @if(\Illuminate\Support\Facades\Route::has('seller.vouchers.index'))
+                {{-- Hidden until the backend route exists (docs/features/seller/backend-needs-2026-10-07.md, section 10). --}}
+                <a href="{{ route('seller.vouchers.index') }}" class="sd-nav__item @if(request()->routeIs('seller.vouchers.*')) is-active @endif" @if(request()->routeIs('seller.vouchers.*')) aria-current="page" @endif title="Vouchers">
+                    <svg class="sd-nav__svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 002-2V6h14v1a2 2 0 002 2v6a2 2 0 00-2 2v1H5v-1a2 2 0 00-2-2z"/><path d="M12 7v10" stroke-dasharray="2 2"/></svg>
+                    <span>Vouchers</span>
+                </a>
+            @endif
+            @if(\Illuminate\Support\Facades\Route::has('seller.complaints.index'))
+                {{-- Hidden until the backend route exists (docs/features/seller/backend-needs-2026-10-07.md). --}}
+                <a href="{{ route('seller.complaints.index') }}" class="sd-nav__item @if(request()->routeIs('seller.complaints.*')) is-active @endif" @if(request()->routeIs('seller.complaints.*')) aria-current="page" @endif title="Complaints">
+                    <img src="{{ $icon('feedback-icon.png') }}" alt="">
+                    <span>Complaints</span>
+                </a>
+            @endif
             <a href="{{ route('seller.reports.index') }}" class="sd-nav__item @if(request()->routeIs('seller.reports.*')) is-active @endif" @if(request()->routeIs('seller.reports.*')) aria-current="page" @endif title="Reports">
                 <img src="{{ $icon('reports-icon.png') }}" alt="">
                 <span>Reports</span>
@@ -93,6 +112,24 @@
             </button>
         </form>
     </aside>
+    <script>
+        (function () {
+            var aside = document.getElementById('sdSidebar');
+            try {
+                // The pointer is still over the menu item that was just clicked; keep the rail collapsed until it leaves.
+                if (sessionStorage.getItem('vendo.sellerNavClick') === '1') {
+                    sessionStorage.removeItem('vendo.sellerNavClick');
+                    if (aside.matches(':hover') && !document.body.classList.contains('sd-sidebar-pinned')) {
+                        aside.classList.add('sd-sidebar--settle');
+                        aside.addEventListener('mouseleave', function () { aside.classList.remove('sd-sidebar--settle'); }, { once: true });
+                    }
+                }
+            } catch (e) {}
+            aside.addEventListener('click', function (event) {
+                if (event.target.closest('a[href]')) { try { sessionStorage.setItem('vendo.sellerNavClick', '1'); } catch (e) {} }
+            });
+        })();
+    </script>
 
     <div class="sd-backdrop" id="sdBackdrop"></div>
 
@@ -146,6 +183,7 @@
             // on desktop it pins the rail open (overrides hover-to-expand).
             document.getElementById('sdMenuBtn').addEventListener('click', function () {
                 body.classList.toggle(isMobile() ? 'sd-sidebar-open' : 'sd-sidebar-pinned');
+                if (!isMobile()) { try { localStorage.setItem('vendo.sellerSidebarPinned', body.classList.contains('sd-sidebar-pinned') ? '1' : '0'); } catch (e) {} }
             });
             document.getElementById('sdBackdrop').addEventListener('click', function () {
                 body.classList.remove('sd-sidebar-open');
@@ -241,5 +279,23 @@
         })();
     </script>
     @include('shared.live-revision-script')
+
+    {{-- Shipping label viewer. Any link with data-waybill opens here instead of a new tab (resources/js/seller/waybill-modal.js). --}}
+    <dialog class="wb-modal" id="wbModal" aria-labelledby="wbTitle">
+        <header class="wb-head">
+            <div><h2 id="wbTitle">Shipping label</h2><p id="wbSub">4 × 6 in · thermal label</p></div>
+            <div class="wb-head__actions">
+                <button type="button" class="wb-btn wb-btn--primary" id="wbPrint" disabled>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>
+                    Print label
+                </button>
+                <button type="button" class="wb-x" data-wb-close aria-label="Close shipping label">×</button>
+            </div>
+        </header>
+        <div class="wb-body">
+            <p class="wb-state" id="wbState" role="status">Loading label…</p>
+            <iframe id="wbFrame" title="Shipping label preview" hidden></iframe>
+        </div>
+    </dialog>
 </body>
 </html>

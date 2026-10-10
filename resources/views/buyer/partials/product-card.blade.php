@@ -1,12 +1,14 @@
 {{-- Shared storefront product card (preview style: the whole card opens the product page).
      Params: $product (Product with images), $compact (bool, optional: icon-only cart button),
-       $toProduct (bool, optional: the Add to Cart button opens the product page instead of adding directly).
+       $toProduct (bool, optional: the Add to Cart button opens the product page instead of adding directly),
+       $showShop (bool, optional, default true: show the shop name; the shop page passes false because every card is from that shop).
      Optional data (shown only when the controller supplies it):
        reviews_avg_rating, sold_count, compare_at_price, seller.sellerDetail
      The heart saves the product to the buyer's saved items (browser storage, see favorites-panel.blade.php);
      it never adds anything to the cart. --}}
 @php
     $compact = $compact ?? false;
+    $showShop = $showShop ?? true;
     $toProduct = $toProduct ?? false; // true: "Add to Cart" opens the product page so the buyer sees details first
     $image = $product->images->first();
     $imageUrl = $image ? asset('storage/' . $image->path) : asset('images/products/tote-bag.jpg');
@@ -120,7 +122,7 @@
         </div>
 
         @unless ($compact)
-            @if ($shopName)
+            @if ($showShop && $shopName)
                 <p class="mt-1 flex items-center gap-1 truncate text-[11px] leading-4 text-[#8a7a8e]">
                     <svg class="h-3 w-3 flex-shrink-0 text-[#805487]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1.6-5h14.8L21 9" /><path d="M3 9a3 3 0 0 0 6 0a3 3 0 0 0 6 0a3 3 0 0 0 6 0" /><path d="M5 12v8h14v-8" /></svg>
                     <span class="truncate">{{ $shopName }}</span>
