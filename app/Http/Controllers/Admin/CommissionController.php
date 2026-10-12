@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
 use App\Models\Finance\CommissionSetting;
 use App\Models\User;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use App\Models\Ecommerce\OrderItem;
@@ -31,21 +30,6 @@ class CommissionController extends Controller
         $sellers = $this->filteredSellers($request, $rate, $month);
 
         return view('admin.commission.partials.commission-table', compact('sellers', 'rate', 'month'));
-    }
-
-    public function updateRate(Request $request): RedirectResponse
-    {
-        $request->validate(['rate' => 'required|numeric|min:0|max:100']);
-
-        $setting = CommissionSetting::first();
-
-        if ($setting) {
-            $setting->update(['rate' => $request->rate]);
-        } else {
-            CommissionSetting::create(['rate' => $request->rate]);
-        }
-
-        return back()->with('confirmation', 'rate_updated');
     }
 
     private function monthStats(float $rate, string $month): array

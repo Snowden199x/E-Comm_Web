@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use App\Services\ProfilePhotoService;
+use App\Models\Category;
+use App\Models\Profiles\SellerCategoryRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -14,10 +16,14 @@ class AccountController extends Controller
     public function index(Request $request)
     {
         $seller = $request->user()->load(['sellerDetail', 'categories']);
+        $categoryRequests = SellerCategoryRequest::query()->where('seller_id', $seller->id)
+            ->with('categories')->latest()->get();
+        $availableCategories = Category::query()->whereNull('parent_id')
+            ->whereNotIn('id', $seller->categories->pluck('id'))->orderBy('name')->get();
 
         $policies = \App\Models\Communication\PlatformPolicy::availableForRole('seller');
 
-        return view('seller.account.index', compact('seller', 'policies'));
+        return view('seller.account.index', compact('seller', 'policies', 'categoryRequests', 'availableCategories'));
     }
 
     public function update(Request $request)

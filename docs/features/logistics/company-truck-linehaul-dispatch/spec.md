@@ -1,7 +1,7 @@
 # Truck and Linehaul Dispatch
 
-**Status:** Partial: per-parcel Truck Rider assignment and Rider API route display are implemented; SH scans and custody progression remain unimplemented
-**Updated:** 28 September 2026
+**Status:** Partial: Truck Rider assignment and Rider API route display are implemented; SH scan API code remains but its Logistics pairing page is paused pending finalized flow; Truck custody progression remains open
+**Updated:** 12 October 2026
 
 ## Current behavior
 
@@ -9,11 +9,11 @@ The web logistics flow selects a configured Main Hub route plan containing order
 
 ## Gaps and acceptance direction
 
-The app does not record truck departure, vehicle manifests, checkpoint arrival, custody events, or onward dispatch. The separate mobile SH scanner app will record actual checkpoint scans using the order barcode/QR after authenticating the scanner and validating the parcel's expected route step. It must distinguish current arrival from the next planned locality and notify seller and buyer with accurate progress. The identifier alone cannot authorize a scan.
+The Rider app does not record Truck departure, vehicle manifests, custody events, or onward dispatch. The separate mobile SH scanner and Web API code can record operator-confirmed checkpoint arrival/sorting reports after station authentication and route-step validation, but Logistics station management is currently paused while the team finalizes the workflow. Do not treat the scan flow as ready for team operation. The identifier alone cannot authorize a scan.
 
 Routes depend on origin/destination Main Hubs and buyer/seller locality. For example, a Manila → Laguna plan may list SH5 (Muntinlupa) then SH6 (Calamba); a buyer in Luisiana may use SH3 named Pagsanjan if the configured path passes through that locality. Another route may skip checkpoints. Configure the ordered feasible path explicitly; representative municipality coordinates help choose among configured plans but do not prove roads, ferries, travel times, or operating permission.
 
-Rider, Truck, and checkpoint-scanner interfaces are mobile-only. The Logistics web portal provides center-scoped per-order Truck Rider assignment; it has no Truck dashboard. Scanner routes, actor identity/permissions, route-step advancement, truck/manifest ownership, custody transfers, local rider pickup from a checkpoint, rerouting, and exception handling remain future work.
+Rider, Truck, and checkpoint-scanner interfaces are mobile-only. The Logistics web portal provides center-scoped per-order Truck Rider assignment; it has no Truck dashboard. Scanner station permissions and route-step advancement remain in the separate SH API code, but the Logistics station page/routes are paused. Truck/manifest ownership, custody transfers, local rider pickup from a checkpoint, rerouting, and exception handling remain future work.
 
 ## API contract
 

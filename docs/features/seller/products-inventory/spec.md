@@ -1,7 +1,7 @@
 # Products & Inventory
 
 **Status:** Product persistence, annual codes, variants, stock movements and Buyer checkout are implemented in code; owner migration and end-to-end verification pending.
-**Updated:** 5 October 2026
+**Updated:** 12 October 2026
 
 ## Routes and UI
 
@@ -9,6 +9,7 @@
 - Clicking a product row, name, or a menu entry opens a **details modal** (not a drawer): photo gallery, Details, **Variations** (only when the product has variations), Restock and Stock history tabs, Edit button. Row menu: View details, Edit product, Restock, and (below a divider) **Delete product**. The delete menu item and confirmation dialog are built, but the server route does not exist yet (see below and [backend needs](../backend-needs.md)). Direct visits to `GET /seller/products/{product}` (e.g. from notifications) render the same details inside the seller layout.
 - `GET /seller/products/create`, `POST /seller/products`, and `GET /seller/products/{product}?mode=edit` + `PATCH` render one full-page form (`seller/products/form.blade.php`). Submitted products start at `for_review`; saved drafts stay private.
 - `POST /seller/products/{product}/restock`: positive quantity and required reason; a unique request key prevents double-submit. When variants exist the form sends a product-owned `variant_id`, which the server validates and records.
+- The product-list voucher badge counts currently available shop-wide, product-specific, and main-category Seller vouchers that apply to each product on the loaded page. "Add to a voucher" links to the Seller Vouchers page; see [Seller Vouchers](../vouchers/spec.md).
 
 All routes require an approved, active seller and scope records to that seller. Category selection is limited to the seller's registered categories and their children. **Delete product is UI-only for now.** The row menu opens a confirmation dialog and sends `DELETE /seller/products/{id}`; that route is not implemented, so the dialog reports that deleting is not available on the server yet. Do not treat deletion as implemented until the backend items in [backend needs](../backend-needs.md) are built.
 

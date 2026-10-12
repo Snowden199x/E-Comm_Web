@@ -1,6 +1,5 @@
 // Seller > Vouchers: create / edit dialog, live preview, pause / resume, delete.
-// Every action posts to a URL rendered by the page. While a backend route is missing that URL is empty and the seller
-// sees "not available on the server yet" instead of a failed request.
+// Every action posts to a Seller-scoped URL rendered by the page.
 const app = document.getElementById('vcApp');
 
 if (app) {

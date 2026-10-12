@@ -35,8 +35,13 @@ class Order extends Model
 
     public const SHIPMENT_LABELS = ['to_ship' => 'To Ship', 'in_transit' => 'In Transit', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled', 'returned' => 'Returned'];
 
-    protected $casts = ['shipping_fee' => 'decimal:2', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date',
+    protected $casts = ['shipping_fee' => 'decimal:2', 'voucher_discount' => 'decimal:2', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date',
         'delivered_at' => 'datetime', 'pickup_verified_at' => 'datetime'];
+
+    public function getPayableTotalAttribute(): float
+    {
+        return max(0, (float) $this->total_amount - (float) $this->voucher_discount + (float) $this->shipping_fee);
+    }
 
     protected static function booted(): void
     {
@@ -216,6 +221,8 @@ class Order extends Model
     protected $fillable = [
         'buyer_id',
         'seller_id',
+        'buyer_note',
+        'voucher_discount', 'voucher_code',
         'courier_id',
         'total_amount',
         'status',

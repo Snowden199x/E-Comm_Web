@@ -1,7 +1,7 @@
 {{--
     Selling categories + "request new categories" (Admin approval and a supporting permit are required).
 
-    Data contract (future Seller\CategoryRequestController, see docs/features/seller/backend-needs-2026-10-07.md):
+    Data contract supplied by Seller\AccountController:
       $seller             the signed-in seller (categories relation = approved categories)
       $categoryRequests   Collection of requests, newest first; each has: id, status (pending|approved|rejected),
                           categories (Collection<Category>), created_at, reviewed_at?, admin_note?
@@ -10,7 +10,6 @@
 @php
     $categoryRequests = $categoryRequests ?? collect();
     $ownedIds = $seller->categories->pluck('id');
-    // TEMPORARY fallback until the controller supplies $availableCategories (same query the registration form uses).
     $availableCategories = $availableCategories
         ?? \App\Models\Category::whereNull('parent_id')->whereNotIn('id', $ownedIds)->orderBy('name')->get();
     $pendingIds = $categoryRequests->where('status', 'pending')->flatMap(fn ($r) => $r->categories->pluck('id'))->unique();

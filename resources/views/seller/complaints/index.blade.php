@@ -1,14 +1,14 @@
 {{--
     Seller Complaints — a read-only compilation of the cases Admin handles in Complaints & Disputes.
 
-    Data contract (supplied by a future Seller\ComplaintController@index, see docs/features/seller/backend-needs-2026-10-07.md):
+    Data contract supplied by Seller\ComplaintController@index:
       $complaints   LengthAwarePaginator<Complaint> with order, complainant, respondent, evidences, activities loaded
       $counts       ['all' => n, 'open' => n, 'in_review' => n, 'resolved' => n]   (for the active scope)
       $scopeCounts  ['against' => n, 'filed' => n]
       $filters      ['scope' => 'against'|'filed', 'status' => ?, 'type' => ?, 'search' => ?]
       $types        Collection<string> of distinct complaint types for the filter
 
-    Every variable has a safe default so the page still renders (empty) if the controller is incomplete.
+    Every variable has a safe default for empty states.
 --}}
 @php
     $complaints = $complaints ?? new \Illuminate\Pagination\LengthAwarePaginator([], 0, 8);
@@ -174,7 +174,7 @@
 
                 <h3>Evidence <small>{{ $complaint->evidences->count() }} file(s)</small></h3>
                 @forelse($complaint->evidences as $file)
-                    <p class="cmp-file">{{ $file->original_filename }}</p>
+                    <p class="cmp-file">{{ $scope === 'against' && $isReport ? 'Evidence file #'.$loop->iteration : $file->original_filename }}</p>
                 @empty
                     <p class="cmp-muted">No evidence was attached.</p>
                 @endforelse

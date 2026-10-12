@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\ProductReviewModerationController;
 use App\Http\Controllers\Admin\RegistrationController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SellerComplianceController;
+use App\Http\Controllers\Admin\SellerCategoryRequestController as AdminSellerCategoryRequestController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Auth\EmailOtpController;
 use App\Http\Controllers\Auth\GoogleAuthController;
@@ -51,6 +52,8 @@ use App\Http\Controllers\Seller\ShipmentController;
 use App\Http\Controllers\Seller\ReportController as SellerReportController;
 use App\Http\Controllers\Seller\MessageController as SellerMessageController;
 use App\Http\Controllers\Seller\AccountController as SellerAccountController;
+use App\Http\Controllers\Seller\CategoryRequestController as SellerCategoryRequestController;
+use App\Http\Controllers\Seller\VoucherController as SellerVoucherController;
 use App\Http\Controllers\Seller\BuyerProfileController as SellerBuyerProfileController;
 use App\Http\Controllers\Seller\NotificationController as SellerNotificationController;
 use App\Http\Middleware\EnsureActiveSeller;
@@ -111,6 +114,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('verification-documents.show');
         Route::post('/registrations/{user}/approve', [RegistrationController::class, 'approve'])->name('registrations.approve');
         Route::post('/registrations/{user}/disapprove', [RegistrationController::class, 'disapprove'])->name('registrations.disapprove');
+        Route::get('/seller-category-requests', [AdminSellerCategoryRequestController::class, 'index'])->name('category-requests.index');
+        Route::get('/seller-category-requests/{categoryRequest}/permit', [AdminSellerCategoryRequestController::class, 'permit'])->whereNumber('categoryRequest')->name('category-requests.permit');
+        Route::post('/seller-category-requests/{categoryRequest}/decision', [AdminSellerCategoryRequestController::class, 'decide'])->whereNumber('categoryRequest')->name('category-requests.decide');
 
         Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
         Route::post('/user-management/{user}/suspend', [UserManagementController::class, 'suspend'])->name('user-management.suspend');
@@ -131,7 +137,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::prefix('commission')->name('commission.')->group(function () {
             Route::get('/', [CommissionController::class, 'index'])->name('index');
             Route::get('/table', [CommissionController::class, 'table'])->name('table');
-            Route::post('/rate', [CommissionController::class, 'updateRate'])->name('update-rate');
             Route::get('/seller/{seller}', [CommissionController::class, 'sellerDetail'])->name('seller-detail');
         });
 
@@ -249,6 +254,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::delete('/cart/{cartItem}', [BuyerCartController::class, 'destroy'])->middleware('auth')->name('cart.destroy');
     Route::get('/checkout', [BuyerCheckoutController::class, 'index'])->middleware('auth')->name('checkout.index');
     Route::post('/checkout', [BuyerCheckoutController::class, 'store'])->middleware('auth')->name('checkout.store');
+    Route::post('/checkout/voucher-quote', [BuyerCheckoutController::class, 'voucherQuote'])->middleware(['auth', 'throttle:20,1'])->name('checkout.voucher-quote');
     Route::get('/orders', [BuyerOrderController::class, 'index'])->middleware('auth')->name('orders.index');
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->middleware('auth')->name('orders.show');
     Route::patch('/orders/{order}/cancel', [BuyerOrderController::class, 'cancel'])->middleware('auth')->whereNumber('order')->name('orders.cancel');
@@ -319,6 +325,12 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::patch('/orders/{order}', [OrderController::class, 'update'])->whereNumber('order')->name('orders.update');
         Route::get('/completed-orders', [CompletedOrdersController::class, 'index'])->name('completed-orders.index');
         Route::get('/completed-orders/{order}', [CompletedOrdersController::class, 'show'])->whereNumber('order')->name('completed-orders.show');
+        Route::get('/complaints', [\App\Http\Controllers\Seller\ComplaintController::class, 'index'])->name('complaints.index');
+        Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('vouchers.index');
+        Route::post('/vouchers', [SellerVoucherController::class, 'store'])->name('vouchers.store');
+        Route::put('/vouchers/{voucher}', [SellerVoucherController::class, 'update'])->whereNumber('voucher')->name('vouchers.update');
+        Route::patch('/vouchers/{voucher}/status', [SellerVoucherController::class, 'toggle'])->whereNumber('voucher')->name('vouchers.toggle');
+        Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy'])->whereNumber('voucher')->name('vouchers.destroy');
         Route::get('/feedback', [SellerFeedbackController::class, 'index'])->name('feedback.index');
         Route::get('/feedback/{review}', [SellerFeedbackController::class, 'show'])->whereNumber('review')->name('feedback.show');
         Route::post('/feedback/{review}/reply', [SellerFeedbackController::class, 'reply'])->whereNumber('review')->name('feedback.reply');
@@ -340,6 +352,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::post('/messages/{conversation}/reopen', [SellerMessageController::class, 'reopen'])->whereNumber('conversation')->name('messages.reopen');
         Route::get('/buyers/{buyer}', [SellerBuyerProfileController::class, 'show'])->whereNumber('buyer')->name('buyers.show');
         Route::get('/account', [SellerAccountController::class, 'index'])->name('account.index');
+        Route::post('/account/category-requests', [SellerCategoryRequestController::class, 'store'])->middleware('throttle:3,1')->name('category-requests.store');
         Route::patch('/account', [SellerAccountController::class, 'update'])->name('account.update');
         Route::post('/account/avatar', [SellerAccountController::class, 'avatar'])->name('account.avatar');
         Route::delete('/account/avatar', [SellerAccountController::class, 'removeAvatar'])->name('account.avatar.remove');

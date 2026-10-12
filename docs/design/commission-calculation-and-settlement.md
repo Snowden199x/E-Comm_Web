@@ -1,19 +1,19 @@
 # Vendo Commission and Shipping Settlement Design
 
 **Status:** Design reference; current behavior is described separately below  
-**Reviewed:** 7 October 2026  
+**Reviewed:** 12 October 2026
 **Reference:** `aisley_commission_shipping_calculations.pdf` (Aisley source snapshot stated in that PDF: `51d96947569d1603fdfb6d264ebd2a04bf866280`)
 
 This document uses Aisley's code-grounded guide as a reference for shipping charges, Logistics/Rider earnings, frozen prices, rounding, and future settlement. Vendo has two separate money flows: **Admin's fixed 10% product commission**, calculated per eligible item, and **shipping charges paid by the Buyer**, from which Logistics/Rider service earnings are calculated and allocated by route work. Admin's 10% is not the Logistics/Rider pool and is not split with them.
 
 ## Current Vendo behavior
 
-- Admin commission reports calculate `order_items.price × quantity` for orders whose current status is `delivered` or `completed`, then apply the configured global rate. The intended fixed Admin product commission is 10% per eligible item line.
+- Admin commission reports calculate `order_items.price × quantity` for orders whose current status is `delivered` or `completed`, then apply a fixed 10% product rate.
 - At 10%, a ₱1,000 eligible item line produces ₱100 Admin product commission. This is separate from shipping charges and any Logistics/Rider earnings.
-- The Admin rate screen technically allows editing the global rate, even though the business rule is fixed at 10%. The current code therefore does not enforce the fixed-rate policy.
-- Historical report totals use the **current** configured rate; an order does not preserve its applicable commission rate/amount.
-- Checkout stores item price snapshots but currently sets `orders.shipping_fee = 0`. There is no shipping quote, route tariff, or Logistics/Rider shipping allocation.
-- Category commission fields exist in the schema but current reports use the global rate.
+- The Admin rate editor and route have been removed; `CommissionSetting::currentRate()` returns 10.00 regardless of the legacy database row.
+- Historical report totals use the fixed 10% rule; an order does not preserve its own applicable commission rate/amount.
+- Checkout stores item price and Seller voucher discount snapshots but currently sets `orders.shipping_fee = 0`. There is no shipping quote, route tariff, or Logistics/Rider shipping allocation. Voucher discounts currently reduce Buyer payable but not the Admin gross-item commission base; funding/net Seller settlement needs a business decision.
+- Category commission fields exist in the schema but current reports use the fixed 10% rate.
 - Admin's “commission owed/earned” figures are report calculations, not payable balances. There is no commission or shipping settlement ledger, allocation, payout, reversal, or reconciliation workflow.
 - Vendo uses COD. `returned` has no complete return/refund settlement workflow.
 
@@ -30,7 +30,7 @@ The exact Vendo shipping tariff, any separate Logistics commission on shipping, 
 
 ### Initial shipping-fee planning assumption
 
-For initial Vendo planning, use **₱30–₱60 total shipping fee per seller-specific order**, with **₱60 as the maximum**. This is the total fee for the order's complete route, not a fee charged separately for every hub or SH. A checkout containing multiple sellers should show each seller order's fee and add those fees into the checkout total. The route-leg rates should determine how the fee is allocated among services; a three-hub route does not automatically mean three times the fee. This is a provisional planning assumption, not a tariff currently configured or implemented in Vendo.
+For initial Vendo planning, use **₱30–₱60 total shipping fee per seller-specific order**, with **₱60 as the maximum**. This is the total fee for the order's complete route, not a fee charged separately for every hub or SH. A checkout containing multiple sellers should show each seller order's fee and add those fees into the checkout total. The route-leg rates should determine how the fee is allocated among services; a three-hub route does not automatically mean three times the fee. This is only a planning example. The owner chose to wait for final Logistics rates before enabling any shipping charge; checkout currently charges ₱0 for shipping.
 
 ## Aisley model used as a shipping reference
 
@@ -60,7 +60,7 @@ Do not assume equal splits, use the Admin 10% rate for shipping, or treat every 
 
 ## Recommended implementation principles
 
-1. Keep Admin's product commission policy at a fixed 10%. Remove or constrain the current Admin rate editor if the fixed-rate rule is to be enforced in code.
+1. Keep Admin's product commission policy at a fixed 10%; the Admin rate editor is removed in the current code.
 2. Calculate shipping separately from item prices, using explicit route legs and tariffs.
 3. Freeze order item prices, Admin rate, shipping quote, tariff versions, and allocation inputs at checkout so future rate changes do not rewrite old orders.
 4. Use integer centavos or fixed-precision decimals and one documented rounding rule. Aisley uses integer centavos and half-up rounding.
@@ -69,8 +69,8 @@ Do not assume equal splits, use the Admin 10% rate for shipping, or treat every 
 
 ## Code references
 
-- `app/Models/Finance/CommissionSetting.php` — global configured-rate lookup with 10% fallback.
-- `app/Http/Controllers/Admin/CommissionController.php` — Admin rate editing and Seller/month aggregates.
+- `app/Models/Finance/CommissionSetting.php` — fixed 10% rate returned by commission calculations.
+- `app/Http/Controllers/Admin/CommissionController.php` — Seller/month commission aggregates.
 - `app/Http/Controllers/Admin/ReportController.php` — report commission calculations.
 - `app/Http/Controllers/Buyer/CheckoutController.php` — item price snapshots and zero shipping fee.
 - `database/migrations/2026_09_08_140641_create_commission_settings_table.php` — global commission-rate default.

@@ -1,7 +1,6 @@
 {{--
     Month summary cards. Lives inside #cm-region so it refreshes with the table.
     Needs: $stats, $rate, $month (all already passed by CommissionController::index()).
-    The rate button belongs to the page's Alpine scope (openRate()).
 --}}
 @php
     $monthLabel = \Carbon\Carbon::parse($month . '-01')->format('F Y');
@@ -35,13 +34,8 @@
         </div>
         <div class="mt-3 flex items-end justify-between gap-3">
             <p class="font-display text-2xl font-semibold tabular-nums text-[#2B1730]">{{ $rateText }}%</p>
-            <button type="button" @click="openRate()" aria-haspopup="dialog"
-                class="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#cdbbd2] px-4 text-[13px] font-medium text-[#3b1735] transition duration-200
-                       hover:bg-[#3b1735] hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
-                <x-admin.icon name="sliders" class="h-3.5 w-3.5" /> Edit rate
-            </button>
         </div>
-        <p class="mt-1 text-xs text-gray-500">Applies to every month shown here</p>
+        <p class="mt-1 text-xs text-gray-500">Fixed Vendo share of product sales</p>
     </div>
 
     {{-- Sellers --}}

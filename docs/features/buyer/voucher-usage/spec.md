@@ -1,19 +1,19 @@
 # Voucher Usage
 
-**Status:** Not implemented  
-**Reviewed:** 24 September 2026
+**Status:** Shop-code checkout redemption implemented in code; migration and owner verification pending
+**Reviewed:** 12 October 2026
 
 ## Current behavior
 
-No voucher model, validation, redemption, or checkout discount logic was found.
+Buyers can enter one Seller voucher code per shop at checkout and request a quote for their selected cart lines. The server enforces Seller, product/category scope, schedule, minimum spend, total uses, and per-Buyer uses. The final checkout rechecks under a row lock, snapshots the code and discount on each Seller order, and reduces the Buyer payable amount. Cancellation before pickup releases the redemption once. See [Seller Vouchers](../../seller/vouchers/spec.md).
 
 ## Gaps and acceptance direction
 
-Define issuer, eligibility, stacking, expiry, and atomic redemption before coding.
+Voucher discovery on the cart/product pages, stacking, free-shipping vouchers, post-delivery refunds, and settlement accounting are not implemented. Shipping quotations remain separate and pending.
 
 ## Source evidence
 
-`app/Http/Controllers/Buyer/CheckoutController.php`
+`app/Http/Controllers/Buyer/CheckoutController.php`, `app/Services/SellerVoucherService.php`, `app/Models/Ecommerce/SellerVoucher.php`
 
 ## Related documentation
 

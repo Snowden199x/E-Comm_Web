@@ -1,11 +1,13 @@
 # Order History and Tracking
 
 **Status:** Partial but buyer timeline is wired  
-**Reviewed:** 6 October 2026
+**Reviewed:** 12 October 2026
 
 ## Current behavior
 
 **My Orders** (`buyer.orders.index`) lists the Buyer's orders newest first as cards with the shop, up to two items with photos, the item count, the total, a status badge, and actions (Chat with seller; View details, Confirm receipt, or View and rate depending on status). Tabs filter in the browser: All, Placed, To ship, In transit, Delivered, and Cancelled and returned, each with a count and its own empty state. **Order detail** (`buyer.orders.show`) shows a progress stepper, an order updates timeline (newest first), the items with the review form, an order summary, the delivery address, the seller card, and shipment tracking. Buyer sees owned orders and status events. The assigned delivery rider's `delivered` scan marks the parcel delivered; the buyer can then confirm receipt. The final progress label reads **Rate Product** and links to the product review section once receipt is confirmed. The internal order status remains `completed`, and reviews require that status.
+
+Each accepted SH scanner report appears as a Buyer-owned order timeline note and notification with the confirmed SH locality. The next stop is labeled **planned** until its own scan is accepted; a scanner report does not mark an order out for delivery.
 
 ## Gaps and acceptance direction
 

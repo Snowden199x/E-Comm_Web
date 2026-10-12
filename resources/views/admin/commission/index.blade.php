@@ -4,22 +4,13 @@
 
     @php
         $monthDate = \Carbon\Carbon::parse($month . '-01');
-        $rateLabel = rtrim(rtrim(number_format($rate, 2), '0'), '.');
         $initialSearch = request()->string('search')->trim()->toString();
         $effective = $stats['total_sales'] > 0 ? ($stats['total_commission'] / $stats['total_sales']) * 100 : null;
     @endphp
 
     {{--
-        Commission (UI pass 2, 7 Oct).
-
-        What changed, all in the view layer (no controller or route change):
-          - The month picker and search now refresh the summary cards AND the table together. Before, only the
-            table refreshed, so the cards kept showing the first month that was loaded.
-          - The seller breakdown popup called url('commission/seller/..') which resolves to /commission/seller/..
-            and misses the /admin prefix, so it silently failed. It now uses the named route.
-          - Pagination buttons use data-page (the old Laravel links pointed at the bare partial route after the first refresh).
-          - Errors and empty results are shown instead of failing silently; the rate dialog explains that changing the
-            rate recalculates every month, and previews the effect before saving.
+        Month/search refresh the cards and table together. Seller details use the named Admin route.
+        The product commission is fixed at 10% and has no rate editor.
     --}}
     <div class="rg-page mx-auto w-full max-w-[1280px] p-4 sm:p-6" x-data="{
         // Filters
@@ -33,12 +24,6 @@
         pageUrl: @js(route('admin.commission.index')),
         detailUrl: @js(route('admin.commission.seller-detail', ['seller' => '__ID__'])),
 
-        // Rate dialog
-        editRateOpen: false,
-        currentRate: {{ (float) $rate }},
-        newRate: {{ (float) $rate }},
-        monthSales: {{ (float) $stats['total_sales'] }},
-
         // Seller breakdown dialog
         sellerDetailOpen: false,
         detailLoading: false,
@@ -47,10 +32,7 @@
         detailMeta: { id: null, name: '', avatar: '' },
         sellerChart: null,
 
-        saved: @js(session('confirmation') === 'rate_updated'),
-
         init() {
-            if (this.saved) setTimeout(() => this.saved = false, 6000);
             this.$watch('sellerDetailOpen', (open) => { if (!open && this.sellerChart) { this.sellerChart.destroy(); this.sellerChart = null; } });
         },
 
@@ -119,7 +101,6 @@
 
                 const region = this.$refs.region;
                 region.innerHTML = next.innerHTML;
-                this.monthSales = Number(next.dataset.monthSales || 0);
                 region.classList.remove('rg-fresh');
                 void region.offsetWidth; // restart the row animation
                 region.classList.add('rg-fresh');
@@ -134,19 +115,6 @@
             }
         },
 
-        // ----- Rate dialog -------------------------------------------------------
-        get rateValid() {
-            const n = Number(this.newRate);
-            return this.newRate !== '' && !Number.isNaN(n) && n >= 0 && n <= 100;
-        },
-        get ratePreview() {
-            return this.rateValid ? this.monthSales * (Number(this.newRate) / 100) : null;
-        },
-        openRate() {
-            this.newRate = this.currentRate;
-            this.editRateOpen = true;
-            this.$nextTick(() => this.$refs.rateInput?.focus());
-        },
         peso(n) {
             return '₱' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         },
@@ -194,7 +162,7 @@
                 },
             });
         },
-    }" @keydown.escape.window="editRateOpen = false; sellerDetailOpen = false">
+    }" @keydown.escape.window="sellerDetailOpen = false">
 
         {{-- Header --}}
         <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -231,13 +199,6 @@
             </div>
         </div>
 
-        {{-- Saved confirmation (the controller already flashes 'rate_updated'; it was never shown) --}}
-        <div x-show="saved" x-cloak x-transition.opacity role="status"
-            class="mb-4 flex items-center justify-between gap-3 rounded-xl border border-green-600/30 bg-green-50 px-4 py-3 text-sm text-green-800">
-            <span class="flex items-center gap-2"><x-admin.icon name="check-circle" class="h-4 w-4" /> Commission rate saved. Every month below now uses {{ $rateLabel }}%.</span>
-            <button type="button" @click="saved = false" aria-label="Dismiss" class="rounded-full p-1 hover:bg-green-100"><x-admin.icon name="x" class="h-4 w-4" /></button>
-        </div>
-
         {{-- Cards + table (swapped together on every month/search/page change) --}}
         <div class="relative">
             <div x-show="loading" x-cloak x-transition.opacity class="rg-bar" role="progressbar" aria-label="Loading commission"></div>
@@ -268,7 +229,6 @@
             </div>
         </div>
 
-        @include('admin.commission.partials.edit-rate-modal')
         @include('admin.commission.partials.seller-detail-modal')
     </div>
 </x-admin.layout>
