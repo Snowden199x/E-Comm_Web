@@ -1,7 +1,7 @@
 {{--
     Seller Vouchers — create and manage discount vouchers for the shop.
 
-    Data contract (future Seller\VoucherController, see docs/features/seller/backend-needs-2026-10-07.md section 10):
+    Data contract supplied by Seller\VoucherController:
       $vouchers   LengthAwarePaginator<Voucher>  id, name, code, type (fixed|percent), value, max_discount, min_spend, usage_limit,
                   per_buyer_limit, used_count, starts_at, ends_at, scope (all|products|categories), status (active|paused),
                   products (id), categories (id), discount_given (sum), orders_count
@@ -10,7 +10,7 @@
       $filters    ['status' => ?, 'search' => ?, 'product' => ?]
       $products   Collection of the seller's products for the picker: id, name, product_code, price
       $categories Collection of the seller's categories for the picker: id, name
-    Routes used (each optional; the UI says "not available yet" while a route is missing):
+    Routes used:
       seller.vouchers.store · seller.vouchers.update · seller.vouchers.toggle · seller.vouchers.destroy
 --}}
 @php
@@ -151,7 +151,7 @@
                         <a class="vc-btn" href="{{ route('seller.vouchers.index') }}">Clear filters</a>
                     @else
                         <h3>Create your first voucher</h3>
-                        <p>Vouchers lift sales: buyers see them in their cart and at checkout.</p>
+                        <p>Buyers can apply your voucher code at checkout.</p>
                         <ul class="vc-tips">
                             <li><b>Pick a clear offer.</b> “₱50 off ₱500” beats a tiny percentage.</li>
                             <li><b>Set a minimum spend</b> so the discount grows your basket size.</li>

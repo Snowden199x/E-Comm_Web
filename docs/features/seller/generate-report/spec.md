@@ -33,7 +33,7 @@ Start every query with `orders.seller_id = auth()->id()`. A sale counts once whe
 | Top products | Sum units and `quantity × price` by product ID from the included order items; show a fallback name if a product is unavailable. |
 | Shipping charged | Sum of stored `orders.shipping_fee`, displayed separately from product revenue. |
 
-The report must not call gross revenue a payout or net earnings. The current `CommissionSetting` stores only a present-day rate; there is no per-order commission snapshot, payout ledger, or refund amount. Do not calculate historical commission or net payout from that mutable rate. Returned-order counts are informational until return/refund accounting is recorded. Do not include buyer phone numbers, identity documents, or full addresses in the PDF.
+The report must not call gross revenue a payout or net earnings. Admin product commission is fixed at 10%, but there is no per-order commission snapshot, payout ledger, or refund amount. Seller vouchers reduce Buyer payable separately from gross item sales and are not deducted from this gross report. Do not present historical commission or net payout as settled money. Returned-order counts are informational until return/refund accounting is recorded. Do not include buyer phone numbers, identity documents, or full addresses in the PDF.
 
 ## Backend contract
 

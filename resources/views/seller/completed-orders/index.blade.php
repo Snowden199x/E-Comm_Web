@@ -29,7 +29,7 @@
                         <td><strong>#{{ $order->number }}</strong><small>{{ $order->tracking_number }}</small></td>
                         <td>{{ $order->buyer?->name ?? 'Buyer unavailable' }}</td>
                         <td>{{ $order->items->sum('quantity') }} items</td>
-                        <td>₱{{ number_format($order->total_amount + $order->shipping_fee, 2) }}</td>
+                        <td>₱{{ number_format($order->payable_total, 2) }}</td>
                         <td>{{ $order->delivered_at?->format('M j, Y') ?? 'Date unavailable' }}<small>{{ $order->delivered_at?->format('g:i A') ?? '' }}</small></td>
                         <td>{{ $order->carrier_name ?? '—' }}<small>{{ $order->courier?->name ?? 'Unassigned' }}</small></td>
                         <td><span class="ops-badge ops-badge--delivered">{{ $order->status_label }}</span></td>

@@ -51,7 +51,7 @@
         <a class="db-stat db-stat--sales" href="{{ route('seller.reports.index') }}" style="--i:1">
             <span class="db-stat__icon"><img src="{{ asset('assets/icons/seller/icon-1.png') }}" alt=""></span>
             <span class="db-stat__body">
-                <span class="db-stat__label">Total Sales</span>
+                <span class="db-stat__label">Gross Product Sales</span>
                 <span class="db-stat__value" data-countup="{{ $stats['total_sales'] }}" data-money>₱{{ number_format($stats['total_sales'], 2) }}</span>
                 @if($weekDelta !== null)
                     <span class="db-delta {{ $weekDelta >= 0 ? 'is-up' : 'is-down' }}">{{ $weekDelta >= 0 ? '▲' : '▼' }} {{ abs($weekDelta) }}% <small>vs last week</small></span>
@@ -95,11 +95,11 @@
         <section class="db-card db-card--chart" style="--i:5">
             <header class="db-card__head">
                 <div>
-                    <h2 class="db-card__title">Sales Overview</h2>
+                    <h2 class="db-card__title">Gross Product Sales Overview</h2>
                     <p class="db-card__sub">Last 6 weeks · sales count delivered and completed orders</p>
                 </div>
                 <div class="db-legend" role="group" aria-label="Chart series">
-                    <button type="button" class="db-legend__item is-on" data-series="0" aria-pressed="true"><i class="db-dot db-dot--sales"></i>Sales</button>
+                    <button type="button" class="db-legend__item is-on" data-series="0" aria-pressed="true"><i class="db-dot db-dot--sales"></i>Gross sales</button>
                     <button type="button" class="db-legend__item is-on" data-series="1" aria-pressed="true"><i class="db-dot db-dot--orders"></i>Orders</button>
                 </div>
             </header>
@@ -111,7 +111,7 @@
             </div>
 
             <div class="db-chart">
-                <canvas id="sellerSalesOverviewChart" role="img" aria-label="Seller sales and orders over the last six weeks"></canvas>
+                <canvas id="sellerSalesOverviewChart" role="img" aria-label="Seller gross product sales and orders over the last six weeks"></canvas>
                 @unless($hasChartData)
                     <div class="db-chart__empty"><strong>No sales data yet</strong><span>Your chart fills in as orders are placed and delivered.</span></div>
                 @endunless
@@ -150,7 +150,7 @@
                                 <small>{{ $order->created_at->format('M j, g:i A') }}</small>
                             </span>
                             <span class="db-orders__buyer" role="cell"><i aria-hidden="true">{{ $initials ?: '?' }}</i><span>{{ $buyerName }}</span></span>
-                            <span class="db-orders__total" role="cell">₱{{ number_format($order->total_amount, 2) }}</span>
+                            <span class="db-orders__total" role="cell">₱{{ number_format($order->payable_total, 2) }}</span>
                             <span role="cell"><span class="db-pill db-pill--{{ $pillFor[$order->seller_group] ?? 'new' }}"><i aria-hidden="true"></i>{{ $order->status_label }}</span></span>
                         </a>
                     @endforeach
@@ -303,7 +303,7 @@
         data: {
             labels: @json(array_column($chart, 'label')),
             datasets: [
-                { label: 'Sales', data: @json($weekSales), borderColor: '#512258', backgroundColor: gradient('#805487', '55', '05'), borderWidth: 2.5, fill: true, tension: .38, pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: '#fff', pointBorderColor: '#512258', pointBorderWidth: 2, yAxisID: 'y' },
+                { label: 'Gross sales', data: @json($weekSales), borderColor: '#512258', backgroundColor: gradient('#805487', '55', '05'), borderWidth: 2.5, fill: true, tension: .38, pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: '#fff', pointBorderColor: '#512258', pointBorderWidth: 2, yAxisID: 'y' },
                 { label: 'Orders', data: @json($weekOrders), borderColor: '#c28a2c', backgroundColor: gradient('#e3b45a', '40', '05'), borderWidth: 2.5, fill: true, tension: .38, pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: '#fff', pointBorderColor: '#c28a2c', pointBorderWidth: 2, yAxisID: 'y1' },
             ],
         },

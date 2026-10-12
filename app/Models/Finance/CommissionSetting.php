@@ -8,8 +8,10 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 #[Fillable(['rate'])]
 class CommissionSetting extends Model
 {
+    public const FIXED_RATE = 10.00;
+
     public static function currentRate(): float
     {
-        return static::first()?->rate ?? 10.00;
+        return self::FIXED_RATE;
     }
 }

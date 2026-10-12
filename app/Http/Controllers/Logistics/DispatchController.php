@@ -282,6 +282,8 @@ class DispatchController extends Controller
         DB::transaction(function () use ($request, $order, $centerId) {
             $record = Order::query()->where('destination_logistics_center_id', $centerId)->lockForUpdate()->findOrFail($order);
             abort_unless($record->status === 'in_transit_to_hub', 409, 'This parcel is not awaiting destination hub receipt.');
+            abort_unless(! $record->next_route_checkpoint_id && ! $record->route_step, 409,
+                'The planned SH checkpoint scans must finish before destination Main Hub receipt.');
             $record->status = 'at_destination_hub';
             $record->save();
             $record->statusEvents()->create([

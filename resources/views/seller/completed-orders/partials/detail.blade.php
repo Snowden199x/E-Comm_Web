@@ -12,7 +12,7 @@
     <div class="ops-table-scroll"><table class="ops-table ops-table--small"><thead><tr><th>Product</th><th>Options</th><th>Qty</th><th>Subtotal</th></tr></thead><tbody>
         @foreach($order->items as $item)<tr><td>{{ $item->product?->name ?? 'Unavailable product' }}</td><td>{{ collect([$item->color, $item->size])->filter()->join(' · ') ?: '—' }}</td><td>{{ $item->quantity }}</td><td>₱{{ number_format($item->quantity * $item->price, 2) }}</td></tr>@endforeach
     </tbody></table></div>
-    <dl class="ops-totals"><div><dt>Product subtotal</dt><dd>₱{{ number_format($order->total_amount, 2) }}</dd></div><div><dt>Shipping fee</dt><dd>₱{{ number_format($order->shipping_fee, 2) }}</dd></div><div><dt>Total charged</dt><dd>₱{{ number_format($order->total_amount + $order->shipping_fee, 2) }}</dd></div></dl>
+    <dl class="ops-totals"><div><dt>Product subtotal</dt><dd>₱{{ number_format($order->total_amount, 2) }}</dd></div>@if($order->voucher_discount > 0)<div><dt>Voucher {{ $order->voucher_code }}</dt><dd>−₱{{ number_format($order->voucher_discount, 2) }}</dd></div>@endif<div><dt>Shipping fee</dt><dd>₱{{ number_format($order->shipping_fee, 2) }}</dd></div><div><dt>Total charged</dt><dd>₱{{ number_format($order->payable_total, 2) }}</dd></div></dl>
 </section>
 <section class="ops-section"><h3>Order history</h3>
     @forelse($order->statusEvents as $event)<div class="ops-event"><strong>{{ \App\Models\Ecommerce\Order::STATUSES[$event->to_status] ?? ucfirst(str_replace('_', ' ', $event->to_status)) }}</strong><small>{{ $event->created_at->format('M j, Y g:i A') }}</small>@if($event->note)<p>{{ $event->note }}</p>@endif</div>@empty<p class="ops-muted">No status history is available.</p>@endforelse

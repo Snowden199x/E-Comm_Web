@@ -1,7 +1,7 @@
 # Virtual SubHub Route Checkpoints
 
-**Status:** Partial: active route plans can assign an ordered virtual next checkpoint during Main Hub sorting; scanner progression and truck handoffs remain future work  
-**Updated:** 28 September 2026
+**Status:** Partial: active route plans and SH scan API behavior exist in code; Logistics station management is paused pending finalized flow; Truck handoffs and owner verification remain open
+**Updated:** 12 October 2026
 
 ## Agreed route model
 
@@ -11,7 +11,7 @@ Each route plan connects an origin Main Hub to a destination Main Hub and contai
 
 At origin sorting, Vendo considers active plans for that exact Main Hub pair. It selects the plan whose nearest checkpoint municipality is closest to the buyer's municipality; an empty-stop plan uses the destination Main Hub as its comparison point. Approximate route length and configured priority resolve close ties. The seller-side location already determines the origin Main Hub, and SH locality checkpoints may also be configured near a seller area if the intended route needs one. If no valid plan exists, the order remains sorted with no selected route. Approximate straight-line coordinates do not establish roads, ferry availability, travel time, coverage, or transport feasibility.
 
-The selected plan and next ordered checkpoint are recorded on the order. This is a route instruction only. It does not update parcel location or prove a truck handoff, checkpoint arrival, sorting, or custody transfer. `logistics_route_checkpoints` have no owner, address, or physical-site activation requirement. Configure checkpoint municipality names using the bundled PSGC reference codes; route plans and stops can be set up in DBeaver until an authorized route-management screen is built.
+The selected plan and next ordered checkpoint are recorded on the order. This is a route instruction only. It does not update parcel location or prove a truck handoff, checkpoint arrival, sorting, or custody transfer. The scanner API can record an authenticated, operator-confirmed SH arrival and sorting event and advance the route step, but its Logistics station-management page and web routes are currently paused while the team finalizes the full flow. `logistics_route_checkpoints` have no owner, address, or physical-site activation requirement. Configure checkpoint municipality names using the bundled PSGC reference codes; route plans and stops can be set up in DBeaver until an authorized route-management screen is built.
 
 ## Data setup
 
@@ -32,7 +32,7 @@ The migration `2026_09_28_180000_create_logistics_sub_hubs_table.php` is an earl
 
 For a Manila seller and Laguna buyer, the pickup rider takes the item to Manila Main Hub. Main Hub sorting selects a configured Manila → Laguna plan. If its stop order is SH5 then SH6, that sequence is shown as the planned path; the separate scanner app will later record scans when parcels reach the relevant route localities/handoffs. At the buyer's Main Hub, logistics can assign the delivery rider. Near Calamba, final mile may be assigned there; for a farther municipality such as Majayjay or Luisiana, a configured route may use SH3 named Pagsanjan before a local rider takes over. A virtual checkpoint must not itself trigger “Out for delivery.”
 
-The Logistics web portal handles Main Hub sorting, route-plan selection, delivery assignment, monitoring, and reports. Rider, motorcycle courier, truck courier, and SH scanning interfaces are mobile-only and live in separate repositories. The web app currently has no SH scan API, truck manifest, linehaul assignment, checkpoint arrival event, custody event, checkpoint-to-checkpoint progression, or final-mile assignment from an SH. Implement those against the separate scanner app contract when that repository is available. Barcode/QR identifies the parcel but never authorizes a state change.
+The Logistics web portal handles Main Hub sorting, route-plan selection, delivery assignment, monitoring, and reports. SH scanner station pairing/revocation is temporarily removed from the portal. Rider, Truck, and SH scanning interfaces are mobile-only and live in separate repositories. The Web API contains authenticated SH arrival/sorting behavior and route-step progression; these depend on the paused station setup and remain subject to the final Logistics design. Truck manifests, departure/arrival and custody handoffs, and final-mile assignment from an SH remain open. Barcode/QR identifies the parcel but never authorizes a state change. See the [SH scanner API contract](../sh-scanner-api/spec.md).
 
 Legacy `soc5`, `soc6`, `to_soc5`, and `to_soc6` records remain historical/transitional values. They do not mean SH5/SH6 arrival and are shown in logistics UI as legacy route records.
 

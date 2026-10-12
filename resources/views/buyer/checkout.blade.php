@@ -5,9 +5,8 @@
     The address chosen on this page fills the three shipping_* fields. There is no saved address book on the
     server yet, so extra addresses a buyer adds live in this browser tab (sessionStorage) until they place the order.
 
-    Message for the seller: one optional note per shop (posted as seller_notes[<seller id>]). It is shown only when
-    the controller passes $sellerNotesEnabled = true, because nothing on the server stores a note yet. Showing the box
-    before that would let a buyer write a note that is silently thrown away. See the backend note.
+    Message for the seller: one optional note per shop (posted as seller_notes[<seller id>]).
+    Checkout stores each note on that shop's order.
 --}}
 @php
     use Illuminate\Support\Str;
@@ -63,6 +62,10 @@
         'selected' => $selectedId,
         'restoreSaved' => $restoreSaved,
         'storageKey' => 'vendo.checkout.addresses.' . auth()->id(),
+        'voucherQuoteUrl' => route('buyer.checkout.voucher-quote'),
+        'itemIds' => $cartItems->pluck('id')->all(),
+        'subtotal' => (float) $subtotal,
+        'voucherCodes' => old('voucher_codes', []),
     ];
 
     $primaryButton = 'inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#402143] px-5 text-[13px] font-medium text-white transition-colors duration-200 ease-vendo hover:bg-[#52245b]';
@@ -224,6 +227,21 @@
                                     </div>
                                 @endif
 
+                                <div class="mt-3 border-t border-dashed border-[#e5dce7] pt-3">
+                                    <label for="voucher-{{ $sellerKey }}" class="text-[12px] font-medium text-[#5b4a60]">Shop voucher <span class="font-normal text-[#6f5f73]">(optional)</span></label>
+                                    <div class="mt-1 flex gap-2">
+                                        <input id="voucher-{{ $sellerKey }}" type="text" name="voucher_codes[{{ $sellerKey }}]" maxlength="12" autocomplete="off"
+                                            x-model="voucherCodes[{{ $sellerKey }}]" @input="voucherChanged({{ $sellerKey }}, $event)"
+                                            placeholder="Enter code" class="{{ $fieldClass }} !mt-0 min-w-0 flex-1 uppercase">
+                                        <button type="button" @click="applyVoucher({{ $sellerKey }})" :disabled="applyingVoucher[{{ $sellerKey }}]"
+                                            class="rounded-md border border-[#805487] px-3 text-[12px] font-medium text-[#52245b] disabled:opacity-50">Apply</button>
+                                    </div>
+                                    <p x-show="appliedVoucherCodes[{{ $sellerKey }}]" x-cloak class="mt-1 text-[12px] text-[#2e6b46]"
+                                       x-text="'Discount: ₱' + Number(voucherDiscounts[{{ $sellerKey }}] || 0).toFixed(2)"></p>
+                                    <p x-show="voucherErrors[{{ $sellerKey }}]" x-cloak class="mt-1 text-[12px] text-[#a32b43]" role="alert" x-text="voucherErrors[{{ $sellerKey }}]"></p>
+                                    @error('voucher_codes.' . $sellerKey)<p class="mt-1 text-[12px] text-[#a32b43]" role="alert">{{ $message }}</p>@enderror
+                                </div>
+
                                 @if ($sellerGroups->count() > 1)
                                     <p class="mt-3 flex justify-between border-t border-dashed border-[#e5dce7] pt-3 text-[12px] text-[#5b4a60]">
                                         <span>Order from this shop</span><span class="font-semibold text-[#2b1730]">{{ $fmt($shopTotal) }}</span>
@@ -255,8 +273,9 @@
                 <div class="p-4 sm:p-5">
                     <dl class="space-y-2.5 text-[13px]">
                         <div class="flex justify-between gap-3"><dt class="text-[#7a6a7e]">Items ({{ number_format($itemCount) }})</dt><dd class="text-[#2b1730]">{{ $fmt($subtotal) }}</dd></div>
+                        <div x-show="voucherDiscount > 0" x-cloak class="flex justify-between gap-3 text-[#2e6b46]"><dt>Shop vouchers</dt><dd x-text="'−₱' + voucherDiscount.toFixed(2)"></dd></div>
                         <div class="flex justify-between gap-3"><dt class="text-[#7a6a7e]">Shipping fee</dt><dd class="text-[#2b1730]">{{ $fmt(0) }}</dd></div>
-                        <div class="flex items-baseline justify-between gap-3 border-t border-[#f1e8f2] pt-3"><dt class="font-semibold text-[#2b1730]">Total</dt><dd class="text-[22px] font-semibold leading-none text-[#52245b]">{{ $fmt($subtotal) }}</dd></div>
+                        <div class="flex items-baseline justify-between gap-3 border-t border-[#f1e8f2] pt-3"><dt class="font-semibold text-[#2b1730]">Total</dt><dd class="text-[22px] font-semibold leading-none text-[#52245b]" x-text="'₱' + payableTotal.toFixed(2)">{{ $fmt($subtotal) }}</dd></div>
                     </dl>
                     <p class="mt-1.5 text-[11px] text-[#8a7a8e]">Shipping quotes are not available yet, so no shipping fee is charged.</p>
 
@@ -269,7 +288,7 @@
                         class="{{ $primaryButton }} mt-4 h-11 w-full text-[14px] hover:shadow-[0_12px_20px_-12px_rgba(64,33,67,0.9)] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#c9bccc] disabled:shadow-none">
                         <span x-text="submitting ? 'Placing order…' : 'Place order'">Place order</span>
                     </button>
-                    <p class="mt-2 text-center text-[11px] text-[#8a7a8e]">By placing your order you agree to pay {{ $fmt($subtotal) }} on delivery.</p>
+                    <p class="mt-2 text-center text-[11px] text-[#8a7a8e]">By placing your order you agree to pay <span x-text="'₱' + payableTotal.toFixed(2)">{{ $fmt($subtotal) }}</span> on delivery.</p>
                 </div>
             </aside>
         </div>
@@ -349,6 +368,11 @@
         locations: window.vendoLocations,
         modal: false,
         submitting: false,
+        voucherCodes: config.voucherCodes || {},
+        appliedVoucherCodes: {},
+        voucherDiscounts: {},
+        voucherErrors: {},
+        applyingVoucher: {},
         errors: {},
         draft: { label: '', line: '', provinceCode: '', cityCode: '' },
 
@@ -374,6 +398,41 @@
 
         get current() { return this.addresses.find(a => a.id === this.selected && a.usable) || null; },
         get cities() { return Object.entries((this.locations[this.draft.provinceCode] || {}).cities || {}); },
+        get voucherDiscount() { return Object.values(this.voucherDiscounts).reduce((sum, amount) => sum + Number(amount || 0), 0); },
+        get payableTotal() { return Math.max(0, Number(config.subtotal) - this.voucherDiscount); },
+
+        voucherChanged(sellerId, event = null) {
+            const code = String(event ? event.target.value : this.voucherCodes[sellerId] || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (event) event.target.value = code;
+            this.voucherCodes[sellerId] = code;
+            this.voucherDiscounts[sellerId] = 0;
+            this.appliedVoucherCodes[sellerId] = '';
+            this.voucherErrors[sellerId] = '';
+        },
+
+        async applyVoucher(sellerId) {
+            const code = String(this.voucherCodes[sellerId] || '').trim();
+            if (!code) { this.voucherChanged(sellerId); return; }
+            this.applyingVoucher[sellerId] = true;
+            this.voucherErrors[sellerId] = '';
+            try {
+                const response = await fetch(config.voucherQuoteUrl, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                    body: JSON.stringify({ items: config.itemIds, seller_id: sellerId, code }),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(Object.values(data.errors || {}).flat()[0] || data.message || 'Could not apply this voucher.');
+                if (this.voucherCodes[sellerId] !== code) return;
+                this.voucherDiscounts[sellerId] = Number(data.discount);
+                this.appliedVoucherCodes[sellerId] = code;
+            } catch (error) {
+                this.voucherErrors[sellerId] = error.message;
+            } finally {
+                this.applyingVoucher[sellerId] = false;
+            }
+        },
 
         persist() {
             try {
@@ -425,6 +484,14 @@
 
         onSubmit(event) {
             if (!this.current) { event.preventDefault(); this.openModal(); return; }
+            for (const [sellerId, code] of Object.entries(this.voucherCodes)) {
+                if (code && code !== this.appliedVoucherCodes[sellerId]) {
+                    event.preventDefault();
+                    this.voucherErrors[sellerId] = 'Apply this voucher to check the total before placing the order.';
+                    document.getElementById('voucher-' + sellerId)?.focus();
+                    return;
+                }
+            }
             if (this.submitting) { event.preventDefault(); return; }
             this.submitting = true;
         },

@@ -183,7 +183,7 @@
                         </div>
 
                         <div class="sh-card__end">
-                            <strong class="sh-amount">₱{{ number_format($order->total_amount, 2) }}</strong>
+                            <strong class="sh-amount">₱{{ number_format($order->payable_total, 2) }}</strong>
                             <p class="sh-pay">Payment: <b class="{{ $isCod ? 'sh-pay--cod' : 'sh-pay--paid' }}">{{ $mode }}</b></p>
                             <small>{{ $isCod ? 'Payment upon delivery' : 'Paid online' }}</small>
                             @if($voucherCode)<span class="sh-voucher" title="Voucher used on this order">Voucher {{ $voucherCode }}</span>@endif

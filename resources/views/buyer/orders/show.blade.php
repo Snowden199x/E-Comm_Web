@@ -218,8 +218,9 @@
                     <h2 class="{{ $cardHead }}">Order summary</h2>
                     <dl class="space-y-2.5 p-4 text-[13px] sm:p-5">
                         <div class="flex justify-between gap-3"><dt class="text-[#7a6a7e]">Items</dt><dd>{{ $fmt($itemsTotal) }}</dd></div>
+                        @if($order->voucher_discount > 0)<div class="flex justify-between gap-3 text-[#2e6b46]"><dt>Voucher {{ $order->voucher_code }}</dt><dd>−{{ $fmt($order->voucher_discount) }}</dd></div>@endif
                         <div class="flex justify-between gap-3"><dt class="text-[#7a6a7e]">Shipping fee</dt><dd>{{ $fmt($order->shipping_fee ?? 0) }}</dd></div>
-                        <div class="flex items-baseline justify-between gap-3 border-t border-[#f1e8f2] pt-3"><dt class="font-semibold text-[#2b1730]">Total</dt><dd class="text-[20px] font-semibold leading-none text-[#52245b]">{{ $fmt($order->total_amount) }}</dd></div>
+                        <div class="flex items-baseline justify-between gap-3 border-t border-[#f1e8f2] pt-3"><dt class="font-semibold text-[#2b1730]">Total</dt><dd class="text-[20px] font-semibold leading-none text-[#52245b]">{{ $fmt($order->payable_total) }}</dd></div>
                         <div class="flex justify-between gap-3"><dt class="text-[#7a6a7e]">Payment</dt><dd>Cash on delivery</dd></div>
                     </dl>
                 </section>
@@ -228,6 +229,13 @@
                     <h2 class="{{ $cardHead }}">Delivery address</h2>
                     <p class="break-words p-4 text-[13px] leading-6 text-[#3d2a42] sm:p-5">{{ $order->shipping_address }}</p>
                 </section>
+
+                @if (filled($order->buyer_note))
+                    <section class="{{ $card }}">
+                        <h2 class="{{ $cardHead }}">Message to seller</h2>
+                        <p class="whitespace-pre-line break-words p-4 text-[13px] leading-6 text-[#3d2a42] sm:p-5">{{ $order->buyer_note }}</p>
+                    </section>
+                @endif
 
                 @if ($seller)
                     <section class="{{ $card }}">
