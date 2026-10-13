@@ -6,13 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Communication\Notification;
 use App\Models\Communication\PlatformPolicy;
 use App\Models\Ecommerce\Order;
+use App\Services\SellerVoucherExpirationNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class NotificationController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, SellerVoucherExpirationNotificationService $voucherNotifications)
     {
+        $voucherNotifications->notifyExpiredForSeller((int) $request->user()->id);
         $validated = $request->validate(['filter' => ['nullable', Rule::in(['all', 'unread'])]]);
         $filter = $validated['filter'] ?? 'all';
         $notifications = $this->owned($request)
@@ -31,8 +33,9 @@ class NotificationController extends Controller
         return view('seller.notifications.index', compact('notifications', 'unreadCount', 'filter', 'selectedNotification', 'policy'));
     }
 
-    public function recent(Request $request)
+    public function recent(Request $request, SellerVoucherExpirationNotificationService $voucherNotifications)
     {
+        $voucherNotifications->notifyExpiredForSeller((int) $request->user()->id);
         $notifications = $this->owned($request)->latest()->limit(10)->get();
         $unreadCount = $this->owned($request)->whereNull('read_at')->count();
 
@@ -85,7 +88,7 @@ class NotificationController extends Controller
 
             return $order ? route('seller.orders.show', $order) : route('seller.orders.index');
         }
-        if (! is_string($path) || ! preg_match('~^/seller/(dashboard|orders|products|shipments|completed-orders|feedback|messages|case-messages|reports|account|notifications)(/|$)~', $path)) {
+        if (! is_string($path) || ! preg_match('~^/seller/(dashboard|orders|products|vouchers|shipments|completed-orders|feedback|messages|case-messages|reports|account|notifications)(/|$)~', $path)) {
             return route('seller.notifications.index');
         }
 

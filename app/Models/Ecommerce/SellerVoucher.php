@@ -9,11 +9,13 @@ use Illuminate\Database\Eloquent\Model;
 class SellerVoucher extends Model
 {
     protected $fillable = ['seller_id', 'name', 'code', 'type', 'value', 'max_discount', 'min_spend',
-        'usage_limit', 'per_buyer_limit', 'starts_at', 'ends_at', 'scope', 'status', 'deleted_at'];
+        'usage_limit', 'per_buyer_limit', 'starts_at', 'ends_at', 'scope', 'status', 'deleted_at',
+        'new_voucher_notified_at', 'expired_notified_at'];
 
     protected function casts(): array
     {
         return ['starts_at' => 'datetime', 'ends_at' => 'datetime', 'deleted_at' => 'datetime',
+            'new_voucher_notified_at' => 'datetime', 'expired_notified_at' => 'datetime',
             'value' => 'decimal:2', 'max_discount' => 'decimal:2', 'min_spend' => 'decimal:2'];
     }
 

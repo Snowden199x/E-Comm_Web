@@ -1,10 +1,12 @@
 # Seller Notifications
 
-**Status:** Seller inbox and bell implemented in code; manual verification pending.
+**Status:** Seller inbox and bell implemented in code; voucher expiration alerts added 13 October 2026; manual verification and migration pending.
 
 ## Current behavior
 
 Checkout creates a targeted `new_order` notification. Buyer review submission creates a targeted `product_review` notification. Admin policy publication can create a targeted `platform_announcement` notification. Product review outcomes, stock threshold crossings, shipment status changes and admin support replies now create seller notifications. The seller bell opens recent items; the full inbox filters All/Unread and marks items read. The seller inbox excludes records with `user_id = null`.
+
+The Seller notification polling endpoint also checks this Seller's active vouchers for an elapsed end time or exhausted total-use limit. It records one `seller_voucher_expired` notification per voucher and links to Vouchers. The check runs on notification page loads and recent-notification polls; while a Seller page is open, the alert appears on the next poll after expiry. It does not require a scheduler, though no alert is generated until a Seller next loads or polls notifications.
 
 ## Seller experience
 
@@ -26,6 +28,8 @@ Each notification should link to the relevant seller-owned order, product, revie
 | Shipment status or delivery outcome | Implemented | Opens the seller-owned order in the full Orders workspace, including scan history. Existing notification links to Shipments/Delivered Orders detail are redirected to that order. |
 | Admin support reply | Implemented | Opens the seller's support thread. |
 | Admin case message | Implemented | Opens the seller's private case thread after participant authorization. |
+| Voucher first activated | Implemented | Sends one notice per prior Buyer/voucher and links to the Seller's shop. |
+| Voucher ends or reaches its total use limit | Implemented | Detected during Seller notification polling; links to Vouchers and is recorded once per voucher. |
 
 Stock and shipment events are emitted on changes rather than page reads. A stable event key for broader retry deduplication remains future work. Notification text avoids private buyer contact information. Email and push settings can follow when those channels exist.
 
