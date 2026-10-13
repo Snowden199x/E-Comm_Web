@@ -1,7 +1,7 @@
 @if (config('services.google.web_client_id'))
     <div class="w-full" data-google-signin
         data-client-id="{{ config('services.google.web_client_id') }}"
-        data-exchange-url="{{ route('auth.google.exchange') }}"
+        data-exchange-url="{{ route('auth.google.exchange', absolute: false) }}"
         data-csrf="{{ csrf_token() }}"
         data-role="{{ $role }}">
         <div data-google-button class="flex min-h-11 w-full justify-center"></div>

@@ -229,6 +229,31 @@
 
                                 <div class="mt-3 border-t border-dashed border-[#e5dce7] pt-3">
                                     <label for="voucher-{{ $sellerKey }}" class="text-[12px] font-medium text-[#5b4a60]">Shop voucher <span class="font-normal text-[#6f5f73]">(optional)</span></label>
+                                    @if (!empty($voucherOptions[$sellerKey] ?? []))
+                                        <label for="voucher-choice-{{ $sellerKey }}" class="mt-2 block text-[11px] font-medium text-[#6f5f73]">Shop vouchers matching these items</label>
+                                        <select id="voucher-choice-{{ $sellerKey }}" x-model="voucherSelections[{{ $sellerKey }}]"
+                                            @change="selectVoucher({{ $sellerKey }}, $event)" class="{{ $fieldClass }} !mt-1">
+                                            <option value="">Choose a shop voucher</option>
+                                            @foreach ($voucherOptions[$sellerKey] as $voucherOption)
+                                                <option value="{{ $voucherOption['code'] }}" @disabled(!$voucherOption['eligible'])>{{ $voucherOption['name'] }} · {{ $voucherOption['code'] }} · {{ $voucherOption['discount_label'] }}@if (!$voucherOption['eligible']) · {{ $voucherOption['reason'] }}@endif</option>
+                                            @endforeach
+                                        </select>
+                                        <ul class="mt-2 space-y-1.5">
+                                            @foreach ($voucherOptions[$sellerKey] as $voucherOption)
+                                                <li class="rounded-md bg-[#faf7fb] px-2.5 py-2 text-[11px] leading-4 text-[#6f5f73]">
+                                                    <span class="font-semibold text-[#52245b]">{{ $voucherOption['code'] }}</span>
+                                                    <span> — {{ $voucherOption['scope_label'] }}.</span>
+                                                    @if ($voucherOption['min_spend'] > 0)<span> Minimum spend ₱{{ number_format($voucherOption['min_spend'], 2) }}.</span>@endif
+                                                    @if ($voucherOption['starts_at'])<span> Starts {{ $voucherOption['starts_at'] }}.</span>@endif
+                                                    @if ($voucherOption['ends_at'])<span> Valid until {{ $voucherOption['ends_at'] }}.</span>@endif
+                                                    @if ($voucherOption['remaining_uses'] !== null)<span> {{ $voucherOption['remaining_uses'] }} use(s) left.</span>@endif
+                                                    <span> Up to {{ $voucherOption['per_buyer_limit'] }} use(s) per Buyer.</span>
+                                                    @if (!$voucherOption['eligible'])<span class="block font-medium text-[#a32b43]">{{ $voucherOption['reason'] }}</span>@endif
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
+                                    <label for="voucher-{{ $sellerKey }}" class="mt-2 block text-[11px] font-medium text-[#6f5f73]">Or enter a voucher code</label>
                                     <div class="mt-1 flex gap-2">
                                         <input id="voucher-{{ $sellerKey }}" type="text" name="voucher_codes[{{ $sellerKey }}]" maxlength="12" autocomplete="off"
                                             x-model="voucherCodes[{{ $sellerKey }}]" @input="voucherChanged({{ $sellerKey }}, $event)"
@@ -369,6 +394,7 @@
         modal: false,
         submitting: false,
         voucherCodes: config.voucherCodes || {},
+        voucherSelections: config.voucherCodes || {},
         appliedVoucherCodes: {},
         voucherDiscounts: {},
         voucherErrors: {},
@@ -390,6 +416,9 @@
             if (!this.addresses.some(a => a.id === this.selected && a.usable)) {
                 this.selected = (this.addresses.find(a => a.usable) || {}).id || null;
             }
+            for (const [sellerId, code] of Object.entries(this.voucherCodes)) {
+                if (code) this.applyVoucher(sellerId);
+            }
             // Browser back/forward restores the page from cache: allow another submit
             window.addEventListener('pageshow', () => { this.submitting = false; });
             this.$watch('selected', () => this.persist());
@@ -405,9 +434,20 @@
             const code = String(event ? event.target.value : this.voucherCodes[sellerId] || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
             if (event) event.target.value = code;
             this.voucherCodes[sellerId] = code;
+            this.voucherSelections[sellerId] = '';
             this.voucherDiscounts[sellerId] = 0;
             this.appliedVoucherCodes[sellerId] = '';
             this.voucherErrors[sellerId] = '';
+        },
+
+        selectVoucher(sellerId, event) {
+            const code = String(event.target.value || '');
+            this.voucherSelections[sellerId] = code;
+            this.voucherCodes[sellerId] = code;
+            this.voucherDiscounts[sellerId] = 0;
+            this.appliedVoucherCodes[sellerId] = '';
+            this.voucherErrors[sellerId] = '';
+            if (this.voucherCodes[sellerId]) this.applyVoucher(sellerId);
         },
 
         async applyVoucher(sellerId) {

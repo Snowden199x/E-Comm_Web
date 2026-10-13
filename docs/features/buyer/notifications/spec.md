@@ -1,7 +1,7 @@
 # Buyer Notifications
 
-**Status:** Implemented; page and header dropdown restyled 6 October 2026; owner verification pending
-**Reviewed:** 7 October 2026
+**Status:** Implemented; Seller voucher alerts added 13 October 2026; owner verification pending
+**Reviewed:** 13 October 2026
 
 ## Current behavior
 
@@ -19,6 +19,8 @@ Account warnings and announcements open the notification detail dialog (`shared.
 ## Gaps and acceptance direction
 
 The notification sound preference now persists in `buyer_settings` and is read by the Buyer layout. It controls the browser chime; selecting which notification categories or emails to receive is still unavailable.
+
+When a Seller first activates a voucher, Buyers with a prior order from that Seller receive one notification per Buyer/voucher. The notice includes the code and scope, links to the Seller's shop, and does not include order details. A unique recipient record and first-activation timestamp prevent duplicate alerts. At checkout, the voucher selector shows currently redeemable offers whose shop/product/category scope matches the selected cart lines. See [Buyer voucher usage](../voucher-usage/spec.md).
 
 The icon is chosen from keywords in the notification `type` (order, message, review, announcement, warning) and falls back to a general bell. A fixed list of types or a category column would make this dependable. There is no delete or archive action. Grouping applies to the current page only. See [backend needs](../../../backend-needs.md), item 8.
 

@@ -22,7 +22,7 @@ class CheckoutController extends Controller
     public function index(Request $request, LocationCatalog $locations)
     {
         $selectedIds = $request->validate(['items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct']])['items'];
-        $cartItems = CartItem::with('product.seller.sellerDetail', 'variant')->where('user_id', auth()->id())
+        $cartItems = CartItem::with('product.category', 'product.seller.sellerDetail', 'product.images', 'variant')->where('user_id', auth()->id())
             ->whereIn('id', $selectedIds)->orderBy('id')->get();
         if ($cartItems->count() !== count($selectedIds)) {
             throw ValidationException::withMessages(['items' => 'Review your cart selection and try again.']);
@@ -30,6 +30,13 @@ class CheckoutController extends Controller
         $checkoutRevision = $this->revision($cartItems,
             $cartItems->mapWithKeys(fn ($item) => [$item->product_id => $item->product]),
             $cartItems->filter(fn ($item) => $item->variant)->mapWithKeys(fn ($item) => [$item->variant->id => $item->variant]));
+        $products = $cartItems->mapWithKeys(fn ($item) => [$item->product_id => $item->product]);
+        $variants = $cartItems->filter(fn ($item) => $item->variant)->mapWithKeys(fn ($item) => [$item->variant->id => $item->variant]);
+        $voucherOptions = [];
+        foreach ($cartItems->groupBy(fn ($item) => $item->product->seller_id) as $sellerId => $sellerItems) {
+            $voucherOptions[$sellerId] = app(SellerVoucherService::class)->checkoutOptions(
+                (int) $sellerId, $sellerItems, $products, $variants, (int) $request->user()->id);
+        }
         $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
 
         $defaultAddress = $buyerDetail
@@ -48,7 +55,7 @@ class CheckoutController extends Controller
 
         $sellerNotesEnabled = true;
 
-        return view('buyer.checkout', compact('cartItems', 'defaultAddress', 'checkoutRevision', 'locationOptions', 'defaultProvinceCode', 'defaultCityCode', 'sellerNotesEnabled'));
+        return view('buyer.checkout', compact('cartItems', 'defaultAddress', 'checkoutRevision', 'locationOptions', 'defaultProvinceCode', 'defaultCityCode', 'sellerNotesEnabled', 'voucherOptions'));
     }
 
     public function store(Request $request, LocationCatalog $locations)
