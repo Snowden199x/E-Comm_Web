@@ -36,6 +36,22 @@
         ['label' => 'System', 'items' => [['Account Management', 'shield', $hubUrl('account'), $page === 'account', 0]]],
     ];
 
+    // HARDCODED PREVIEW: replace with the real notification feed. Each item: [title, detail, url]
+    $alerts = match ($role) {
+        'company' => [
+            ['Los Banos Station is still in setup', 'Finish setup so it can receive parcels.', route('lgp.company.hubs')],
+            ['Carlo Ramos has not accepted the invite', 'Resend it from Hub Managers.', route('lgp.company.managers')],
+        ],
+        'province' => [
+            ['58 parcels are waiting for linehaul', 'Assign a truck rider and dispatch.', route('lgp.hub.linehaul')],
+            ['Truck from Quezon Hub arrives in 25 min', '42 parcels to receive.', route('lgp.hub.linehaul')],
+        ],
+        default => [
+            ['3 pickup requests need verification', 'Sellers are waiting for a rider.', $hubUrl('incoming')],
+            ['Delivery failed: VND-10451', 'Retry it or return it to the seller.', $hubUrl('monitoring')],
+        ],
+    };
+
     $linkBase = 'group relative flex h-10 w-full items-center gap-3 overflow-hidden rounded-xl px-3 transition-colors duration-200 ease-vendo focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8c874]/70';
 @endphp
 <!DOCTYPE html>
@@ -52,13 +68,44 @@
     {{-- Same sidebar store, layout css and motion as the admin; workspace.css only styles the page content (cards, tables, pills). --}}
     @vite(['resources/css/shared/app.css', 'resources/css/admin/layout.css', 'resources/css/logistics/workspace.css', 'resources/js/admin/sidebar.js', 'resources/js/shared/app.js'])
 </head>
-<body class="h-full antialiased bg-[#FBF7F2] text-[#2B1730]">
+{{-- x-data is required: Alpine only runs :class / @click / x-show (sidebar collapse, mobile drawer, backdrop) inside an x-data root. The admin layout does the same on its <body>. --}}
+<body class="h-full antialiased bg-[#FBF7F2] text-[#2B1730]" x-data="{}">
+<a href="#main-content" class="lg-skip">Skip to main content</a>
+
+{{-- Toasts: any page can run $dispatch('lg-toast', { type: 'success' | 'error' | 'info', message: '...' }) --}}
+<div class="lg-toasts" role="status" aria-live="polite"
+     x-data="{
+        items: [],
+        add(d) {
+            const id = Date.now() + Math.random();
+            this.items.push({ id, type: d.type || 'info', message: d.message });
+            setTimeout(() => this.remove(id), 5000);
+        },
+        remove(id) { this.items = this.items.filter(i => i.id !== id); }
+     }"
+     @lg-toast.window="add($event.detail)">
+    <template x-for="t in items" :key="t.id">
+        <div class="lg-toast" :class="'lg-toast--' + t.type">
+            <span class="lg-toast__icon" aria-hidden="true">
+                <x-logistics.icon name="check-circle" :size="20" x-show="t.type === 'success'" />
+                <x-logistics.icon name="alert" :size="20" x-show="t.type === 'error'" x-cloak />
+                <x-logistics.icon name="info" :size="20" x-show="t.type === 'info'" x-cloak />
+            </span>
+            <p x-text="t.message"></p>
+            <button type="button" class="lg-toast__close" @click="remove(t.id)" aria-label="Dismiss message"><x-logistics.icon name="x" :size="16" /></button>
+        </div>
+    </template>
+</div>
+
 <div class="flex h-full overflow-hidden">
 
     {{-- Spacer holds the column open at the pinned width --}}
     <div :class="$store.sidebar.collapsed ? 'lg:w-[80px]' : 'lg:w-[272px]'" class="hidden lg:block flex-shrink-0 transition-[width] duration-500 ease-vendo"></div>
 
-    <div x-show="$store.sidebar.mobileOpen" x-cloak @click="$store.sidebar.close()" class="fixed inset-0 bg-[#2B1730]/50 z-30 lg:hidden"></div>
+    <div x-show="$store.sidebar.mobileOpen" x-cloak @click="$store.sidebar.close()"
+         x-transition:enter="transition-opacity duration-300 ease-vendo" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-300 ease-vendo" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-[#2B1730]/50 z-30 lg:hidden"></div>
 
     <aside id="sidebar" @mouseenter="$store.sidebar.hoverOn()" @mouseleave="$store.sidebar.hoverOff()" aria-label="Logistics navigation"
         :class="[
@@ -69,7 +116,7 @@
         class="fixed inset-y-0 left-0 z-40 w-[272px] flex flex-col bg-[#3b1735] text-white transition-[width,transform,box-shadow] duration-500 ease-vendo overflow-hidden">
 
         <div class="h-[72px] flex-shrink-0 flex items-center relative px-4 border-b border-white/10">
-            <a href="{{ $home }}" aria-label="Vendo logistics dashboard" class="relative flex items-center h-full w-full focus-visible:outline-none">
+            <a href="{{ $home }}" @click="$store.sidebar.close()" aria-label="Vendo logistics dashboard" class="relative flex items-center h-full w-full focus-visible:outline-none">
                 <img src="{{ asset('assets/branding/log-in-logo.svg') }}" alt="Vendo"
                     :class="$store.sidebar.expanded ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'"
                     class="absolute left-3 top-1/2 -translate-y-1/2 h-11 w-auto max-w-[180px] object-contain object-left origin-left transition-all duration-300 ease-vendo">
@@ -98,7 +145,7 @@
                     @endif
                     <div class="space-y-0.5">
                     @foreach ($group['items'] as [$label, $icon, $href, $active, $badge])
-                        <a href="{{ $href }}" title="{{ $label }}" @if ($active) aria-current="page" @endif
+                        <a href="{{ $href }}" @click="$store.sidebar.close()" title="{{ $label }}" @if ($active) aria-current="page" @endif
                            class="{{ $linkBase }} {{ $active ? 'bg-white/[0.14]' : 'hover:bg-white/[0.07] active:bg-white/10' }}">
                             @if ($active)<span aria-hidden="true" class="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-[#e8c874]"></span>@endif
                             <span class="relative flex h-6 w-10 flex-shrink-0 items-center justify-center {{ $active ? 'text-white' : 'text-white/75 group-hover:text-white' }}">
@@ -136,22 +183,41 @@
                     class="w-10 h-10 -ml-2 flex-shrink-0 rounded-xl flex items-center justify-center text-[#3b1735] hover:bg-[#f1e9f1] transition-colors duration-200 ease-vendo focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16" /></svg>
                 </button>
-                <p class="hidden min-w-0 truncate font-display text-[15px] font-semibold sm:block">{{ $title }}</p>
+                <nav aria-label="Breadcrumb" class="hidden min-w-0 items-center gap-2 sm:flex">
+                    <span class="hidden truncate text-sm text-gray-500 xl:inline">{{ $orgName }}</span>
+                    <span class="hidden text-gray-300 xl:inline" aria-hidden="true">/</span>
+                    <span class="truncate font-display text-[15px] font-semibold" aria-current="page">{{ $title }}</span>
+                </nav>
             </div>
 
             <div class="flex items-center gap-3 sm:gap-5">
                 {{-- PREVIEW ONLY: delete this block when real auth is wired --}}
                 <div class="hidden md:flex items-center gap-1.5 text-xs">
+                    <span class="lg-pill lg-pill--amber mr-1" title="Pages use sample data. Actions change the screen only and nothing is saved.">Demo data</span>
                     <span class="text-gray-500">Preview as</span>
                     @foreach (['company' => ['Company', route('lgp.company')], 'province' => ['Province hub', route('lgp.hub.province')], 'station' => ['Station', route('lgp.hub.station')]] as $key => [$l, $u])
                         <a href="{{ $u }}" class="rounded-full px-2.5 py-1 font-medium {{ $role === $key ? 'bg-[#3b1735] text-white' : 'bg-[#f1e9f1] text-[#3b1735] hover:bg-[#e8dce8]' }}">{{ $l }}</a>
                     @endforeach
                 </div>
 
-                <button type="button" aria-label="Notifications" class="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[#f1e9f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
-                    <img src="{{ asset('assets/icons/dashboard/notifications-icon.svg') }}" alt="" class="h-6 w-6">
-                    <span class="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 text-[10px] text-white">2</span>
-                </button>
+                <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false">
+                    <button type="button" @click="open = !open" @click.outside="open = false" aria-haspopup="menu" :aria-expanded="open"
+                        aria-label="Notifications, {{ count($alerts) }} unread"
+                        class="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[#f1e9f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                        <img src="{{ asset('assets/icons/dashboard/notifications-icon.svg') }}" alt="" class="h-6 w-6">
+                        <span aria-hidden="true" class="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 text-[10px] text-white">{{ count($alerts) }}</span>
+                    </button>
+                    <div x-show="open" x-cloak x-transition.opacity.duration.150ms role="menu" aria-label="Notifications"
+                        class="absolute right-0 z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] origin-top-right rounded-2xl border border-[#ece4ec] bg-white py-1.5 shadow-[0_18px_40px_-20px_rgba(43,23,48,0.4)]">
+                        <p class="px-4 pb-1.5 pt-2 text-xs font-medium text-gray-500">Needs your attention</p>
+                        @foreach ($alerts as [$aTitle, $aText, $aUrl])
+                            <a href="{{ $aUrl }}" role="menuitem" class="block px-4 py-2.5 hover:bg-[#F7F1F7] focus-visible:bg-[#F7F1F7] focus-visible:outline-none">
+                                <span class="block text-sm font-semibold text-[#2B1730]">{{ $aTitle }}</span>
+                                <span class="block text-xs text-gray-600">{{ $aText }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
 
                 <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false">
                     <button type="button" @click="open = !open" @click.outside="open = false" aria-haspopup="menu" :aria-expanded="open"
@@ -174,7 +240,7 @@
         </header>
 
         <div class="relative flex-1 overflow-hidden">
-            <main id="main-content" class="h-full overflow-y-auto thin-scroll">
+            <main id="main-content" tabindex="-1" class="h-full overflow-y-auto thin-scroll focus:outline-none">
                 <div class="lg-body" style="min-height:0;background:transparent"><div class="lg-content">{{ $slot }}</div></div>
             </main>
         </div>

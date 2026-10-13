@@ -2166,3 +2166,444 @@ html {
     font: 600 10px/17px Poppins, sans-serif;
     text-align: center;
 }
+
+/* ==========================================================================
+   Role portal pass (company / province hub / station) - 13 Oct 2026
+   Rules and rationale: docs/design/logistics-design-system.md
+   ========================================================================== */
+
+/* Active tab: the portal pages mark it with aria-pressed; aria-current is kept as a fallback */
+.lg-tab[aria-current="page"] {
+    border-color: var(--lg-brand);
+    background: var(--lg-brand);
+    color: #fff;
+}
+
+.lg-tab[aria-current="page"] .lg-tab__count {
+    background: rgb(255 255 255 / 22%);
+    color: #fff;
+}
+
+/* Linked stat cards */
+a.lg-stat {
+    color: inherit;
+    text-decoration: none;
+}
+
+a.lg-stat:focus-visible {
+    outline: 2px solid var(--lg-brand);
+    outline-offset: 2px;
+}
+
+.lg-stat__body {
+    min-width: 0;
+}
+
+.lg-stat__go {
+    margin-left: auto;
+    color: var(--lg-faint);
+    transition: transform 0.2s var(--lg-ease), color 0.2s ease;
+}
+
+a.lg-stat:hover .lg-stat__go {
+    color: var(--lg-brand);
+    transform: translateX(3px);
+}
+
+/* Tables: vertically centred rows, action cells, selection */
+.lg-table--mid td {
+    vertical-align: middle;
+}
+
+.lg-table td.is-actions,
+.lg-table th.is-actions {
+    text-align: right;
+}
+
+.lg-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.lg-table td.is-actions .lg-actions {
+    justify-content: flex-end;
+}
+
+.lg-table tbody tr.is-selected,
+.lg-table tbody tr.is-selected:hover {
+    background: var(--lg-brand-soft);
+}
+
+.lg-table tbody tr.is-parent td {
+    background: #fdfaf7;
+}
+
+.lg-tree-child {
+    margin-left: 6px;
+    padding-left: 16px;
+    border-left: 2px solid var(--lg-brand-line);
+}
+
+.lg-check {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    border-radius: 4px;
+    accent-color: var(--lg-brand);
+    cursor: pointer;
+}
+
+.lg-check:focus-visible {
+    outline: 2px solid var(--lg-brand);
+    outline-offset: 2px;
+}
+
+/* Meters (capacity, share, success rate). The number is always printed beside the bar. */
+.lg-meter {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--lg-line-2);
+}
+
+.lg-meter > span {
+    display: block;
+    width: var(--w, 0%);
+    height: 100%;
+    border-radius: inherit;
+    background: var(--lg-brand);
+    transition: width 0.5s var(--lg-ease);
+}
+
+.lg-meter--ok > span { background: var(--lg-green); }
+.lg-meter--warn > span { background: var(--lg-amber); }
+.lg-meter--danger > span { background: var(--lg-red); }
+
+.lg-meter-row {
+    display: grid;
+    gap: 6px;
+}
+
+.lg-meter-row__top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+}
+
+.lg-meter-row__top span {
+    color: var(--lg-ink-2);
+}
+
+.lg-meter-row__top strong {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Attention list: what needs the user now */
+.lg-attn {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lg-attn__item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--lg-line);
+    border-radius: var(--lg-radius);
+    background: var(--lg-surface);
+}
+
+.lg-attn__icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: 10px;
+    background: var(--lg-brand-soft);
+    color: var(--lg-brand);
+}
+
+.lg-attn__icon--red { background: var(--lg-red-soft); color: var(--lg-red); }
+.lg-attn__icon--amber { background: var(--lg-amber-soft); color: var(--lg-amber); }
+.lg-attn__icon--blue { background: var(--lg-blue-soft); color: var(--lg-blue); }
+.lg-attn__icon--violet { background: var(--lg-violet-soft); color: var(--lg-violet); }
+
+.lg-attn__text {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+}
+
+.lg-attn__text small {
+    display: block;
+    color: var(--lg-muted);
+    font-size: 13px;
+    font-weight: 400;
+}
+
+/* Sticky bulk action bar (sorting, assignments) */
+.lg-bulkbar {
+    position: sticky;
+    bottom: 16px;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: var(--lg-radius-lg);
+    background: var(--lg-brand-dark);
+    color: #fff;
+    box-shadow: var(--lg-shadow-md);
+}
+
+.lg-bulkbar__count {
+    font-weight: 600;
+}
+
+.lg-bulkbar__meta {
+    color: rgb(255 255 255 / 78%);
+    font-size: 13px;
+}
+
+.lg-bulkbar__spacer {
+    flex: 1 1 0;
+}
+
+.lg-bulkbar .lg-select {
+    width: auto;
+    min-width: 220px;
+}
+
+.lg-bulkbar .lg-btn {
+    border-color: var(--lg-gold);
+    background: var(--lg-gold);
+    color: #2b1730;
+}
+
+.lg-bulkbar .lg-btn:hover {
+    background: #d6a53f;
+}
+
+.lg-bulkbar .lg-btn:disabled {
+    border-color: rgb(255 255 255 / 25%);
+    background: rgb(255 255 255 / 14%);
+    color: rgb(255 255 255 / 70%);
+}
+
+.lg-bulkbar .lg-btn--ghost {
+    border-color: transparent;
+    background: transparent;
+    color: #fff;
+}
+
+.lg-bulkbar .lg-btn--ghost:hover {
+    background: rgb(255 255 255 / 12%);
+}
+
+/* Forms */
+.lg-form-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.lg-form-grid > .is-wide {
+    grid-column: 1 / -1;
+}
+
+.lg-modal__body--grid {
+    display: grid;
+    gap: 14px;
+}
+
+.lg-req {
+    margin-left: 2px;
+    color: var(--lg-red);
+}
+
+.lg-hint {
+    color: var(--lg-muted);
+    font-size: 12px;
+}
+
+.lg-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--lg-red);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.lg-input[aria-invalid="true"],
+.lg-select[aria-invalid="true"],
+.lg-textarea[aria-invalid="true"] {
+    border-color: var(--lg-red);
+}
+
+.lg-input-group {
+    position: relative;
+}
+
+.lg-input-group .lg-input {
+    padding-right: 48px;
+}
+
+.lg-input-group__btn {
+    position: absolute;
+    top: 50%;
+    right: 4px;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 32px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--lg-muted);
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.lg-input-group__btn:hover {
+    background: var(--lg-gray-soft);
+}
+
+.lg-input-group__btn:focus-visible {
+    outline: 2px solid var(--lg-brand);
+    outline-offset: 1px;
+}
+
+.lg-rules {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    color: var(--lg-muted);
+    font-size: 12px;
+    list-style: none;
+}
+
+.lg-rules li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.lg-rules li.is-ok {
+    color: var(--lg-green);
+}
+
+/* Account header */
+.lg-identity {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+}
+
+.lg-identity__avatar {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    flex: none;
+    border-radius: 16px;
+    background: var(--lg-brand);
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.lg-identity__name {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.lg-crumb-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    color: var(--lg-muted);
+    font-size: 13px;
+}
+
+/* Toasts live outside .lg-body in the portal shell, so they need their own colours and motion rule */
+.lg-toast__icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    margin-top: 1px;
+}
+
+.lg-toast--success .lg-toast__icon { color: var(--lg-green); }
+.lg-toast--error .lg-toast__icon { color: var(--lg-red); }
+.lg-toast--info .lg-toast__icon { color: var(--lg-brand); }
+
+.lg-toasts .lg-toast p {
+    color: var(--lg-ink);
+}
+
+@media (max-width: 720px) {
+    .lg-table--stack td.is-num,
+    .lg-table--stack td.is-actions {
+        text-align: left;
+    }
+
+    .lg-table--stack td.is-actions .lg-actions {
+        justify-content: flex-start;
+    }
+
+    .lg-table--stack td.is-check {
+        display: inline-block;
+        width: auto;
+    }
+
+    .lg-tree-child {
+        margin-left: 0;
+    }
+
+    .lg-attn__item {
+        flex-wrap: wrap;
+    }
+
+    .lg-attn__item .lg-btn {
+        margin-left: 48px;
+    }
+
+    .lg-bulkbar {
+        bottom: 8px;
+    }
+
+    .lg-bulkbar .lg-select {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .lg-bulkbar__spacer {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lg-toast,
+    .lg-meter > span,
+    .lg-stat__go {
+        animation: none !important;
+        transition: none !important;
+    }
+}
