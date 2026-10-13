@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Product;
 use App\Models\Ecommerce\SellerVoucher;
 use App\Models\User;
+use App\Services\SellerVoucherNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +78,7 @@ class VoucherController extends Controller
             $this->checkCode($request->user()->id, $data['code']);
             $voucher = SellerVoucher::create($this->fields($data, $request->user()->id));
             $this->syncScope($voucher, $data);
+            if ($voucher->status === 'active') app(SellerVoucherNotificationService::class)->announceFirstActivation($voucher);
 
             return $voucher;
         }, 3);
@@ -92,9 +94,11 @@ class VoucherController extends Controller
             User::query()->whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
             $record = SellerVoucher::query()->whereKey($voucher->id)->lockForUpdate()->firstOrFail();
             $this->owned($request, $record);
+            $firstActivation = $record->status !== 'active' && $data['status'] === 'active';
             $this->checkCode($request->user()->id, $data['code'], $record->id);
             $record->update($this->fields($data, $request->user()->id));
             $this->syncScope($record, $data);
+            if ($firstActivation) app(SellerVoucherNotificationService::class)->announceFirstActivation($record);
         }, 3);
 
         return response()->json(['message' => 'Voucher updated.']);
@@ -104,7 +108,13 @@ class VoucherController extends Controller
     {
         $this->owned($request, $voucher);
         $status = $request->validate(['status' => ['required', 'in:active,paused']])['status'];
-        $voucher->update(['status' => $status]);
+        DB::transaction(function () use ($request, $voucher, $status) {
+            $record = SellerVoucher::query()->whereKey($voucher->id)->lockForUpdate()->firstOrFail();
+            $this->owned($request, $record);
+            $firstActivation = $record->status !== 'active' && $status === 'active';
+            $record->update(['status' => $status]);
+            if ($firstActivation) app(SellerVoucherNotificationService::class)->announceFirstActivation($record);
+        }, 3);
 
         return response()->json(['message' => $status === 'active' ? 'Voucher resumed.' : 'Voucher paused.']);
     }
