@@ -279,7 +279,6 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::delete('/account/profile-picture', [BuyerAccountController::class, 'removeProfilePicture'])->middleware('auth')->name('account.profile-picture.remove');
     Route::post('/account/banner', [BuyerAccountController::class, 'uploadBanner'])->middleware('auth')->name('account.banner.upload');
     Route::delete('/account/banner', [BuyerAccountController::class, 'removeBanner'])->middleware('auth')->name('account.banner.remove');
-    Route::get('/messages/fetch', [BuyerMessageController::class, 'fetch'])->middleware('auth')->name('messages.fetch');
     Route::post('/user-reports', [UserReportController::class, 'store'])->middleware(['auth', 'throttle:3,1'])->name('user-reports.store');
     Route::get('/notifications', [BuyerNotificationController::class, 'index'])->middleware('auth')->name('notifications.index');
     Route::get('/notifications/recent', [BuyerNotificationController::class, 'recent'])->middleware('auth')->name('notifications.recent');
