@@ -17,11 +17,10 @@ This documentation describes the Laravel web application as it exists in the rep
 - [Google sign-in](features/shared/google-auth/spec.md) — verified web and Rider token exchange, registration continuation, configuration, and platform limits.
 - [Shared site branding](features/shared/site-branding/spec.md) — the Vendo browser tab icon and Buyer product video display.
 - [Commission and settlement design](design/commission-calculation-and-settlement.md) — current Vendo commission behavior and an Aisley-referenced design for future shipping allocation and settlement.
-- [Seller vouchers](features/seller/vouchers/spec.md), [category requests](features/seller/category-requests/spec.md), and [complaints list](features/seller/complaints/spec.md) — backend for the pulled Seller screens; [Buyer voucher usage](features/buyer/voucher-usage/spec.md) covers checkout redemption.
 - [Web form reload recovery](features/shared/form-draft-recovery/spec.md) — which forms retain unfinished work in the current tab and which inputs must be re-entered.
 - [Role workspace redesign](design/2026-10-04-role-workspace-redesign.md) — design and implementation boundaries for the 4 October Buyer, Seller, Logistics, and Admin UI update.
+- [Logistics portal design system](design/logistics-design-system.md) — colours, type, interaction rules, and checklist for the Company / Province Hub / Station pages (13 October pass).
 - [7 October frontend pull review](design/2026-10-07-pulled-frontend-review.md) — review of the recent frontend merges, UI-only boundaries, missing backend work, and suggested implementation order.
-- [12 October pull review](design/2026-10-12-pull-review.md) — review of the latest Web and Mobile pulls, preview-only Logistics screens, Seller backend gaps, and Rider login/dashboard wiring.
 - [4 October progress](logs/PROGRESS-2026-10-04.md) — team pull review, summary, and role-specific implementation notes.
 - [25 September progress](logs/PROGRESS-2026-09-25.md) — messaging, notification and inventory updates.
 - [26 September progress](logs/PROGRESS-2026-09-26.md) — policies, cart, notifications, chat, and agent workflow.

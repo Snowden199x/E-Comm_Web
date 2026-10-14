@@ -20,7 +20,6 @@ Rider Management now has a dedicated center-scoped `logistics.riders.index` page
 | Parcels | Delivery Monitoring | `logistics.delivery-monitoring` |
 | Insights | Reports | `logistics.reports` |
 | Insights | Messages | `logistics.messages` (placeholder) |
-| Insights | Notifications | `logistics.notifications.index` |
 | Settings | Account Management | `logistics.account.index` |
 | (bottom) | Logout | `logistics.logout` (POST) |
 
@@ -29,10 +28,10 @@ Legacy SH scanner device pairing remains paused: `/logistics/scanners` is not re
 
 ## Shell behavior (redesigned 3 October 2026)
 
-- The current live layout uses a plum vertical navigation on desktop and a horizontally scrollable navigation row on small screens. It includes flat links for the parcel stages. The earlier collapsing sidebar behavior is present only in the hard-coded preview shell, not the protected portal.
-- The live navigation links to the center-owner notification inbox, Account Management, and Logout. The preview topbar is not wired to authenticated Main Hub data.
+- The shell keeps Vendo's plum sidebar with a gold active marker. On desktop it is expanded by default and collapses to an icon rail with the topbar menu button; the choice is saved in `localStorage` under `vendo.logistics.nav`. A collapsed sidebar expands on hover. Below 960px it becomes a slide-out drawer with a backdrop that closes on backdrop click, Escape, or link tap. Delivery Assignments and Delivery Monitoring are two flat links under Parcels; there is no expanding Delivery group.
+- The topbar shows a breadcrumb, today's date, and an account menu (Account Management, Logout). The bell links to a center-owner notification inbox and polls its unread count every 30 seconds.
 - Account Management now lets an approved, active Logistics Center upload or remove its profile photo; see [account management](../account-management/spec.md).
-- Flash success and validation messages render as inline alerts in the live layout; the preview-only toast behavior is not part of the protected portal.
+- Flash messages (`success`, rider `confirmation`, and validation errors) render once as toasts from the layout, so individual pages no longer print them.
 - Typography and spacing follow an e-commerce scale: Poppins, 14px body, 24px page titles, and an 8px spacing grid. Transitions cover page and card entrance, sidebar width, dialogs and menus, toasts, count-up numbers, and the parcel tracker, and all respect `prefers-reduced-motion`.
 - Dispatch and monitoring now apply search, status, area, date and stage filters in center-scoped database queries; stage counts cover matching records beyond the current page.
 - The dashboard passes center-scoped workflow counts for pickup, sorting, delivery assignment and active parcels.
@@ -44,8 +43,12 @@ Legacy SH scanner device pairing remains paused: `/logistics/scanners` is not re
 - Delivery Assignments can assign several ready parcels from one `shipping_city_code` area to one active, approved local Rider. The transaction locks all selected orders and rejects an out-of-scope or changed parcel. Truck operators are reserved for linehaul assignment, not final local delivery.
 - New pickup routing, hub arrivals and Rider applications create notifications for the owning Logistics account. The inbox and unread-count endpoint are scoped by authenticated user ID. Existing historical events are not backfilled.
 - Report PDF and Excel-compatible CSV are generated server-side from the selected center-scoped date range. CSV is not an `.xlsx` file; no spreadsheet package has been introduced.
-- Messages remains a placeholder. SH station management in the Logistics portal is temporarily paused; the scanner API and schema remain in code pending a finalized Logistics workflow. Truck custody, manifests, and SH-to-local-rider handoff remain open. A planned virtual checkpoint does not prove arrival or physical custody.
+- Messages remains a placeholder. Physical SH arrivals, sorting scans, custody, truck manifests, route progression, and SH-to-local-rider handoff still need the separate scanner/mobile contracts. A planned virtual checkpoint does not prove physical custody.
 
 Owner migration, asset compilation and end-to-end verification remain pending.
 
 `resources/js/logistics/workspace.js` is already present in `vite.config.js`; no Vite entry needs to be added for this backlog. This web work is for the Logistics Center portal. Rider/Truck interfaces and the separate SH scanner app remain mobile-only.
+
+## Role portal pages (13 October 2026)
+
+The Company, Province Hub and Station preview pages (`routes/logistics_preview.php`) now follow [the logistics design system](../../../design/logistics-design-system.md): dashboards lead with an attention list, work pages use a select-then-bulk-bar pattern, reject/return actions need a typed reason, deactivation asks for confirmation, and results appear in a shared toast region. This is presentation only and uses hard-coded data; see `docs/logs/PROGRESS-2026-10-13.md` for the file list and limits.
