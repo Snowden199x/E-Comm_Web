@@ -1,9 +1,13 @@
-# Virtual SubHub Route Checkpoints
+# Legacy Virtual SubHub Route Checkpoints
 
-**Status:** Partial: active route plans and SH scan API behavior exist in code; Logistics station management is paused pending finalized flow; Truck handoffs and owner verification remain open
-**Updated:** 12 October 2026
+**Status:** Legacy implementation; superseded for future route design by the province network/stations decision
+**Reviewed:** 14 October 2026
 
-## Agreed route model
+> This spec documents existing virtual-checkpoint code and stored data only. The approved target removes virtual SH route stops and uses actual Main Hubs/stations. Do not add new virtual SH routes. Preserve existing route and scan history and follow the [province network and stations spec](../province-network-and-stations/spec.md) for new work.
+
+Since 14 October, new sorting uses `order_facility_stops`; `LogisticsRoutePlanner` is retained but no longer called by the new sorting action. The DBeaver setup and route examples below are historical instructions, not a current operator workflow.
+
+## Previous route model (legacy)
 
 Use **SH** for *SubHub* (examples SH5, SH6, and SH3). An SH is a virtual route checkpoint named after a nearby municipality/locality. It has no exact street address and is not a registered Vendo Logistics Center or warehouse. For example, SH3 may be named **Pagsanjan** because that is the nearest known locality to a buyer in Luisiana, Laguna. The municipality is a representative route point, not a precise scan coordinate.
 

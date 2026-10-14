@@ -69,6 +69,10 @@ class RegistrationController extends Controller
     public function approve(User $user, OrderRoutingService $routing): RedirectResponse
 {
     abort_unless(in_array($user->role, ['seller', 'buyer', 'logistics_center'], true) && $user->status === 'pending', 403);
+    if ($user->role === 'logistics_center') {
+        abort_unless($user->logisticsCenterDetail?->coverage_province_code, 409,
+            'This legacy Logistics account has no unique province claim. Resolve its coverage before approval.');
+    }
     DB::transaction(function () use ($user) {
         $user->update(['status' => 'approved']);
         AdminActionLog::record($user, 'registration_approved');
@@ -104,6 +108,9 @@ class RegistrationController extends Controller
                 'rejection_notes' => $request->additional_details,
             ]);
             AdminActionLog::record($user, 'registration_rejected', $request->reason);
+            if ($user->role === 'logistics_center') {
+                $user->logisticsCenterDetail?->update(['coverage_province_code' => null]);
+            }
         }, 3);
 
         return back()->with('confirmation', 'rejected');

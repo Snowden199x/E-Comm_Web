@@ -58,7 +58,8 @@ export default defineConfig({
                 "resources/js/seller/category-requests.js",
 
                 // Logistics
-                "resources/js/logistics/workspace.js"
+                "resources/js/logistics/workspace.js",
+                "resources/js/logistics/facility-scanner.js"
             ],
             refresh: true,
         }),

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\RiderGoogleAuthController;
 use App\Http\Controllers\Api\RiderPasswordResetController;
 use App\Http\Controllers\Api\RiderRegistrationController;
 use App\Http\Controllers\Api\RiderScanController;
+use App\Http\Controllers\Api\RiderFacilityScanController;
 use App\Http\Controllers\Api\ShScannerAuthController;
 use App\Http\Controllers\Api\ShScannerScanController;
 use App\Http\Middleware\EnsureApprovedRiderToken;
@@ -27,6 +28,7 @@ Route::prefix('v1/rider')->group(function () {
     Route::middleware(['auth:sanctum', EnsureApprovedRiderToken::class, 'throttle:30,1'])->group(function () {
         Route::get('/assignments', [RiderScanController::class, 'assignments']);
         Route::post('/scans', [RiderScanController::class, 'store']);
+        Route::post('/facility-scans', [RiderFacilityScanController::class, 'store']);
         Route::post('/logout', [RiderAuthController::class, 'logout']);
     });
 });

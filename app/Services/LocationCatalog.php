@@ -24,6 +24,17 @@ class LocationCatalog
         return ['province' => $province['name'], 'city' => $province['cities'][$cityCode]];
     }
 
+    public function provinceCodeForName(?string $province): ?string
+    {
+        foreach ($this->all() as $code => $entry) {
+            if ($this->normalize($entry['name']) === $this->normalize($province)) {
+                return (string) $code;
+            }
+        }
+
+        return null;
+    }
+
     public function barangaysForCity(string $cityCode): ?array
     {
         foreach ($this->all() as $province) {

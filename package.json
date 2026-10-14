@@ -21,6 +21,7 @@
         "@laravel/multiplex": "^0.4.1"
     },
     "dependencies": {
-        "@imacrayon/alpine-ajax": "^0.12.7"
+        "@imacrayon/alpine-ajax": "^0.12.7",
+        "@zxing/browser": "^0.1.5"
     }
 }
