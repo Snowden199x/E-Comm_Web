@@ -390,6 +390,11 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
     Route::post('/logout', [LogisticsAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
 
     Route::middleware(['auth', EnsureActiveLogisticsCenter::class])->group(function () {
+        Route::get('/facilities', [\App\Http\Controllers\Logistics\FacilityController::class, 'index'])->name('facilities.index');
+        Route::post('/facilities', [\App\Http\Controllers\Logistics\FacilityController::class, 'store'])->name('facilities.store');
+        Route::get('/facilities/{facility}', [\App\Http\Controllers\Logistics\FacilityController::class, 'show'])->whereNumber('facility')->name('facilities.show');
+        Route::patch('/facilities/{facility}', [\App\Http\Controllers\Logistics\FacilityController::class, 'update'])->whereNumber('facility')->name('facilities.update');
+        Route::post('/facilities/{facility}/scans', [\App\Http\Controllers\Logistics\FacilityScanController::class, 'store'])->whereNumber('facility')->name('facilities.scans.store');
         Route::get('/dashboard', [LogisticsDashboardController::class, 'index'])->name('dashboard');
         Route::get('/notifications', [\App\Http\Controllers\Logistics\NotificationController::class, 'index'])->name('notifications.index');
         Route::get('/notifications/recent', [\App\Http\Controllers\Logistics\NotificationController::class, 'recent'])->name('notifications.recent');

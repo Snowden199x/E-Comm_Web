@@ -22,6 +22,7 @@
             <nav class="flex gap-1 overflow-x-auto px-3 py-3 text-sm lg:flex-col" aria-label="Logistics navigation">
                 @foreach([
                     ['Dashboard', 'logistics.dashboard'],
+                    ['Hubs & Stations', 'logistics.facilities.index'],
                     ['Rider Management', 'logistics.riders.index'],
                     ['Incoming Parcels', 'logistics.incoming-parcels'],
                     ['Parcel Sorting', 'logistics.parcel-sorting'],

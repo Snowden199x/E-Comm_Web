@@ -1,11 +1,15 @@
 # Truck and Linehaul Dispatch
 
-**Status:** Partial: Truck Rider assignment and Rider API route display are implemented; SH scan API code remains but its Logistics pairing page is paused pending finalized flow; Truck custody progression remains open
-**Updated:** 12 October 2026
+**Status:** Actual facility routes and assigned Truck visibility implemented; inter-network custody remains unimplemented
+**Reviewed:** 14 October 2026
 
-## Current behavior
+> Existing linehaul assignments expose planned virtual SH routes and do not prove departure, arrival, or custody. Future plans must use actual Main Hubs/stations and define which province network owns each cross-province handoff. See [province network and stations](../province-network-and-stations/spec.md).
 
-The web logistics flow selects a configured Main Hub route plan containing ordered virtual SH locality checkpoints. A checkpoint has a name such as Pagsanjan and a route code such as SH3; it has no exact street address or Vendo Logistics Center account. Rider registration accepts Motorcycle, Van, L300, or Truck, and Rider login returns the saved vehicle type. Motorcycle, Van, and L300 riders use local pickup/delivery assignments. After a cross-hub parcel is sorted, its origin Main Hub may assign or reassign an approved Truck Rider linked to that hub. The assignment is stored per order and included in that Truck Rider's mobile assignments with the planned route, next checkpoint, and Main Hub endpoints. The route remains a plan; assignment does not claim truck departure, checkpoint arrival, sorting, or custody transfer.
+New sorted cross-province orders store actual facility stops and can be assigned to an approved Truck Rider of the origin account. `GET /api/v1/rider/assignments` exposes these stops in the existing `planned_route.checkpoints` shape and the next unarrived facility. The old route-plan response remains for historical orders. The Truck API remains read-only; web facility scans are operator reports and do not create Truck manifests or a signed inter-network custody transfer.
+
+## Historical virtual route behavior
+
+Older orders may have configured Main Hub route plans containing ordered virtual SH locality checkpoints such as Pagsanjan/SH3. They are names, not staffed facilities. Rider registration accepts Motorcycle, Van, L300, or Truck, and login returns vehicle type. Motorcycle, Van, and L300 riders use local pickup/delivery assignments. New cross-province sorts use actual facility stops instead; either route type can be assigned to an approved Truck Rider linked to the origin Main Hub. The assignment is included in that Rider's mobile route list. Assignment itself does not claim truck departure, arrival, sorting, or custody transfer.
 
 ## Gaps and acceptance direction
 
@@ -17,8 +21,8 @@ Rider, Truck, and checkpoint-scanner interfaces are mobile-only. The Logistics w
 
 ## API contract
 
-- `GET /api/v1/rider/assignments` includes `assignment: linehaul` only for the authenticated approved Truck Rider explicitly assigned to that order by its origin Main Hub. The order must still be in a linehaul stage and retain its configured route plan.
-- A linehaul item returns the origin and destination Main Hub names, ordered planned checkpoints, current route step, and next planned checkpoint. It returns no seller/buyer address or phone for linehaul work.
+- `GET /api/v1/rider/assignments` includes `assignment: linehaul` only for the authenticated approved Truck Rider explicitly assigned to that order by its origin Main Hub. The order must still be in a linehaul stage and retain actual facility stops or a historical route plan.
+- A linehaul item returns the origin and destination Main Hub names and ordered actual facilities (or legacy checkpoints), plus the next unarrived stop. It returns no seller/buyer address or phone for linehaul work.
 - Linehaul assignments are read-only in this first slice. The Rider app does not submit truck or SH scans through the existing Rider scan endpoint. Actual SH scans and route advancement belong to the separate SH scanner API/app contract.
 - The owner must run `2026_09_28_200000_add_linehaul_rider_to_orders.php` before using assignment or mobile endpoints that query the new column.
 

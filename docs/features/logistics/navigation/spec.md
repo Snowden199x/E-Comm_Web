@@ -1,9 +1,9 @@
 # Logistics Navigation
 
-**Status:** Sidebar, center operations, Rider Management, filters, notifications and reports implemented in web code; SH scanner entry is temporarily removed while Logistics finalizes its flow; Messages and Truck custody flow remain pending
-**Updated:** 12 October 2026
+**Status:** Sidebar, province facilities, browser scanner, center operations, Rider Management, filters, notifications and reports implemented in web code; Messages and Truck custody flow remain pending
+**Updated:** 14 October 2026
 
-The protected Logistics pages share a responsive Vendo navigation. The live layout lists Dashboard, Rider Management, Incoming Parcels, Parcel Sorting, Delivery Assignments, Delivery Monitoring, Reports, Messages, Notifications, Account Management, and Logout. The SH scanner link and station-management page routes are temporarily removed until the Logistics flow is finalized. The separate preview shell still shows example company/province/station navigation with hard-coded identity; it is not the authenticated Main Hub portal.
+The protected Logistics pages share a responsive Vendo navigation. The live layout lists Dashboard, Hubs & Stations, Rider Management, Incoming Parcels, Parcel Sorting, Delivery Assignments, Delivery Monitoring, Reports, Messages, Notifications, Account Management, and Logout. Hubs & Stations opens live, network-scoped Main Hub/station cards; each facility opens details and a browser-camera scanner modal. The old SH scanner pairing route remains paused. The separate preview shell still has hard-coded identity and data.
 
 Rider Management now has a dedicated center-scoped `logistics.riders.index` page with active, pending, rejected and inactive tabs; the dashboard also keeps its pending-applications summary. A center can approve/reject applicants and activate/deactivate its approved riders. Active delivery workload is counted from all assigned and out-for-delivery orders for this center. Incoming Parcels, Parcel Sorting, and Delivery Assignments filter the existing center-scoped dispatch operations by stage. Delivery Assignments keeps scanned `out_for_delivery` parcels visible to their destination center. Delivery Monitoring lists active orders routed through the authenticated center with the latest known status, assigned operator, and update time, including a configured route when present. Reports default to orders updated in the previous 30 days, offer date ranges up to one year, and group current status, delivery area and delivery rider. These are order snapshots, not independent scan analytics or proof of SH locality arrival. Messages remains an explicit placeholder. The original `/logistics/dispatch` route remains available for existing links and center notifications. All routes use the approved active logistics-center middleware.
 
@@ -12,6 +12,7 @@ Rider Management now has a dedicated center-scoped `logistics.riders.index` page
 | Section | Item | Route |
 | --- | --- | --- |
 | (top) | Dashboard | `logistics.dashboard` |
+| (top) | Hubs & Stations | `logistics.facilities.index` |
 | People | Rider Management | `logistics.riders.index` |
 | Parcels | Incoming Parcels | `logistics.incoming-parcels` |
 | Parcels | Parcel Sorting | `logistics.parcel-sorting` |
@@ -24,7 +25,7 @@ Rider Management now has a dedicated center-scoped `logistics.riders.index` page
 | (bottom) | Logout | `logistics.logout` (POST) |
 
 
-SH scanner station management is currently paused in the Logistics portal. The `/logistics/scanners` web routes are not registered. The existing scanner API and database migration remain in code pending the agreed Logistics workflow; do not direct Logistics users to pair a device yet.
+Legacy SH scanner device pairing remains paused: `/logistics/scanners` is not registered. The new browser scanner is reached through each authenticated `/logistics/facilities/{facility}` page and posts to its protected scan route. It scans QR and Code 128 labels after explicit camera permission; it also accepts manual tracking entry.
 
 ## Shell behavior (redesigned 3 October 2026)
 

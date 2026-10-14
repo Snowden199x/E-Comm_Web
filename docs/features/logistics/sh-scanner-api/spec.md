@@ -1,7 +1,9 @@
 # SH Scanner Pairing and Checkpoint API
 
-**Status:** Web API implemented in code; Logistics station page temporarily paused pending the finalized Logistics flow; owner migration/device verification pending  
-**Updated:** 12 October 2026
+**Status:** Legacy virtual-checkpoint API; paused and superseded for future scanner design
+**Reviewed:** 14 October 2026
+
+> This contract is retained to explain existing routes, migrations, and scan history. The approved target is an authenticated browser-camera scanner scoped to actual Main Hub/station facilities. Do not extend this API as the new station model; preserve its migration and records. See [province network and stations](../province-network-and-stations/spec.md).
 
 ## Scope
 

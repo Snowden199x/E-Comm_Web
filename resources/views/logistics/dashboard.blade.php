@@ -19,6 +19,7 @@
                 <p>Here is what is moving through {{ $centerName }}, and the riders waiting on your decision.</p>
             </div>
             <div class="lg-page-head__actions">
+                <a href="{{ route('logistics.facilities.index') }}" class="lg-btn lg-btn--outline">Hubs & Stations</a>
                 <a href="{{ route('logistics.reports') }}" class="lg-btn lg-btn--outline">
                     <x-logistics.icon name="bar-chart" :size="18" /> View reports
                 </a>

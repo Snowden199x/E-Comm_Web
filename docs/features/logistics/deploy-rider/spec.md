@@ -1,7 +1,9 @@
 # Assign Courier to Order
 
-**Status:** Partial
-**Reviewed:** 28 September 2026
+**Status:** Partial current center-matching flow; province-network assignment is the approved target
+**Reviewed:** 14 October 2026
+
+> Current code matches Riders to a unique center by city/province. The target is matching to the unique approved province network; see [province network and stations](../province-network-and-stations/spec.md). Do not treat the current nearest-center fallback as the final service-area rule.
 
 An approved active origin logistics center sees its routed ready orders and can assign an approved active pickup rider linked to that center. Seller cannot mark pickup; the assigned rider's QR/barcode scan through the rider API makes that transition. After manual sorting and destination receipt, the destination center can assign its own approved active delivery rider. Same-center orders can assign delivery directly from `sorted`. Assignment actions lock the order, reject duplicate/wrong-stage requests, check center ownership and rider membership, and write an assignment audit row. Delivery assignment also records a status event.
 
