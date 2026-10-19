@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Communication\Notification;
 use App\Models\Ecommerce\InventoryMovement;
 use App\Models\Ecommerce\Product;
+use App\Models\Ecommerce\SellerVoucher;
 use App\Models\User;
 use App\Services\InventoryService;
 use Illuminate\Http\Request;
@@ -52,6 +53,28 @@ class ProductController extends Controller
             'out_of_stock' => $query->where('stock', 0), default => null,
         };
         $products = $query->latest()->orderByDesc('id')->paginate(10)->withQueryString();
+        $pageProducts = $products->getCollection();
+        $pageIds = $pageProducts->pluck('id')->all();
+        $categoryIds = $pageProducts->map(fn ($product) => $product->category?->parent_id ?: $product->category_id)
+            ->filter()->unique()->all();
+        $applicableVouchers = SellerVoucher::query()->where('seller_id', $request->user()->id)
+            ->whereNull('deleted_at')->where('status', 'active')
+            ->where(fn ($q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
+            ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>', now()))
+            ->where(fn ($q) => $q->whereNull('usage_limit')->orWhereColumn('used_count', '<', 'usage_limit'))
+            ->where(fn ($q) => $q->where('scope', 'all')
+                ->orWhereHas('products', fn ($p) => $p->whereIn('products.id', $pageIds))
+                ->orWhereHas('categories', fn ($c) => $c->whereIn('categories.id', $categoryIds)))
+            ->with(['products:id', 'categories:id'])->get();
+        $pageProducts->each(function ($product) use ($applicableVouchers) {
+            $mainId = $product->category?->parent_id ?: $product->category_id;
+            $product->vouchers_count = $applicableVouchers->filter(fn ($voucher) => match ($voucher->scope) {
+                'all' => true,
+                'products' => $voucher->products->contains('id', $product->id),
+                'categories' => $voucher->categories->contains('id', $mainId),
+                default => false,
+            })->count();
+        });
         $lowStock = (clone $base)->with('images')->whereBetween('stock', [1, Product::LOW_STOCK_THRESHOLD])->orderBy('stock')->limit(4)->get();
 
         return view('seller.products.index', compact('products', 'categories', 'counts', 'lowStock', 'filters'));

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
 use App\Models\Communication\Notification;
 use App\Models\Profiles\CourierDetail;
+use App\Models\Profiles\LogisticsFacility;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -66,7 +67,7 @@ class DispatchController extends Controller
         $selectedStage = $filters['stage'] ?? 'all';
         abort_unless($selectedStage === 'all' || isset($stages[$selectedStage]), 422, 'Unknown parcel stage.');
         $orders = ($selectedStage === 'all' ? $filtered : $this->forStage($filtered, $selectedStage, $stages, $lane, $center->id))
-            ->with(['seller:id,name,phone_number', 'seller.sellerDetail', 'courier:id,name', 'linehaulRider:id,name', 'deliveryCourier:id,name', 'destinationLogisticsCenter', 'nextRouteCheckpoint', 'routePlan.stops.checkpoint'])
+            ->with(['seller:id,name,phone_number', 'seller.sellerDetail', 'courier:id,name', 'linehaulRider:id,name', 'deliveryCourier:id,name', 'destinationLogisticsCenter', 'nextRouteCheckpoint', 'routePlan.stops.checkpoint', 'facilityStops.facility'])
             ->latest()
             ->paginate(15)->withQueryString();
 
@@ -87,8 +88,14 @@ class DispatchController extends Controller
             ->select('delivery_courier_id', DB::raw('COUNT(*) as total'))
             ->groupBy('delivery_courier_id')->pluck('total', 'delivery_courier_id');
 
+        $routeStations = LogisticsFacility::query()->where('kind', 'station')->where('is_active', true)
+            ->whereIn('logistics_center_id', [
+                $center->id,
+                ...$orders->getCollection()->pluck('destination_logistics_center_id')->filter()->unique()->all(),
+            ])->orderBy('province')->orderBy('municipality')->get();
+
         return view('logistics.dispatch.index', compact('center', 'orders', 'couriers', 'truckRiders', 'localRiders', 'lane',
-            'filters', 'areas', 'availableStatuses', 'stageCounts', 'selectedStage', 'workload'));
+            'filters', 'areas', 'availableStatuses', 'stageCounts', 'selectedStage', 'workload', 'routeStations'));
     }
 
     private function forStage($query, string $stage, array $stages, string $lane, int $centerId)
@@ -123,7 +130,7 @@ class DispatchController extends Controller
             $courier = CourierDetail::query()->where('logistics_center_id', $centerId)
                 ->where('user_id', $data['courier_id'])->with('user')->firstOrFail();
             $user = $courier->user;
-            abort_unless($user && $user->role === 'courier' && $user->status === 'approved'
+            abort_unless($courier->vehicle_type !== 'Truck' && $user && $user->role === 'courier' && $user->status === 'approved'
                 && ! $user->archived_at && (! $user->account_status || $user->account_status === 'active'),
                 422, 'Select an active approved courier from your center.');
 
@@ -192,38 +199,84 @@ class DispatchController extends Controller
         return back()->with('success', 'Arrival at the sorting center recorded.');
     }
 
-    public function markSorted(Request $request, int $order, \App\Services\LogisticsRoutePlanner $planner): RedirectResponse
+    public function markSorted(Request $request, int $order): RedirectResponse
     {
+        if (is_array($request->input('station_ids'))) {
+            $request->merge(['station_ids' => array_values(array_filter($request->input('station_ids'), fn ($id) => filled($id)))]);
+        }
+        $data = $request->validate([
+            'station_ids' => ['sometimes', 'array', 'max:8'],
+            'station_ids.*' => ['required', 'integer', 'distinct'],
+        ]);
         $centerId = $request->user()->logisticsCenterDetail->id;
-        DB::transaction(function () use ($request, $order, $centerId, $planner) {
+        DB::transaction(function () use ($request, $order, $centerId, $data) {
             $record = Order::query()->where('logistics_center_id', $centerId)
                 ->with(['logisticsCenter', 'destinationLogisticsCenter'])
                 ->lockForUpdate()->findOrFail($order);
             abort_unless($record->status === 'at_sorting_center', 409, 'This order is no longer awaiting sorting.');
             abort_unless($record->courier_id, 409, 'A pickup courier is required.');
-
-            $plan = $record->destination_logistics_center_id !== $centerId
-                ? $planner->selectPlan($record)
-                : null;
-            $firstStop = $plan?->stops->first();
-            $record->route_plan_id = $plan?->id;
-            $record->route_step = $firstStop ? 1 : null;
-            $record->next_route_checkpoint_id = $firstStop?->checkpoint_id;
+            abort_unless($record->destination_logistics_center_id, 409, 'Resolve the buyer province Main Hub before sorting.');
+            abort_unless($record->logisticsCenter?->coverage_province_code
+                && $record->destinationLogisticsCenter?->coverage_province_code, 409,
+                'Both Main Hubs need unique province coverage before a new facility route can be planned.');
+            $stationIds = $data['station_ids'] ?? [];
+            $stations = LogisticsFacility::query()->whereIn('id', $stationIds)
+                ->where('kind', 'station')->where('is_active', true)->get()->keyBy('id');
+            abort_unless($stations->count() === count($stationIds), 422, 'Select active stations on this route.');
+            $originStations = [];
+            $destinationStations = [];
+            $destinationSeen = false;
+            foreach ($stationIds as $stationId) {
+                $station = $stations[$stationId];
+                abort_unless(in_array($station->logistics_center_id,
+                    [$centerId, $record->destination_logistics_center_id], true), 403, 'Station belongs to another province network.');
+                if ($station->logistics_center_id === $record->destination_logistics_center_id && $centerId !== $record->destination_logistics_center_id) {
+                    $destinationSeen = true;
+                }
+                abort_if($destinationSeen && $station->logistics_center_id === $centerId, 422,
+                    'Origin stations must come before destination stations.');
+                if ($centerId !== $record->destination_logistics_center_id
+                    && $station->logistics_center_id === $record->destination_logistics_center_id) {
+                    $destinationStations[] = $station;
+                } else {
+                    $originStations[] = $station;
+                }
+            }
+            $stops = $originStations;
+            if ($centerId !== $record->destination_logistics_center_id) {
+                $destinationHub = LogisticsFacility::query()->where('logistics_center_id', $record->destination_logistics_center_id)
+                    ->where('kind', 'main_hub')->where('is_active', true)->first();
+                abort_unless($destinationHub, 409, 'The destination Main Hub is unavailable.');
+                $stops[] = $destinationHub;
+                array_push($stops, ...$destinationStations);
+            }
+            foreach ($stops as $index => $facility) {
+                $record->facilityStops()->create(['facility_id' => $facility->id, 'position' => $index + 1]);
+            }
+            $record->route_plan_id = null;
+            $record->route_step = null;
+            $record->next_route_checkpoint_id = null;
             $record->status = 'sorted';
             $record->save();
             $record->statusEvents()->create([
                 'user_id' => $request->user()->id,
                 'from_status' => 'at_sorting_center',
                 'to_status' => 'sorted',
-                'note' => $firstStop
-                    ? 'Parcel sorted at '.$request->user()->logisticsCenterDetail->business_name.'. Planned virtual checkpoint: '.$firstStop->checkpoint->name.' ('.$firstStop->checkpoint->code.').'
-                    : ($plan
-                        ? 'Parcel sorted at '.$request->user()->logisticsCenterDetail->business_name.'. The configured route goes directly to '.$record->destinationLogisticsCenter?->business_name.'.'
-                        : 'Parcel sorted at '.$request->user()->logisticsCenterDetail->business_name.'. No active route plan is configured for the destination Main Hub.'),
+                'note' => 'Parcel sorted at '.$request->user()->logisticsCenterDetail->business_name.'. Planned facilities: '
+                    .($stops ? implode(' → ', array_map(fn ($facility) => $facility->name, $stops)) : 'local Main Hub delivery').'.',
             ]);
+            if ($record->destination_logistics_center_id !== $centerId) {
+                Notification::create([
+                    'user_id' => $record->destinationLogisticsCenter->user_id,
+                    'type' => 'shipment_update', 'title' => 'Inbound parcel '.$record->number,
+                    'message' => 'Origin Main Hub sorted this parcel for your province. Planned stops: '
+                        .implode(' → ', array_map(fn ($facility) => $facility->name, $stops)).'.',
+                    'link' => route('logistics.delivery-assignments'),
+                ]);
+            }
         }, 3);
 
-        return back()->with('success', 'Sorting completed. The next virtual checkpoint follows the active route plan for this Main Hub pair.');
+        return back()->with('success', 'Sorting completed. The planned route is ready for facility scans.');
     }
 
     public function assignLinehaulRider(Request $request, int $order): RedirectResponse
@@ -236,7 +289,7 @@ class DispatchController extends Controller
         DB::transaction(function () use ($request, $order, $data, $centerId) {
             $record = Order::query()->where('logistics_center_id', $centerId)
                 ->lockForUpdate()->findOrFail($order);
-            $validPlan = $record->routePlan()->where('from_logistics_center_id', $centerId)
+            $validPlan = $record->facilityStops()->exists() || $record->routePlan()->where('from_logistics_center_id', $centerId)
                 ->where('to_logistics_center_id', $record->destination_logistics_center_id)
                 ->exists();
             abort_unless($record->status === 'sorted'
@@ -273,7 +326,7 @@ class DispatchController extends Controller
             ]);
         }, 3);
 
-        return back()->with('success', 'Truck Rider assigned to the configured linehaul route. SH arrival and sorting are recorded by the separate SH scanner.');
+        return back()->with('success', 'Truck Rider assigned. Facility arrivals and sorting are recorded with the Logistics scanner.');
     }
 
     public function receiveAtHub(Request $request, int $order): RedirectResponse
@@ -282,6 +335,9 @@ class DispatchController extends Controller
         DB::transaction(function () use ($request, $order, $centerId) {
             $record = Order::query()->where('destination_logistics_center_id', $centerId)->lockForUpdate()->findOrFail($order);
             abort_unless($record->status === 'in_transit_to_hub', 409, 'This parcel is not awaiting destination hub receipt.');
+            abort_if($record->facilityStops()->exists(), 409, 'Scan arrival at the planned destination facility.');
+            abort_unless(! $record->next_route_checkpoint_id && ! $record->route_step, 409,
+                'The planned SH checkpoint scans must finish before destination Main Hub receipt.');
             $record->status = 'at_destination_hub';
             $record->save();
             $record->statusEvents()->create([
@@ -308,6 +364,8 @@ class DispatchController extends Controller
             $local = $record->logistics_center_id === $centerId && $record->status === 'sorted';
             abort_unless(($local || $record->status === 'at_destination_hub') && ! $record->delivery_courier_id,
                 409, 'This order is no longer available for delivery rider assignment.');
+            $lastStop = $record->facilityStops()->orderByDesc('position')->first();
+            abort_if($lastStop && ! $lastStop->sorted_at, 409, 'Sort the parcel at its final facility before assigning delivery.');
 
             $courier = CourierDetail::query()->where('logistics_center_id', $centerId)
                 ->where('user_id', $data['courier_id'])->with('user')->firstOrFail();
@@ -346,6 +404,8 @@ class DispatchController extends Controller
                 $local = $record->logistics_center_id === $centerId && $record->status === 'sorted';
                 abort_unless(($local || $record->status === 'at_destination_hub') && ! $record->delivery_courier_id,
                     409, 'One or more parcels are no longer ready for assignment.');
+                $lastStop = $record->facilityStops()->orderByDesc('position')->first();
+                abort_if($lastStop && ! $lastStop->sorted_at, 409, 'Sort every parcel at its final facility before assignment.');
                 $this->assignDeliveryLocked($record, $user->id, $request, $centerId, $local);
             }
         }, 3);

@@ -219,6 +219,11 @@
                             <dt class="{{ $dtClass }}">Business Name</dt>
                             <dd class="{{ $ddClass }}">{{ $details->business_name ?: $dash }}</dd>
 
+                            @if ($role === 'logistics_center')
+                                <dt class="{{ $dtClass }}">Province coverage</dt>
+                                <dd class="{{ $ddClass }}">{{ $details->coverage_province ?: 'Unresolved legacy claim' }}</dd>
+                            @endif
+
                             @if ($role === 'seller')
                                 <dt class="{{ $dtClass }}">Categories</dt>
                                 <dd class="min-w-0">

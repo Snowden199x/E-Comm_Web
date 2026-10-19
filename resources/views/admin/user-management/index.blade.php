@@ -31,10 +31,7 @@
         type: @js($initialType),
         status: @js($initialStatus),
         statusOpen: false,
-        // Set to true once UserManagementController::filteredUsers() honors `account_status`
-        // (docs/design/2026-10-07-admin-uiux-backend-needs.md). Until then the Status filter for
-        // Active / Suspended / Deactivated can only hide rows on the page that is showing.
-        serverStatusFilter: false,
+        serverStatusFilter: true,
         page: {{ (int) $users->currentPage() }},
         loading: false,
         failed: false,
@@ -301,13 +298,6 @@
             <span>Couldn't load users. Check your connection and try again.</span>
             <button type="button" @click="load()" class="font-semibold underline underline-offset-2 hover:text-red-800">Try again</button>
         </div>
-
-        {{-- Honest note while the server cannot filter by account status yet (see serverStatusFilter above). --}}
-        <p x-show="statusPageOnly" x-cloak x-transition.opacity role="status"
-            class="mb-3 flex items-start gap-2 rounded-xl border border-[#F3D9A6] bg-[#FDF3E2] px-3.5 py-2.5 text-[13px] text-[#8a5614]">
-            <x-admin.icon name="info" class="mt-0.5 h-4 w-4 flex-shrink-0" />
-            <span>The status filter currently hides rows on this page only. The page count and other pages are not filtered yet.</span>
-        </p>
 
         {{-- Table + per-user modals (swapped together on every filter/page change) --}}
         <div class="relative">

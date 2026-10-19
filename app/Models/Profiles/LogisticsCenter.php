@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 #[Fillable([
     'user_id', 'last_name', 'first_name', 'middle_name', 'sex', 'birthday', 'valid_id_path',
     'province', 'municipality', 'barangay', 'street', 'house_no', 'zip_code',
-    'business_name', 'business_permit_path',
+    'business_name', 'business_permit_path', 'coverage_province_code', 'coverage_province',
 ])]
 class LogisticsCenter extends Model
 {
@@ -23,6 +23,16 @@ class LogisticsCenter extends Model
     public function riders()
     {
         return $this->hasMany(CourierDetail::class);
+    }
+
+    public function facilities()
+    {
+        return $this->hasMany(LogisticsFacility::class);
+    }
+
+    public function mainHub()
+    {
+        return $this->hasOne(LogisticsFacility::class)->where('kind', 'main_hub');
     }
 
     public function getAgeAttribute(): int

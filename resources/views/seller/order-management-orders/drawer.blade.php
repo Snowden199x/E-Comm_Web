@@ -14,8 +14,8 @@
     $initials = \Illuminate\Support\Str::of($buyerName)->explode(' ')->filter()->take(2)->map(fn ($part) => mb_strtoupper(mb_substr($part, 0, 1)))->implode('');
     $itemsSubtotal = $order->items->sum(fn ($item) => $item->quantity * $item->price);
     $itemCount = $order->items->sum('quantity');
-    $buyerNote = trim((string) ($order->buyer_note ?? ''));      // exists once the checkout note is built (backend-needs-2026-10-07.md)
-    $voucherCode = $order->voucher_code ?? null;                 // exists once vouchers are built
+    $buyerNote = trim((string) ($order->buyer_note ?? ''));
+    $voucherCode = $order->voucher_code ?? null;
     $voucherDiscount = (float) ($order->voucher_discount ?? 0);
     $mode = strtoupper($order->payment_mode ?? 'COD');
 @endphp
@@ -37,7 +37,7 @@
                 <span class="omo-pill omo-pill--{{ $order->seller_group }}"><i aria-hidden="true"></i>{{ $order->status_label }}</span>
                 <span class="omo-hero__chips"><span class="omo-chip">{{ $itemCount }} {{ $itemCount === 1 ? 'item' : 'items' }}</span><span class="omo-chip omo-chip--{{ $mode === 'COD' ? 'cod' : 'paid' }}">{{ $mode }}</span>@if($voucherCode)<span class="omo-chip omo-chip--voucher">Voucher {{ $voucherCode }}</span>@endif</span>
             </div>
-            <div class="omo-hero__total"><span>Total</span><strong>₱{{ number_format($order->total_amount, 2) }}</strong></div>
+            <div class="omo-hero__total"><span>Total</span><strong>₱{{ number_format($order->payable_total, 2) }}</strong></div>
         </div>
 
         @if($buyerNote !== '')
@@ -86,7 +86,7 @@
                     <div class="omo-payment__line"><span>Items subtotal</span><span>₱{{ number_format($itemsSubtotal, 2) }}</span></div>
                     @if((float) $order->shipping_fee > 0)<div class="omo-payment__line"><span>Shipping</span><span>₱{{ number_format($order->shipping_fee, 2) }}</span></div>@endif
                     @if($voucherCode && $voucherDiscount > 0)<div class="omo-payment__line omo-payment__line--voucher"><span>Voucher {{ $voucherCode }}</span><span>−₱{{ number_format($voucherDiscount, 2) }}</span></div>@endif
-                    <div class="omo-payment__line omo-payment__line--total"><span>Total amount</span><span>₱{{ number_format($order->total_amount, 2) }}</span></div>
+                    <div class="omo-payment__line omo-payment__line--total"><span>Total amount</span><span>₱{{ number_format($order->payable_total, 2) }}</span></div>
                 </div>
             </div>
         </section>

@@ -1,13 +1,15 @@
 # Logistics Shipment Status Updates
 
-**Status:** Partial
-**Reviewed:** 28 September 2026
+**Status:** Facility-based scan and legacy status flows coexist; transport custody remains partial
+**Reviewed:** 14 October 2026
 
-Origin logistics can manually confirm arrival for a `picked_up` order and sorting for an `at_sorting_center` order. During sorting, the web app selects an active configured Main Hub route plan for cross-hub orders and saves its first virtual SH locality as the planned next checkpoint. A checkpoint is a nearby municipality label such as Pagsanjan/SH3, not an exact street address or registered logistics site. This route instruction alone leaves the order `sorted` and does not confirm a physical scan, truck movement, or custody transfer.
+> New sorts use real facility stops and the authenticated Logistics scanner. Virtual SH and SOC-coded stages remain for older orders only. See [province network and stations](../province-network-and-stations/spec.md).
 
-For different origin and destination centers, the current rider API still accepts legacy SOC-coded inter-hub stages: `sorted → to_soc5 → to_soc6 → in_transit_to_hub`. Those values do not mean the parcel reached an SH locality. Destination logistics may manually confirm Main Hub receipt (`at_destination_hub`). Each implemented action checks actor scope/current status under a row lock and records an order status event. Legacy parcels already `in_transit_to_hub` can still be received.
+Origin Logistics can scan arrival for a `picked_up` order at its Main Hub, then sort an `at_sorting_center` order and choose up to three real station stops. Cross-province routes append the destination Main Hub. A route plan alone leaves the parcel `sorted`; each arrival, sort, and intermediate departure requires a separate authenticated scan at the selected facility. The scan action verifies the expected stop and writes an idempotent facility scan and order status event. It reports operator action, not independent truck or custody proof.
 
-The mobile assigned-rider API accepts pickup, origin-arrival, legacy inter-hub, out-for-delivery, and delivered scans with an idempotency key, row lock, scan event and order status event. It records the approved center and server time, then creates logistics, seller, and buyer notifications; it does not claim GPS or independent proof of delivery. A future, separate SH scanner app must record actual checkpoint arrivals, authorize its scanner identity, validate the order's expected route step, and notify seller/buyer. Truck/manifest, custody handoffs, local rider pickup from a checkpoint, delivery exceptions, and independent delivery evidence remain open. Courier, rider, and truck interfaces are mobile-only.
+For older virtual routes, the Rider API still accepts SOC-coded stages and the legacy destination Main Hub manual receipt gate. New facility routes reject SOC scans and manual destination receipt; the destination or final local station must scan arrival and sort before delivery Rider assignment. Seller, Buyer, and owning Logistics receive facility-specific notifications.
+
+The mobile assigned-rider API still accepts pickup, origin-arrival, legacy inter-hub, out-for-delivery, and delivered scans with an idempotency key, row lock, scan event and order status event. The Logistics web scanner is the first-version facility scanner; the old separate SH app/API is paused. Truck manifests, cross-network custody acceptance, assigned Main Hub-to-local-station transport, delivery exceptions, and independent delivery evidence remain open. Rider and Truck interfaces are mobile-only.
 
 See [virtual SH routing](../subhub-routing/spec.md), [mobile rider scan API](../../courier/scan-api/spec.md), and [truck/linehaul dispatch](../company-truck-linehaul-dispatch/spec.md).
 

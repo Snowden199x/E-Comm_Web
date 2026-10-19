@@ -7,6 +7,7 @@
     $pendingRegistrations = \App\Models\User::whereIn('role', ['seller', 'buyer', 'logistics_center'])->where('status', 'pending')->count();
     $productsForReview = \App\Models\Ecommerce\Product::where('status', 'for_review')->count();
     $openComplaints = \App\Models\Complaints\Complaint::where('status', 'open')->count();
+    $pendingCategoryRequests = \App\Models\Profiles\SellerCategoryRequest::where('status', 'pending')->count();
 
     $navGroups = [
         [
@@ -19,6 +20,7 @@
             'label' => 'Review',
             'items' => [
                 ['route' => 'admin.registrations.index', 'active' => 'admin.registrations.*', 'icon' => 'registrations-menu.svg', 'label' => 'Registrations', 'badge' => $pendingRegistrations],
+                ['route' => 'admin.category-requests.index', 'active' => 'admin.category-requests.*', 'icon' => 'registrations-menu.svg', 'label' => 'Category Requests', 'badge' => $pendingCategoryRequests],
                 ['route' => 'admin.user-management.index', 'active' => 'admin.user-management.*', 'icon' => 'user-management-menu.svg', 'label' => 'User Management'],
                 ['route' => 'admin.seller-compliance.overview', 'active' => 'admin.seller-compliance.*', 'icon' => 'seller-compliance-menu.svg', 'label' => 'Seller Compliance', 'badge' => $productsForReview],
                 ['route' => 'admin.complaints.index', 'active' => 'admin.complaints.*', 'icon' => 'complaints-disputes-menu.svg', 'label' => 'Complaints & Disputes', 'badge' => $openComplaints],

@@ -6,7 +6,11 @@ use App\Http\Controllers\Api\RiderGoogleAuthController;
 use App\Http\Controllers\Api\RiderPasswordResetController;
 use App\Http\Controllers\Api\RiderRegistrationController;
 use App\Http\Controllers\Api\RiderScanController;
+use App\Http\Controllers\Api\RiderFacilityScanController;
+use App\Http\Controllers\Api\ShScannerAuthController;
+use App\Http\Controllers\Api\ShScannerScanController;
 use App\Http\Middleware\EnsureApprovedRiderToken;
+use App\Http\Middleware\EnsureShScannerStation;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1/rider')->group(function () {
@@ -24,6 +28,18 @@ Route::prefix('v1/rider')->group(function () {
     Route::middleware(['auth:sanctum', EnsureApprovedRiderToken::class, 'throttle:30,1'])->group(function () {
         Route::get('/assignments', [RiderScanController::class, 'assignments']);
         Route::post('/scans', [RiderScanController::class, 'store']);
+        Route::post('/facility-scans', [RiderFacilityScanController::class, 'store']);
         Route::post('/logout', [RiderAuthController::class, 'logout']);
+    });
+});
+
+Route::prefix('v1/sh-scanner')->group(function () {
+    Route::post('/pair', [ShScannerAuthController::class, 'pair'])->middleware('throttle:10,1');
+    Route::middleware([EnsureShScannerStation::class, 'throttle:60,1'])->group(function () {
+        Route::get('/session', [ShScannerAuthController::class, 'session']);
+        Route::post('/lookup', [ShScannerScanController::class, 'lookup']);
+        Route::post('/scans', [ShScannerScanController::class, 'store']);
+        Route::get('/scans', [ShScannerScanController::class, 'history']);
+        Route::post('/logout', [ShScannerAuthController::class, 'logout']);
     });
 });

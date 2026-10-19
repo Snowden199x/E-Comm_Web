@@ -79,7 +79,7 @@
             <div class="parcel-details">
                 <div><span class="field-label">ITEM QTY</span><strong>{{ $order->items->sum('quantity') }}</strong></div>
                 <div><span class="field-label">PAYMENT</span><strong>{{ strtoupper($order->payment_mode ?? 'COD') }}</strong></div>
-                <div><span class="field-label">{{ strtolower($order->payment_mode ?? 'cod') === 'cod' ? 'COLLECT ON DELIVERY' : 'ORDER TOTAL' }}</span><strong>₱{{ number_format((float) $order->total_amount + (float) $order->shipping_fee, 2) }}</strong></div>
+                <div><span class="field-label">{{ strtolower($order->payment_mode ?? 'cod') === 'cod' ? 'COLLECT ON DELIVERY' : 'ORDER TOTAL' }}</span><strong>₱{{ number_format($order->payable_total, 2) }}</strong></div>
                 <small>One label per parcel · Keep barcode and QR flat and readable.</small>
             </div>
             <div class="qr-block">

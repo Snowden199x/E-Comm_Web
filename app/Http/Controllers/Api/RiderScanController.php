@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
+use App\Models\Profiles\LogisticsFacility;
 use App\Services\OrderScanWorkflow;
 use App\Services\RiderAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class RiderScanController extends Controller
@@ -20,8 +22,10 @@ class RiderScanController extends Controller
         $isTruck = $rider->courierDetail?->vehicle_type === 'Truck';
         $relations = [
             'logisticsCenter:id,business_name,municipality,province',
+            'logisticsCenter.mainHub',
             'destinationLogisticsCenter:id,business_name,municipality,province',
             'nextRouteCheckpoint', 'routePlan.stops.checkpoint',
+            'facilityStops.facility',
             'seller:id,name,phone_number', 'seller.sellerDetail',
         ];
         if (! $isTruck) {
@@ -33,12 +37,13 @@ class RiderScanController extends Controller
                 ->where('logistics_center_id', $center->id)
                 ->where(fn ($stage) => $stage->whereIn('status', ['ready_for_pickup', 'picked_up'])
                     ->orWhere(fn ($interHub) => $interHub->whereIn('status', ['sorted', 'to_soc5', 'to_soc6'])
+                        ->whereDoesntHave('facilityStops')
                         ->whereNotNull('destination_logistics_center_id')
                         ->whereColumn('destination_logistics_center_id', '!=', 'logistics_center_id'))));
             if ($isTruck) {
                 $query->orWhere(fn ($linehaul) => $linehaul->where('linehaul_rider_id', $rider->id)
                     ->where('logistics_center_id', $center->id)
-                    ->whereNotNull('route_plan_id')
+                    ->where(fn ($route) => $route->whereNotNull('route_plan_id')->orWhereHas('facilityStops'))
                     ->whereIn('status', ['sorted', 'to_soc5', 'to_soc6', 'in_transit_to_hub']));
             } else {
                 $query->orWhere(fn ($delivery) => $delivery->where('delivery_courier_id', $rider->id)
@@ -49,15 +54,46 @@ class RiderScanController extends Controller
             ->latest()->limit(100)->get();
 
         return response()->json(['assignments' => $orders->map(function (Order $order) use ($rider, $center, $isTruck) {
+            $facilityStops = $order->facilityStops;
             $linehaul = $isTruck && (int) $order->linehaul_rider_id === (int) $rider->id
                 && in_array($order->status, ['sorted', 'to_soc5', 'to_soc6', 'in_transit_to_hub'], true);
             $pickup = ! $linehaul && (int) $order->courier_id === (int) $rider->id
                 && (int) $order->logistics_center_id === (int) $center->id
-                && in_array($order->status, ['ready_for_pickup', 'picked_up', 'sorted', 'to_soc5', 'to_soc6'], true);
+                && (in_array($order->status, ['ready_for_pickup', 'picked_up'], true)
+                    || ($facilityStops->isEmpty() && in_array($order->status, ['sorted', 'to_soc5', 'to_soc6'], true)));
             $seller = $order->seller;
             $detail = $seller?->sellerDetail;
             $origin = $order->logisticsCenter;
             $destination = $order->destinationLogisticsCenter;
+            $nextFacility = $facilityStops->first(fn ($stop) => ! $stop->arrived_at);
+            $deliveryFacility = $facilityStops->last()?->facility;
+            $scanTarget = null;
+            $awaitingOriginDeparture = $linehaul && $order->status === 'sorted'
+                && $facilityStops->isNotEmpty();
+            if ($awaitingOriginDeparture) {
+                $originHub = $origin?->mainHub;
+                if ($originHub?->is_active) {
+                    $scanTarget = $this->facilityScanTarget($originHub);
+                }
+            }
+            if ($linehaul && ! $awaitingOriginDeparture) {
+                $lastPosition = (int) $facilityStops->max('position');
+                $previousStop = null;
+                foreach ($facilityStops as $facilityStop) {
+                    if (! $facilityStop->arrived_at) {
+                        $scanTarget = $previousStop && ! $previousStop->departed_at
+                            ? $this->facilityScanTarget($previousStop->facility)
+                            : $this->facilityScanTarget($facilityStop->facility);
+                        break;
+                    }
+                    if ((int) $facilityStop->position < $lastPosition
+                        && $facilityStop->sorted_at && ! $facilityStop->departed_at) {
+                        $scanTarget = $this->facilityScanTarget($facilityStop->facility);
+                        break;
+                    }
+                    $previousStop = $facilityStop;
+                }
+            }
 
             return [
                 'order_id' => $order->id,
@@ -79,28 +115,63 @@ class RiderScanController extends Controller
                     'phone' => $order->buyer?->phone_number,
                     'address' => $order->shipping_address,
                 ]),
-                'pickup_center' => $origin?->business_name,
+                'pickup_center' => $linehaul || $pickup ? $origin?->business_name
+                    : ($deliveryFacility?->name ?: $destination?->business_name),
+                'dispatch_facility' => ! $linehaul && ! $pickup && $deliveryFacility ? [
+                    'name' => $deliveryFacility->name,
+                    'municipality' => $deliveryFacility->municipality,
+                    'province' => $deliveryFacility->province,
+                    'address' => $deliveryFacility->address,
+                ] : null,
                 'destination_center' => $destination?->business_name,
                 'planned_route' => $linehaul ? [
-                    'current_step' => $order->route_step,
-                    'next_checkpoint' => $order->nextRouteCheckpoint ? [
+                    'current_step' => $facilityStops->isNotEmpty() ? $facilityStops->filter(fn ($stop) => $stop->arrived_at)->count() + 1 : $order->route_step,
+                    'next_checkpoint' => $nextFacility ? [
+                        'facility_id' => $nextFacility->facility?->id,
+                        'code' => null,
+                        'name' => $nextFacility->facility?->name,
+                        'municipality' => $nextFacility->facility?->municipality,
+                        'province' => $nextFacility->facility?->province,
+                    ] : ($order->nextRouteCheckpoint ? [
                         'code' => $order->nextRouteCheckpoint->code,
                         'name' => $order->nextRouteCheckpoint->name,
                         'municipality' => $order->nextRouteCheckpoint->municipality,
                         'province' => $order->nextRouteCheckpoint->province,
-                    ] : null,
+                    ] : null),
                     'origin_main_hub' => $origin?->business_name,
-                    'checkpoints' => $order->routePlan?->stops->map(fn ($stop) => [
+                    'checkpoints' => $facilityStops->isNotEmpty() ? $facilityStops->map(fn ($stop) => [
+                        'position' => $stop->position,
+                        'facility_id' => $stop->facility?->id,
+                        'code' => null,
+                        'name' => $stop->facility?->name,
+                        'municipality' => $stop->facility?->municipality,
+                        'province' => $stop->facility?->province,
+                    ])->values() : ($order->routePlan?->stops->map(fn ($stop) => [
                         'position' => $stop->position,
                         'code' => $stop->checkpoint?->code,
                         'name' => $stop->checkpoint?->name,
                         'municipality' => $stop->checkpoint?->municipality,
                         'province' => $stop->checkpoint?->province,
-                    ])->values() ?? [],
+                    ])->values() ?? []),
                     'destination_main_hub' => $destination?->business_name,
+                    'scan_target' => $scanTarget,
                 ] : null,
             ];
         })]);
+    }
+
+    private function facilityScanTarget(?LogisticsFacility $facility): ?array
+    {
+        if (! $facility) {
+            return null;
+        }
+
+        return [
+            'facility_id' => $facility->id,
+            'name' => $facility->name,
+            'municipality' => $facility->municipality,
+            'province' => $facility->province,
+        ];
     }
 
     public function store(Request $request, RiderAccessService $access, OrderScanWorkflow $workflow): JsonResponse

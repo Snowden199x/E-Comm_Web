@@ -26,6 +26,8 @@ Seller registration is OTP-gated and stores seller detail, identity/permit paths
 
 These pages and routes have been added; seller-side manual verification is still pending.
 
+The 9 October UI pull redesigned Shipments, Orders details and product filters, and added Vouchers, Complaints and Category Requests screens. Their Seller routes and backend workflows are now implemented in code, with migrations and owner verification pending. Buyer checkout shows matching Seller vouchers and supports voucher codes. The Seller notification bell also alerts once when a voucher expires or reaches its total-use limit, detected during notification polling. Shipping remains ₱0 until quoting is built. See the [12 October pull review](../design/2026-10-12-pull-review.md) and the [Seller voucher](../features/seller/vouchers/spec.md), [complaints](../features/seller/complaints/spec.md), and [category request](../features/seller/category-requests/spec.md) specs.
+
 ## Remaining gaps
 
 Logistics rider assignment, manual sorting and hub handoffs are implemented. Delivery completion, proof and exceptions are not. Product deletion/bulk import, configurable inventory thresholds, shipping quotes and buyer-to-seller messaging remain separate work. Delivered Orders uses recorded delivery timestamps; only orders with an actual `delivered` or `completed` status appear. No external carrier API is connected; shipment metadata is manually recorded from carrier details.

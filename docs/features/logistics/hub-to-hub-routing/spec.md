@@ -1,11 +1,15 @@
 # Main Hub Route Plan Selection
 
-**Status:** Partial: Main Hub matching and ordered virtual route-plan selection are implemented
-**Reviewed:** 28 September 2026
+**Status:** New sorts create actual per-order facility routes; old virtual route plans retained for history
+**Reviewed:** 14 October 2026
 
-## Current behavior
+> Existing plans connect current center IDs and virtual locality checkpoints. The approved target is one Logistics network and one Main Hub per province, with routes through real Main Hubs/stations. Preserve current plans until each stop has been reviewed and mapped. See [province network and stations](../province-network-and-stations/spec.md).
 
-`OrderRoutingService` assigns ready orders to approved active Main Hubs using the order's structured location and the existing municipality matching policy. When origin logistics marks a parcel sorted, `LogisticsRoutePlanner` considers active plans configured for that exact origin/destination Main Hub pair. It chooses the plan with a virtual checkpoint municipality nearest to the buyer; an empty-stop plan compares the destination Main Hub. Approximate route distance and plan priority resolve close ties. The selected plan and its first ordered checkpoint are stored on the order.
+New `DispatchController::markSorted` no longer calls `LogisticsRoutePlanner`. It takes up to three selected real stations in operator-chosen travel order, validates that each belongs to the origin or destination province network, and appends the destination Main Hub for a cross-province order. It stores ordered `order_facility_stops`. A local route may end at a station or use direct Main Hub delivery. Scanner arrival/sort/depart actions enforce stop order. No automatic nearest station selection or physical road feasibility check is claimed.
+
+## Existing behavior (legacy)
+
+Before the new facility route, `OrderRoutingService` assigned ready orders using municipality matching and `LogisticsRoutePlanner` selected virtual checkpoints. Those classes/tables remain to interpret historical rows; current ready-order matching uses unique province coverage and new sorting writes actual facility stops.
 
 SH entries are virtual route checkpoints. Their representative municipalities help choose among configured route paths; they are not owned sites or physical addresses. No plan is guessed from all available checkpoints: a plan and its ordered stops must be explicitly configured and active. If none is valid, the parcel stays `sorted`, without an assumed route.
 

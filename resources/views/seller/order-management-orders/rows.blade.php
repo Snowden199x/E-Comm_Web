@@ -43,7 +43,7 @@
                 <span>{{ $order->items_sum_quantity ?? 0 }} {{ ($order->items_sum_quantity ?? 0) === 1 ? 'item' : 'items' }}</span>
             </span>
         </td>
-        <td class="omo-total">₱{{ number_format($order->total_amount, 2) }}<small class="omo-paytag omo-paytag--{{ strtolower($order->payment_mode ?? 'cod') === 'cod' ? 'cod' : 'paid' }}">{{ strtoupper($order->payment_mode ?? 'COD') }}@if($order->voucher_code ?? null) · Voucher @endif</small></td>
+        <td class="omo-total">₱{{ number_format($order->payable_total, 2) }}<small class="omo-paytag omo-paytag--{{ strtolower($order->payment_mode ?? 'cod') === 'cod' ? 'cod' : 'paid' }}">{{ strtoupper($order->payment_mode ?? 'COD') }}@if($order->voucher_code ?? null) · Voucher @endif</small></td>
         <td><span class="omo-pill omo-pill--{{ $order->seller_group }}"><i aria-hidden="true"></i>{{ $order->status_label }}</span></td>
         <td class="omo-date">{{ $order->created_at->format('M j, Y') }}<small>{{ $order->created_at->format('g:i A') }}</small></td>
         <td><button type="button" class="omo-view-btn" data-order="{{ $order->number }}" data-id="{{ $order->id }}" aria-label="View order {{ $order->number }}">View</button></td>

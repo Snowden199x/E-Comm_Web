@@ -46,6 +46,9 @@ class UserManagementController extends Controller
             $query->where('status', 'disapproved');
         } else {
             $query->where('status', 'approved');
+            if (in_array($request->input('account_status'), ['active', 'suspended', 'deactivated'], true)) {
+                $query->where('account_status', $request->input('account_status'));
+            }
         }
 
         if ($request->filled('search')) {

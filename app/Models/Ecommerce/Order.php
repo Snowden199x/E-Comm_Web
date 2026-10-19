@@ -15,7 +15,7 @@ class Order extends Model
         'ready_for_pickup' => 'Ready for Pickup', 'picked_up' => 'Picked Up',
         'at_sorting_center' => 'At Sorting Center', 'sorted' => 'Sorted',
         'to_soc5' => 'On Route to SOC5', 'to_soc6' => 'On Route to SOC6',
-        'in_transit_to_hub' => 'In Transit to Hub', 'at_destination_hub' => 'At Destination Hub',
+        'in_transit_to_hub' => 'In Transit to Hub', 'at_destination_hub' => 'At Destination Facility',
         'assigned_to_rider' => 'Assigned to Rider', 'out_for_delivery' => 'Out for Delivery',
         'delivered' => 'Delivered', 'completed' => 'Completed', 'delivery_failed' => 'Delivery Failed',
         'returned' => 'Returned', 'cancelled' => 'Cancelled',
@@ -35,8 +35,18 @@ class Order extends Model
 
     public const SHIPMENT_LABELS = ['to_ship' => 'To Ship', 'in_transit' => 'In Transit', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled', 'returned' => 'Returned'];
 
-    protected $casts = ['shipping_fee' => 'decimal:2', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date',
+    public function facilityStops()
+    {
+        return $this->hasMany(\App\Models\Profiles\OrderFacilityStop::class)->orderBy('position');
+    }
+
+    protected $casts = ['shipping_fee' => 'decimal:2', 'voucher_discount' => 'decimal:2', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date',
         'delivered_at' => 'datetime', 'pickup_verified_at' => 'datetime'];
+
+    public function getPayableTotalAttribute(): float
+    {
+        return max(0, (float) $this->total_amount - (float) $this->voucher_discount + (float) $this->shipping_fee);
+    }
 
     protected static function booted(): void
     {
@@ -216,6 +226,8 @@ class Order extends Model
     protected $fillable = [
         'buyer_id',
         'seller_id',
+        'buyer_note',
+        'voucher_discount', 'voucher_code',
         'courier_id',
         'total_amount',
         'status',

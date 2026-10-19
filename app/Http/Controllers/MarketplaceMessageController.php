@@ -172,7 +172,7 @@ class MarketplaceMessageController extends Controller
     private function buyerOrders(int $buyerId, int $sellerId)
     {
         return Order::query()->where('buyer_id', $buyerId)->where('seller_id', $sellerId)
-            ->with('items.product.images')->latest('id')->limit(20)->get(['id', 'seller_id', 'status', 'total_amount', 'created_at']);
+            ->with('items.product.images')->latest('id')->limit(20)->get(['id', 'seller_id', 'status', 'total_amount', 'shipping_fee', 'voucher_discount', 'created_at']);
     }
 
     private function validateMessage(Request $request): array
@@ -281,7 +281,7 @@ class MarketplaceMessageController extends Controller
                 'carrier' => $message->sharedOrder->carrier_name,
                 'tracking' => $message->sharedOrder->carrier_tracking_number,
                 'status' => $message->sharedOrder->status_label,
-                'total' => '₱'.number_format($message->sharedOrder->total_amount, 2),
+                'total' => '₱'.number_format($message->sharedOrder->payable_total, 2),
                 'url' => $request->user()->role === 'buyer'
                     ? route('buyer.orders.show', $message->sharedOrder)
                     : route('seller.orders.index', ['order' => $message->sharedOrder->id]),

@@ -34,6 +34,8 @@ A stable Vendo reference is persisted for every new order; the migration backfil
 
 The seller can print a 4 × 6 inch label once the order is ready for pickup and its origin logistics center is assigned. Its primary carrier wordmark is that center's `business_name` (for example, JNK). The route block shows the destination hub when resolved; otherwise it shows the buyer's destination area and marks hub assignment pending. The label includes buyer/seller addresses, COD amount, and Code 128 plus QR encoding the stable Vendo tracking number only. It does not claim a real carrier logo, weight, or delivery attempt history that the app does not store. The Print Shipping Label control stays visible but disabled with a reason before readiness or origin assignment. Label access remains seller-owned. Status notifications to seller and buyer name the relevant logistics hub/city when a rider scan or manual hub status transition occurs.
 
+The separate SH scanner API now adds a status-history note and Seller notification for each accepted checkpoint arrival/sorting report, naming the confirmed SH and the next **planned** stop. A printed tracking number alone cannot submit the event; the station must be paired to that exact next checkpoint.
+
 ## Files and verification
 
 `Seller/ShipmentController`, `SellerOrderWorkflow`, `Order`, `InventoryService`, the inventory/shipment migration, and `resources/views/seller/shipments/`. Manual acceptance should cover ownership, filters, stale transitions, active rider requirements, tracking persistence and cancellation restoring stock only once. No test files are included, as requested.

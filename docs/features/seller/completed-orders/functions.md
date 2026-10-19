@@ -26,7 +26,7 @@ The drawer shows the selected order's current ERP state and order ID; buyer name
 
 ## Data and behavior
 
-- Current checkout stores the product subtotal in `orders.total_amount` and charges zero shipping fee; display stored amounts only. Future nonzero fees must be charged through checkout before being shown as payable.
+- Current checkout stores the gross product subtotal in `orders.total_amount`, an optional Seller `voucher_discount`, and zero shipping fee; Buyer payable is subtotal minus discount plus shipping. Future nonzero fees must be charged through checkout before being shown as payable.
 - Delivery date is the recorded transition to `delivered`, not the order creation date or an arbitrary `updated_at` timestamp. Older orders without a recorded delivery event must say **Date unavailable**.
 - Each card, chart slice, product ranking, and pagination number comes from the seller's filtered database records.
 - Empty, loading, unavailable tracking, and stale drawer states should be visually understandable; table and drawer are keyboard accessible.

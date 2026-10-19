@@ -1,7 +1,7 @@
 # User Management
 
 **Status:** Implemented for buyer, seller and logistics-center accounts (UI redesigned 4 October 2026; file popups added 6 October 2026; owner verification pending)  
-**Reviewed:** 7 October 2026
+**Reviewed:** 12 October 2026
 
 ## Current behavior
 
@@ -21,6 +21,8 @@ The Admin User Management list and counts cover buyer, seller, and logistics-cen
 Unsubmitted suspension reasons, duration and details survive a same-tab reload for up to two hours. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
 New logistics-center approval remains in Admin Registrations. Rider and admin accounts are outside this screen.
+
+The Active, Suspended, and Deactivated filters now apply to the server query before pagination; they cover all matching approved accounts rather than just the loaded page. Rejected remains a separate server-side view.
 
 ## Backend update and remaining work
 

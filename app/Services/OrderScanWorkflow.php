@@ -31,6 +31,8 @@ class OrderScanWorkflow
                 && (int) $order->{$transition[3]} === (int) $center->id, 403,
                 'This parcel is not assigned to this rider and logistics center.');
             if (in_array($data['scan_type'], ['soc5', 'soc6', 'destination_hub'], true)) {
+                abort_if($order->facilityStops()->exists(), 409,
+                    'This parcel uses actual facility stops. Use the Logistics facility scanner for handoffs.');
                 abort_unless($order->destination_logistics_center_id
                     && (int) $order->destination_logistics_center_id !== (int) $center->id,
                     409, 'Inter-hub scans require a different resolved destination hub.');

@@ -19,9 +19,9 @@
     $cancelNote = $events->last(fn ($e) => $e->to_status === 'cancelled')?->note;
     $mode = strtoupper($order->payment_mode ?? 'COD');
     $subtotal = $order->items->sum(fn ($item) => $item->quantity * $item->price);
-    $voucherCode = $order->voucher_code ?? null;          // present once vouchers exist
+    $voucherCode = $order->voucher_code ?? null;
     $voucherDiscount = (float) ($order->voucher_discount ?? 0);
-    $buyerNote = trim((string) ($order->buyer_note ?? '')); // present once the checkout note exists
+    $buyerNote = trim((string) ($order->buyer_note ?? ''));
     $variation = fn ($item) => implode(' / ', array_filter([$item->color, $item->size])) ?: null;
     $hub = $order->logisticsCenter;
     $destination = $order->destinationLogisticsCenter;
@@ -186,11 +186,11 @@
         @if($voucherCode && $voucherDiscount > 0)
             <div class="sh-voucher-line"><dt>Voucher <code>{{ $voucherCode }}</code></dt><dd>−₱{{ number_format($voucherDiscount, 2) }}</dd></div>
         @endif
-        <div><dt>Total amount</dt><dd>₱{{ number_format($order->total_amount, 2) }}</dd></div>
+        <div><dt>Total amount</dt><dd>₱{{ number_format($order->payable_total, 2) }}</dd></div>
     </dl>
     <p class="sh-payline">
         Payment: <b class="{{ $mode === 'COD' ? 'sh-pay--cod' : 'sh-pay--paid' }}">{{ $mode }}</b>
-        <span>{{ $mode === 'COD' ? 'The rider collects ₱'.number_format($order->total_amount, 2).' on delivery.' : 'Already paid online.' }}</span>
+        <span>{{ $mode === 'COD' ? 'The rider collects ₱'.number_format($order->payable_total, 2).' on delivery.' : 'Already paid online.' }}</span>
     </p>
 </section>
 

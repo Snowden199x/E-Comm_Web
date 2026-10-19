@@ -86,6 +86,7 @@ class OrderCancellationService
         }
 
         $order->update(['status' => 'cancelled']);
+        app(SellerVoucherService::class)->voidForOrderLocked($order->id);
         $actorLabel = $actor->role === 'buyer' ? 'Buyer' : 'Seller';
         $eventNote = $actorLabel.' cancellation reason: '.$reason;
         $order->statusEvents()->create([

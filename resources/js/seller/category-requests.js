@@ -1,6 +1,5 @@
 // Seller > Account Management > "Request new categories".
-// Posts multipart form data to the endpoint rendered in data-cr-endpoint. While the backend route does not exist the
-// endpoint is empty and the seller gets a clear message instead of a failed request.
+// Posts multipart form data to the endpoint rendered in data-cr-endpoint.
 const root = document.getElementById('sellingCategories');
 
 if (root) {
