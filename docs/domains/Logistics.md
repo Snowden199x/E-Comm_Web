@@ -4,7 +4,7 @@
 
 One approved Logistics account represents one province, including its single Main Hub and all real operating stations. For example, the Laguna account manages the Laguna Main Hub and every Laguna station. A town passed through without receiving or handing off a parcel is not a station and requires no scan.
 
-Logistics registration selects province coverage separately from the business/Main Hub address. Pending and approved accounts reserve that province through a unique database claim; rejection releases a pending claim. The ordinary PSGC address list remains complete for Buyers, Sellers, Riders, and business addresses. Backfill assigns a claim only where an existing province has one eligible account. Ambiguous legacy accounts need Admin resolution.
+The Main Hub address province determines the Logistics account's network coverage; registration does not ask for a duplicate coverage province. Claimed provinces are unavailable in the Logistics registration address selector and remain in address lists for other roles. Pending and approved accounts reserve the province through a unique database claim; rejection releases a pending claim. Backfill assigns a claim only where an existing province has one eligible account. Ambiguous legacy accounts need Admin resolution.
 
 ## Current web operations
 

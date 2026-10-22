@@ -38,8 +38,8 @@ class RegisteredUserController extends Controller
 
         return view('logistics.auth.register-center', [
             'googleRegistration' => $googleVerified ? $google : null,
-            'coverageProvinces' => $locations->all(),
             'claimedCoverageCodes' => $claimedCodes,
+            'excludedProvinceCodes' => $claimedCodes,
         ]);
     }
 
@@ -61,26 +61,26 @@ class RegisteredUserController extends Controller
             'zip_code' => ['required', 'string', 'max:10'],
             'password' => ['required', 'confirmed', Rules\Password::min(8)->mixedCase()->numbers()->symbols()],
             'business_name' => ['required', 'string', 'max:255'],
-            'coverage_province_code' => ['required', 'regex:/^[0-9]{9}$/', Rule::in(array_keys($locations->all()))],
             'business_permit' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'agree_terms' => ['accepted'],
         ]);
 
         $email = strtolower($validated['email']);
-        $province = $locations->all()[$validated['coverage_province_code']]['name'];
-        if ($locations->normalize($validated['province']) !== $locations->normalize($province)) {
-            throw ValidationException::withMessages(['coverage_province_code' => 'The Main Hub address must be inside the province this account covers.']);
+        $coverageProvinceCode = $locations->provinceCodeForName($validated['province']);
+        if (! $coverageProvinceCode) {
+            throw ValidationException::withMessages(['province' => 'Select a valid province for the Main Hub address.']);
         }
+        $province = $locations->all()[$coverageProvinceCode]['name'];
         $mainHubCodes = $locations->codesForNames($validated['province'], $validated['municipality']);
-        if (! $mainHubCodes || (string) $mainHubCodes[0] !== $validated['coverage_province_code']) {
-            throw ValidationException::withMessages(['municipality' => 'Select a Main Hub municipality within the covered province.']);
+        if (! $mainHubCodes || (string) $mainHubCodes[0] !== $coverageProvinceCode) {
+            throw ValidationException::withMessages(['municipality' => 'Select a Main Hub municipality within the selected province.']);
         }
         $alreadyClaimed = LogisticsCenter::query()->whereHas('user', fn ($query) => $query
             ->where('role', 'logistics_center')->whereIn('status', ['pending', 'approved']))
             ->get(['province', 'coverage_province_code'])
-            ->contains(fn ($center) => ($center->coverage_province_code ?: $locations->provinceCodeForName($center->province)) === $validated['coverage_province_code']);
+            ->contains(fn ($center) => ($center->coverage_province_code ?: $locations->provinceCodeForName($center->province)) === $coverageProvinceCode);
         if ($alreadyClaimed) {
-            throw ValidationException::withMessages(['coverage_province_code' => 'This province already has a Logistics account or an application awaiting review.']);
+            throw ValidationException::withMessages(['province' => 'This province already has a Logistics account or an application awaiting review.']);
         }
 
         $googleProof = $request->session()->get('google_registration_verification', []);
@@ -98,7 +98,7 @@ class RegisteredUserController extends Controller
         try {
             $stored['business_permit'] = $request->file('business_permit')->store('business-permits', 'local');
             $stored['valid_id'] = $request->file('valid_id')->store('valid-ids/logistics-center', 'local');
-            DB::transaction(function () use ($validated, $email, $province, $mainHubCodes, &$stored) {
+            DB::transaction(function () use ($validated, $email, $province, $coverageProvinceCode, $mainHubCodes, &$stored) {
                 $user = User::create([
                     'name' => trim($validated['first_name'].' '.$validated['last_name']),
                     'email' => $email,
@@ -123,13 +123,13 @@ class RegisteredUserController extends Controller
                     'zip_code' => $validated['zip_code'],
                     'business_name' => $validated['business_name'],
                     'business_permit_path' => $stored['business_permit'],
-                    'coverage_province_code' => $validated['coverage_province_code'],
+                    'coverage_province_code' => $coverageProvinceCode,
                     'coverage_province' => $province,
                 ]);
                 $center->facilities()->create([
                     'kind' => 'main_hub', 'main_hub_owner_id' => $center->id,
                     'name' => $validated['business_name'].' Main Hub',
-                    'province_code' => $validated['coverage_province_code'], 'province' => $province,
+                    'province_code' => $coverageProvinceCode, 'province' => $province,
                     'municipality_code' => $mainHubCodes[1],
                     'municipality' => $validated['municipality'],
                     'address' => implode(', ', array_filter([$validated['street'], $validated['barangay']])),
@@ -149,7 +149,7 @@ class RegisteredUserController extends Controller
             if (! str_contains($exception->getMessage(), 'lc_coverage_province_unique')) {
                 throw $exception;
             }
-            throw ValidationException::withMessages(['coverage_province_code' => 'This province was just claimed. Choose an available province.']);
+            throw ValidationException::withMessages(['province' => 'This province was just claimed. Choose another Main Hub address.']);
         } catch (\Throwable $exception) {
             Storage::disk('local')->delete(array_values($stored));
             throw $exception;
