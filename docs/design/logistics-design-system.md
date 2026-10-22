@@ -72,4 +72,6 @@ Emoji icons, colour-only status, hover-only actions, truncated text with no full
 - **Company dashboard / Hubs:** hierarchy is Company > Province hub > Station; stations are indented with a left rule under their province hub.
 - **Hub dashboards:** the pipeline strip differs by role (station: Incoming, Sorting, Assign, Out for delivery; province: From stations, Sorting, Linehaul, Arriving).
 - **Delivery Assignments (station only):** parcels in one delivery area go to one rider per assignment, matching the one-area-per-rider rule in the logistics navigation spec.
+- **Station dashboard:** "Parcels on hand" counts parcels at the station only (awaiting sorting, ready for delivery, waiting for transfer). Parcels out for delivery are with riders and are shown separately. The "Today" card holds only daily counts.
+- **Task Assignment (station only):** one page for pickup and delivery tasks (tabs), select + bulk bar with the rider required. A rider who does not serve a selected barangay triggers a warning, not a block.
 - **All role pages still run on hard-coded preview data** (`routes/logistics_preview.php`). Interactions change page state only; nothing is saved.
