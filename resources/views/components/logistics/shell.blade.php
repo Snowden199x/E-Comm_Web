@@ -9,46 +9,34 @@
     ][$role];
     [$orgName, $roleLabel] = $identity;
     $initial = mb_strtoupper(mb_substr($orgName, 0, 1));
-    $page = request()->route('page');
-    $hubUrl = fn (string $p) => route('lgp.hub.page', [$role, $p]);
     $home = $role === 'company' ? route('lgp.company') : route('lgp.hub.'.$role);
 
+    // Sidebar lists live in config/logistics_nav.php. Shape the shell loops over:
     // [label, icon, url, active, badge]
-    $nav = $role === 'company' ? [
-        ['label' => null, 'items' => [['Dashboard', 'home', route('lgp.company'), request()->routeIs('lgp.company'), 0]]],
-        ['label' => 'Network', 'items' => [
-            ['Hubs', 'map-pin', route('lgp.company.hubs'), request()->routeIs('lgp.company.hubs'), 0],
-            ['Hub Managers', 'user-cog', route('lgp.company.managers'), request()->routeIs('lgp.company.managers'), 0],
-        ]],
-        ['label' => 'Business', 'items' => [['Reports', 'bar-chart', route('lgp.company.reports'), request()->routeIs('lgp.company.reports'), 0]]],
-        ['label' => 'System', 'items' => [['Account Management', 'shield', route('lgp.company.account'), request()->routeIs('lgp.company.account'), 0]]],
-    ] : [
-        ['label' => null, 'items' => [['Dashboard', 'home', $home, request()->routeIs('lgp.hub.'.$role), 0]]],
-        ['label' => 'People', 'items' => [['Rider Management', 'users', $hubUrl('riders'), $page === 'riders', 3]]],
-        ['label' => 'Parcels', 'items' => array_values(array_filter([
-            ['Incoming Parcels', 'inbox', $hubUrl('incoming'), $page === 'incoming', 12],
-            ['Parcel Sorting', 'layers', $hubUrl('sorting'), $page === 'sorting', 0],
-            $role === 'province' ? ['Linehaul', 'truck', route('lgp.hub.linehaul'), request()->routeIs('lgp.hub.linehaul'), 0] : null,
-            $role === 'station' ? ['Delivery Assignments', 'truck', $hubUrl('assignments'), $page === 'assignments', 0] : null,
-            ['Delivery Monitoring', 'map-pin', $hubUrl('monitoring'), $page === 'monitoring', 0],
-        ]))],
-        ['label' => 'Business', 'items' => [['Reports', 'bar-chart', $hubUrl('reports'), $page === 'reports', 0]]],
-        ['label' => 'System', 'items' => [['Account Management', 'shield', $hubUrl('account'), $page === 'account', 0]]],
-    ];
+    $nav = collect(config('logistics_nav.'.$role))->map(fn ($group) => [
+        'label' => $group['label'],
+        'items' => array_map(fn ($item) => [
+            $item['label'],
+            $item['icon'],
+            route($item['route']),
+            request()->routeIs(...(array) ($item['active'] ?? $item['route'])),
+            $item['badge'] ?? 0,
+        ], $group['items']),
+    ])->all();
 
     // HARDCODED PREVIEW: replace with the real notification feed. Each item: [title, detail, url]
     $alerts = match ($role) {
         'company' => [
+            ['3 parcels are delayed', 'Look them up in Parcel Tracking.', route('lgp.company.tracking')],
             ['Los Banos Station is still in setup', 'Finish setup so it can receive parcels.', route('lgp.company.hubs')],
-            ['Carlo Ramos has not accepted the invite', 'Resend it from Hub Managers.', route('lgp.company.managers')],
         ],
         'province' => [
-            ['58 parcels are waiting for linehaul', 'Assign a truck rider and dispatch.', route('lgp.hub.linehaul')],
-            ['Truck from Quezon Hub arrives in 25 min', '42 parcels to receive.', route('lgp.hub.linehaul')],
+            ['62 parcels are waiting for a transfer trip', 'Create a trip and assign a driver and vehicle.', route('lgp.province.trips')],
+            ['Truck from Quezon Hub arrives in 25 min', '42 parcels to receive.', route('lgp.province.parcels')],
         ],
         default => [
-            ['3 pickup requests need verification', 'Sellers are waiting for a rider.', $hubUrl('incoming')],
-            ['Delivery failed: VND-10451', 'Retry it or return it to the seller.', $hubUrl('monitoring')],
+            ['3 pickup requests need a rider', 'Sellers are waiting for a pickup.', route('lgp.station.pickups')],
+            ['Delivery failed: VND-10451', 'Check its journey, then reassign it or return it to the seller.', route('lgp.station.tracking')],
         ],
     };
 
@@ -230,7 +218,7 @@
                     </button>
                     <div x-show="open" x-cloak role="menu"
                         class="absolute right-0 mt-2 w-52 bg-white rounded-2xl border border-[#ece4ec] py-1.5 z-50 shadow-[0_18px_40px_-20px_rgba(43,23,48,0.4)] origin-top-right">
-                        <a href="{{ $role === 'company' ? route('lgp.company.account') : $hubUrl('account') }}" role="menuitem" class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F7F1F7]">Account Settings</a>
+                        <a href="{{ route('lgp.'.$role.'.account') }}" role="menuitem" class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F7F1F7]">Account Settings</a>
                         <form method="POST" action="{{ route('logistics.logout') }}">@csrf
                             <button type="submit" role="menuitem" class="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">Log out</button>
                         </form>
