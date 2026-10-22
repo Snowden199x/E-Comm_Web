@@ -4,7 +4,7 @@
 
 The implemented first version uses one approved Logistics network account per province, one Main Hub and optional actual stations under that account. A Laguna account represents the whole Laguna network. A station receives, sorts, holds, or hands off parcels; a town that a truck merely passes through is not a station. New routes use actual Main Hubs and stations. The authenticated Logistics portal opens a browser-camera scanner modal at the selected facility.
 
-The province address list remains available in all ordinary address fields. Logistics registration separately selects province coverage. Pending and approved claims reserve the province, database uniqueness blocks simultaneous new claims, and Admin rejection releases a pending claim. Admin replacement and duplicate legacy-account resolution remain open in the [province network and stations spec](features/logistics/province-network-and-stations/spec.md).
+The province address catalog remains complete for ordinary addresses. A Logistics account's coverage is derived from its Main Hub address province; the registration form does not ask for a second coverage value. Claimed provinces are disabled in the Logistics registration address selector, while server validation and database uniqueness block simultaneous duplicate claims. Admin rejection releases a pending claim. Admin replacement and duplicate legacy-account resolution remain open in the [province network and stations spec](features/logistics/province-network-and-stations/spec.md).
 
 The live `/logistics/facilities` pages own real network facilities. `/logistics-preview/*` still shows hard-coded sample screens. Legacy virtual SH route plans and scanner history remain preserved and separate from the new facility scan records.
 

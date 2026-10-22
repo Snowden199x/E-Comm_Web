@@ -467,7 +467,7 @@
 
                         <div class="mb-1">
                             <h2 class="text-[1rem] font-bold text-gray-900 mb-0.5">Address</h2>
-                            <p class="text-[0.8rem] text-gray-500 font-normal mb-4">Please provide your complete address.</p>
+                            <p class="text-[0.8rem] text-gray-500 font-normal mb-4">This address sets your Main Hub location and the province your Logistics account covers. Provinces with an existing application or account are unavailable.</p>
                         </div>
 
                         @include('auth.partials.address-comboboxes')
@@ -540,7 +540,7 @@
 
                         <div class="mb-1">
                             <h2 class="text-[1rem] font-bold text-gray-900 mb-0.5">Business Information</h2>
-                            <p class="text-[0.8rem] text-gray-500 font-normal mb-4">One account manages the Main Hub and stations across one province.</p>
+                            <p class="text-[0.8rem] text-gray-500 font-normal mb-4">One account manages the Main Hub and stations across the province selected in your address.</p>
                         </div>
 
                         <div class="grid grid-cols-2 gap-6 mb-8">
@@ -558,17 +558,6 @@
                                 </label>
                                 <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF.</p>
                             </div>
-                        </div>
-
-                        <div class="mb-8">
-                            <label for="coverageProvince" class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Province covered by this account <span class="text-red-500">*</span></label>
-                            <select id="coverageProvince" name="coverage_province_code" required class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735]">
-                                <option value="">Select a province</option>
-                                @foreach ($coverageProvinces as $code => $entry)
-                                    <option value="{{ $code }}" @disabled(in_array((string) $code, $claimedCoverageCodes, true))>{{ $entry['name'] }}{{ in_array((string) $code, $claimedCoverageCodes, true) ? ' — already claimed' : '' }}</option>
-                                @endforeach
-                            </select>
-                            <p class="text-[0.75rem] text-gray-500 mt-1">Your Main Hub address must be in this province. Stations will be managed from this account after approval.</p>
                         </div>
 
                         <div class="flex justify-end gap-3">

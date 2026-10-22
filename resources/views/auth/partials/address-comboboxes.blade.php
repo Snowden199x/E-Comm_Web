@@ -25,6 +25,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const locations = @js(app(\App\Services\LocationCatalog::class)->all());
+    const excludedProvinceCodes = @js(array_map('strval', $excludedProvinceCodes ?? []));
     const provinceSelect = document.getElementById('province-select');
     const municipalitySelect = document.getElementById('municipality-select');
     const barangaySelect = document.getElementById('barangay-select');
@@ -32,7 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
     Object.entries(locations).forEach(([code, province]) => {
         const opt = document.createElement('option');
         opt.value = province.name;
-        opt.textContent = province.name;
+        const unavailable = excludedProvinceCodes.includes(String(code));
+        opt.textContent = unavailable ? `${province.name} — already covered` : province.name;
+        opt.disabled = unavailable;
         opt.dataset.code = code;
         provinceSelect.appendChild(opt);
     });
