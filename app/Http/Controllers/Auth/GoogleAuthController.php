@@ -54,7 +54,7 @@ class GoogleAuthController extends Controller
             $route = match ($role) {
                 'buyer' => route('buyer.dashboard', absolute: false),
                 'seller' => route('seller.dashboard', absolute: false),
-                default => route('logistics.dashboard', absolute: false),
+                default => route('lgp.company', absolute: false),
             };
 
             return response()->json(['redirect' => $route]);

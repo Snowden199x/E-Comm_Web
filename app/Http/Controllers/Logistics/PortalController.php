@@ -22,8 +22,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -90,9 +93,35 @@ class PortalController extends Controller
             'hubs' => $hubs,
             'provinces' => collect($locations->all())->pluck('name')->values(),
             'showUrl' => route('lgp.company.hubs.show', '__hub__'),
+            'refreshUrl' => route('lgp.company.hubs.manager-feed'),
             'createUrl' => route('lgp.company.hubs.store'),
+            'updateUrl' => route('lgp.company.hubs.update', '__hub__'),
+            'deleteUrl' => route('lgp.company.hubs.destroy', '__hub__'),
             'statusUrl' => route('lgp.company.hubs.status', '__hub__'),
         ]);
+    }
+
+    public function companyHubManagersFeed(Request $request): JsonResponse
+    {
+        $company = $this->company($request);
+        $hubs = $company->provinceHubs()->with('staff.user')->get();
+        $managerIds = $hubs->map(fn ($hub) => $hub->staff?->user?->id)->filter()->values();
+        $pendingEmails = $managerIds->isEmpty() ? collect() : DB::table('logistics_email_changes')
+            ->whereIn('user_id', $managerIds)->where('expires_at', '>', now())->pluck('new_email', 'user_id');
+        $managers = $hubs->map(function ($hub) use ($pendingEmails) {
+            $user = $hub->staff?->user;
+
+            return [
+                'id' => $hub->id,
+                'manager' => $user?->name ?? 'Manager not assigned',
+                'email' => $user?->email ?? '',
+                'pending_email' => $user ? ($pendingEmails[$user->id] ?? null) : null,
+                'phone' => $user?->phone_number ?? '',
+            ];
+        })->values();
+
+        return response()->json(['managers' => $managers])
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function createProvinceHub(Request $request, LocationCatalog $locations): JsonResponse
@@ -110,9 +139,7 @@ class PortalController extends Controller
         abort_unless($provinceCode, 422, 'Choose a valid province.');
         $province = $locations->all()[$provinceCode]['name'];
         $manager = $this->managerName($data['manager']);
-        $rawPassword = str()->random(40);
-
-        $hub = DB::transaction(function () use ($company, $data, $provinceCode, $province, $manager, $rawPassword) {
+        $hub = DB::transaction(function () use ($company, $data, $provinceCode, $province, $manager) {
             LogisticsCompany::query()->whereKey($company->id)->lockForUpdate()->firstOrFail();
             $exists = $company->provinceHubs()->where('province_code', $provinceCode)->where('is_active', true)->exists();
             if ($exists) {
@@ -121,7 +148,8 @@ class PortalController extends Controller
             $user = User::create([
                 'name' => $manager['name'], 'first_name' => $manager['first_name'], 'last_name' => $manager['last_name'],
                 'email' => $data['email'], 'phone_number' => $data['phone'], 'role' => 'province_hub',
-                'status' => 'approved', 'account_status' => 'active', 'email_verified_at' => now(), 'password' => Hash::make($rawPassword),
+                'status' => 'approved', 'account_status' => 'active', 'email_verified_at' => now(),
+                'password' => Hash::make(str()->random(64)), 'must_change_password' => true, 'temp_password_plain' => null,
             ]);
             $facility = $company->facilities()->create([
                 'logistics_center_id' => $company->logistics_center_id,
@@ -130,15 +158,12 @@ class PortalController extends Controller
                 'address' => $data['address'], 'is_active' => true,
             ]);
             FacilityStaff::create(['facility_id' => $facility->id, 'user_id' => $user->id, 'staff_title' => 'province_manager']);
+            $this->sendManagerPasswordSetupLink($user);
 
             return $facility->load('staff.user');
         }, 3);
 
-        $setupSent = $this->sendSetupLink($hub->staff->user);
-
-        return response()->json(['hub' => $this->hubCard($hub), 'message' => $setupSent
-            ? 'Province Hub created. A password setup link was sent to its manager.'
-            : 'Province Hub created, but the setup email could not be sent. The manager can use Forgot Password to set a password.'], 201);
+        return response()->json(['hub' => $this->hubCard($hub), 'message' => 'Province Hub created. A password setup link was emailed to its manager. The link opens the Create New Password page.'], 201);
     }
 
     public function updateProvinceHub(Request $request, LogisticsFacility $hub): JsonResponse
@@ -159,6 +184,97 @@ class PortalController extends Controller
         }
 
         return response()->json(['hub' => $this->hubCard($hub->fresh('staff.user', 'children'))]);
+    }
+
+    public function updateProvinceHubDetails(Request $request, LogisticsFacility $hub): JsonResponse
+    {
+        $company = $this->company($request);
+        abort_unless((int) $hub->logistics_company_id === (int) $company->id && $hub->isProvinceHub(), 404);
+        $managerUserId = $hub->staff()->value('user_id');
+        abort_if(! $managerUserId, 409, 'This Province Hub has no linked manager account to update.');
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:80'],
+            'address' => ['required', 'string', 'min:10', 'max:200'],
+            'manager' => ['required', 'string', 'max:80'],
+            'email' => ['required', 'email', 'lowercase', 'max:255', Rule::unique('users', 'email')->ignore($managerUserId)],
+            'phone' => ['required', 'string', 'max:24'],
+        ]);
+        $manager = $this->managerName($data['manager']);
+        $emailToken = null;
+
+        $hub = DB::transaction(function () use ($company, $hub, $data, $manager, $managerUserId, &$emailToken) {
+            $lockedHub = LogisticsFacility::query()->whereKey($hub->id)->lockForUpdate()->firstOrFail();
+            abort_unless((int) $lockedHub->logistics_company_id === (int) $company->id && $lockedHub->isProvinceHub(), 404);
+            $staff = $lockedHub->staff()->with('user')->first();
+            abort_if(! $staff?->user, 409, 'This Province Hub has no linked manager account to update.');
+            abort_unless((int) $staff->user_id === (int) $managerUserId, 409);
+
+            $lockedHub->update(['name' => $data['name'], 'address' => $data['address']]);
+            $staff->user->update([
+                'name' => $manager['name'], 'first_name' => $manager['first_name'],
+                'last_name' => $manager['last_name'], 'phone_number' => $data['phone'],
+            ]);
+
+            if ($staff->user->email !== $data['email']) {
+                DB::table('logistics_email_changes')->where('expires_at', '<=', now())->delete();
+                if (DB::table('logistics_email_changes')->where('new_email', $data['email'])
+                    ->where('user_id', '!=', $staff->user_id)->exists()) {
+                    throw ValidationException::withMessages(['email' => 'This email has another pending change request.']);
+                }
+                $emailToken = bin2hex(random_bytes(32));
+                DB::table('logistics_email_changes')->updateOrInsert(['user_id' => $staff->user_id], [
+                    'new_email' => $data['email'], 'token_hash' => hash('sha256', $emailToken),
+                    'expires_at' => now()->addMinutes(30), 'created_at' => now(), 'updated_at' => now(),
+                ]);
+            } else {
+                DB::table('logistics_email_changes')->where('user_id', $staff->user_id)->delete();
+            }
+
+            return $lockedHub->fresh(['staff.user', 'children']);
+        }, 3);
+
+        $message = 'Province Hub updated.';
+        if ($emailToken) {
+            $relativeUrl = URL::temporarySignedRoute('lgp.account.manager-email.confirm', now()->addMinutes(30),
+                ['token' => $emailToken], absolute: false);
+            $link = rtrim(config('app.url'), '/').$relativeUrl;
+            try {
+                Mail::raw('Confirm the new email address for your Vendo Province Hub manager account within 30 minutes: '.$link
+                    .' If you did not expect this change, ignore this email.',
+                    fn ($mail) => $mail->to($data['email'])->subject('Confirm Province Hub manager email'));
+                $message .= ' A confirmation link was sent to the new manager email. The new address will appear as pending until confirmed; opening the link will continue to password setup.';
+            } catch (\Throwable $exception) {
+                report($exception);
+                DB::table('logistics_email_changes')->where('user_id', $hub->staff->user_id)
+                    ->where('token_hash', hash('sha256', $emailToken))->delete();
+                $message .= ' The email confirmation could not be sent, so the manager email remains unchanged.';
+            }
+        }
+
+        return response()->json(['hub' => $this->hubCard($hub), 'message' => $message]);
+    }
+
+    public function deleteProvinceHub(Request $request, LogisticsFacility $hub): JsonResponse
+    {
+        $company = $this->company($request);
+        abort_unless((int) $hub->logistics_company_id === (int) $company->id && $hub->isProvinceHub(), 404);
+
+        DB::transaction(function () use ($company, $hub) {
+            $lockedHub = LogisticsFacility::query()->whereKey($hub->id)->lockForUpdate()->firstOrFail();
+            abort_unless((int) $lockedHub->logistics_company_id === (int) $company->id && $lockedHub->isProvinceHub(), 404);
+            abort_if($lockedHub->children()->exists(), 409, 'Delete or move this Province Hub’s Station Hubs before deleting the Province Hub.');
+            abort_if($this->provinceHubHasHistory($lockedHub), 409, 'This Province Hub has parcel, trip, driver, vehicle, scan, settlement, or message history and cannot be deleted. Deactivate it instead.');
+
+            $staff = $lockedHub->staff()->with('user')->first();
+            $manager = $staff?->user;
+            if ($manager && $manager->role === 'province_hub') {
+                $manager->update(['account_status' => 'deactivated']);
+            }
+
+            $lockedHub->delete();
+        }, 3);
+
+        return response()->json(['id' => $hub->id, 'message' => 'Province Hub deleted. Its manager account was deactivated.']);
     }
 
     public function companyHubShow(Request $request, LogisticsFacility $hub): View
@@ -346,9 +462,7 @@ class PortalController extends Controller
         $codes = $locations->codesForNames($hub->province, $data['municipality']);
         abort_unless($codes && $codes[0] === $hub->province_code, 422, 'Choose a municipality inside this Province Hub.');
         $manager = $this->managerName($data['manager']);
-        $rawPassword = str()->random(40);
-
-        $station = DB::transaction(function () use ($hub, $data, $codes, $manager, $rawPassword) {
+        $station = DB::transaction(function () use ($hub, $data, $codes, $manager) {
             LogisticsFacility::query()->whereKey($hub->id)->lockForUpdate()->firstOrFail();
             if ($hub->children()->where('kind', 'station_hub')->where('municipality_code', $codes[1])->where('is_active', true)->exists()) {
                 throw ValidationException::withMessages(['municipality' => 'This company already has a Station Hub in that municipality.']);
@@ -356,7 +470,8 @@ class PortalController extends Controller
             $user = User::create([
                 'name' => $manager['name'], 'first_name' => $manager['first_name'], 'last_name' => $manager['last_name'],
                 'email' => $data['email'], 'phone_number' => $data['phone'], 'role' => 'station_hub',
-                'status' => 'approved', 'account_status' => 'active', 'email_verified_at' => now(), 'password' => Hash::make($rawPassword),
+                'status' => 'approved', 'account_status' => 'active', 'email_verified_at' => now(),
+                'password' => Hash::make(str()->random(64)), 'must_change_password' => true, 'temp_password_plain' => null,
             ]);
             $facility = $hub->children()->create([
                 'logistics_center_id' => $hub->logistics_center_id,
@@ -367,15 +482,12 @@ class PortalController extends Controller
                 'station_municipality_key' => $codes[1], 'address' => $data['address'], 'is_active' => true,
             ]);
             FacilityStaff::create(['facility_id' => $facility->id, 'user_id' => $user->id, 'staff_title' => 'station_manager']);
+            $this->sendManagerPasswordSetupLink($user);
 
             return $facility->load('staff.user');
         }, 3);
 
-        $setupSent = $this->sendSetupLink($station->staff->user);
-
-        return response()->json(['station' => $this->stationCard($station), 'message' => $setupSent
-            ? 'Station Hub created. A password setup link was sent to its manager.'
-            : 'Station Hub created, but the setup email could not be sent. The manager can use Forgot Password to set a password.'], 201);
+        return response()->json(['station' => $this->stationCard($station), 'message' => 'Station Hub created. A password setup link was emailed to its manager. The link opens the Create New Password page.'], 201);
     }
 
     public function updateStation(Request $request, LogisticsFacility $station): JsonResponse
@@ -929,7 +1041,10 @@ class PortalController extends Controller
             'slug' => (string) $hub->id, 'id' => $hub->id, 'name' => $hub->name,
             'province' => $hub->province, 'place' => trim($hub->municipality.', '.$hub->province),
             'address' => $hub->address, 'manager' => $manager?->name ?? 'Manager not assigned',
-            'email' => $manager?->email ?? '', 'phone' => $manager?->phone_number ?? '',
+            'email' => $manager?->email ?? '',
+            'pending_email' => $manager ? DB::table('logistics_email_changes')->where('user_id', $manager->id)
+                ->where('expires_at', '>', now())->value('new_email') : null,
+            'phone' => $manager?->phone_number ?? '',
             'stations' => $stations,
             'drivers' => $drivers->count(),
             'vehicles' => $vehicles->count(),
@@ -1109,6 +1224,54 @@ class PortalController extends Controller
         abort_if($orderUsesFacility || $tripUsesFacility, 409, 'Move or finish all open parcels and trips before deactivating this facility.');
     }
 
+    private function provinceHubHasHistory(LogisticsFacility $hub): bool
+    {
+        $id = $hub->id;
+        $orderUsesHub = DB::table('orders')->where(fn ($query) => $query
+            ->where('origin_station_id', $id)->orWhere('destination_station_id', $id)
+            ->orWhere('origin_province_hub_id', $id)->orWhere('destination_province_hub_id', $id))->exists();
+
+        if ($orderUsesHub) {
+            return true;
+        }
+
+        $facilityReferences = [
+            'order_facility_stops' => ['facility_id'],
+            'facility_scan_events' => ['facility_id'],
+            'transport_trips' => ['origin_facility_id', 'destination_facility_id'],
+            'transport_driver_details' => ['province_hub_id'],
+            'company_vehicles' => ['province_hub_id'],
+            'manual_logistics_handoffs' => ['origin_facility_id', 'destination_facility_id'],
+            'cross_company_manifests' => ['origin_facility_id', 'destination_facility_id'],
+            'logistics_parcel_exceptions' => ['facility_id'],
+            'logistics_messages' => ['facility_id'],
+            'order_shipping_earning_lines' => ['facility_id'],
+        ];
+
+        foreach ($facilityReferences as $table => $columns) {
+            if (! Schema::hasTable($table)) {
+                continue;
+            }
+
+            $columns = array_values(array_filter($columns, fn ($column) => Schema::hasColumn($table, $column)));
+            if ($columns === []) {
+                continue;
+            }
+
+            $query = DB::table($table)->where(function ($query) use ($columns, $id) {
+                foreach ($columns as $index => $column) {
+                    $query->{$index === 0 ? 'where' : 'orWhere'}($column, $id);
+                }
+            });
+
+            if ($query->exists()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function managerName(string $name): array
     {
         $name = trim(preg_replace('/\s+/', ' ', $name));
@@ -1116,13 +1279,20 @@ class PortalController extends Controller
         return ['name' => $name, 'first_name' => $parts[0], 'last_name' => $parts[1] ?? $parts[0]];
     }
 
-    private function sendSetupLink(User $user): bool
+    private function sendManagerPasswordSetupLink(User $user): void
     {
         try {
-            return Password::sendResetLink(['email' => $user->email]) === Password::RESET_LINK_SENT;
+            $token = Password::createToken($user);
+            $link = route('lgp.manager-password.create', ['token' => $token, 'email' => $user->email]);
+            Mail::raw(
+                "Hello {$user->name},\n\nYour Vendo Logistics manager account is ready. Open this one-time link to create your password:\n\n{$link}\n\nThe link expires after the password setup period and can only be used once. If you did not expect this email, you can ignore it.\n",
+                fn ($message) => $message->to($user->email)->subject('Create your Vendo Logistics manager password')
+            );
         } catch (\Throwable $exception) {
             report($exception);
-            return false;
+            throw ValidationException::withMessages([
+                'email' => 'The password setup email could not be sent. No hub or manager account was created; check the mail configuration and try again.',
+            ]);
         }
     }
 }

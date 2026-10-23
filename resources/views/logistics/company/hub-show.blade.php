@@ -3,8 +3,12 @@
     $active = $hub['status'] === 'Active';
     $stationCount = count($hub['stations']);
     $riders = collect($hub['stations'])->sum('riders');
-    [$dAvail, $dTrip, $dOff] = $hub['fleet']['drivers'];
-    [$vAvail, $vTrip, $vMaint] = $hub['fleet']['vehicles'];
+    $driverFleet = $hub['fleet']['drivers'] ?? [0, 0, 0];
+    $vehicleFleet = $hub['fleet']['vehicles'] ?? [0, 0, 0];
+    $driverCount = $hub['drivers'] ?? array_sum($driverFleet);
+    $vehicleCount = $hub['vehicles'] ?? array_sum($vehicleFleet);
+    [$dAvail, $dTrip, $dOff] = $driverFleet;
+    [$vAvail, $vTrip, $vMaint] = $vehicleFleet;
     $tripTone = ['Scheduled' => 'blue', 'In transit' => 'amber', 'Completed' => 'green', 'Cancelled' => 'gray'];
     $stationTone = ['Active' => 'green', 'Setup' => 'amber', 'Inactive' => 'gray'];
 @endphp
@@ -55,7 +59,7 @@
                 <div class="lg-card__head">
                     <div>
                         <h2 class="lg-section-title" id="fleetTitle">Drivers and vehicles</h2>
-                        <p class="lg-section-sub">{{ $hub['drivers'] }} transport drivers and {{ $hub['vehicles'] }} company vehicles.</p>
+                        <p class="lg-section-sub">{{ $driverCount }} transport drivers and {{ $vehicleCount }} company vehicles.</p>
                     </div>
                 </div>
                 <dl class="lg-facts">

@@ -148,8 +148,9 @@
         </section>
 
         {{-- Create Station Hub. Municipality list is limited to this Province Hub's province (spec 3.3). --}}
+        <template x-teleport="body">
         <div class="lg-overlay" x-show="open" x-cloak @click.self="open = false" @keydown.escape.window="open = false">
-            <div class="lg-modal" style="width:min(100%,520px)" role="dialog" aria-modal="true" aria-labelledby="stDlgTitle">
+            <div class="lg-modal lg-modal--hub-form" role="dialog" aria-modal="true" aria-labelledby="stDlgTitle">
                 <form @submit.prevent="save()" novalidate>
                     <div class="lg-modal__head">
                         <div>
@@ -202,6 +203,7 @@
                 </form>
             </div>
         </div>
+        </template>
 
         {{-- Confirm deactivate. Blocked while unfinished parcels still use the station (spec 3.3). --}}
         <div class="lg-overlay" x-show="confirmOpen" x-cloak @click.self="confirmOpen = false" @keydown.escape.window="confirmOpen = false">

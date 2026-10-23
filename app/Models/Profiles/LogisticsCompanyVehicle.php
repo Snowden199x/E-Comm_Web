@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class LogisticsCompanyVehicle extends Model
 {
+    protected $table = 'company_vehicles';
+
     protected $fillable = [
         'logistics_company_id', 'province_hub_id', 'vehicle_code', 'plate_number', 'vehicle_type', 'capacity_kg', 'status',
         'maintenance_note', 'maintenance_at',

@@ -11,11 +11,18 @@ use App\Http\Controllers\Logistics\ParcelExceptionController;
 use App\Http\Middleware\EnsureLogisticsPortalRole;
 use Illuminate\Support\Facades\Route;
 
+Route::prefix('logistics/manager-password')->name('lgp.manager-password.')->group(function () {
+    Route::get('/{token}', [PortalAccountController::class, 'createManagerPassword'])->name('create');
+    Route::post('/{token}', [PortalAccountController::class, 'storeManagerPassword'])->name('store');
+});
+
 Route::prefix('logistics/portal')->name('lgp.')->middleware('auth')->group(function () {
     Route::post('/account/email', [PortalAccountController::class, 'requestEmailChange'])
         ->middleware('throttle:3,10')->name('account.email.request');
     Route::get('/account/email/confirm', [PortalAccountController::class, 'confirmEmailChange'])
         ->middleware('signed:relative')->name('account.email.confirm');
+    Route::get('/account/manager-email/confirm', [PortalAccountController::class, 'confirmManagedManagerEmailChange'])
+        ->withoutMiddleware('auth')->middleware('signed:relative')->name('account.manager-email.confirm');
     Route::get('/notifications', [PortalNotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/feed', [PortalNotificationController::class, 'feed'])->name('notifications.feed');
     Route::post('/notifications/read-all', [PortalNotificationController::class, 'readAll'])->name('notifications.read-all');
@@ -23,7 +30,10 @@ Route::prefix('logistics/portal')->name('lgp.')->middleware('auth')->group(funct
     Route::middleware(EnsureLogisticsPortalRole::class.':company')->prefix('company')->group(function () {
         Route::get('/', [PortalController::class, 'companyDashboard'])->name('company');
         Route::get('/hubs', [PortalController::class, 'companyHubs'])->name('company.hubs');
+        Route::get('/hubs/manager-feed', [PortalController::class, 'companyHubManagersFeed'])->name('company.hubs.manager-feed');
         Route::post('/hubs', [PortalController::class, 'createProvinceHub'])->name('company.hubs.store');
+        Route::patch('/hubs/{hub}', [PortalController::class, 'updateProvinceHubDetails'])->whereNumber('hub')->name('company.hubs.update');
+        Route::delete('/hubs/{hub}', [PortalController::class, 'deleteProvinceHub'])->whereNumber('hub')->name('company.hubs.destroy');
         Route::patch('/hubs/{hub}/status', [PortalController::class, 'updateProvinceHub'])->whereNumber('hub')->name('company.hubs.status');
         Route::get('/hubs/{hub}', [PortalController::class, 'companyHubShow'])->whereNumber('hub')->name('company.hubs.show');
         Route::get('/managers', [PortalController::class, 'managerIndex'])->name('company.managers');
