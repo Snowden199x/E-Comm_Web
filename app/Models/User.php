@@ -77,6 +77,16 @@ class User extends Authenticatable
         return $this->hasOne(\App\Models\Profiles\LogisticsCenter::class);
     }
 
+    public function facilityStaff()
+    {
+        return $this->hasOne(\App\Models\Profiles\FacilityStaff::class);
+    }
+
+    public function transportDriverDetail()
+    {
+        return $this->hasOne(\App\Models\Profiles\TransportDriverDetail::class);
+    }
+
     public function buyerDetail()
     {
         return $this->hasOne(BuyerDetail::class);

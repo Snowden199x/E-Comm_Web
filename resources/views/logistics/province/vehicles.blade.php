@@ -1,11 +1,12 @@
-{{-- PREVIEW ONLY: hard-coded data from routes/logistics_preview.php. Spec: sections 6B and 8 (Province Hub > Vehicles).
-     Company vehicles belong to the Province Hub, not to a driver: a vehicle is picked per trip. Only an available vehicle can be assigned to a new trip. --}}
 <x-logistics.shell title="Vehicles" role="province">
     <div class="lg-page"
          x-data="{
             vehicles: @js($vehicles),
             types: @js($types),
             today: @js($today),
+            storeUrl: @js($storeUrl),
+            updateUrl: @js($updateUrl),
+            statusUrl: @js($statusUrl),
             q: '',
             tab: 'all',
             view: null,
@@ -63,44 +64,55 @@
                 this.errors = e;
                 return Object.keys(e).length === 0;
             },
-            save() {
+            async save() {
                 if (!this.validate()) { this.$nextTick(() => { const el = this.$root.querySelector('[aria-invalid=true]'); if (el) el.focus(); }); return; }
                 const f = this.form, code = f.code.trim().toUpperCase(), plate = this.normPlate(f.plate), cap = Number(f.capacity);
-                if (this.editing) {
-                    Object.assign(this.editing, { plate: plate, type: f.type, capacity: cap });
-                    this.$dispatch('lg-toast', { type: 'success', message: code + ' updated.' });
-                } else {
-                    this.vehicles.push({ id: Date.now(), code: code, plate: plate, type: f.type, capacity: cap, status: 'available', done: 0, trip: null, driver: null, note: '', since: null });
+                try {
+                    const response = await fetch(this.editing ? this.updateUrl.replace('__vehicle__', this.editing.id) : this.storeUrl, {
+                        method: this.editing ? 'PUT' : 'POST', headers: this.headers(),
+                        body: JSON.stringify({ code: code, plate: plate, type: f.type, capacity: cap })
+                    });
+                    const payload = await response.json();
+                    if (!response.ok) { this.errors = payload.errors || {}; throw new Error(payload.message || 'Could not save vehicle.'); }
+                    if (this.editing) Object.assign(this.editing, payload.vehicle);
+                    else {
+                        this.vehicles.push(payload.vehicle);
+                        this.q = ''; this.tab = 'all';
+                    }
                     this.q = ''; this.tab = 'all';
-                    this.$dispatch('lg-toast', { type: 'success', message: code + ' added. It can be assigned to trips now.' });
-                }
-                this.formOpen = false;
+                    this.$dispatch('lg-toast', { type: 'success', message: payload.message });
+                    this.formOpen = false;
+                } catch (error) { this.$dispatch('lg-toast', { type: 'error', message: error.message }); }
             },
+            headers() { return { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' }; },
             askMaintenance(v) { this.confirm = { open: true, kind: 'maintenance', v: v, reason: '', error: '' }; },
             askDeactivate(v) { this.confirm = { open: true, kind: 'deactivate', v: v, reason: '', error: '' }; },
-            submitConfirm() {
+            async submitConfirm() {
                 const c = this.confirm, v = c.v;
                 if (v.status === 'on_trip') return;
                 if (c.kind === 'maintenance') {
                     if (c.reason.trim().length < 5) { c.error = 'Say what the vehicle is in maintenance for, so the team knows.'; return; }
-                    v.status = 'maintenance'; v.note = c.reason.trim(); v.since = this.today;
-                    this.$dispatch('lg-toast', { type: 'success', message: v.code + ' set to maintenance. It cannot be assigned to trips.' });
                 } else {
-                    v.status = 'inactive'; v.note = ''; v.since = null;
-                    this.$dispatch('lg-toast', { type: 'success', message: v.code + ' deactivated.' });
+                    c.reason = '';
                 }
-                c.open = false;
-                this.view = null;
+                const status = c.kind === 'maintenance' ? 'maintenance' : 'inactive';
+                if (await this.updateStatus(v, status, c.reason)) { c.open = false; this.view = null; }
             },
-            backInService(v) {
-                v.status = 'available'; v.note = ''; v.since = null;
-                this.view = null;
-                this.$dispatch('lg-toast', { type: 'success', message: v.code + ' is back in service.' });
+            async updateStatus(v, status, reason = '') {
+                try {
+                    const response = await fetch(this.statusUrl.replace('__vehicle__', v.id), { method: 'PATCH', headers: this.headers(), body: JSON.stringify({ status: status, maintenance_note: reason }) });
+                    const payload = await response.json();
+                    if (!response.ok) throw new Error(payload.message || 'Could not update vehicle status.');
+                    Object.assign(v, payload.vehicle);
+                    this.$dispatch('lg-toast', { type: 'success', message: payload.message });
+                    return true;
+                } catch (error) { this.$dispatch('lg-toast', { type: 'error', message: error.message }); return false; }
             },
-            activate(v) {
-                v.status = 'available';
-                this.view = null;
-                this.$dispatch('lg-toast', { type: 'success', message: v.code + ' activated.' });
+            async backInService(v) {
+                if (await this.updateStatus(v, 'available')) this.view = null;
+            },
+            async activate(v) {
+                if (await this.updateStatus(v, 'available')) this.view = null;
             }
          }">
         <div class="lg-page-head">

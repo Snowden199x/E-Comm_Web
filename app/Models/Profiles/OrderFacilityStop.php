@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class OrderFacilityStop extends Model
 {
-    protected $fillable = ['facility_id', 'position', 'arrived_at', 'sorted_at', 'departed_at'];
+    protected $fillable = ['order_id', 'facility_id', 'position', 'arrived_at', 'sorted_at', 'departed_at'];
 
     protected $casts = ['arrived_at' => 'datetime', 'sorted_at' => 'datetime', 'departed_at' => 'datetime'];
 

@@ -30,9 +30,14 @@ class LogisticsCenter extends Model
         return $this->hasMany(LogisticsFacility::class);
     }
 
+    public function company()
+    {
+        return $this->hasOne(LogisticsCompany::class);
+    }
+
     public function mainHub()
     {
-        return $this->hasOne(LogisticsFacility::class)->where('kind', 'main_hub');
+        return $this->hasOne(LogisticsFacility::class)->whereIn('kind', ['main_hub', 'province_hub']);
     }
 
     public function getAgeAttribute(): int

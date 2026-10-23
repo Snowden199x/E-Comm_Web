@@ -1,9 +1,10 @@
-{{-- PREVIEW ONLY: hard-coded data from routes/logistics_preview.php. Spec: section 3.3 (create) and 8 (Province Hub > Station Hubs). --}}
 <x-logistics.shell title="Station Hubs" role="province">
     <div class="lg-page"
          x-data="{
             stations: @js($stations),
             showUrl: @js($showUrl),
+            createUrl: @js($createUrl),
+            statusUrl: @js($statusUrl),
             municipalities: @js($municipalities),
             q: '',
             tab: 'all',
@@ -46,39 +47,43 @@
                 this.errors = e;
                 return Object.keys(e).length === 0;
             },
-            save() {
+            async save() {
                 if (!this.validate()) { this.$nextTick(() => { const el = this.$root.querySelector('[aria-invalid=true]'); if (el) el.focus(); }); return; }
-                const f = this.form, name = f.name.trim();
-                this.stations.push({
-                    name: name, municipality: f.municipality, address: f.address.trim(),
-                    manager: f.manager.trim(), email: f.email.trim(), phone: f.phone.trim(),
-                    slug: f.municipality.toLowerCase().replace(/[^a-z0-9]+/g, '-'), riders: 0, parcels: 0, open: 0, status: 'Setup', isNew: true
-                });
-                this.q = ''; this.tab = 'all'; this.open = false;
-                this.$dispatch('lg-toast', { type: 'success', message: name + ' created. An invite with a temporary password goes to ' + f.email.trim() + '.' });
+                try {
+                    const response = await fetch(this.createUrl, { method: 'POST', headers: this.headers(), body: JSON.stringify(this.form) });
+                    const payload = await response.json();
+                    if (!response.ok) { this.errors = payload.errors || {}; throw new Error(payload.message || 'Could not create Station Hub.'); }
+                    this.stations.push(payload.station);
+                    this.q = ''; this.tab = 'all'; this.open = false;
+                    this.$dispatch('lg-toast', { type: 'success', message: payload.message });
+                } catch (error) { this.$dispatch('lg-toast', { type: 'error', message: error.message }); }
             },
-            toggle(s) {
+            headers() { return { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' }; },
+            async toggle(s) {
                 if (s.status === 'Active') { this.target = s; this.confirmOpen = true; return; }
-                // Inactive or still in setup: activate. Another active station in the same town blocks it.
-                if (this.stations.some(x => x !== s && x.municipality === s.municipality && x.status === 'Active')) {
-                    this.$dispatch('lg-toast', { type: 'error', message: s.municipality + ' already has an active Station Hub.' });
-                    return;
-                }
-                s.status = 'Active';
-                this.$dispatch('lg-toast', { type: 'success', message: s.name + ' activated.' });
+                await this.updateStatus(s, true);
             },
-            deactivate() {
+            async deactivate() {
                 if (!this.target || this.target.open > 0) return;
-                this.target.status = 'Inactive';
-                this.$dispatch('lg-toast', { type: 'success', message: this.target.name + ' deactivated.' });
-                this.confirmOpen = false;
+                const changed = await this.updateStatus(this.target, false);
+                if (changed) this.confirmOpen = false;
+            },
+            async updateStatus(s, active) {
+                try {
+                    const response = await fetch(this.statusUrl.replace('__station__', s.id), { method: 'PATCH', headers: this.headers(), body: JSON.stringify({ is_active: active }) });
+                    const payload = await response.json();
+                    if (!response.ok) throw new Error(payload.message || 'Could not update Station Hub.');
+                    Object.assign(s, payload.station);
+                    this.$dispatch('lg-toast', { type: 'success', message: s.name + (active ? ' activated.' : ' deactivated.') });
+                    return true;
+                } catch (error) { this.$dispatch('lg-toast', { type: 'error', message: error.message }); return false; }
             },
             pill(status) { return status === 'Active' ? 'lg-pill--green' : (status === 'Setup' ? 'lg-pill--amber' : 'lg-pill--gray'); }
          }">
         <div class="lg-page-head">
             <div>
                 <h1>Station Hubs</h1>
-                <p>One Station Hub per municipality in {{ $hub['province'] }}. Stations receive, sort and hand parcels to riders.</p>
+                <p>One Station Hub per municipality for {{ $hub['province'] }}. Stations receive, sort and hand parcels to Riders.</p>
             </div>
             <div class="lg-page-head__actions">
                 <button type="button" class="lg-btn" @click="openAdd()"><x-logistics.icon name="plus" :size="18" /> Create Station Hub</button>
@@ -122,7 +127,7 @@
                                 <td data-label="Status"><span class="lg-pill" :class="pill(s.status)" x-text="s.status"></span></td>
                                 <td data-label="Actions" class="is-actions">
                                     <div class="lg-actions">
-                                        <a :href="s.isNew ? '#' : url(s)" @click="if (s.isNew) { $event.preventDefault(); $dispatch('lg-toast', { type: 'info', message: 'Preview only: stations created here have no details page yet.' }); }" class="lg-btn lg-btn--outline lg-btn--sm" :aria-label="'View ' + s.name"><x-logistics.icon name="eye" :size="16" /> View</a>
+                                        <a :href="url(s)" class="lg-btn lg-btn--outline lg-btn--sm" :aria-label="'View ' + s.name"><x-logistics.icon name="eye" :size="16" /> View</a>
                                         <button type="button" class="lg-btn lg-btn--sm" :class="s.status === 'Active' ? 'lg-btn--danger' : 'lg-btn--outline'"
                                                 :aria-label="(s.status === 'Active' ? 'Deactivate ' : 'Activate ') + s.name" @click="toggle(s)"
                                                 x-text="s.status === 'Active' ? 'Deactivate' : 'Activate'"></button>
@@ -149,7 +154,7 @@
                     <div class="lg-modal__head">
                         <div>
                             <h3 id="stDlgTitle">Create Station Hub</h3>
-                            <p>The manager gets a temporary password and must change it on first login.</p>
+                            <p>The manager receives a secure password setup link by email.</p>
                         </div>
                         <button type="button" class="lg-toast__close" @click="open = false" aria-label="Close"><x-logistics.icon name="x" :size="18" /></button>
                     </div>

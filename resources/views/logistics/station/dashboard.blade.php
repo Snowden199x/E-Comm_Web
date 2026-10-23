@@ -1,5 +1,4 @@
-{{-- PREVIEW ONLY: hard-coded data from routes/logistics_preview.php and routes/logistics_preview_data.php. Spec section 8 (Station Hub > Dashboard).
-     Read-only overview. Every card links to the page where the work is done. The Station Hub receives, sorts and assigns riders;
+{{-- Live Station Hub overview. Every card links to the page where the work is done. The Station Hub receives, sorts and assigns riders;
      it never creates or changes a transport trip (the Province Hub does). --}}
 @php
     $riders = collect($riders);

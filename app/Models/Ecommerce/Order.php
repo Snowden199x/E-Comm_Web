@@ -40,7 +40,27 @@ class Order extends Model
         return $this->hasMany(\App\Models\Profiles\OrderFacilityStop::class)->orderBy('position');
     }
 
-    protected $casts = ['shipping_fee' => 'decimal:2', 'voucher_discount' => 'decimal:2', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date',
+    public function transportTrips()
+    {
+        return $this->belongsToMany(\App\Models\Profiles\LogisticsTransportTrip::class, 'transport_trip_orders', 'order_id', 'trip_id')->withTimestamps();
+    }
+
+    public function manualHandoff()
+    {
+        return $this->hasOne(\App\Models\Profiles\ManualLogisticsHandoff::class);
+    }
+
+    public function logisticsExceptions()
+    {
+        return $this->hasMany(\App\Models\Profiles\LogisticsParcelException::class);
+    }
+
+    public function deliveryProof()
+    {
+        return $this->hasOne(\App\Models\Profiles\OrderDeliveryProof::class);
+    }
+
+    protected $casts = ['shipping_fee' => 'decimal:2', 'voucher_discount' => 'decimal:2', 'shipping_route_snapshot' => 'array', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date',
         'delivered_at' => 'datetime', 'pickup_verified_at' => 'datetime'];
 
     public function getPayableTotalAttribute(): float
@@ -235,7 +255,10 @@ class Order extends Model
         'shipping_address',
         'shipping_province_code', 'shipping_city_code', 'shipping_province', 'shipping_city',
         'logistics_center_id', 'destination_logistics_center_id', 'route_plan_id', 'next_route_checkpoint_id', 'route_step',
+        'origin_station_id', 'origin_province_hub_id', 'destination_station_id', 'destination_province_hub_id',
+        'route_type', 'shipping_barangay_code', 'shipping_barangay',
         'tracking_number', 'carrier_name', 'carrier_tracking_number', 'estimated_delivery_from', 'estimated_delivery_to', 'shipping_fee',
+        'shipping_hub_count', 'shipping_route_snapshot',
     ];
 
     public function buyer()

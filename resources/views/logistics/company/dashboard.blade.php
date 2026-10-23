@@ -6,7 +6,7 @@
     $stations = $hubList->flatMap(fn ($h) => $h['stations']);
     $riders = $stations->sum('riders');
     $parcelsNow = $hubList->sum('parcels');
-    $activeTrips = $hubList->sum(fn ($h) => count($h['trips']));
+    $activeTrips = $activeTripCount;
     $maxParcels = max(1, $hubList->max('parcels') ?? 1);
     $tone = ['Active' => 'green', 'Setup' => 'amber', 'Inactive' => 'gray'];
     $exceptions = $delayedParcels + $failedParcels;
