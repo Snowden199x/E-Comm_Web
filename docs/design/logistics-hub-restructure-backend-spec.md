@@ -2,7 +2,9 @@
 
 **For:** backend developer
 **Written by:** frontend, based on a read of `E-Comm_Web`
-**Status:** proposal, not yet implemented
+**Status:** owner-approved target; web implementation is in progress (23 October 2026). See the live [feature spec](../features/logistics/province-network-and-stations/spec.md) for current behavior.
+
+> Decision (23 October 2026): implement the pulled Company → Province Hub → Station Hub model. Multiple logistics companies may serve the same province. Keep the pulled visual design and wire its controls to authenticated, scoped server data. Web workflows are implemented in code with migrations and owner verification pending; read the live feature spec for current behavior and remaining gaps.
 
 > Project rules in `AGENTS.md` still apply: add **new** migrations (do not edit old ones), keep legacy data, validate and authorize on the server, log every change in `docs/logs/PROGRESS-YYYY-MM-DD.md`, and update the related specs.
 
@@ -22,7 +24,9 @@ Logistics Company (e.g. J&T)            -> Company Admin
         └── Riders (assigned per barangay)
 ```
 
-Naming note: `users.is_super_admin` already means the **Vendo platform** super admin. Do not reuse it. Use a new role such as `logistics_company` for the company admin.
+Naming note: `users.is_super_admin` means the **Vendo platform** super admin. The implemented Company account retains the existing `logistics_center` role; `province_hub`, `station_hub` and `transport_driver` are separate roles. The platform Superuser sets primary coverage when companies overlap.
+
+Implementation decision: within one company, facility route stops are generated automatically and use scheduled Transport Driver trips. Across companies, an origin Company operator can group same-route handoffs into a manifest; the receiving Province Hub accepts each parcel by scanning. The primary municipality assignment selects the company for new Seller/Buyer routes and Rider applications; no assignment for an overlap leaves it unresolved. Web exception handling, private recipient/photo proof, report exports, messaging, account changes and notifications are now in code. Remaining work includes mobile Rider/Driver integration, richer SLA/financial reporting and owner verification; see the live [province network feature spec](../features/logistics/province-network-and-stations/spec.md).
 
 ---
 
@@ -89,7 +93,7 @@ Buyer
 
 ## 3. Accounts and registration (do this first)
 
-Registration is the foundation because every later feature depends on who owns which hub. Today `Logistics\Auth\RegisteredUserController` makes the applicant **claim a province** (`coverage_province_code`, unique) and creates one Main Hub.
+Registration is the foundation because every later feature depends on who owns which hub. Company registration records its office address without claiming a province; Province Hubs are created after approval.
 
 ### 3.1 Roles
 
@@ -110,12 +114,12 @@ Middleware replacing `EnsureActiveLogisticsCenter` must resolve the actor's scop
 - Remove `coverage_province_code` and the province-claim check from `store()`.
 - The address on the form becomes the company's **head office address**. Hubs are created after approval, not at registration.
 - Keep the OTP, valid ID, business permit, Google sign-up and password rules as they are.
-- On approval by Vendo Admin: create the `logistics_company` record. Do **not** auto-create a Main Hub.
-- The existing migration `2026_10_14_120000_create_logistics_facilities.php` created a Main Hub per old center. Backfill those into Province Hubs under a company record. Do not delete the old data.
+- On registration, a pending `logistics_companies` record is created with the existing Logistics Center. Admin approval/rejection updates both account and Company status. Do **not** auto-create a Province Hub.
+- Migration `2026_10_23_130000_create_logistics_network_portals.php` backfills Company records and maps old Main Hub/station facilities to Province Hub/Station Hub kinds. Do not delete old data.
 
 ### 3.3 Hub and manager accounts
 
-- Company Admin creates a **Province Hub** by choosing a province plus a **hub name**, a full **street address** and a manager (name, email, phone). The backend creates the user with a temporary password and `must_change_password = true` (these fields already exist on `users`).
+- Company Admin creates a **Province Hub** by choosing a province plus a **hub name**, a full **street address** and a manager (name, email, phone). The backend creates a user and sends a password setup link. Update UI copy that says “temporary password” to match the email link behavior.
 - Province Hub creates a **Station Hub** by choosing a municipality (from the PSGC data) plus a **station name**, a full **street address** and a manager, in the same way.
 - Store the full street address **and** the PSGC `province_code` / `municipality_code` on every facility. The codes drive routing; the address tells drivers where the hub is. Coordinates are optional (see section 4).
 - Enforce uniqueness: one active Province Hub per `(company, province_code)` and one active Station Hub per `(company, municipality_code)`.

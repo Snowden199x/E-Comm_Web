@@ -1,10 +1,11 @@
-{{-- PREVIEW ONLY: hard-coded data from routes/logistics_preview.php. Spec: section 3.3 (create) and 8 (Company Admin > Province Hubs). --}}
 <x-logistics.shell title="Province Hubs" role="company">
     <div class="lg-page"
          x-data="{
             hubs: @js($hubs),
             provinces: @js($provinces),
             showUrl: @js(route('lgp.company.hubs.show', '__hub__')),
+            createUrl: @js($createUrl),
+            statusUrl: @js($statusUrl),
             q: '',
             tab: 'all',
             open: false,
@@ -45,37 +46,43 @@
                 this.errors = e;
                 return Object.keys(e).length === 0;
             },
-            save() {
+            async save() {
                 if (!this.validate()) { this.$nextTick(() => { const el = this.$root.querySelector('[aria-invalid=true]'); if (el) el.focus(); }); return; }
-                const f = this.form, name = f.name.trim();
-                this.hubs.push({
-                    slug: f.province.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name: name, province: f.province,
-                    address: f.address.trim(), manager: f.manager.trim(), email: f.email.trim(), phone: f.phone.trim(),
-                    stations: 0, drivers: 0, vehicles: 0, parcels: 0, open: 0, status: 'Active', isNew: true
-                });
-                this.q = ''; this.tab = 'all'; this.open = false;
-                this.$dispatch('lg-toast', { type: 'success', message: name + ' created. An invite with a temporary password goes to ' + f.email.trim() + '.' });
+                const f = this.form;
+                try {
+                    const response = await fetch(this.createUrl, { method: 'POST', headers: this.headers(), body: JSON.stringify(f) });
+                    const payload = await response.json();
+                    if (!response.ok) { this.errors = payload.errors || {}; throw new Error(payload.message || 'Could not create Province Hub.'); }
+                    this.hubs.push(payload.hub);
+                    this.q = ''; this.tab = 'all'; this.open = false;
+                    this.$dispatch('lg-toast', { type: 'success', message: payload.message });
+                } catch (error) { this.$dispatch('lg-toast', { type: 'error', message: error.message }); }
             },
-            toggle(h) {
+            headers() { return { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' }; },
+            async toggle(h) {
                 if (h.status === 'Active') { this.target = h; this.confirmOpen = true; return; }
-                if (this.activeProvinces.includes(h.province)) {
-                    this.$dispatch('lg-toast', { type: 'error', message: h.province + ' already has an active Province Hub.' });
-                    return;
-                }
-                h.status = 'Active';
-                this.$dispatch('lg-toast', { type: 'success', message: h.name + ' activated.' });
+                await this.updateStatus(h, true);
             },
-            deactivate() {
+            async deactivate() {
                 if (!this.target || this.target.open > 0) return;
-                this.target.status = 'Inactive';
-                this.$dispatch('lg-toast', { type: 'success', message: this.target.name + ' deactivated.' });
-                this.confirmOpen = false;
+                const changed = await this.updateStatus(this.target, false);
+                if (changed) this.confirmOpen = false;
+            },
+            async updateStatus(h, active) {
+                try {
+                    const response = await fetch(this.statusUrl.replace('__hub__', h.id), { method: 'PATCH', headers: this.headers(), body: JSON.stringify({ is_active: active }) });
+                    const payload = await response.json();
+                    if (!response.ok) throw new Error(payload.message || 'Could not update Province Hub.');
+                    Object.assign(h, payload.hub);
+                    this.$dispatch('lg-toast', { type: 'success', message: h.name + (active ? ' activated.' : ' deactivated.') });
+                    return true;
+                } catch (error) { this.$dispatch('lg-toast', { type: 'error', message: error.message }); return false; }
             }
          }">
         <div class="lg-page-head">
             <div>
                 <h1>Province Hubs</h1>
-                <p>One hub per province. Each Province Hub runs its own stations, transport drivers and vehicles.</p>
+                <p>One Province Hub per province for this company. Each hub runs its own stations, transport drivers and vehicles.</p>
             </div>
             <div class="lg-page-head__actions">
                 <button type="button" class="lg-btn" @click="openAdd()"><x-logistics.icon name="plus" :size="18" /> Create Province Hub</button>
@@ -114,14 +121,14 @@
                                 <td data-label="Hub"><div class="lg-cell-title" x-text="h.name"></div><div class="lg-cell-sub" x-text="h.address"></div></td>
                                 <td data-label="Province" x-text="h.province"></td>
                                 <td data-label="Manager"><div class="lg-cell-title" x-text="h.manager"></div><div class="lg-cell-sub" x-text="h.email"></div></td>
-                                <td data-label="Stations" class="is-num" x-text="h.stations"></td>
+                                <td data-label="Stations" class="is-num" x-text="h.stations.length"></td>
                                 <td data-label="Drivers" class="is-num" x-text="h.drivers"></td>
                                 <td data-label="Vehicles" class="is-num" x-text="h.vehicles"></td>
                                 <td data-label="Parcels" class="is-num" x-text="h.parcels.toLocaleString()"></td>
                                 <td data-label="Status"><span class="lg-pill" :class="h.status === 'Active' ? 'lg-pill--green' : 'lg-pill--gray'" x-text="h.status"></span></td>
                                 <td data-label="Actions" class="is-actions">
                                     <div class="lg-actions">
-                                        <a :href="h.isNew ? '#' : url(h)" @click="if (h.isNew) { $event.preventDefault(); $dispatch('lg-toast', { type: 'info', message: 'Preview only: hubs created here have no details page yet.' }); }" class="lg-btn lg-btn--outline lg-btn--sm" :aria-label="'View ' + h.name"><x-logistics.icon name="eye" :size="16" /> View</a>
+                                    <a :href="url(h)" class="lg-btn lg-btn--outline lg-btn--sm" :aria-label="'View ' + h.name"><x-logistics.icon name="eye" :size="16" /> View</a>
                                         <button type="button" class="lg-btn lg-btn--sm" :class="h.status === 'Active' ? 'lg-btn--danger' : 'lg-btn--outline'"
                                                 :aria-label="(h.status === 'Active' ? 'Deactivate ' : 'Activate ') + h.name" @click="toggle(h)"
                                                 x-text="h.status === 'Active' ? 'Deactivate' : 'Activate'"></button>
@@ -148,7 +155,7 @@
                     <div class="lg-modal__head">
                         <div>
                             <h3 id="hubDlgTitle">Create Province Hub</h3>
-                            <p>The manager gets a temporary password and must change it on first login.</p>
+                            <p>The manager receives a secure password setup link by email.</p>
                         </div>
                         <button type="button" class="lg-toast__close" @click="open = false" aria-label="Close"><x-logistics.icon name="x" :size="18" /></button>
                     </div>

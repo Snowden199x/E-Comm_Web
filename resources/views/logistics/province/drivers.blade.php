@@ -1,10 +1,12 @@
-{{-- PREVIEW ONLY: hard-coded data from routes/logistics_preview.php. Spec: sections 6B and 8 (Province Hub > Transport Drivers).
-     Drivers self-register in the mobile app, so there is no "add driver" button: the Province Hub reviews applications and manages approved drivers. --}}
+{{-- Province Hub reviews driver applications submitted through the Transport Driver API. --}}
 <x-logistics.shell title="Transport Drivers" role="province">
     <div class="lg-page"
          x-data="{
             drivers: @js($drivers),
             today: @js($today),
+            reviewUrl: @js($reviewUrl),
+            statusUrl: @js($statusUrl),
+            working: false,
             q: '',
             tab: 'active',
             view: null,
@@ -37,35 +39,56 @@
             },
             openView(d) { this.view = d; },
             closeView() { this.view = null; },
-            docToast(name) { this.$dispatch('lg-toast', { type: 'info', message: 'Preview only: ' + name + ' opens here once uploads are connected.' }); },
-            approve(d) {
+            openDoc(url) { if (url) window.open(url, '_blank', 'noopener,noreferrer'); },
+            async request(url, method, body) {
+                const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' }, body: JSON.stringify(body) });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(payload.message || Object.values(payload.errors || {})[0]?.[0] || 'Could not update Driver.');
+                return payload;
+            },
+            async approve(d) {
                 if (this.expired(d)) { this.$dispatch('lg-toast', { type: 'error', message: 'The licence of ' + d.name + ' is expired. It cannot be approved.' }); return; }
-                d.status = 'available';
-                this.view = null;
-                this.tab = 'active';
-                this.$dispatch('lg-toast', { type: 'success', message: d.name + ' approved. They can now be assigned to trips.' });
+                if (this.working) return;
+                this.working = true;
+                try {
+                    const payload = await this.request(this.reviewUrl.replace('__driver__', d.id), 'POST', { decision: 'approve' });
+                    Object.assign(d, payload.driver); this.view = null; this.tab = 'active';
+                    this.$dispatch('lg-toast', { type: 'success', message: d.name + ' approved.' });
+                } catch (error) { this.$dispatch('lg-toast', { type: 'error', message: error.message }); }
+                finally { this.working = false; }
             },
             askReject(d) { this.confirm = { open: true, kind: 'reject', d: d, reason: '', error: '' }; },
             askDeactivate(d) { this.confirm = { open: true, kind: 'deactivate', d: d, reason: '', error: '' }; },
-            activate(d) {
+            async activate(d) {
                 if (this.expired(d)) { this.$dispatch('lg-toast', { type: 'error', message: 'The licence of ' + d.name + ' is expired. Update it before activating.' }); return; }
-                d.status = 'available';
-                this.view = null;
-                this.$dispatch('lg-toast', { type: 'success', message: d.name + ' is active again.' });
+                if (this.working) return;
+                this.working = true;
+                try {
+                    const payload = await this.request(this.statusUrl.replace('__driver__', d.id), 'PATCH', { status: 'available' });
+                    Object.assign(d, payload.driver); this.view = null;
+                    this.$dispatch('lg-toast', { type: 'success', message: d.name + ' is active again.' });
+                } catch (error) { this.$dispatch('lg-toast', { type: 'error', message: error.message }); }
+                finally { this.working = false; }
             },
-            submitConfirm() {
+            async submitConfirm() {
                 const c = this.confirm, d = c.d;
+                if (this.working) return;
                 if (c.kind === 'reject') {
                     if (c.reason.trim().length < 10) { c.error = 'Give a short reason (at least 10 characters). The applicant sees it.'; return; }
-                    this.drivers = this.drivers.filter(x => x !== d);
-                    this.$dispatch('lg-toast', { type: 'success', message: 'Application of ' + d.name + ' rejected.' });
-                } else {
-                    if (d.status === 'on_trip') return;
-                    d.status = 'inactive';
-                    this.$dispatch('lg-toast', { type: 'success', message: d.name + ' deactivated.' });
                 }
-                c.open = false;
-                this.view = null;
+                if (d.status === 'on_trip') return;
+                this.working = true;
+                try {
+                    const payload = c.kind === 'reject'
+                        ? await this.request(this.reviewUrl.replace('__driver__', d.id), 'POST', { decision: 'reject', reason: c.reason.trim() })
+                        : await this.request(this.statusUrl.replace('__driver__', d.id), 'PATCH', { status: 'inactive' });
+                    if (c.kind === 'reject') this.drivers = this.drivers.filter(x => x.id !== d.id);
+                    else Object.assign(d, payload.driver);
+                    c.open = false; this.view = null;
+                    this.$dispatch('lg-toast', { type: 'success', message: payload.message });
+                } catch (error) { c.error = error.message; }
+                finally { this.working = false; }
             }
          }">
         <div class="lg-page-head">
@@ -176,8 +199,8 @@
                     <div>
                         <p class="lg-section-sub" style="margin-bottom:8px">Documents</p>
                         <div class="lg-actions" style="flex-wrap:wrap;gap:8px">
-                            <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="docToast('The driver licence photo')"><x-logistics.icon name="file" :size="16" /> Driver's licence</button>
-                            <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="docToast('The valid ID')"><x-logistics.icon name="file" :size="16" /> Valid ID</button>
+                            <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="openDoc(view?.license_url)"><x-logistics.icon name="file" :size="16" /> Driver's licence</button>
+                            <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="openDoc(view?.valid_id_url)"><x-logistics.icon name="file" :size="16" /> Valid ID</button>
                         </div>
                     </div>
                 </div>

@@ -63,7 +63,9 @@
         'restoreSaved' => $restoreSaved,
         'storageKey' => 'vendo.checkout.addresses.' . auth()->id(),
         'voucherQuoteUrl' => route('buyer.checkout.voucher-quote'),
+        'shippingQuoteUrl' => route('buyer.checkout.shipping-quote'),
         'itemIds' => $cartItems->pluck('id')->all(),
+        'sellerIds' => $sellerGroups->keys()->map(fn ($id) => (string) $id)->values()->all(),
         'subtotal' => (float) $subtotal,
         'voucherCodes' => old('voucher_codes', []),
     ];
@@ -83,6 +85,9 @@
         <input type="hidden" name="shipping_address" :value="current ? current.line : ''">
         <input type="hidden" name="shipping_province_code" :value="current ? current.provinceCode : ''">
         <input type="hidden" name="shipping_city_code" :value="current ? current.cityCode : ''">
+        @foreach ($sellerGroups as $sellerKey => $sellerItems)
+            <input type="hidden" name="shipping_quotes[{{ $sellerKey }}]" :value="shippingQuotes[{{ $sellerKey }}]?.shipping_fee || ''">
+        @endforeach
 
         <div class="flex flex-wrap items-center justify-between gap-2">
             <h1 class="text-[20px] font-semibold text-[#2b1730]">Checkout</h1>
@@ -213,6 +218,12 @@
                                     @endforeach
                                 </ul>
 
+                                <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-[#e5dce7] pt-3 text-[12px]">
+                                    <span class="text-[#7a6a7e]">Shipping · <span x-show="quotingShipping" x-cloak>Getting route quote…</span><span x-show="shippingQuotes[{{ $sellerKey }}]" x-cloak x-text="shippingQuotes[{{ $sellerKey }}] ? shippingQuotes[{{ $sellerKey }}].hub_count + ' hubs' : ''"></span></span>
+                                    <span class="font-semibold text-[#402143]" x-show="shippingQuotes[{{ $sellerKey }}]" x-cloak x-text="shippingQuotes[{{ $sellerKey }}] ? '₱' + Number(shippingQuotes[{{ $sellerKey }}].shipping_fee).toFixed(2) : ''"></span>
+                                </div>
+                                <p x-show="shippingQuoteError" x-cloak class="mt-1 text-[12px] text-[#a32b43]" role="alert" x-text="shippingQuoteError"></p>
+
                                 @if ($sellerNotesEnabled)
                                     <div class="mt-3" x-data="{ note: @js((string) old('seller_notes.' . $sellerKey, '')) }">
                                         <label for="seller-note-{{ $sellerKey }}" class="text-[12px] font-medium text-[#5b4a60]">Message for the seller <span class="font-normal text-[#6f5f73]">(optional)</span></label>
@@ -299,17 +310,17 @@
                     <dl class="space-y-2.5 text-[13px]">
                         <div class="flex justify-between gap-3"><dt class="text-[#7a6a7e]">Items ({{ number_format($itemCount) }})</dt><dd class="text-[#2b1730]">{{ $fmt($subtotal) }}</dd></div>
                         <div x-show="voucherDiscount > 0" x-cloak class="flex justify-between gap-3 text-[#2e6b46]"><dt>Shop vouchers</dt><dd x-text="'−₱' + voucherDiscount.toFixed(2)"></dd></div>
-                        <div class="flex justify-between gap-3"><dt class="text-[#7a6a7e]">Shipping fee</dt><dd class="text-[#2b1730]">{{ $fmt(0) }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-[#7a6a7e]">Shipping fee</dt><dd class="text-[#2b1730]" x-text="quotingShipping ? 'Calculating…' : '₱' + shippingFeeTotal.toFixed(2)">₱0.00</dd></div>
                         <div class="flex items-baseline justify-between gap-3 border-t border-[#f1e8f2] pt-3"><dt class="font-semibold text-[#2b1730]">Total</dt><dd class="text-[22px] font-semibold leading-none text-[#52245b]" x-text="'₱' + payableTotal.toFixed(2)">{{ $fmt($subtotal) }}</dd></div>
                     </dl>
-                    <p class="mt-1.5 text-[11px] text-[#8a7a8e]">Shipping quotes are not available yet, so no shipping fee is charged.</p>
+                    <p class="mt-1.5 text-[11px] text-[#8a7a8e]">₱45 minimum covers up to two hubs. Each additional hub adds ₱10.</p>
 
                     <div class="mt-4 rounded-md bg-[#f6f2f7] px-3 py-2 text-[12px] text-[#5b4a60]" x-show="current" x-cloak>
                         <p class="text-[#8a7a8e]">Delivering to</p>
                         <p class="mt-0.5 break-words text-[#2b1730]" x-text="current ? current.line + ', ' + current.city + ', ' + current.province : ''"></p>
                     </div>
 
-                    <button type="submit" :disabled="!current || submitting"
+                    <button type="submit" :disabled="!current || !shippingQuoteReady || quotingShipping || submitting"
                         class="{{ $primaryButton }} mt-4 h-11 w-full text-[14px] hover:shadow-[0_12px_20px_-12px_rgba(64,33,67,0.9)] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#c9bccc] disabled:shadow-none">
                         <span x-text="submitting ? 'Placing order…' : 'Place order'">Place order</span>
                     </button>
@@ -394,6 +405,9 @@
         modal: false,
         submitting: false,
         voucherCodes: config.voucherCodes || {},
+        shippingQuotes: {},
+        shippingQuoteError: '',
+        quotingShipping: false,
         voucherSelections: config.voucherCodes || {},
         appliedVoucherCodes: {},
         voucherDiscounts: {},
@@ -421,14 +435,43 @@
             }
             // Browser back/forward restores the page from cache: allow another submit
             window.addEventListener('pageshow', () => { this.submitting = false; });
-            this.$watch('selected', () => this.persist());
+            this.$watch('selected', () => { this.persist(); this.refreshShippingQuote(); });
+            if (this.current) this.refreshShippingQuote();
             if (!this.current) this.$nextTick(() => this.openModal());
         },
 
         get current() { return this.addresses.find(a => a.id === this.selected && a.usable) || null; },
         get cities() { return Object.entries((this.locations[this.draft.provinceCode] || {}).cities || {}); },
         get voucherDiscount() { return Object.values(this.voucherDiscounts).reduce((sum, amount) => sum + Number(amount || 0), 0); },
-        get payableTotal() { return Math.max(0, Number(config.subtotal) - this.voucherDiscount); },
+        get shippingFeeTotal() { return Object.values(this.shippingQuotes).reduce((sum, quote) => sum + Number(quote.shipping_fee || 0), 0); },
+        get shippingQuoteReady() { return config.sellerIds.every(id => this.shippingQuotes[id]) && !this.shippingQuoteError; },
+        get payableTotal() { return Math.max(0, Number(config.subtotal) - this.voucherDiscount + this.shippingFeeTotal); },
+
+        async refreshShippingQuote() {
+            const address = this.current;
+            this.shippingQuotes = {};
+            this.shippingQuoteError = '';
+            if (!address) return;
+            const selectedId = this.selected;
+            this.quotingShipping = true;
+            try {
+                const response = await fetch(config.shippingQuoteUrl, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                    body: JSON.stringify({ items: config.itemIds, shipping_province_code: address.provinceCode,
+                        shipping_city_code: address.cityCode }),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(Object.values(data.errors || {}).flat()[0] || data.message || 'Could not calculate shipping for this address.');
+                if (this.selected !== selectedId) return;
+                this.shippingQuotes = data.quotes || {};
+            } catch (error) {
+                if (this.selected === selectedId) this.shippingQuoteError = error.message;
+            } finally {
+                if (this.selected === selectedId) this.quotingShipping = false;
+            }
+        },
 
         voucherChanged(sellerId, event = null) {
             const code = String(event ? event.target.value : this.voucherCodes[sellerId] || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -524,6 +567,11 @@
 
         onSubmit(event) {
             if (!this.current) { event.preventDefault(); this.openModal(); return; }
+            if (!this.shippingQuoteReady || this.quotingShipping) {
+                event.preventDefault();
+                if (!this.shippingQuoteError) this.shippingQuoteError = 'Wait for a valid Logistics quote before placing the order.';
+                return;
+            }
             for (const [sellerId, code] of Object.entries(this.voucherCodes)) {
                 if (code && code !== this.appliedVoucherCodes[sellerId]) {
                     event.preventDefault();

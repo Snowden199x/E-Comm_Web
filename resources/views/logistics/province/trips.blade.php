@@ -1,11 +1,14 @@
-{{-- PREVIEW ONLY: hard-coded data from routes/logistics_preview.php. Spec: sections 6B and 8 (Province Hub > Transport Trips).
-     The Province Hub creates and assigns every trip, station legs included. Station Hubs only receive, scan and sort. --}}
+{{-- Transport trips shown here come from the authenticated Province Hub controller. --}}
 <x-logistics.shell title="Transport Trips" role="province">
     <div class="lg-page"
          x-data="{
             trips: @js($trips),
             now: @js($now),
             createUrl: @js($createUrl),
+            cancelUrl: @js($cancelUrl),
+            departUrl: @js($departUrl),
+            arriveUrl: @js($arriveUrl),
+            working: false,
             filter: 'all',
             q: '',
             view: null,
@@ -22,20 +25,6 @@
             typeLabels: { station_transfer: 'Station transfer', inter_province: 'Inter-province' },
             labels: { scheduled: 'Scheduled', in_transit: 'In transit', completed: 'Completed', cancelled: 'Cancelled' },
             tones: { scheduled: 'lg-pill--blue', in_transit: 'lg-pill--amber', completed: 'lg-pill--green', cancelled: 'lg-pill--gray' },
-            init() {
-                // PREVIEW ONLY: the Create Transport Trip page hands its new trip over through sessionStorage,
-                // because this preview has no database. The real controller redirects here with a flash message.
-                try {
-                    const raw = sessionStorage.getItem('lgp.newTrip');
-                    if (!raw) return;
-                    sessionStorage.removeItem('lgp.newTrip');
-                    const t = JSON.parse(raw);
-                    if (t && t.id && !this.trips.some(x => x.id === t.id)) {
-                        this.trips.push(t);
-                        this.$nextTick(() => this.$dispatch('lg-toast', { type: 'success', message: t.id + ' created. ' + t.driver + ' and ' + t.vehicle + ' are assigned.' }));
-                    }
-                } catch (e) {}
-            },
             rank(t) { return t.status === 'in_transit' ? 0 : (t.status === 'scheduled' ? 1 : 2); },
             get shown() {
                 const s = this.q.trim().toLowerCase();
@@ -50,13 +39,37 @@
             openView(t) { this.view = t; },
             closeView() { this.view = null; },
             askCancel(t) { this.confirm = { open: true, t: t, reason: '', error: '' }; },
-            submitCancel() {
+            async submitCancel() {
                 const c = this.confirm, t = c.t;
                 if (t.status !== 'scheduled') return;
                 if (c.reason.trim().length < 5) { c.error = 'Give a short reason so the stations know why the trip was cancelled.'; return; }
-                t.status = 'cancelled'; t.note = c.reason.trim();
-                c.open = false; this.view = null;
-                this.$dispatch('lg-toast', { type: 'success', message: t.id + ' cancelled. The driver, vehicle and ' + t.parcels + ' parcels are released.' });
+                try {
+                    const response = await fetch(this.cancelUrl.replace('__trip__', t.key), {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
+                        body: JSON.stringify({ reason: c.reason.trim() })
+                    });
+                    const payload = await response.json();
+                    if (!response.ok) throw new Error(payload.message || 'Could not cancel trip.');
+                    Object.assign(t, payload.trip);
+                    c.open = false; this.view = null;
+                    this.$dispatch('lg-toast', { type: 'success', message: payload.message });
+                } catch (error) { c.error = error.message; }
+            },
+            async changeStatus(t, action) {
+                if (this.working) return;
+                this.working = true;
+                try {
+                    const url = (action === 'depart' ? this.departUrl : this.arriveUrl).replace('__trip__', t.key);
+                    const response = await fetch(url, { method: 'PATCH', headers: {
+                        'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || ''
+                    }});
+                    const payload = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(payload.message || 'Could not update trip.');
+                    Object.assign(t, payload.trip);
+                    this.$dispatch('lg-toast', { type: 'success', message: payload.message });
+                } catch (error) { this.$dispatch('lg-toast', { type: 'error', message: error.message }); }
+                finally { this.working = false; }
             }
          }">
         <div class="lg-page-head">
@@ -111,7 +124,7 @@
                                 <td data-label="Actions" class="is-actions">
                                     <div class="lg-actions">
                                         <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="openView(t)" :aria-label="'View ' + t.id"><x-logistics.icon name="eye" :size="16" /> View</button>
-                                        <button type="button" class="lg-btn lg-btn--danger lg-btn--sm" x-show="t.status === 'scheduled'" @click="askCancel(t)" :aria-label="'Cancel ' + t.id">Cancel</button>
+                        <button type="button" class="lg-btn lg-btn--danger lg-btn--sm" x-show="t.status === 'scheduled' && t.can_cancel" @click="askCancel(t)" :aria-label="'Cancel ' + t.id">Cancel</button>
                                     </div>
                                 </td>
                             </tr>
@@ -142,7 +155,7 @@
                     <template x-if="view && view.status === 'in_transit'">
                         <div class="lg-note">
                             <x-logistics.icon name="info" :size="18" />
-                            <span>This trip is already on the road, so it cannot be cancelled. The destination confirms arrival by scanning each parcel.</span>
+                            <span>Scan every parcel at the destination, then record trip arrival.</span>
                         </div>
                     </template>
                     <template x-if="view && view.status === 'cancelled'">
@@ -159,6 +172,12 @@
                         <div><dt>Parcels loaded</dt><dd x-text="view && view.parcels"></dd></div>
                         <div><dt>Scheduled departure</dt><dd x-text="view && fmt(view.scheduled)"></dd></div>
                     </dl>
+                    <div class="is-wide" x-show="view && view.manifest && view.manifest.length">
+                        <strong>Manifest</strong>
+                        <ul class="lg-cell-sub" style="margin-top:8px;max-height:120px;overflow:auto">
+                            <template x-for="code in (view?.manifest || [])" :key="code"><li x-text="code"></li></template>
+                        </ul>
+                    </div>
                     <template x-if="view && view.status !== 'cancelled'">
                         <ol class="lg-journey" style="padding:0">
                             <li :class="view.status === 'scheduled' ? 'is-current' : ''">
@@ -167,7 +186,7 @@
                             </li>
                             <li :class="view.status === 'in_transit' ? 'is-current' : ''">
                                 <div class="lg-journey__what">Departed</div>
-                                <div class="lg-journey__meta" x-text="view.departed ? 'The driver confirmed departure ' + fmt(view.departed) : 'Waiting for the driver to confirm departure'"></div>
+                                <div class="lg-journey__meta" x-text="view.departed ? 'Departure recorded ' + fmt(view.departed) : 'Scan every manifest parcel for departure first'"></div>
                             </li>
                             <li :class="view.status === 'completed' ? 'is-current' : ''">
                                 <div class="lg-journey__what">Arrived</div>
@@ -179,8 +198,10 @@
                 <div class="lg-modal__foot" x-show="view">
                     <button type="button" class="lg-btn lg-btn--outline" @click="closeView()">Close</button>
                     <template x-if="view && view.status === 'scheduled'">
-                        <button type="button" class="lg-btn lg-btn--danger" @click="askCancel(view)">Cancel trip</button>
+                        <button type="button" class="lg-btn lg-btn--danger" x-show="view.can_cancel" @click="askCancel(view)">Cancel trip</button>
                     </template>
+                    <button type="button" class="lg-btn" x-show="view && view.status === 'scheduled' && view.can_depart" :disabled="working" @click="changeStatus(view, 'depart')">Record departure</button>
+                    <button type="button" class="lg-btn" x-show="view && view.status === 'in_transit' && view.can_arrive" :disabled="working" @click="changeStatus(view, 'arrive')">Record arrival</button>
                 </div>
             </div>
         </div>

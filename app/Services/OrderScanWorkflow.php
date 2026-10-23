@@ -6,11 +6,14 @@ use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
 use App\Models\Ecommerce\OrderScanEvent;
 use App\Models\Profiles\LogisticsCenter;
+use App\Models\Profiles\RiderTask;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class OrderScanWorkflow
 {
+    public function __construct(private ShippingEarningsSettlementService $shippingSettlement) {}
+
     private const TRANSITIONS = [
         'pickup' => ['ready_for_pickup', 'picked_up', 'courier_id', 'logistics_center_id'],
         'origin_arrival' => ['picked_up', 'at_sorting_center', 'courier_id', 'logistics_center_id'],
@@ -30,12 +33,27 @@ class OrderScanWorkflow
             abort_unless((int) $order->{$transition[2]} === (int) $rider->id
                 && (int) $order->{$transition[3]} === (int) $center->id, 403,
                 'This parcel is not assigned to this rider and logistics center.');
+            $taskType = $data['scan_type'] === 'pickup' ? 'pickup'
+                : (in_array($data['scan_type'], ['out_for_delivery', 'delivered'], true) ? 'delivery' : null);
+            if ($taskType) {
+                abort_if(RiderTask::query()->where('order_id', $order->id)
+                    ->where('rider_id', $rider->courierDetail?->id)->where('type', $taskType)
+                    ->where('status', 'failed')->exists(), 409,
+                    'This task was paused after a Rider report. Contact the Station Hub before scanning.');
+            }
+            abort_if($order->logisticsExceptions()->where('status', 'open')->exists(), 409,
+                'Resolve the open parcel exception before scanning.');
             if (in_array($data['scan_type'], ['soc5', 'soc6', 'destination_hub'], true)) {
                 abort_if($order->facilityStops()->exists(), 409,
                     'This parcel uses actual facility stops. Use the Logistics facility scanner for handoffs.');
                 abort_unless($order->destination_logistics_center_id
                     && (int) $order->destination_logistics_center_id !== (int) $center->id,
                     409, 'Inter-hub scans require a different resolved destination hub.');
+            }
+            if ($data['scan_type'] === 'delivered' && $order->facilityStops()->exists()) {
+                abort_unless($order->deliveryProof()->where('scan_key', $data['scan_key'])
+                    ->where('rider_id', $rider->id)->exists(), 409,
+                    'Delivery proof is required for this facility-routed parcel.');
             }
 
             $existing = $order->scanEvents()->where('scan_key', $data['scan_key'])->first();
@@ -61,6 +79,17 @@ class OrderScanWorkflow
 
             $order->status = $transition[1];
             $order->save();
+            if (in_array($data['scan_type'], ['pickup', 'out_for_delivery', 'delivered'], true)
+                && $rider->courierDetail?->station_hub_id) {
+                RiderTask::query()->where('order_id', $order->id)
+                    ->where('station_hub_id', $rider->courierDetail->station_hub_id)
+                    ->where('rider_id', $rider->courierDetail->id)
+                    ->where('type', $data['scan_type'] === 'pickup' ? 'pickup' : 'delivery')
+                    ->whereIn('status', ['assigned', 'in_progress'])
+                    ->update($data['scan_type'] === 'delivered'
+                        ? ['status' => 'completed', 'completed_at' => now()]
+                        : ['status' => 'in_progress', 'started_at' => now()]);
+            }
             $order->statusEvents()->create([
                 'user_id' => $rider->id,
                 'from_status' => $transition[0],
@@ -75,6 +104,10 @@ class OrderScanWorkflow
                 'to_status' => $transition[1],
                 'scan_key' => $data['scan_key'],
             ]);
+
+            if ($data['scan_type'] === 'delivered') {
+                $this->shippingSettlement->settleDeliveredOrder($order);
+            }
 
             Notification::create([
                 'user_id' => $center->user_id,

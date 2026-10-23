@@ -467,7 +467,7 @@
 
                         <div class="mb-1">
                             <h2 class="text-[1rem] font-bold text-gray-900 mb-0.5">Address</h2>
-                            <p class="text-[0.8rem] text-gray-500 font-normal mb-4">This address sets your Main Hub location and the province your Logistics account covers. Provinces with an existing application or account are unavailable.</p>
+                            <p class="text-[0.8rem] text-gray-500 font-normal mb-4">Enter your company's head office address. You can create Province Hubs after Vendo approves the company.</p>
                         </div>
 
                         @include('auth.partials.address-comboboxes')
@@ -540,7 +540,7 @@
 
                         <div class="mb-1">
                             <h2 class="text-[1rem] font-bold text-gray-900 mb-0.5">Business Information</h2>
-                            <p class="text-[0.8rem] text-gray-500 font-normal mb-4">One account manages the Main Hub and stations across the province selected in your address.</p>
+                            <p class="text-[0.8rem] text-gray-500 font-normal mb-4">This company account can create Province Hubs and manage its stations after approval.</p>
                         </div>
 
                         <div class="grid grid-cols-2 gap-6 mb-8">

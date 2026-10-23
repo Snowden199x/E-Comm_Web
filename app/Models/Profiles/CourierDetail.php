@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
 #[Fillable([
-    'user_id', 'logistics_center_id', 'last_name', 'first_name', 'middle_name', 'sex', 'birthday', 'valid_id_path',
+    'user_id', 'logistics_center_id', 'station_hub_id', 'last_name', 'first_name', 'middle_name', 'sex', 'birthday', 'valid_id_path',
     'province', 'municipality', 'barangay', 'street', 'house_no', 'zip_code',
     'vehicle_type', 'plate_number', 'drivers_license_path', 'or_cr_path',
 ])]
@@ -23,6 +23,21 @@ class CourierDetail extends Model
     public function logisticsCenter()
     {
         return $this->belongsTo(LogisticsCenter::class);
+    }
+
+    public function stationHub()
+    {
+        return $this->belongsTo(LogisticsFacility::class, 'station_hub_id');
+    }
+
+    public function serviceAreas()
+    {
+        return $this->hasMany(RiderServiceArea::class);
+    }
+
+    public function tasks()
+    {
+        return $this->hasMany(RiderTask::class, 'rider_id');
     }
 
     public function getAgeAttribute(): int

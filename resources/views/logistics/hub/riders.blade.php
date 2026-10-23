@@ -1,15 +1,4 @@
 @php
-    // HARDCODED PREVIEW: replace with this hub's riders (center-scoped query).
-    $riders = [
-        ['id' => 1, 'name' => 'Jun Bautista',  'email' => 'jun@mail.com',   'vehicle' => 'Motorcycle', 'area' => 'Santa Cruz', 'parcels' => 14, 'status' => 'active'],
-        ['id' => 2, 'name' => 'Paolo Garcia',  'email' => 'paolo@mail.com', 'vehicle' => 'Motorcycle', 'area' => 'Pagsanjan',  'parcels' => 12, 'status' => 'active'],
-        ['id' => 3, 'name' => 'Nina Castillo', 'email' => 'nina@mail.com',  'vehicle' => 'Tricycle',   'area' => 'Santa Cruz', 'parcels' => 9,  'status' => 'active'],
-        ['id' => 4, 'name' => 'Kris Mendoza',  'email' => 'kris@mail.com',  'vehicle' => 'Motorcycle', 'area' => 'Santa Cruz', 'parcels' => 0,  'status' => 'applications'],
-        ['id' => 5, 'name' => 'Dante Ruiz',    'email' => 'dante@mail.com', 'vehicle' => 'Bicycle',    'area' => 'Santa Cruz', 'parcels' => 0,  'status' => 'applications'],
-        ['id' => 6, 'name' => 'Leo Tan',       'email' => 'leo@mail.com',   'vehicle' => 'Motorcycle', 'area' => 'Liliw',      'parcels' => 0,  'status' => 'applications'],
-        ['id' => 7, 'name' => 'Mia Cruz',      'email' => 'mia@mail.com',   'vehicle' => 'Motorcycle', 'area' => 'Santa Cruz', 'parcels' => 0,  'status' => 'rejected'],
-        ['id' => 8, 'name' => 'Rey Santos',    'email' => 'rey@mail.com',   'vehicle' => 'Tricycle',   'area' => 'Santa Cruz', 'parcels' => 0,  'status' => 'inactive'],
-    ];
     $tabs = [
         'active' => ['Active', 'No active riders', 'Approve an application to add your first rider.'],
         'applications' => ['Applications', 'No pending applications', 'New rider applications from your area show up here for review.'],
@@ -17,12 +6,15 @@
         'inactive' => ['Inactive', 'No inactive riders', 'Riders you deactivate are listed here and can be reactivated.'],
     ];
 @endphp
+@php $riders = $liveRiders; @endphp
 <x-logistics.shell title="Rider Management" :role="$role">
     <div class="lg-page"
          x-data="{
             tab: 'active',
             q: '',
             riders: @js($riders),
+            reviewUrl: @js($reviewUrl),
+            statusUrl: @js($statusUrl),
             open: false,
             target: null,
             action: '',
@@ -40,18 +32,22 @@
                     this.$nextTick(() => this.$refs.focusMe && this.$refs.focusMe.focus());
                 } else { this.submit(); }
             },
-            submit() {
+            async submit() {
                 if (this.action === 'reject' && this.reason.trim().length < 5) { this.err = true; return; }
                 const r = this.target;
-                const done = {
-                    approve: ['active', r.name + ' approved. They can now take deliveries.'],
-                    reject: ['rejected', r.name + ' rejected. They will see your reason.'],
-                    deactivate: ['inactive', r.name + ' deactivated.'],
-                    activate: ['active', r.name + ' is active again.'],
-                }[this.action];
-                r.status = done[0];
-                this.open = false;
-                this.$dispatch('lg-toast', { type: 'success', message: done[1] });
+                const isReview = ['approve', 'reject'].includes(this.action);
+                try {
+                    const response = await fetch((isReview ? this.reviewUrl : this.statusUrl).replace('__rider__', r.id), {
+                        method: isReview ? 'POST' : 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
+                        body: JSON.stringify(isReview ? { decision: this.action, reason: this.reason } : { active: this.action === 'activate' })
+                    });
+                    const payload = await response.json();
+                    if (!response.ok) throw new Error(payload.message || 'Could not update Rider.');
+                    r.status = payload.status;
+                    this.open = false;
+                    this.$dispatch('lg-toast', { type: 'success', message: r.name + (this.action === 'approve' ? ' approved.' : this.action === 'reject' ? ' application rejected.' : this.action === 'deactivate' ? ' deactivated.' : ' activated.') });
+                } catch (error) { this.$dispatch('lg-toast', { type: 'error', message: error.message }); }
             }
          }">
         <div class="lg-page-head">

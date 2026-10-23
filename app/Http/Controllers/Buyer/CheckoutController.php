@@ -11,6 +11,7 @@ use App\Models\Ecommerce\ProductVariant;
 use App\Models\Ecommerce\SellerVoucher;
 use App\Models\Profiles\BuyerDetail;
 use App\Services\InventoryService;
+use App\Services\CheckoutShippingQuoteService;
 use App\Services\LocationCatalog;
 use App\Services\SellerVoucherService;
 use Illuminate\Http\Request;
@@ -58,20 +59,20 @@ class CheckoutController extends Controller
         return view('buyer.checkout', compact('cartItems', 'defaultAddress', 'checkoutRevision', 'locationOptions', 'defaultProvinceCode', 'defaultCityCode', 'sellerNotesEnabled', 'voucherOptions'));
     }
 
-    public function store(Request $request, LocationCatalog $locations)
+    public function store(Request $request, LocationCatalog $locations, CheckoutShippingQuoteService $shippingQuotes)
     {
-        $data = $request->validate(['shipping_address' => 'required|string|max:1800', 'shipping_province_code' => 'required|string|size:9', 'shipping_city_code' => 'required|string|size:9', 'payment_mode' => 'required|in:cod', 'checkout_revision' => ['required', 'regex:/^[a-f0-9]{64}$/'], 'items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct'], 'seller_notes' => ['sometimes', 'array'], 'seller_notes.*' => ['nullable', 'string', 'max:300'], 'voucher_codes' => ['sometimes', 'array'], 'voucher_codes.*' => ['nullable', 'string', 'regex:/^[A-Z0-9]{4,12}$/']]);
+        $data = $request->validate(['shipping_address' => 'required|string|max:1800', 'shipping_province_code' => 'required|string|size:9', 'shipping_city_code' => 'required|string|size:9', 'payment_mode' => 'required|in:cod', 'checkout_revision' => ['required', 'regex:/^[a-f0-9]{64}$/'], 'items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct'], 'shipping_quotes' => ['required', 'array'], 'shipping_quotes.*' => ['required', 'numeric', 'min:45'], 'seller_notes' => ['sometimes', 'array'], 'seller_notes.*' => ['nullable', 'string', 'max:300'], 'voucher_codes' => ['sometimes', 'array'], 'voucher_codes.*' => ['nullable', 'string', 'regex:/^[A-Z0-9]{4,12}$/']]);
         $location = $locations->address($data['shipping_province_code'], $data['shipping_city_code']);
         if (! $location) {
             throw ValidationException::withMessages(['shipping_city_code' => 'Select a city or municipality within the chosen province.']);
         }
-        DB::transaction(function () use ($request, $data, $location) {
+        DB::transaction(function () use ($request, $data, $location, $shippingQuotes) {
             $selectedIds = $request->input('items');
             $cartItems = CartItem::where('user_id', $request->user()->id)->whereIn('id', $selectedIds)->orderBy('id')->lockForUpdate()->get();
             if ($cartItems->count() !== count($selectedIds)) {
                 throw ValidationException::withMessages(['items' => 'Your cart selection changed. Review your cart and try again.']);
             }
-            $products = Product::with(['seller', 'category'])->whereIn('id', $cartItems->pluck('product_id'))
+            $products = Product::with(['seller.sellerDetail', 'category'])->whereIn('id', $cartItems->pluck('product_id'))
                 ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $variants = ProductVariant::query()->whereIn('id', $cartItems->pluck('product_variant_id')->filter())
                 ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
@@ -86,6 +87,10 @@ class CheckoutController extends Controller
                 }
             }
             $sellerIds = $cartItems->map(fn ($item) => (string) $products[$item->product_id]->seller_id)->unique();
+            if (collect(array_keys($data['shipping_quotes']))->map(fn ($id) => (string) $id)->sort()->values()->all()
+                !== $sellerIds->sort()->values()->all()) {
+                throw ValidationException::withMessages(['shipping_quotes' => 'Refresh the shipping quote for every shop before placing your order.']);
+            }
             if (collect(array_keys($data['seller_notes'] ?? []))->map(fn ($id) => (string) $id)->diff($sellerIds)->isNotEmpty()) {
                 throw ValidationException::withMessages(['seller_notes' => 'A seller note does not belong to this checkout. Refresh and try again.']);
             }
@@ -119,6 +124,16 @@ class CheckoutController extends Controller
                 }
             }
             foreach ($cartItems->groupBy(fn ($item) => $products[$item->product_id]->seller_id) as $sellerId => $items) {
+                $sellerDetail = $products[$items->first()->product_id]->seller?->sellerDetail;
+                $shippingQuote = $shippingQuotes->quote(
+                    $sellerDetail?->province,
+                    $sellerDetail?->municipality,
+                    $location['province'],
+                    $location['city'],
+                );
+                if (number_format((float) $data['shipping_quotes'][$sellerId], 2, '.', '') !== $shippingQuote['shipping_fee']) {
+                    throw ValidationException::withMessages(['shipping_quotes.'.$sellerId => 'The Logistics route or shipping fee changed. Refresh the quote and review the total.']);
+                }
                 $buyerNote = trim((string) ($data['seller_notes'][$sellerId] ?? ''));
                 $code = trim((string) ($data['voucher_codes'][$sellerId] ?? ''));
                 $voucher = null;
@@ -137,7 +152,10 @@ class CheckoutController extends Controller
                     'buyer_note' => $buyerNote !== '' ? $buyerNote : null,
                     'total_amount' => $items->sum(fn ($item) => $item->quantity * ($item->product_variant_id
                         ? $variants[$item->product_variant_id]->price : $products[$item->product_id]->price)),
-                    'shipping_fee' => 0, 'status' => 'placed', 'payment_mode' => $request->payment_mode,
+                    'shipping_fee' => $shippingQuote['shipping_fee'],
+                    'shipping_hub_count' => $shippingQuote['hub_count'],
+                    'shipping_route_snapshot' => $shippingQuote['route'],
+                    'status' => 'placed', 'payment_mode' => $request->payment_mode,
                     'voucher_discount' => number_format($discountCents / 100, 2, '.', ''),
                     'voucher_code' => $voucher?->code,
                     'shipping_address' => trim($data['shipping_address']).', '.$location['city'].', '.$location['province'],
@@ -165,6 +183,35 @@ class CheckoutController extends Controller
         }, 3);
 
         return redirect()->route('buyer.orders.index')->with('success', 'Order placed.');
+    }
+
+    public function shippingQuote(Request $request, LocationCatalog $locations, CheckoutShippingQuoteService $shippingQuotes)
+    {
+        $data = $request->validate([
+            'items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct'],
+            'shipping_province_code' => ['required', 'string', 'size:9'],
+            'shipping_city_code' => ['required', 'string', 'size:9'],
+        ]);
+        $location = $locations->address($data['shipping_province_code'], $data['shipping_city_code']);
+        if (! $location) {
+            throw ValidationException::withMessages(['shipping_city_code' => 'Select a valid delivery municipality.']);
+        }
+
+        $items = CartItem::query()->with('product.seller.sellerDetail')
+            ->where('user_id', $request->user()->id)->whereIn('id', $data['items'])->get();
+        if ($items->count() !== count($data['items']) || $items->contains(fn ($item) => ! $item->product?->seller)) {
+            throw ValidationException::withMessages(['items' => 'Your cart changed. Refresh checkout and try again.']);
+        }
+
+        $quotes = [];
+        foreach ($items->groupBy(fn ($item) => $item->product->seller_id) as $sellerId => $sellerItems) {
+            $seller = $sellerItems->first()->product->seller->sellerDetail;
+            $quotes[$sellerId] = $shippingQuotes->quote(
+                $seller?->province, $seller?->municipality, $location['province'], $location['city'],
+            );
+        }
+
+        return response()->json(['quotes' => $quotes]);
     }
 
     public function voucherQuote(Request $request, SellerVoucherService $vouchers)

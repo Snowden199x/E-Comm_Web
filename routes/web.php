@@ -60,6 +60,9 @@ use App\Http\Middleware\EnsureActiveSeller;
 use App\Http\Middleware\EnsureActiveLogisticsCenter;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/orders/{order}/delivery-proof', [\App\Http\Controllers\OrderDeliveryProofController::class, 'show'])
+    ->middleware('auth')->whereNumber('order')->name('orders.delivery-proof');
+
 /*
 |--------------------------------------------------------------------------
 | Public / Landing
@@ -119,6 +122,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/seller-category-requests/{categoryRequest}/decision', [AdminSellerCategoryRequestController::class, 'decide'])->whereNumber('categoryRequest')->name('category-requests.decide');
 
         Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
+        Route::get('/logistics-coverage', [\App\Http\Controllers\Admin\LogisticsCoverageController::class, 'index'])->name('logistics-coverage.index');
+        Route::get('/logistics-documents', [\App\Http\Controllers\Admin\LogisticsDocumentReviewController::class, 'index'])->name('logistics-documents.index');
+        Route::get('/logistics-documents/{documentRequest}/file', [\App\Http\Controllers\Admin\LogisticsDocumentReviewController::class, 'file'])->whereNumber('documentRequest')->name('logistics-documents.file');
+        Route::post('/logistics-documents/{documentRequest}/decision', [\App\Http\Controllers\Admin\LogisticsDocumentReviewController::class, 'decide'])->whereNumber('documentRequest')->name('logistics-documents.decide');
+        Route::put('/logistics-coverage', [\App\Http\Controllers\Admin\LogisticsCoverageController::class, 'update'])->name('logistics-coverage.update');
         Route::post('/user-management/{user}/suspend', [UserManagementController::class, 'suspend'])->name('user-management.suspend');
         Route::post('/user-management/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('user-management.deactivate');
         Route::post('/user-management/{user}/activate', [UserManagementController::class, 'activate'])->name('user-management.activate');
@@ -254,6 +262,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::delete('/cart/{cartItem}', [BuyerCartController::class, 'destroy'])->middleware('auth')->name('cart.destroy');
     Route::get('/checkout', [BuyerCheckoutController::class, 'index'])->middleware('auth')->name('checkout.index');
     Route::post('/checkout', [BuyerCheckoutController::class, 'store'])->middleware('auth')->name('checkout.store');
+    Route::post('/checkout/shipping-quote', [BuyerCheckoutController::class, 'shippingQuote'])->middleware(['auth', 'throttle:20,1'])->name('checkout.shipping-quote');
     Route::post('/checkout/voucher-quote', [BuyerCheckoutController::class, 'voucherQuote'])->middleware(['auth', 'throttle:20,1'])->name('checkout.voucher-quote');
     Route::get('/orders', [BuyerOrderController::class, 'index'])->middleware('auth')->name('orders.index');
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->middleware('auth')->name('orders.show');
@@ -462,4 +471,4 @@ Route::post('/forgot-password', [UserPasswordResetLinkController::class, 'store'
 Route::get('/reset-password/{token}', [UserNewPasswordController::class, 'create'])->name('password.reset');
 Route::post('/reset-password', [UserNewPasswordController::class, 'store'])->name('password.store');
 require __DIR__.'/auth.php';
-require __DIR__.'/logistics_preview.php';
+require __DIR__.'/logistics_portal.php';

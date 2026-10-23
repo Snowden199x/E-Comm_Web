@@ -1,5 +1,4 @@
-{{-- PREVIEW ONLY: hard-coded data from routes/logistics_preview.php and routes/logistics_preview_data.php. Spec section 8 (Province Hub > Dashboard).
-     Read-only overview. Every card links to the page where the work is done. --}}
+{{-- Live Province Hub overview. Operational actions are linked to the relevant hub pages. --}}
 @php
     use Carbon\Carbon;
 
@@ -42,7 +41,7 @@
             route('lgp.province.drivers'), 'Review'];
     }
     foreach ($stationsSetup as $s) {
-        $attention[] = ['amber', 'alert', $s['name'].' is still in setup', 'Its manager has not signed in yet, so it cannot receive parcels.', route('lgp.province.stations.show', \Illuminate\Support\Str::slug($s['municipality'])), 'View station'];
+        $attention[] = ['amber', 'alert', $s['name'].' is still in setup', 'Its manager has not signed in yet, so it cannot receive parcels.', route('lgp.province.stations.show', $s['id']), 'View station'];
     }
     if ($vehicleCount('maintenance')) {
         $attention[] = ['blue', 'info', $vehicleCount('maintenance').' '.($vehicleCount('maintenance') === 1 ? 'vehicle is' : 'vehicles are').' in maintenance', 'It cannot be assigned to a trip until it is set back to available.', route('lgp.province.vehicles'), 'Open vehicles'];
@@ -213,7 +212,7 @@
                     @forelse ($stations as $s)
                         <tr>
                             <td data-label="Station">
-                                <a href="{{ route('lgp.province.stations.show', \Illuminate\Support\Str::slug($s['municipality'])) }}" class="lg-cell-title">{{ $s['name'] }}</a>
+                                <a href="{{ route('lgp.province.stations.show', $s['id']) }}" class="lg-cell-title">{{ $s['name'] }}</a>
                                 <div class="lg-cell-sub">Manager {{ $s['manager'] }}</div>
                             </td>
                             <td data-label="Parcels on hand" style="min-width:180px">
