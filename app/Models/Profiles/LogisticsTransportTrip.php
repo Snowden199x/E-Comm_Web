@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class LogisticsTransportTrip extends Model
 {
+    protected $table = 'transport_trips';
+
     protected $fillable = [
         'logistics_company_id', 'trip_type', 'origin_facility_id', 'destination_facility_id',
         'driver_id', 'vehicle_id', 'status', 'scheduled_departure_at', 'expected_arrival_at',

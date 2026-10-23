@@ -119,7 +119,7 @@ class PortalReportController extends Controller
                 ->join('logistics_facilities as facility', 'facility.id', '=', 'earning.facility_id')
                 ->where('facility.logistics_company_id', $company->id)
                 ->whereIn('earning.settlement_id', $accruedSettlementIds)
-                ->selectRaw('COUNT(*) as lines, COALESCE(SUM(earning.amount), 0) as amount')
+                ->selectRaw('COUNT(*) as earning_line_count, COALESCE(SUM(earning.amount), 0) as amount')
                 ->first();
 
             $singleCompanyRemainder = DB::table('order_shipping_settlements as settlement')
@@ -153,7 +153,7 @@ class PortalReportController extends Controller
                 'settled_orders' => (int) $settlementTotals->sum('orders'),
                 'shipping_fees' => (float) $settlementTotals->sum('shipping_fee'),
                 'rider_accruals' => (float) ($riderAccruals->amount ?? 0),
-                'rider_accrual_lines' => (int) ($riderAccruals->lines ?? 0),
+                'rider_accrual_lines' => (int) ($riderAccruals->earning_line_count ?? 0),
                 'company_pool' => (float) $singleCompanyRemainder,
                 'cross_company_pool' => (float) $crossCompanyRemainder,
                 'review_orders' => (int) ($settlementTotals['review']->orders ?? 0),

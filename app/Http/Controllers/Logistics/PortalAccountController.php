@@ -3,15 +3,17 @@
 namespace App\Http\Controllers\Logistics;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use App\Models\User;
@@ -20,6 +22,45 @@ use App\Models\Profiles\LogisticsDocumentRequest;
 
 class PortalAccountController extends Controller
 {
+    public function createManagerPassword(Request $request, string $token): View
+    {
+        $data = $request->validate(['email' => ['required', 'email']]);
+        $user = Password::broker()->getUser($data);
+        abort_unless($this->isManagerAccount($user) && Password::broker()->tokenExists($user, $token), 403,
+            'This password setup link is invalid or has expired.');
+
+        return view('logistics.auth.manager-password', ['user' => $user, 'token' => $token]);
+    }
+
+    public function storeManagerPassword(Request $request, string $token): RedirectResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()],
+        ]);
+
+        $user = Password::broker()->getUser(['email' => $data['email']]);
+        abort_unless($this->isManagerAccount($user), 403);
+        $data['token'] = $token;
+        $status = Password::reset($data, function (User $manager) use ($data) {
+            abort_unless($this->isManagerAccount($manager), 403);
+            $manager->forceFill([
+                'password' => Hash::make($data['password']),
+                'must_change_password' => false,
+                'temp_password_plain' => null,
+                'remember_token' => \Illuminate\Support\Str::random(60),
+            ])->save();
+            event(new PasswordReset($manager));
+        });
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return back()->withInput(['email' => $data['email']])
+                ->withErrors(['email' => __($status)]);
+        }
+
+        return redirect()->route('logistics.login')->with('status', 'Password created. You can now sign in to your Logistics account.');
+    }
+
     public function index(Request $request): View
     {
         $role = (string) $request->route('portal_role');
@@ -65,7 +106,7 @@ class PortalAccountController extends Controller
     {
         $data = $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
+            'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()],
         ]);
         $request->user()->update(['password' => Hash::make($data['password'])]);
 
@@ -129,6 +170,50 @@ class PortalAccountController extends Controller
         })->with('success', 'Your verified email address was updated.');
     }
 
+    public function confirmManagedManagerEmailChange(Request $request): RedirectResponse
+    {
+        $token = (string) $request->query('token');
+        abort_unless(strlen($token) === 64 && ctype_xdigit($token), 403);
+        $setupToken = null;
+        $managerEmail = null;
+
+        DB::transaction(function () use ($token, &$setupToken, &$managerEmail) {
+            $pending = DB::table('logistics_email_changes')
+                ->where('token_hash', hash('sha256', $token))
+                ->where('expires_at', '>', now())
+                ->lockForUpdate()->first();
+            abort_unless($pending, 403, 'This email change link has expired or was already used.');
+
+            $manager = User::query()->whereKey($pending->user_id)->lockForUpdate()->firstOrFail();
+            abort_unless($manager->role === 'province_hub', 403);
+            $hasProvinceHubAssignment = DB::table('facility_staff')
+                ->join('logistics_facilities', 'logistics_facilities.id', '=', 'facility_staff.facility_id')
+                ->where('facility_staff.user_id', $manager->id)
+                ->where('facility_staff.staff_title', 'province_manager')
+                ->where('logistics_facilities.kind', 'province_hub')
+                ->exists();
+            abort_unless($hasProvinceHubAssignment, 403, 'This manager account is no longer assigned to a Province Hub.');
+            abort_if(User::query()->where('email', $pending->new_email)->where('id', '!=', $manager->id)->exists(), 409,
+                'This email is already used by another account.');
+
+            $manager->forceFill([
+                'email' => $pending->new_email,
+                'email_verified_at' => now(),
+                'password' => Hash::make(str()->random(64)),
+                'must_change_password' => true,
+                'temp_password_plain' => null,
+            ])->save();
+            DB::table('logistics_email_changes')->where('user_id', $manager->id)->delete();
+            $setupToken = Password::createToken($manager);
+            $managerEmail = $manager->email;
+        }, 3);
+
+        return redirect()->route('lgp.manager-password.create', [
+            'token' => $setupToken,
+            'email' => $managerEmail,
+        ]);
+    }
+
     public function requestDocumentChange(Request $request): RedirectResponse
     {
         $this->authorizeLogistics($request);
@@ -174,5 +259,21 @@ class PortalAccountController extends Controller
             abort_unless($user->facilityStaff?->facility?->is_active
                 && $user->facilityStaff->facility->company?->status === 'approved', 403);
         }
+    }
+
+    private function isManagerAccount(?User $user): bool
+    {
+        if (! $user || ! in_array($user->role, ['province_hub', 'station_hub'], true)
+            || ! $user->must_change_password || $user->status !== 'approved'
+            || $user->archived_at || ! in_array($user->account_status, [null, 'active'], true)) {
+            return false;
+        }
+
+        $staff = $user->facilityStaff;
+        return $staff && match ($user->role) {
+            'province_hub' => $staff->staff_title === 'province_manager' && $staff->facility?->kind === 'province_hub',
+            'station_hub' => $staff->staff_title === 'station_manager' && $staff->facility?->kind === 'station_hub',
+            default => false,
+        };
     }
 }
