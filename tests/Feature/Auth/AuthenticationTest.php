@@ -19,22 +19,28 @@ class AuthenticationTest extends TestCase
 
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'role' => 'buyer',
+            'status' => 'approved',
+        ]);
 
-        $response = $this->post('/login', [
+        $response = $this->post('/buyer/login', [
             'email' => $user->email,
             'password' => 'password',
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertRedirect(route('buyer.dashboard', absolute: false));
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'role' => 'buyer',
+            'status' => 'approved',
+        ]);
 
-        $this->post('/login', [
+        $this->post('/buyer/login', [
             'email' => $user->email,
             'password' => 'wrong-password',
         ]);
@@ -42,13 +48,29 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_seller_login_uses_the_seller_portal(): void
+    {
+        $seller = User::factory()->create([
+            'email' => 'seller@example.test',
+            'role' => 'seller',
+            'status' => 'approved',
+        ]);
+
+        $this->post('/seller/login', [
+            'email' => $seller->email,
+            'password' => 'password',
+        ])->assertRedirect(route('seller.dashboard', absolute: false));
+
+        $this->assertAuthenticatedAs($seller);
+    }
+
     public function test_users_can_logout(): void
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->post('/logout');
+        $response = $this->actingAs($user)->post('/buyer/logout');
 
         $this->assertGuest();
-        $response->assertRedirect('/');
+        $response->assertRedirect(route('buyer.login'));
     }
 }

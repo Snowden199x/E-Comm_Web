@@ -11,6 +11,10 @@ return new class extends Migration
     {
         if (DB::getDriverName() === 'mysql' || DB::getDriverName() === 'mariadb') {
             DB::statement("ALTER TABLE products MODIFY status ENUM('draft', 'for_review', 'approved', 'rejected', 'warned') NOT NULL DEFAULT 'for_review'");
+        } else {
+            Schema::table('products', function (Blueprint $table) {
+                $table->string('status')->default('for_review')->change();
+            });
         }
 
         Schema::create('product_sequences', function (Blueprint $table) {

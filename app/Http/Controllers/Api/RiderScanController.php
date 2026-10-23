@@ -125,6 +125,8 @@ class RiderScanController extends Controller
                     'name' => $order->buyer?->name,
                     'phone' => $order->buyer?->phone_number,
                     'address' => $order->shipping_address,
+                    'latitude' => $order->shipping_latitude,
+                    'longitude' => $order->shipping_longitude,
                 ]),
                 'pickup_center' => $linehaul || $pickup ? $origin?->business_name
                     : ($deliveryFacility?->name ?: $destination?->business_name),
