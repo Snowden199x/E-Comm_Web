@@ -62,6 +62,11 @@ class CheckoutController extends Controller
     public function store(Request $request, LocationCatalog $locations, CheckoutShippingQuoteService $shippingQuotes)
     {
         $data = $request->validate(['shipping_address' => 'required|string|max:1800', 'shipping_province_code' => 'required|string|size:9', 'shipping_city_code' => 'required|string|size:9', 'payment_mode' => 'required|in:cod', 'checkout_revision' => ['required', 'regex:/^[a-f0-9]{64}$/'], 'items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct'], 'shipping_quotes' => ['required', 'array'], 'shipping_quotes.*' => ['required', 'numeric', 'min:45'], 'seller_notes' => ['sometimes', 'array'], 'seller_notes.*' => ['nullable', 'string', 'max:300'], 'voucher_codes' => ['sometimes', 'array'], 'voucher_codes.*' => ['nullable', 'string', 'regex:/^[A-Z0-9]{4,12}$/']]);
+        $coordinates = $request->validate([
+            'shipping_latitude' => ['nullable', 'required_with:shipping_longitude', 'numeric', 'between:-90,90'],
+            'shipping_longitude' => ['nullable', 'required_with:shipping_latitude', 'numeric', 'between:-180,180'],
+        ]);
+        $data = array_merge($data, $coordinates);
         $location = $locations->address($data['shipping_province_code'], $data['shipping_city_code']);
         if (! $location) {
             throw ValidationException::withMessages(['shipping_city_code' => 'Select a city or municipality within the chosen province.']);
@@ -163,6 +168,8 @@ class CheckoutController extends Controller
                     'shipping_city_code' => $data['shipping_city_code'],
                     'shipping_province' => $location['province'],
                     'shipping_city' => $location['city'],
+                    'shipping_latitude' => $data['shipping_latitude'] ?? null,
+                    'shipping_longitude' => $data['shipping_longitude'] ?? null,
                 ]);
                 if ($voucher) {
                     app(SellerVoucherService::class)->redeemLocked($voucher, $order->id, $request->user()->id, $discountCents);

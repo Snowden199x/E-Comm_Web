@@ -8,6 +8,7 @@ This documentation describes the Laravel web application as it exists in the rep
 - [Workspace guide](Development-Workspace-&-Task-Planning-guide.md) — local setup, repository boundaries, and contribution rules.
 - [Current implementation status](domain-feature-status.md) — the cross-domain source of truth for what is implemented.
 - [Feature implementation guide](feature-implementation-guide.md) — how a feature moves from UI through routes, authorization, database, and tests.
+- [Vendo Web test suite](testing.md) — test command, SQLite isolation, role-level coverage, and known limits.
 - [Architecture](architecture.md) and [schema](schema.md) — current technical structure and data relationships.
 - [Security overview](security.md) — code-based web/API controls, deployment configuration, and known security gaps; not a penetration-test report.
 - [Terms and Conditions](legal/terms-and-conditions.md), [Privacy Policy](legal/privacy-policy.md), and [policy release review](legal/release-review.md) — source for the public web pages and remaining consent/privacy follow-ups.

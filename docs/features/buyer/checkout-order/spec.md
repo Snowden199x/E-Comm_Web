@@ -12,9 +12,11 @@ After a failed submit the address the Buyer had chosen is kept as "Address you e
 
 Checkout accepts one optional note and one optional Seller voucher code per shop. Each note is saved only on that Seller's order. A code is quoted against selected cart lines and must be applied before submission; the server rechecks its eligibility and usage under a lock when creating orders. Orders retain the gross item subtotal, voucher discount, shipping fee, and Buyer payable amount separately. The checkout asks the server for one shipping quote per Seller order and recalculates it when the Buyer changes municipality. The server requires one unambiguous active origin and destination Station Hub, derives the real facility route, and charges ₱45 for up to two route stops plus ₱10 for every additional stop. It stores the fee, stop count, and facility route snapshot on the order. Order creation recomputes the quote inside the transaction and rejects a stale or altered fee. An address without a complete eligible route cannot be checked out yet. See [Buyer Voucher Usage](../voucher-usage/spec.md) and [Shipping Settlement](../../shared/commission-settlement/spec.md).
 
+The Buyer can explicitly set an optional delivery pin from the browser's current location at checkout. The browser asks for permission; Vendo stores latitude/longitude on each seller-specific order through `2026_10_23_230000_add_shipping_coordinates_to_orders.php` and returns it only in the assigned local Rider's assignment. The pin is not inferred from municipality text or geocoded by a third party. Orders without a pin remain valid and the Rider app shows their address without a destination marker. The owner runs this migration before using the pin fields.
+
 ## Gaps and acceptance direction
 
-Payment gateway, taxes/fees, checkout idempotency key, and retry semantics remain future work. Weight and package dimensions do not affect the current shipping quote. Route coverage changes between checkout and Seller readiness can move a shipment into settlement review; no automatic repricing occurs.
+Payment gateway, taxes/fees, checkout idempotency key, and retry semantics remain future work. Weight and package dimensions do not affect the current shipping quote. Route coverage changes between checkout and Seller readiness can move a shipment into settlement review; no automatic repricing occurs. The Rider map displays the destination pin and current Rider GPS position, but does not calculate road routing or turn-by-turn directions.
 
 ## Source evidence
 

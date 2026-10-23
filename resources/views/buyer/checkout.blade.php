@@ -85,6 +85,8 @@
         <input type="hidden" name="shipping_address" :value="current ? current.line : ''">
         <input type="hidden" name="shipping_province_code" :value="current ? current.provinceCode : ''">
         <input type="hidden" name="shipping_city_code" :value="current ? current.cityCode : ''">
+        <input type="hidden" name="shipping_latitude" :value="current?.latitude ?? ''">
+        <input type="hidden" name="shipping_longitude" :value="current?.longitude ?? ''">
         @foreach ($sellerGroups as $sellerKey => $sellerItems)
             <input type="hidden" name="shipping_quotes[{{ $sellerKey }}]" :value="shippingQuotes[{{ $sellerKey }}]?.shipping_fee || ''">
         @endforeach
@@ -152,6 +154,12 @@
                                         </span>
                                     </span>
                                 </label>
+                                <div x-show="a.usable" class="ml-14 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                    <button type="button" @click="captureLocation(a.id)" :disabled="locatingAddress === a.id"
+                                        class="text-[12px] font-medium text-[#52245b] underline underline-offset-2 disabled:opacity-60"
+                                        x-text="locatingAddress === a.id ? 'Getting location…' : (a.latitude && a.longitude ? 'Update delivery pin' : 'Set delivery pin')"></button>
+                                    <span class="text-[11px] text-[#6b5b70]" x-show="a.latitude && a.longitude">Pin saved</span>
+                                </div>
                                 <button type="button" x-show="a.custom" x-cloak @click="remove(a.id)" :aria-label="'Remove ' + a.label"
                                     class="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full text-[#8a7a8e] transition-colors duration-200 hover:bg-[#fdf1f3] hover:text-[#a32b43]">
                                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3" /></svg>
@@ -160,9 +168,11 @@
                         </template>
 
                         <p x-show="!current" x-cloak class="rounded-md bg-[#fdf1f3] px-3 py-2 text-[12px] text-[#a32b43]" role="alert">Add a delivery address to place your order.</p>
-                        @foreach (['shipping_address', 'shipping_province_code', 'shipping_city_code'] as $field)
+                        @foreach (['shipping_address', 'shipping_province_code', 'shipping_city_code', 'shipping_latitude', 'shipping_longitude'] as $field)
                             @error($field)<p class="rounded-md bg-[#fdf1f3] px-3 py-2 text-[12px] text-[#a32b43]" role="alert">{{ $message }}</p>@enderror
                         @endforeach
+                        <p class="text-[11px] text-[#7a6a7e]">A delivery pin helps the assigned Rider find the destination. It is shared with Vendo and the Rider assigned to this order.</p>
+                        <p x-show="locationError" x-cloak class="rounded-md bg-[#fdf1f3] px-3 py-2 text-[12px] text-[#a32b43]" role="alert" x-text="locationError"></p>
                     </div>
                 </section>
 
@@ -384,6 +394,13 @@
                             <p class="mt-1 text-[12px] text-[#a32b43]" x-show="errors.city" x-text="errors.city"></p>
                         </div>
                     </div>
+                    <div>
+                        <button type="button" @click="captureDraftLocation()" :disabled="locatingAddress === 'draft'"
+                            class="inline-flex h-9 items-center rounded-md border border-[#805487] px-3.5 text-[12px] font-medium text-[#52245b] hover:bg-[#f5ecf6] disabled:opacity-60"
+                            x-text="locatingAddress === 'draft' ? 'Getting location…' : (draft.latitude && draft.longitude ? 'Update delivery pin' : 'Use this device’s location')"></button>
+                        <p class="mt-1 text-[11px] text-[#7a6a7e]">Use this only when the device is at the delivery address. The pin is sent to Vendo and the assigned Rider.</p>
+                        <p x-show="locationError" x-cloak class="mt-1 text-[12px] text-[#a32b43]" role="alert" x-text="locationError"></p>
+                    </div>
                 </div>
 
                 <div class="mt-5 flex flex-wrap justify-end gap-2.5">
@@ -408,20 +425,26 @@
         shippingQuotes: {},
         shippingQuoteError: '',
         quotingShipping: false,
+        locatingAddress: null,
+        locationError: '',
         voucherSelections: config.voucherCodes || {},
         appliedVoucherCodes: {},
         voucherDiscounts: {},
         voucherErrors: {},
         applyingVoucher: {},
         errors: {},
-        draft: { label: '', line: '', provinceCode: '', cityCode: '' },
+        draft: { label: '', line: '', provinceCode: '', cityCode: '', latitude: null, longitude: null },
 
         init() {
             // Bring back addresses added earlier in this tab (kept for two hours, like other form drafts)
             try {
                 const saved = JSON.parse(sessionStorage.getItem(this.storageKey) || 'null');
                 if (saved && saved.savedAt > Date.now() - 2 * 60 * 60 * 1000 && Array.isArray(saved.addresses)) {
-                    saved.addresses.forEach(a => { if (!this.addresses.some(x => x.id === a.id)) this.addresses.push(a); });
+                    saved.addresses.forEach(a => {
+                        const existing = this.addresses.find(x => x.id === a.id);
+                        if (existing) { existing.latitude = a.latitude ?? existing.latitude; existing.longitude = a.longitude ?? existing.longitude; }
+                        else this.addresses.push(a);
+                    });
                     if (config.restoreSaved && saved.selected && this.addresses.some(a => a.id === saved.selected && a.usable)) {
                         this.selected = saved.selected;
                     }
@@ -522,18 +545,50 @@
                 sessionStorage.setItem(this.storageKey, JSON.stringify({
                     savedAt: Date.now(),
                     selected: this.selected,
-                    addresses: this.addresses.filter(a => a.custom),
+                    addresses: this.addresses
+                        .filter(a => a.custom || (a.latitude && a.longitude))
+                        .map(a => a.custom ? a : { id: a.id, latitude: a.latitude, longitude: a.longitude }),
                 }));
             } catch (_) {}
         },
 
         openModal() {
             this.errors = {};
-            this.draft = { label: '', line: '', provinceCode: '', cityCode: '' };
+            this.draft = { label: '', line: '', provinceCode: '', cityCode: '', latitude: null, longitude: null };
             this.modal = true;
             this.$nextTick(() => this.$refs.label && this.$refs.label.focus());
         },
         closeModal() { this.modal = false; },
+
+        async locate(target, addressId = null) {
+            this.locationError = '';
+            if (!navigator.geolocation) {
+                this.locationError = 'This browser does not provide device location.';
+                return;
+            }
+            this.locatingAddress = target;
+            try {
+                const position = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true, timeout: 15000, maximumAge: 0,
+                }));
+                const coordinates = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+                if (target === 'draft') Object.assign(this.draft, coordinates);
+                else {
+                    const address = this.addresses.find(a => a.id === addressId);
+                    if (address) Object.assign(address, coordinates);
+                    this.persist();
+                }
+            } catch (error) {
+                this.locationError = error.code === 1
+                    ? 'Allow location access in your browser to set the delivery pin.'
+                    : 'Could not get the device location. Try again where the delivery address is.';
+            } finally {
+                this.locatingAddress = null;
+            }
+        },
+
+        captureLocation(addressId) { return this.locate(addressId, addressId); },
+        captureDraftLocation() { return this.locate('draft'); },
 
         save() {
             const d = this.draft;
@@ -551,6 +606,7 @@
                 label: d.label.trim() || 'New address',
                 registered: false, custom: true, usable: true,
                 line, provinceCode: String(d.provinceCode), cityCode: String(d.cityCode),
+                latitude: d.latitude, longitude: d.longitude,
                 province: province.name, city: province.cities[d.cityCode],
             };
             this.addresses.push(address);
