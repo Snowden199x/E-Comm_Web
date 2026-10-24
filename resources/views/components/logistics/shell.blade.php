@@ -1,56 +1,34 @@
 @props(['title', 'role' => 'station'])
 
 @php
-    // HARDCODED PREVIEW: replace $identity with auth()->user()->hub / ->company later.
-    $identity = [
-        'company'  => ['JNT Express Philippines', 'Company Portal'],
-        'province' => ['JNT Laguna Hub',          'Province Hub'],
-        'station'  => ['JNT Santa Cruz Station',  'Municipality Station'],
-    ][$role];
+    $user = auth()->user();
+    $facility = request()->attributes->get('logistics_facility');
+    $identity = $role === 'company'
+        ? [$user?->logisticsCenterDetail?->business_name ?? $user?->name ?? 'Logistics Company', 'Company Portal']
+        : [$facility?->name ?? $user?->name ?? 'Logistics Facility', $role === 'province' ? 'Province Hub' : 'Station Hub'];
     [$orgName, $roleLabel] = $identity;
     $initial = mb_strtoupper(mb_substr($orgName, 0, 1));
-    $page = request()->route('page');
-    $hubUrl = fn (string $p) => route('lgp.hub.page', [$role, $p]);
     $home = $role === 'company' ? route('lgp.company') : route('lgp.hub.'.$role);
 
+    // Sidebar lists live in config/logistics_nav.php. Shape the shell loops over:
     // [label, icon, url, active, badge]
-    $nav = $role === 'company' ? [
-        ['label' => null, 'items' => [['Dashboard', 'home', route('lgp.company'), request()->routeIs('lgp.company'), 0]]],
-        ['label' => 'Network', 'items' => [
-            ['Hubs', 'map-pin', route('lgp.company.hubs'), request()->routeIs('lgp.company.hubs'), 0],
-            ['Hub Managers', 'user-cog', route('lgp.company.managers'), request()->routeIs('lgp.company.managers'), 0],
-        ]],
-        ['label' => 'Business', 'items' => [['Reports', 'bar-chart', route('lgp.company.reports'), request()->routeIs('lgp.company.reports'), 0]]],
-        ['label' => 'System', 'items' => [['Account Management', 'shield', route('lgp.company.account'), request()->routeIs('lgp.company.account'), 0]]],
-    ] : [
-        ['label' => null, 'items' => [['Dashboard', 'home', $home, request()->routeIs('lgp.hub.'.$role), 0]]],
-        ['label' => 'People', 'items' => [['Rider Management', 'users', $hubUrl('riders'), $page === 'riders', 3]]],
-        ['label' => 'Parcels', 'items' => array_values(array_filter([
-            ['Incoming Parcels', 'inbox', $hubUrl('incoming'), $page === 'incoming', 12],
-            ['Parcel Sorting', 'layers', $hubUrl('sorting'), $page === 'sorting', 0],
-            $role === 'province' ? ['Linehaul', 'truck', route('lgp.hub.linehaul'), request()->routeIs('lgp.hub.linehaul'), 0] : null,
-            $role === 'station' ? ['Delivery Assignments', 'truck', $hubUrl('assignments'), $page === 'assignments', 0] : null,
-            ['Delivery Monitoring', 'map-pin', $hubUrl('monitoring'), $page === 'monitoring', 0],
-        ]))],
-        ['label' => 'Business', 'items' => [['Reports', 'bar-chart', $hubUrl('reports'), $page === 'reports', 0]]],
-        ['label' => 'System', 'items' => [['Account Management', 'shield', $hubUrl('account'), $page === 'account', 0]]],
-    ];
+    $nav = collect(config('logistics_nav.'.$role))->map(fn ($group) => [
+        'label' => $group['label'],
+        'items' => array_map(fn ($item) => [
+            $item['label'],
+            $item['icon'],
+            route($item['route']),
+            request()->routeIs(...(array) ($item['active'] ?? $item['route'])),
+            $item['badge'] ?? 0,
+        ], $group['items']),
+    ])->all();
 
-    // HARDCODED PREVIEW: replace with the real notification feed. Each item: [title, detail, url]
-    $alerts = match ($role) {
-        'company' => [
-            ['Los Banos Station is still in setup', 'Finish setup so it can receive parcels.', route('lgp.company.hubs')],
-            ['Carlo Ramos has not accepted the invite', 'Resend it from Hub Managers.', route('lgp.company.managers')],
-        ],
-        'province' => [
-            ['58 parcels are waiting for linehaul', 'Assign a truck rider and dispatch.', route('lgp.hub.linehaul')],
-            ['Truck from Quezon Hub arrives in 25 min', '42 parcels to receive.', route('lgp.hub.linehaul')],
-        ],
-        default => [
-            ['3 pickup requests need verification', 'Sellers are waiting for a rider.', $hubUrl('incoming')],
-            ['Delivery failed: VND-10451', 'Retry it or return it to the seller.', $hubUrl('monitoring')],
-        ],
-    };
+    $alerts = \App\Models\Communication\Notification::query()->where('user_id', $user?->id)
+        ->whereNull('read_at')->latest()->limit(8)->get();
+    $alertCount = \App\Models\Communication\Notification::query()->where('user_id', $user?->id)
+        ->whereNull('read_at')->count();
+    $initialAlerts = $alerts->map(fn ($item) => ['id' => $item->id, 'title' => $item->title,
+        'message' => $item->message, 'open_url' => route('lgp.notifications.open', $item)])->values();
 
     $linkBase = 'group relative flex h-10 w-full items-center gap-3 overflow-hidden rounded-xl px-3 transition-colors duration-200 ease-vendo focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8c874]/70';
 @endphp
@@ -67,6 +45,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     {{-- Same sidebar store, layout css and motion as the admin; workspace.css only styles the page content (cards, tables, pills). --}}
     @vite(['resources/css/shared/app.css', 'resources/css/admin/layout.css', 'resources/css/logistics/workspace.css', 'resources/js/admin/sidebar.js', 'resources/js/shared/app.js'])
+    @if ($facility && $facility->is_active)
+        @vite('resources/js/logistics/facility-scanner.js')
+    @endif
 </head>
 {{-- x-data is required: Alpine only runs :class / @click / x-show (sidebar collapse, mobile drawer, backdrop) inside an x-data root. The admin layout does the same on its <body>. --}}
 <body class="h-full antialiased bg-[#FBF7F2] text-[#2B1730]" x-data="{}">
@@ -191,31 +172,71 @@
             </div>
 
             <div class="flex items-center gap-3 sm:gap-5">
-                {{-- PREVIEW ONLY: delete this block when real auth is wired --}}
-                <div class="hidden md:flex items-center gap-1.5 text-xs">
-                    <span class="lg-pill lg-pill--amber mr-1" title="Pages use sample data. Actions change the screen only and nothing is saved.">Demo data</span>
-                    <span class="text-gray-500">Preview as</span>
-                    @foreach (['company' => ['Company', route('lgp.company')], 'province' => ['Province hub', route('lgp.hub.province')], 'station' => ['Station', route('lgp.hub.station')]] as $key => [$l, $u])
-                        <a href="{{ $u }}" class="rounded-full px-2.5 py-1 font-medium {{ $role === $key ? 'bg-[#3b1735] text-white' : 'bg-[#f1e9f1] text-[#3b1735] hover:bg-[#e8dce8]' }}">{{ $l }}</a>
-                    @endforeach
-                </div>
-
-                <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false">
+                @if ($facility && $facility->is_active)
+                    <div data-facility-scanner data-scan-url="{{ route($role === 'province' ? 'lgp.province.scans.store' : 'lgp.station.scans.store') }}">
+                        <button type="button" class="lg-btn lg-btn--sm" data-scanner-open>Scan parcel</button>
+                        <div class="lg-scan-overlay" data-scanner-modal hidden>
+                            <div class="lg-scan-dialog" role="dialog" aria-modal="true" aria-labelledby="portalScannerTitle">
+                                <div class="lg-scan-head"><div><h2 id="portalScannerTitle">Scan parcel</h2><p>{{ $facility->name }} · {{ $facility->municipality }}</p></div><button type="button" class="lg-scan-close" data-scanner-close aria-label="Close scanner" title="Close scanner"><span aria-hidden="true">×</span></button></div>
+                                <div class="lg-scan-body">
+                                    <div class="lg-scan-camera"><video data-scanner-video muted playsinline aria-label="Camera preview"></video><div class="lg-scan-target" aria-hidden="true"></div></div>
+                                    <p class="lg-scan-help">Aim at the shipping label's QR code or barcode. Scans process automatically.</p>
+                                    <p class="lg-scan-message" data-scanner-message role="status">Allow camera access. Scans are recorded automatically.</p>
+                                    <form class="lg-scan-form" data-scanner-form>
+                                        <div class="lg-field"><label for="portalScanTracking">Tracking number</label><input id="portalScanTracking" class="lg-input" data-scanner-tracking autocomplete="off" required placeholder="Scan label or enter number and press Enter"></div>
+                                        <div class="lg-scan-actions"><button type="button" class="lg-btn lg-btn--outline" data-scanner-restart>Use camera</button></div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+                <div class="relative" x-data="{
+                    open: false,
+                    alerts: @js($initialAlerts),
+                    unreadCount: @js($alertCount),
+                    refreshError: false,
+                    timer: null,
+                    init() {
+                        this.timer = window.setInterval(() => this.refresh(), 20000);
+                        document.addEventListener('visibilitychange', () => {
+                            if (document.visibilityState === 'visible') this.refresh();
+                        });
+                    },
+                    async refresh() {
+                        if (document.visibilityState !== 'visible') return;
+                        try {
+                            const response = await fetch(@js(route('lgp.notifications.feed')), {
+                                headers: { 'Accept': 'application/json' }, credentials: 'same-origin', cache: 'no-store'
+                            });
+                            if (!response.ok) throw new Error('Refresh failed');
+                            const feed = await response.json();
+                            this.alerts = feed.items;
+                            this.unreadCount = feed.unread_count;
+                            this.refreshError = false;
+                        } catch (_) { this.refreshError = true; }
+                    }
+                }" @keydown.escape.window="open = false">
                     <button type="button" @click="open = !open" @click.outside="open = false" aria-haspopup="menu" :aria-expanded="open"
-                        aria-label="Notifications, {{ count($alerts) }} unread"
+                        :aria-label="'Notifications, ' + unreadCount + ' unread'"
                         class="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[#f1e9f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
                         <img src="{{ asset('assets/icons/dashboard/notifications-icon.svg') }}" alt="" class="h-6 w-6">
-                        <span aria-hidden="true" class="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 text-[10px] text-white">{{ count($alerts) }}</span>
+                        <span x-show="unreadCount > 0" x-cloak x-text="unreadCount > 99 ? '99+' : unreadCount" aria-hidden="true" class="absolute -right-1 -top-1 rounded-full bg-red-600 px-1.5 text-[10px] text-white"></span>
                     </button>
                     <div x-show="open" x-cloak x-transition.opacity.duration.150ms role="menu" aria-label="Notifications"
                         class="absolute right-0 z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] origin-top-right rounded-2xl border border-[#ece4ec] bg-white py-1.5 shadow-[0_18px_40px_-20px_rgba(43,23,48,0.4)]">
                         <p class="px-4 pb-1.5 pt-2 text-xs font-medium text-gray-500">Needs your attention</p>
-                        @foreach ($alerts as [$aTitle, $aText, $aUrl])
-                            <a href="{{ $aUrl }}" role="menuitem" class="block px-4 py-2.5 hover:bg-[#F7F1F7] focus-visible:bg-[#F7F1F7] focus-visible:outline-none">
-                                <span class="block text-sm font-semibold text-[#2B1730]">{{ $aTitle }}</span>
-                                <span class="block text-xs text-gray-600">{{ $aText }}</span>
-                            </a>
-                        @endforeach
+                        <template x-for="alert in alerts" :key="alert.id">
+                            <form method="POST" :action="alert.open_url">@csrf
+                                <button type="submit" role="menuitem" class="block w-full px-4 py-2.5 text-left hover:bg-[#F7F1F7] focus-visible:bg-[#F7F1F7] focus-visible:outline-none">
+                                    <span class="block text-sm font-semibold text-[#2B1730]" x-text="alert.title"></span>
+                                    <span class="block text-xs text-gray-600" x-text="alert.message"></span>
+                                </button>
+                            </form>
+                        </template>
+                        <p x-show="!alerts.length" class="px-4 py-3 text-sm text-gray-500">No new notifications.</p>
+                        <p x-show="refreshError" x-cloak class="px-4 py-2 text-xs text-red-700">Could not refresh notifications. Retrying automatically.</p>
+                        <a href="{{ route('lgp.notifications.index') }}" class="block border-t border-[#ece4ec] px-4 py-2.5 text-sm font-medium text-[#3b1735] hover:bg-[#F7F1F7]">View all notifications</a>
                     </div>
                 </div>
 
@@ -230,7 +251,7 @@
                     </button>
                     <div x-show="open" x-cloak role="menu"
                         class="absolute right-0 mt-2 w-52 bg-white rounded-2xl border border-[#ece4ec] py-1.5 z-50 shadow-[0_18px_40px_-20px_rgba(43,23,48,0.4)] origin-top-right">
-                        <a href="{{ $role === 'company' ? route('lgp.company.account') : $hubUrl('account') }}" role="menuitem" class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F7F1F7]">Account Settings</a>
+                        <a href="{{ route('lgp.'.$role.'.account') }}" role="menuitem" class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F7F1F7]">Account Settings</a>
                         <form method="POST" action="{{ route('logistics.logout') }}">@csrf
                             <button type="submit" role="menuitem" class="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">Log out</button>
                         </form>

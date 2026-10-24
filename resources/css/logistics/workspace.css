@@ -1759,12 +1759,13 @@ html {
 .lg-overlay {
     position: fixed;
     inset: 0;
-    z-index: 80;
+    z-index: 1000;
     display: grid;
     place-items: center;
     padding: 16px;
-    background: rgb(25 10 29 / 50%);
-    backdrop-filter: blur(3px);
+    background: rgb(25 10 29 / 24%);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
 }
 
 .lg-modal {
@@ -1774,6 +1775,41 @@ html {
     border-radius: var(--lg-radius-lg);
     background: var(--lg-surface);
     box-shadow: 0 24px 60px rgb(20 5 25 / 28%);
+}
+
+.lg-modal--hub-form {
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 620px);
+    height: auto;
+    max-height: min(90dvh, calc(100dvh - 32px));
+    overflow: hidden;
+}
+
+.lg-modal--hub-form form {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.lg-modal--hub-form .lg-modal__head,
+.lg-modal--hub-form .lg-modal__foot {
+    flex: 0 0 auto;
+}
+
+.lg-modal--hub-form .lg-modal__body--grid {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.lg-modal--hub-form .lg-field:nth-child(3) {
+    grid-column: 1 / -1;
 }
 
 .lg-modal__head {
@@ -2299,3 +2335,258 @@ html {
 .lg-dispatch-sort p { width: 100%; margin: 0; color: var(--lg-muted); font-size: 12px; }
 .lg-dispatch-sort label { display: grid; gap: 5px; color: var(--lg-muted); font-size: 12px; }
 @media (max-width: 760px) { .lg-dispatch-filters { grid-template-columns: 1fr; } .lg-dispatch-sort label, .lg-dispatch-sort .lg-select { width: 100%; } }
+
+/* ---- Company portal: network tree, hub details, parcel journey ---- */
+.lg-tree__children {
+    margin: 0 24px 16px 36px;
+    padding: 0 0 0 16px;
+    border-left: 2px solid var(--lg-line);
+    list-style: none;
+}
+
+.lg-tree__leaf {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--lg-line);
+}
+
+.lg-tree__leaf:last-child {
+    border-bottom: 0;
+}
+
+.lg-tree__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    color: var(--lg-muted);
+    font-size: 13px;
+}
+
+.lg-journey {
+    margin: 0;
+    padding: 4px 24px 24px;
+    list-style: none;
+}
+
+.lg-journey li {
+    position: relative;
+    padding: 0 0 20px 28px;
+}
+
+.lg-journey li::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    bottom: -8px;
+    left: 4px;
+    width: 2px;
+    background: var(--lg-line);
+}
+
+.lg-journey li:last-child::before {
+    display: none;
+}
+
+.lg-journey li::after {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: 0;
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--lg-brand);
+    border-radius: 50%;
+    background: var(--lg-brand);
+}
+
+.lg-journey li.is-current::after {
+    background: var(--lg-surface);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--lg-brand) 20%, transparent);
+}
+
+.lg-journey__what {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.lg-journey__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    margin-top: 2px;
+    color: var(--lg-muted);
+    font-size: 13px;
+}
+
+/* ---- Form and table helpers used by the Province Hub and Company screens.
+   These were only in public/build/assets/workspace-*.css, not in this source file. ---- */
+.lg-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.lg-table td.is-actions .lg-actions {
+    justify-content: flex-end;
+}
+
+.lg-table--stack td.is-actions .lg-actions {
+    justify-content: flex-start;
+}
+
+.lg-table--mid td {
+    vertical-align: middle;
+}
+
+.lg-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--lg-red);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.lg-req {
+    margin-left: 2px;
+    color: var(--lg-red);
+}
+
+.lg-modal__body--grid {
+    display: grid;
+    gap: 14px;
+}
+
+@media (max-height: 680px) {
+    .lg-modal--hub-form .lg-modal__head { padding-top: 16px; }
+    .lg-modal--hub-form .lg-modal__body--grid { gap: 10px; padding-top: 10px; padding-bottom: 10px; }
+    .lg-modal--hub-form .lg-modal__foot { padding-bottom: 16px; }
+}
+
+@media (max-width: 560px) {
+    .lg-modal--hub-form {
+        width: 100%;
+        height: auto;
+        max-height: min(90dvh, calc(100dvh - 32px));
+    }
+
+    .lg-modal--hub-form .lg-modal__body--grid { grid-template-columns: minmax(0, 1fr); }
+    .lg-modal--hub-form .lg-field:nth-child(3) { grid-column: auto; }
+}
+
+.lg-stat__body {
+    min-width: 0;
+}
+
+/* ---- Selectable table rows (parcel pickers). Also only in public/build before. ---- */
+.lg-check {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    border-radius: 4px;
+    accent-color: var(--lg-brand);
+    cursor: pointer;
+}
+
+.lg-check:focus-visible {
+    outline: 2px solid var(--lg-brand);
+    outline-offset: 2px;
+}
+
+.lg-table--stack td.is-check {
+    display: inline-block;
+    width: auto;
+}
+
+.lg-table tbody tr.is-selected,
+.lg-table tbody tr.is-selected:hover {
+    background: var(--lg-brand-soft);
+}
+
+/* ---- Dashboard, report and account helpers. These existed only in the compiled
+   public/build/assets/workspace-*.css and were missing from this source file, so the next
+   Vite build would have dropped them. ---- */
+.lg-stat__go { margin-left: auto; color: var(--lg-faint); transition: transform 0.2s var(--lg-ease), color 0.2s ease; }
+a.lg-stat:hover .lg-stat__go { color: var(--lg-brand); transform: translateX(3px); }
+
+.lg-tree-child { margin-left: 6px; padding-left: 16px; border-left: 2px solid var(--lg-brand-line); }
+
+.lg-meter { height: 8px; overflow: hidden; border-radius: 999px; background: var(--lg-line-2); }
+.lg-meter > span { display: block; width: var(--w, 0%); height: 100%; border-radius: inherit; background: var(--lg-brand); transition: width 0.5s var(--lg-ease); }
+.lg-meter--ok > span { background: var(--lg-green); }
+.lg-meter--warn > span { background: var(--lg-amber); }
+.lg-meter--danger > span { background: var(--lg-red); }
+.lg-meter-row { display: grid; gap: 6px; }
+.lg-meter-row__top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; }
+.lg-meter-row__top span { color: var(--lg-ink-2); }
+.lg-meter-row__top strong { font-weight: 600; white-space: nowrap; }
+
+.lg-attn { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.lg-attn__item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--lg-line); border-radius: var(--lg-radius); background: var(--lg-surface); }
+.lg-attn__icon { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--lg-brand-soft); color: var(--lg-brand); }
+.lg-attn__icon--red { background: var(--lg-red-soft); color: var(--lg-red); }
+.lg-attn__icon--amber { background: var(--lg-amber-soft); color: var(--lg-amber); }
+.lg-attn__icon--blue { background: var(--lg-blue-soft); color: var(--lg-blue); }
+.lg-attn__icon--violet { background: var(--lg-violet-soft); color: var(--lg-violet); }
+.lg-attn__text { flex: 1; min-width: 0; font-weight: 600; }
+.lg-attn__text small { display: block; color: var(--lg-muted); font-size: 13px; font-weight: 400; }
+
+.lg-bulkbar { position: sticky; bottom: 16px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--lg-radius-lg); background: var(--lg-brand-dark); color: #fff; box-shadow: var(--lg-shadow-md); }
+.lg-bulkbar__count { font-weight: 600; }
+.lg-bulkbar__meta { color: rgb(255 255 255 / 78%); font-size: 13px; }
+.lg-bulkbar__spacer { flex: 1 1 0; }
+.lg-bulkbar .lg-select { width: auto; min-width: 220px; }
+.lg-bulkbar .lg-btn { border-color: var(--lg-gold); background: var(--lg-gold); color: #2b1730; }
+.lg-bulkbar .lg-btn:hover { background: #d6a53f; }
+.lg-bulkbar .lg-btn:disabled { border-color: rgb(255 255 255 / 25%); background: rgb(255 255 255 / 14%); color: rgb(255 255 255 / 70%); }
+.lg-bulkbar .lg-btn--ghost { border-color: transparent; background: transparent; color: #fff; }
+.lg-bulkbar .lg-btn--ghost:hover { background: rgb(255 255 255 / 12%); }
+
+.lg-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.lg-form-grid > .is-wide { grid-column: 1 / -1; }
+.lg-hint { color: var(--lg-muted); font-size: 12px; }
+
+.lg-input-group { position: relative; }
+.lg-input-group .lg-input { padding-right: 48px; }
+.lg-input-group__btn { position: absolute; top: 50%; right: 4px; display: grid; place-items: center; width: 36px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--lg-muted); cursor: pointer; transform: translateY(-50%); }
+.lg-input-group__btn:hover { background: var(--lg-gray-soft); }
+.lg-input-group__btn:focus-visible { outline: 2px solid var(--lg-brand); outline-offset: 1px; }
+
+.lg-rules { display: grid; gap: 4px; margin: 0; padding: 0; color: var(--lg-muted); font-size: 12px; list-style: none; }
+.lg-rules li { display: flex; align-items: center; gap: 6px; }
+.lg-rules li.is-ok { color: var(--lg-green); }
+
+.lg-identity { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 20px 24px; }
+.lg-identity__avatar { display: grid; flex: none; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--lg-brand); color: #fff; font-size: 22px; font-weight: 700; }
+.lg-identity__name { font-size: 18px; font-weight: 700; }
+.lg-crumb-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; color: var(--lg-muted); font-size: 13px; }
+
+.lg-toast__icon { display: grid; flex: none; place-items: center; margin-top: 1px; }
+.lg-toast--success .lg-toast__icon { color: var(--lg-green); }
+.lg-toast--error .lg-toast__icon { color: var(--lg-red); }
+.lg-toast--info .lg-toast__icon { color: var(--lg-brand); }
+
+@media (max-width: 720px) {
+    .lg-tree-child { margin-left: 0; }
+    .lg-attn__item { flex-wrap: wrap; }
+    .lg-attn__item .lg-btn { margin-left: 48px; }
+    .lg-bulkbar { bottom: 8px; }
+    .lg-bulkbar .lg-select { width: 100%; min-width: 0; }
+    .lg-bulkbar__spacer { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lg-meter > span,
+    .lg-stat__go { transition: none !important; }
+}
+
+/* Visually hidden text and file inputs. Used by Reports, Account and the shell badges. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.sr-only:focus-visible + .lg-btn { outline: 2px solid var(--lg-brand); outline-offset: 2px; }

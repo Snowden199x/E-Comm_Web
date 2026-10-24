@@ -55,7 +55,9 @@ class UnifiedLoginController extends Controller
 
         $dashboard = match ($user->role) {
             'seller' => route('seller.dashboard'),
-            'logistics_center' => route('logistics.dashboard'),
+            'logistics_center' => route('lgp.company'),
+            'province_hub' => route('lgp.hub.province'),
+            'station_hub' => route('lgp.hub.station'),
             'buyer' => route('buyer.dashboard'),
             default => route('buyer.dashboard'),
         };

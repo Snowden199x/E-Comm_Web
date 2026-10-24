@@ -256,6 +256,7 @@
                         <div><dt class="text-[12px] text-[#8a7a8e]">Vendo reference</dt><dd class="break-all text-[#2b1730]">{{ $order->tracking_number }}</dd></div>
                         @if ($order->carrier_name)<div><dt class="text-[12px] text-[#8a7a8e]">Carrier</dt><dd class="text-[#2b1730]">{{ $order->carrier_name }}</dd></div>@endif
                         @if ($order->carrier_tracking_number)<div><dt class="text-[12px] text-[#8a7a8e]">Carrier tracking</dt><dd class="break-all text-[#2b1730]">{{ $order->carrier_tracking_number }}</dd></div>@endif
+                        @if ($order->deliveryProof)<div><dt class="text-[12px] text-[#8a7a8e]">Delivery proof</dt><dd><a class="text-[#52245b] underline" href="{{ route('orders.delivery-proof', $order) }}" target="_blank" rel="noopener">View delivery photo</a></dd></div>@endif
                         <div><dt class="text-[12px] text-[#8a7a8e]">Estimated delivery</dt>
                             <dd class="text-[#2b1730]">@if ($order->estimated_delivery_from && $order->estimated_delivery_to){{ $order->estimated_delivery_from->format('M j, Y') }} to {{ $order->estimated_delivery_to->format('M j, Y') }}@else Not yet scheduled @endif</dd></div>
                     </dl>

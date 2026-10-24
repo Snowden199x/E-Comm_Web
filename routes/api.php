@@ -7,11 +7,28 @@ use App\Http\Controllers\Api\RiderPasswordResetController;
 use App\Http\Controllers\Api\RiderRegistrationController;
 use App\Http\Controllers\Api\RiderScanController;
 use App\Http\Controllers\Api\RiderFacilityScanController;
+use App\Http\Controllers\Api\RiderDeliveryProofController;
 use App\Http\Controllers\Api\ShScannerAuthController;
 use App\Http\Controllers\Api\ShScannerScanController;
 use App\Http\Middleware\EnsureApprovedRiderToken;
+use App\Http\Middleware\EnsureApprovedTransportDriverToken;
 use App\Http\Middleware\EnsureShScannerStation;
 use Illuminate\Support\Facades\Route;
+
+Route::prefix('v1/transport-drivers')->group(function () {
+    Route::post('/login', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'login'])->middleware('throttle:5,1');
+    Route::get('/province-hubs', [\App\Http\Controllers\Api\TransportDriverRegistrationController::class, 'hubs'])->middleware('throttle:30,1');
+    Route::post('/email/otp/send', [RiderEmailOtpController::class, 'sendRegistrationCode'])->middleware('throttle:5,1');
+    Route::post('/email/otp/verify', [RiderEmailOtpController::class, 'verifyRegistrationCode'])->middleware('throttle:10,1');
+    Route::post('/register', [\App\Http\Controllers\Api\TransportDriverRegistrationController::class, 'store'])->middleware('throttle:5,1');
+    Route::middleware(['auth:sanctum', EnsureApprovedTransportDriverToken::class, 'throttle:30,1'])->group(function () {
+        Route::get('/trips', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'trips']);
+        Route::get('/earnings', [\App\Http\Controllers\Api\RiderEarningsController::class, 'transportDriver']);
+        Route::post('/trips/{trip}/depart', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'depart']);
+        Route::post('/trips/{trip}/arrive', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'arrive']);
+        Route::post('/logout', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'logout']);
+    });
+});
 
 Route::prefix('v1/rider')->group(function () {
     Route::get('/locations', [RiderRegistrationController::class, 'locations'])->middleware('throttle:30,1');
@@ -27,7 +44,10 @@ Route::prefix('v1/rider')->group(function () {
 
     Route::middleware(['auth:sanctum', EnsureApprovedRiderToken::class, 'throttle:30,1'])->group(function () {
         Route::get('/assignments', [RiderScanController::class, 'assignments']);
+        Route::get('/earnings', [\App\Http\Controllers\Api\RiderEarningsController::class, 'rider']);
+        Route::post('/tasks/{task}/exceptions', [\App\Http\Controllers\Api\RiderTaskExceptionController::class, 'store']);
         Route::post('/scans', [RiderScanController::class, 'store']);
+        Route::post('/delivery-proofs', [RiderDeliveryProofController::class, 'store']);
         Route::post('/facility-scans', [RiderFacilityScanController::class, 'store']);
         Route::post('/logout', [RiderAuthController::class, 'logout']);
     });

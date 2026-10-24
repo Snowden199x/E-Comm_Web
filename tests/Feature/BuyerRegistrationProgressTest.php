@@ -27,7 +27,7 @@ class BuyerRegistrationProgressTest extends TestCase
             (require database_path('migrations/'.$file))->up();
         }
         Mail::fake();
-        Storage::fake('public');
+        Storage::fake('local');
         $this->withoutVite();
     }
 
@@ -64,7 +64,7 @@ class BuyerRegistrationProgressTest extends TestCase
         $this->verifyEmail('Buyer@Example.Test');
         $this->get('/buyer/register')->assertOk()->assertViewHas('registrationVerification', fn ($proof) => $proof['email'] === 'buyer@example.test' && $proof['expires_at'] > time());
         $this->app['session']->flush();
-        $this->get('/buyer/register')->assertOk()->assertViewHas('registrationVerification', ['email' => '', 'expires_at' => 0]);
+        $this->get('/buyer/register')->assertOk()->assertViewHas('registrationVerification', fn ($proof) => $proof['email'] === '' && $proof['expires_at'] === 0 && ! $proof['google_verified']);
         $this->postJson('/buyer/register', $this->payload())->assertUnprocessable()->assertJsonValidationErrors('email');
     }
 
@@ -89,7 +89,7 @@ class BuyerRegistrationProgressTest extends TestCase
         $payload['email'] = 'different@example.test';
         $this->postJson('/buyer/register', $payload)->assertUnprocessable()->assertJsonValidationErrors('email');
         $this->travel(31)->minutes();
-        $this->get('/buyer/register')->assertViewHas('registrationVerification', ['email' => '', 'expires_at' => 0]);
+        $this->get('/buyer/register')->assertViewHas('registrationVerification', fn ($proof) => $proof['email'] === '' && $proof['expires_at'] === 0 && ! $proof['google_verified']);
         $this->postJson('/buyer/register', $this->payload())->assertUnprocessable()->assertJsonValidationErrors('email');
         $this->travelBack();
     }
@@ -106,7 +106,7 @@ class BuyerRegistrationProgressTest extends TestCase
         $this->postJson('/buyer/register', $payload)->assertOk();
         $detail = User::where('email', 'buyer@example.test')->firstOrFail()->buyerDetail;
         $this->assertSame('secondary', $detail->id_type);
-        Storage::disk('public')->assertExists([$detail->valid_id_path, $detail->valid_id_path_2]);
+        Storage::disk('local')->assertExists([$detail->valid_id_path, $detail->valid_id_path_2]);
     }
 
     public function test_resending_invalidates_verification_and_verified_codes_cannot_be_replayed(): void
@@ -115,6 +115,6 @@ class BuyerRegistrationProgressTest extends TestCase
         $code = OtpVerification::first()->otp_code;
         $this->postJson('/buyer/otp/verify', ['email' => 'buyer@example.test', 'otp_code' => $code])->assertUnprocessable();
         $this->postJson('/buyer/otp/send', ['email' => 'buyer@example.test'])->assertOk();
-        $this->get('/buyer/register')->assertViewHas('registrationVerification', ['email' => '', 'expires_at' => 0]);
+        $this->get('/buyer/register')->assertViewHas('registrationVerification', fn ($proof) => $proof['email'] === '' && $proof['expires_at'] === 0 && ! $proof['google_verified']);
     }
 }

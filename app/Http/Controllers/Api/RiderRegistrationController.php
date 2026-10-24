@@ -80,14 +80,15 @@ class RiderRegistrationController extends Controller
             throw ValidationException::withMessages(['barangay_code' => 'Select a barangay from the location list.']);
         }
 
-        $center = $centers->forAddress($address['province'], $address['city']);
-        if (! $center) {
-            throw ValidationException::withMessages(['city_code' => 'No unique approved logistics hub serves this address yet. Contact Vendo support.']);
+        $station = $centers->stationForAddress($address['province'], $address['city']);
+        $center = $station?->network;
+        if (! $center || ! $station) {
+            throw ValidationException::withMessages(['city_code' => 'No active Station Hub serves this municipality yet. Contact Vendo support.']);
         }
 
         $stored = [];
         try {
-            $rider = DB::transaction(function () use ($data, $request, $address, $barangay, $center, $email, &$stored) {
+            $rider = DB::transaction(function () use ($data, $request, $address, $barangay, $center, $station, $email, &$stored) {
                 foreach (['valid_id', 'drivers_license', 'or_cr'] as $field) {
                     $stored[$field] = $request->file($field)->store('private/rider-verification', 'local');
                 }
@@ -109,6 +110,7 @@ class RiderRegistrationController extends Controller
                 CourierDetail::create([
                     'user_id' => $rider->id,
                     'logistics_center_id' => $center->id,
+                    'station_hub_id' => $station->id,
                     'first_name' => $data['first_name'],
                     'last_name' => $data['last_name'],
                     'middle_name' => $data['middle_name'] ?? null,
@@ -127,10 +129,10 @@ class RiderRegistrationController extends Controller
                 ]);
 
                 \App\Models\Communication\Notification::create([
-                    'user_id' => $center->user_id, 'type' => 'logistics_rider_application',
+                    'user_id' => $station->staff?->user_id ?? $center->user_id, 'type' => 'logistics_rider_application',
                     'title' => 'New rider application',
-                    'message' => $rider->name.' applied to your Main Hub.',
-                    'link' => route('logistics.riders.index', ['status' => 'pending']),
+                    'message' => $rider->name.' applied to '.$station->name.'.',
+                    'link' => route('lgp.station.riders'),
                 ]);
 
                 return $rider;
@@ -144,10 +146,11 @@ class RiderRegistrationController extends Controller
         if ($otpProofKey) Cache::forget($otpProofKey);
 
         return response()->json([
-            'message' => 'Rider application submitted for logistics hub review.',
+            'message' => 'Rider application submitted for Station Hub review.',
             'rider_id' => $rider->id,
             'status' => 'pending',
             'logistics_center' => ['id' => $center->id, 'name' => $center->business_name],
+            'station_hub' => ['id' => $station->id, 'name' => $station->name],
         ], 201);
     }
 }

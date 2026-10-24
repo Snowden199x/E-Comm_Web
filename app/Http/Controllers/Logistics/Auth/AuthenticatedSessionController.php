@@ -31,7 +31,7 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
-        if (! in_array($user->role, ['courier', 'logistics_center'], true)) {
+        if (! in_array($user->role, ['courier', 'logistics_center', 'province_hub', 'station_hub'], true)) {
             Auth::logout();
 
             throw ValidationException::withMessages([
@@ -58,9 +58,12 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        $redirectRoute = $user->role === 'logistics_center'
-            ? 'logistics.dashboard'
-            : 'logistics.courier.dashboard';
+        $redirectRoute = match ($user->role) {
+            'logistics_center' => 'lgp.company',
+            'province_hub' => 'lgp.hub.province',
+            'station_hub' => 'lgp.hub.station',
+            default => 'logistics.courier.dashboard',
+        };
 
         return redirect()->intended(route($redirectRoute, absolute: false));
     }

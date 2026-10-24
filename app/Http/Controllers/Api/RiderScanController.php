@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
 use App\Models\Profiles\LogisticsFacility;
+use App\Models\Profiles\RiderTask;
 use App\Services\OrderScanWorkflow;
 use App\Services\RiderAccessService;
 use Illuminate\Http\JsonResponse;
@@ -53,7 +54,12 @@ class RiderScanController extends Controller
         })->with($relations)
             ->latest()->limit(100)->get();
 
-        return response()->json(['assignments' => $orders->map(function (Order $order) use ($rider, $center, $isTruck) {
+        $tasks = RiderTask::query()->whereIn('order_id', $orders->pluck('id'))
+            ->where('rider_id', $rider->courierDetail?->id)
+            ->whereIn('status', ['assigned', 'in_progress', 'failed'])
+            ->latest('id')->get()->unique('order_id')->keyBy('order_id');
+
+        $assignments = $orders->map(function (Order $order) use ($rider, $center, $isTruck, $tasks) {
             $facilityStops = $order->facilityStops;
             $linehaul = $isTruck && (int) $order->linehaul_rider_id === (int) $rider->id
                 && in_array($order->status, ['sorted', 'to_soc5', 'to_soc6', 'in_transit_to_hub'], true);
@@ -100,6 +106,11 @@ class RiderScanController extends Controller
                 'tracking_number' => $order->tracking_number,
                 'status' => $order->status,
                 'assignment' => $linehaul ? 'linehaul' : ($pickup ? 'pickup' : 'delivery'),
+                'task' => isset($tasks[$order->id]) ? [
+                    'id' => $tasks[$order->id]->id,
+                    'status' => $tasks[$order->id]->status,
+                    'failure_reason' => $tasks[$order->id]->failure_reason,
+                ] : null,
                 'stop' => $linehaul ? [
                     'name' => $origin?->business_name ?: 'Origin Main Hub',
                     'address' => implode(', ', array_filter([$origin?->municipality, $origin?->province])),
@@ -114,6 +125,8 @@ class RiderScanController extends Controller
                     'name' => $order->buyer?->name,
                     'phone' => $order->buyer?->phone_number,
                     'address' => $order->shipping_address,
+                    'latitude' => $order->shipping_latitude,
+                    'longitude' => $order->shipping_longitude,
                 ]),
                 'pickup_center' => $linehaul || $pickup ? $origin?->business_name
                     : ($deliveryFacility?->name ?: $destination?->business_name),
@@ -123,6 +136,8 @@ class RiderScanController extends Controller
                     'province' => $deliveryFacility->province,
                     'address' => $deliveryFacility->address,
                 ] : null,
+                'delivery_proof_required' => ! $linehaul && ! $pickup
+                    && $facilityStops->isNotEmpty() && $order->destination_station_id !== null,
                 'destination_center' => $destination?->business_name,
                 'planned_route' => $linehaul ? [
                     'current_step' => $facilityStops->isNotEmpty() ? $facilityStops->filter(fn ($stop) => $stop->arrived_at)->count() + 1 : $order->route_step,
@@ -157,7 +172,17 @@ class RiderScanController extends Controller
                     'scan_target' => $scanTarget,
                 ] : null,
             ];
-        })]);
+        });
+
+        return response()->json([
+            'assignments' => $assignments,
+            'summary' => [
+                'loaded' => $assignments->count(),
+                'pickup' => $assignments->where('assignment', 'pickup')->count(),
+                'delivery' => $assignments->where('assignment', 'delivery')->count(),
+                'linehaul' => $assignments->where('assignment', 'linehaul')->count(),
+            ],
+        ]);
     }
 
     private function facilityScanTarget(?LogisticsFacility $facility): ?array

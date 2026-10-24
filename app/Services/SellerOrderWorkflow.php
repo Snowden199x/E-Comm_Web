@@ -38,19 +38,7 @@ class SellerOrderWorkflow
             }
             $order->update(['status' => $to]);
             if ($to === 'ready_for_pickup') {
-                $previousCenterId = $order->logistics_center_id;
                 app(OrderRoutingService::class)->route($order);
-                if ($previousCenterId) {
-                    $center = $order->logisticsCenter;
-                    if ($center) {
-                        Notification::create([
-                            'user_id' => $center->user_id, 'type' => 'logistics_pickup_request',
-                            'title' => 'Pickup request '.$order->number,
-                            'message' => 'The seller marked this parcel ready for pickup.',
-                            'link' => route('logistics.incoming-parcels'),
-                        ]);
-                    }
-                }
             }
             $order->statusEvents()->create(['user_id' => $seller->id, 'from_status' => $from, 'to_status' => $to, 'note' => $to === 'cancelled' ? $reason : null]);
             Notification::create([
