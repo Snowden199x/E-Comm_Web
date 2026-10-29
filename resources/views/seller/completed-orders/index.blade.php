@@ -35,7 +35,7 @@
                         <td><span class="ops-badge ops-badge--delivered">{{ $order->status_label }}</span></td>
                         <td><a class="ops-button ops-button--small" href="{{ route('seller.completed-orders.show', $order) }}" data-panel data-panel-title="Order Details">View</a></td>
                     </tr>
-                @empty<tr><td colspan="8" class="ops-empty">No delivered orders match these filters.</td></tr>@endforelse
+                @empty<tr><td colspan="8" class="ops-empty"><div class="ops-empty__state"><span aria-hidden="true">✓</span><strong>No delivered orders here yet</strong><small>Completed deliveries will appear in this list. Try clearing filters if you expected an order.</small></div></td></tr>@endforelse
             </tbody></table></div>
             @include('seller.operations.pagination', ['records' => $orders])
         </section>

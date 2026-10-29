@@ -133,7 +133,7 @@ class PortalController extends Controller
             'address' => ['required', 'string', 'min:10', 'max:200'],
             'manager' => ['required', 'string', 'max:80'],
             'email' => ['required', 'email', 'lowercase', 'max:120', Rule::unique('users', 'email')],
-            'phone' => ['required', 'string', 'max:24'],
+            'phone' => ['required', 'regex:/^09[0-9]{9}$/'],
         ]);
         $provinceCode = $locations->provinceCodeForName($data['province']);
         abort_unless($provinceCode, 422, 'Choose a valid province.');
@@ -197,7 +197,7 @@ class PortalController extends Controller
             'address' => ['required', 'string', 'min:10', 'max:200'],
             'manager' => ['required', 'string', 'max:80'],
             'email' => ['required', 'email', 'lowercase', 'max:255', Rule::unique('users', 'email')->ignore($managerUserId)],
-            'phone' => ['required', 'string', 'max:24'],
+            'phone' => ['required', 'regex:/^09[0-9]{9}$/'],
         ]);
         $manager = $this->managerName($data['manager']);
         $emailToken = null;
@@ -457,7 +457,7 @@ class PortalController extends Controller
             'address' => ['required', 'string', 'min:10', 'max:200'],
             'manager' => ['required', 'string', 'max:80'],
             'email' => ['required', 'email', 'lowercase', 'max:120', Rule::unique('users', 'email')],
-            'phone' => ['required', 'string', 'max:24'],
+            'phone' => ['required', 'regex:/^09[0-9]{9}$/'],
         ]);
         $codes = $locations->codesForNames($hub->province, $data['municipality']);
         abort_unless($codes && $codes[0] === $hub->province_code, 422, 'Choose a municipality inside this Province Hub.');

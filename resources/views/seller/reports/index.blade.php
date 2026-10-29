@@ -33,7 +33,7 @@
         document.addEventListener('click', event => { if (!event.target.closest('[data-report-menu]')) closeMenus(); });
         document.querySelectorAll('[data-preview-period]').forEach(button => button.addEventListener('click', async () => {
             lastFocus = document.activeElement; closeMenus();
-            content.textContent = 'Loading report…'; modal.hidden = false; modal.querySelector('.sw-report-modal__panel').focus();
+            content.innerHTML = '<div class="sw-report-skeleton" role="status" aria-label="Loading report"><i></i><i></i><i></i><i></i></div>'; modal.hidden = false; modal.querySelector('.sw-report-modal__panel').focus();
             try {
                 const url = @json(route('seller.reports.preview')) + '?period=' + encodeURIComponent(button.dataset.previewPeriod);
                 const response = await fetch(url, {headers: {'Accept': 'text/html'}});

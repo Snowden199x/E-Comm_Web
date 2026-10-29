@@ -1,11 +1,15 @@
 # Voucher Usage
 
-**Status:** Checkout selection and first-activation notifications implemented in code; owner migration and manual verification pending
-**Reviewed:** 13 October 2026
+**Status:** Checkout selection, My Vouchers page and first-activation notifications implemented in code; owner migration and manual verification pending
+**Reviewed:** 29 October 2026
 
 ## Current checkout behavior
 
 Buyers can select a matching Seller voucher or enter one code per shop at checkout and request a quote for selected cart lines. The server enforces Seller, product/category scope, schedule, minimum spend, total uses, and per-Buyer uses. The final checkout rechecks under a row lock, snapshots the code and discount on each Seller order, and reduces the Buyer payable amount. Cancellation before pickup releases the redemption once. See [Seller Vouchers](../../seller/vouchers/spec.md).
+
+## My Vouchers page (29 October 2026)
+
+Buyers now have `buyer.vouchers.index` (linked from the account menu). It lists active, unexpired shop vouchers from approved, non-archived Sellers with an active account: shop name, offer, percent/fixed discount, maximum discount, scope (all items, selected products, or selected categories), minimum spend, start/end dates, shop-wide uses left, and how many more times this Buyer may use it. Codes can be copied with a fallback for browsers without the Clipboard API. Vouchers that have not started, are exhausted, or have reached this Buyer's limit remain visible but disabled, with the reason. Every card links to the Seller's shop. The page is discovery only: it does not reserve a voucher, and checkout revalidates scope, schedule, minimum spend, and limits under a lock.
 
 ## Behavior and remaining gaps
 

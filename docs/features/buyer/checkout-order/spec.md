@@ -1,7 +1,7 @@
 # Checkout and Order Creation
 
-**Status:** COD checkout with server-quoted facility shipping; owner migration and verification pending
-**Reviewed:** 23 October 2026
+**Status:** COD checkout with server-quoted facility shipping and Buyer-chosen Logistics; owner migration and verification pending
+**Reviewed:** 29 October 2026
 
 ## Current behavior
 
@@ -12,7 +12,13 @@ After a failed submit the address the Buyer had chosen is kept as "Address you e
 
 Checkout accepts one optional note and one optional Seller voucher code per shop. Each note is saved only on that Seller's order. A code is quoted against selected cart lines and must be applied before submission; the server rechecks its eligibility and usage under a lock when creating orders. Orders retain the gross item subtotal, voucher discount, shipping fee, and Buyer payable amount separately. The checkout asks the server for one shipping quote per Seller order and recalculates it when the Buyer changes municipality. The server requires one unambiguous active origin and destination Station Hub, derives the real facility route, and charges ₱45 for up to two route stops plus ₱10 for every additional stop. It stores the fee, stop count, and facility route snapshot on the order. Order creation recomputes the quote inside the transaction and rejects a stale or altered fee. An address without a complete eligible route cannot be checked out yet. See [Buyer Voucher Usage](../voucher-usage/spec.md) and [Shipping Settlement](../../shared/commission-settlement/spec.md).
 
-The Buyer can explicitly set an optional delivery pin from the browser's current location at checkout. The browser asks for permission; Vendo stores latitude/longitude on each seller-specific order through `2026_10_23_230000_add_shipping_coordinates_to_orders.php` and returns it only in the assigned local Rider's assignment. The pin is not inferred from municipality text or geocoded by a third party. Orders without a pin remain valid and the Rider app shows their address without a destination marker. The owner runs this migration before using the pin fields.
+The Buyer can set a delivery pin from the map or from the browser's current location at checkout, and a pin saved in Account Management is prefilled for the registered address. The browser asks for permission; Vendo stores latitude/longitude on each seller-specific order through `2026_10_23_230000_add_shipping_coordinates_to_orders.php` and returns it only in the assigned local Rider's assignment. The pin is not inferred from municipality text or geocoded by a third party. Orders without a pin remain valid and the Rider app shows their address without a destination marker. The owner runs this migration before using the pin fields.
+
+## Buyer-chosen Logistics provider (29 October 2026)
+
+Each shop's shipping block now lists the Logistics Companies the Buyer may choose. A Company appears only when its own active Station Hub network has a Station Hub in **both** the Seller's municipality and the delivery municipality, so every choice can collect and deliver the parcel. The server builds the list (`CheckoutLogisticsOptionsService`) and returns it with each shop's quote; the UI shows the Company name, the real facility route, hub count, and fee. Options are ordered by fee, and the lowest is marked. The Buyer's preferred Company is preselected when it is in the list; otherwise the lowest fee is.
+
+The chosen Company is posted as `logistics_company_ids[<seller id>]` and is revalidated inside the order transaction. Shipping is re-quoted for that Company; a changed fee or an altered Company list is rejected. The order stores `delivery_company_id`, the route snapshot, hub count, fee, rider pay rate, and COD amount for that route. `OrderRoutingService` routes with the chosen Company's origin and destination Station Hubs, falling back to the address match if the Company stops serving one end. Checkout now requires a Logistics choice for every shop; an address with no qualifying Company cannot be checked out.
 
 ## Gaps and acceptance direction
 

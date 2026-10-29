@@ -1,6 +1,6 @@
 # Vendo Web Test Suite
 
-**Reviewed:** 23 October 2026
+**Reviewed:** 29 October 2026
 
 ## Run the PHP web suite
 
@@ -26,4 +26,4 @@ The repository has no `npm test` script. `tests/Frontend/buyer-registration.test
 
 ## Current verification
 
-On 23 October 2026, `php artisan test` completed with **36 tests and 149 assertions passing**. This is local test-suite evidence only; it does not verify production MySQL/MariaDB behavior, browser rendering, mail delivery, or deployed services.
+On 29 October 2026, `php artisan test` completed with **36 tests and 149 assertions passing**, including the Geoapify/PSGC account-address changes. This is local SQLite evidence only and does not verify production MySQL/MariaDB behavior, browser rendering, mail delivery, or deployed services.

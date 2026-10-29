@@ -25,7 +25,7 @@ class EarningsController extends Controller
 
         $rows = Order::query()->where('seller_id', $request->user()->id)->whereIn('status', Order::SALES_STATUSES)
             ->orderByDesc('delivered_at')->orderByDesc('id')
-            ->get(['id', 'number', 'tracking_number', 'total_amount', 'voucher_discount', 'seller_commission_rate', 'money_status', 'delivered_at'])
+            ->get(['id', 'tracking_number', 'total_amount', 'voucher_discount', 'seller_commission_rate', 'money_status', 'delivered_at'])
             ->map(function (Order $order) use ($calculator) {
                 $rate = (float) ($order->seller_commission_rate ?? CommissionSetting::FIXED_RATE);
                 $items = (int) round(((float) $order->total_amount) * 100);

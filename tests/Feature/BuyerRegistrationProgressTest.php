@@ -26,6 +26,13 @@ class BuyerRegistrationProgressTest extends TestCase
         ] as $file) {
             (require database_path('migrations/'.$file))->up();
         }
+        // This focused schema skips the full Buyer profile migration chain.
+        // Registration persists the optional delivery pin added by the later
+        // buyer address migration, so mirror those columns for these tests.
+        Schema::table('buyer_details', function ($table) {
+            $table->decimal('latitude', 10, 7)->nullable();
+            $table->decimal('longitude', 10, 7)->nullable();
+        });
         Mail::fake();
         Storage::fake('local');
         $this->withoutVite();
@@ -51,7 +58,7 @@ class BuyerRegistrationProgressTest extends TestCase
             'last_name' => 'Buyer', 'first_name' => 'Test', 'sex' => 'female',
             'email' => 'buyer@example.test', 'birthday' => '2000-01-01',
             'password' => 'TestPassword1!', 'password_confirmation' => 'TestPassword1!',
-            'province' => 'Laguna', 'municipality' => 'Santa Cruz', 'barangay' => 'Test Barangay',
+            'province' => 'Laguna', 'municipality' => 'Santa Cruz', 'barangay' => 'Alipit',
             'street' => '12 Test Street', 'zip_code' => '4009',
             'contact_number' => '09123456789', 'agree_terms' => 'on',
             'id_category' => 'primary', 'id_type' => 'PhilSys National ID',

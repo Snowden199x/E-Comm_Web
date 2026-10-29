@@ -18,7 +18,19 @@
                         <div class="lg-field is-wide"><label for="businessName">Company name</label><input id="businessName" name="business_name" class="lg-input" value="{{ old('business_name', $company->business_name) }}" required maxlength="160">@error('business_name')<p class="lg-error">{{ $message }}</p>@enderror</div>
                         <div class="lg-field"><label for="officeNumber">Office number</label><input id="officeNumber" name="house_no" class="lg-input" value="{{ old('house_no', $center->house_no) }}" maxlength="80"></div>
                         <div class="lg-field"><label for="officeStreet">Office street</label><input id="officeStreet" name="street" class="lg-input" value="{{ old('street', $center->street) }}" maxlength="160"></div>
-                        <p class="lg-section-sub is-wide">Registered location: {{ implode(', ', array_filter([$center->barangay, $center->municipality, $center->province])) }}. Address locality changes still require Vendo support; replacement documents can be submitted below.</p>
+                        <div class="lg-field"><label for="officeProvince">Province</label><input id="officeProvince" name="province" class="lg-input" value="{{ old('province', $center->province) }}" required maxlength="255">@error('province')<p class="lg-error">{{ $message }}</p>@enderror</div>
+                        <div class="lg-field"><label for="officeMunicipality">Municipality / city</label><input id="officeMunicipality" name="municipality" class="lg-input" value="{{ old('municipality', $center->municipality) }}" required maxlength="255">@error('municipality')<p class="lg-error">{{ $message }}</p>@enderror</div>
+                        <div class="lg-field"><label for="officeBarangay">Barangay</label><input id="officeBarangay" name="barangay" class="lg-input" value="{{ old('barangay', $center->barangay) }}" required maxlength="255">@error('barangay')<p class="lg-error">{{ $message }}</p>@enderror</div>
+                        <div class="lg-field"><label for="officeZip">ZIP code</label><input id="officeZip" name="zip_code" class="lg-input" value="{{ old('zip_code', $center->zip_code) }}" maxlength="20">@error('zip_code')<p class="lg-error">{{ $message }}</p>@enderror</div>
+                        <div class="is-wide lg-address-map">
+                            <p class="lg-section-sub">Search the company address or move the pin. Geoapify fills the written fields; confirm them before saving.</p>
+                            <x-address-map :lat="$center->latitude" :lng="$center->longitude"
+                                :address="trim(implode(', ', array_filter([$center->house_no, $center->street, $center->barangay, $center->municipality, $center->province])))"
+                                title="Pin the company address" description="Search the address or move the pin. Review the filled address and save it to update the company profile." />
+                            @error('latitude')<p class="lg-error">{{ $message }}</p>@enderror
+                            @error('longitude')<p class="lg-error">{{ $message }}</p>@enderror
+                        </div>
+                        <p class="lg-section-sub is-wide">This updates the company office address only. Province Hubs and Station Hub facilities keep their own operating addresses; replacement verification documents can be submitted below.</p>
                     @else
                         <p class="lg-section-sub is-wide">Facility: {{ $facility->name }} · {{ $facility->address }}. Your parent network manages facility locations.</p>
                     @endif

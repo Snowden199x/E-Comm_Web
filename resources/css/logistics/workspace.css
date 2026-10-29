@@ -2551,6 +2551,7 @@ a.lg-stat:hover .lg-stat__go { color: var(--lg-brand); transform: translateX(3px
 
 .lg-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
 .lg-form-grid > .is-wide { grid-column: 1 / -1; }
+.lg-address-map { min-width: 0; display: grid; gap: 8px; }
 .lg-hint { color: var(--lg-muted); font-size: 12px; }
 
 .lg-input-group { position: relative; }

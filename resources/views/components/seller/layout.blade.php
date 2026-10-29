@@ -71,7 +71,7 @@
                     <span>Delivered Orders</span>
                 </a>
                 <a href="{{ route('seller.earnings.index') }}" class="sd-nav__item sd-nav__item--sub @if(request()->routeIs('seller.earnings.*')) is-active @endif" @if(request()->routeIs('seller.earnings.*')) aria-current="page" @endif title="Earnings">
-                    <img src="{{ $icon('completed-orders-icon.png') }}" alt="">
+                    <img src="{{ $icon('earnings-icon.svg') }}" alt="">
                     <span>Earnings</span>
                 </a>
                 <a href="{{ route('seller.feedback.index') }}" class="sd-nav__item sd-nav__item--sub @if(request()->routeIs('seller.feedback.*')) is-active @endif" @if(request()->routeIs('seller.feedback.*')) aria-current="page" @endif title="Feedback">

@@ -4,6 +4,8 @@
 **Functional requirements:** [Completed Orders functions](functions.md).  
 **Scope:** One existing `orders` row represents one seller order/shipment. This page is a read-only seller view of delivery outcomes and does not create a second completed-order table.
 
+Delivered Orders and Customer Feedback use explanatory empty states. Seller Orders shows an animated row skeleton during non-silent filter/page refreshes; silent polling does not flash the table.
+
 ## Existing code to reuse
 
 - `App\Models\Ecommerce\Order` already has seller/buyer/courier relations, items, `statusEvents`, `tracking_number`, carrier fields, `shipping_fee`, and `SALES_STATUSES = ['delivered', 'completed']`.

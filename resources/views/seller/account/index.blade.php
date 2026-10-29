@@ -21,15 +21,29 @@
         </section>
 
         <div class="sw-grid sw-grid--equal">
-            <section class="sw-card"><h2>Shop and contact</h2><p class="sw-muted">Your description may appear on your public shop profile. Your phone number stays private.</p>
+            <section class="sw-card"><h2>Shop, contact and pickup address</h2><p class="sw-muted">Your description may appear on your public shop profile. Your phone number stays private. Use Geoapify to locate or correct your pickup address.</p>
                 <form class="sw-form" method="POST" action="{{ route('seller.account.update') }}" data-draft-key="seller-{{ auth()->id() }}-account">@csrf @method('PATCH')
-                    <label>Contact number<input type="tel" name="phone_number" maxlength="20" value="{{ old('phone_number', $seller->phone_number) }}"></label>
+                    <label>Contact number<input type="tel" name="phone_number" inputmode="numeric" pattern="09[0-9]{9}" minlength="11" maxlength="11" title="Enter 11 digits starting with 09." placeholder="09XX XXX XXXX" value="{{ old('phone_number', $seller->phone_number) }}"></label>
                     <label>Shop description<textarea name="shop_description" rows="5" maxlength="1000" placeholder="Tell buyers about your shop">{{ old('shop_description', $seller->sellerDetail?->shop_description) }}</textarea></label>
+                    <div class="sw-form__address">
+                        <div class="sw-form__address-grid">
+                            <label>Province<input type="text" name="province" value="{{ old('province', $seller->sellerDetail?->province) }}" required>@error('province')<small class="sw-error">{{ $message }}</small>@enderror</label>
+                            <label>Municipality / city<input type="text" name="municipality" value="{{ old('municipality', $seller->sellerDetail?->municipality) }}" required>@error('municipality')<small class="sw-error">{{ $message }}</small>@enderror</label>
+                            <label>Barangay<input type="text" name="barangay" value="{{ old('barangay', $seller->sellerDetail?->barangay) }}" required>@error('barangay')<small class="sw-error">{{ $message }}</small>@enderror</label>
+                            <label>Street<input type="text" name="street" value="{{ old('street', $seller->sellerDetail?->street) }}" maxlength="255" required>@error('street')<small class="sw-error">{{ $message }}</small>@enderror</label>
+                            <label>ZIP code<input type="text" name="zip_code" value="{{ old('zip_code', $seller->sellerDetail?->zip_code) }}" maxlength="20">@error('zip_code')<small class="sw-error">{{ $message }}</small>@enderror</label>
+                        </div>
+                        <x-address-map :lat="$seller->sellerDetail?->latitude" :lng="$seller->sellerDetail?->longitude"
+                            :address="trim(implode(', ', array_filter([$seller->sellerDetail?->street, $seller->sellerDetail?->barangay, $seller->sellerDetail?->municipality, $seller->sellerDetail?->province])))"
+                            title="Pin your pickup address" description="Search the pickup address or move the pin. Geoapify fills the written address; review and save it below." />
+                        @error('latitude')<small class="sw-error">{{ $message }}</small>@enderror
+                        @error('longitude')<small class="sw-error">{{ $message }}</small>@enderror
+                    </div>
                     <button class="sw-button" type="submit">Save changes</button>
                 </form>
             </section>
-            <section class="sw-card"><h2>Registered business</h2><p class="sw-muted">These approved details are read-only. For corrections, contact Vendo Support.</p>
-                <dl class="sw-details"><div><dt>Business name</dt><dd>{{ $seller->sellerDetail?->business_name ?? '—' }}</dd></div><div><dt>Legal name</dt><dd>{{ $seller->sellerDetail?->full_name ?? $seller->name }}</dd></div><div><dt>Email</dt><dd>{{ $seller->email }}</dd></div><div><dt>Address</dt><dd>{{ collect([$seller->sellerDetail?->street, $seller->sellerDetail?->barangay, $seller->sellerDetail?->municipality, $seller->sellerDetail?->province, $seller->sellerDetail?->zip_code])->filter()->implode(', ') }}</dd></div><div><dt>Categories</dt><dd>{{ $seller->categories->pluck('name')->implode(', ') ?: '—' }}</dd></div></dl>
+            <section class="sw-card"><h2>Registered business</h2><p class="sw-muted">Legal identity and business name are read-only. The pickup address is editable in Shop, contact and pickup address.</p>
+                <dl class="sw-details"><div><dt>Business name</dt><dd>{{ $seller->sellerDetail?->business_name ?? '—' }}</dd></div><div><dt>Legal name</dt><dd>{{ $seller->sellerDetail?->full_name ?? $seller->name }}</dd></div><div><dt>Email</dt><dd>{{ $seller->email }}</dd></div><div><dt>Categories</dt><dd>{{ $seller->categories->pluck('name')->implode(', ') ?: '—' }}</dd></div></dl>
                 <a class="sw-button sw-button--outline" href="{{ route('seller.messages.index') }}">Contact support</a>
             </section>
         </div>
