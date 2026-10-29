@@ -177,16 +177,28 @@
                 setInput(scope, 'zip_code', parts.zip);
                 const province = scope.querySelector('[name="province"]');
                 if (!province || !parts.province) return;
-                if (!choose(province, parts.province)) return;
+                if (province.tagName === 'SELECT') {
+                    if (!choose(province, parts.province)) return;
+                } else {
+                    setInput(scope, 'province', parts.province);
+                }
                 const city = scope.querySelector('[name="municipality"]');
                 if (city && parts.city) {
-                    await waitFor(() => optionFor(city, parts.city));
-                    choose(city, parts.city);
+                    if (city.tagName === 'SELECT') {
+                        await waitFor(() => optionFor(city, parts.city));
+                        choose(city, parts.city);
+                    } else {
+                        setInput(scope, 'municipality', parts.city);
+                    }
                 }
                 const barangay = scope.querySelector('[name="barangay"]');
                 if (barangay && parts.barangay) {
-                    await waitFor(() => optionFor(barangay, parts.barangay));
-                    choose(barangay, parts.barangay);
+                    if (barangay.tagName === 'SELECT') {
+                        await waitFor(() => optionFor(barangay, parts.barangay));
+                        choose(barangay, parts.barangay);
+                    } else {
+                        setInput(scope, 'barangay', parts.barangay);
+                    }
                 }
             };
 

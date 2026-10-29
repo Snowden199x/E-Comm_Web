@@ -45,6 +45,7 @@ body {
     display: flex;
     flex-direction: column;
     overflow: visible;
+    break-inside: avoid;
 }
 
 .label-header {
@@ -130,8 +131,12 @@ body {
 .qr-block img { width: 26mm; height: 26mm; image-rendering: pixelated; }
 .qr-block span { margin-top: 1mm; font-size: 8px; font-weight: 700; letter-spacing: .05em; }
 
+@media screen {
+    .shipping-label { box-shadow: 0 16px 40px rgba(34, 20, 35, .16); border: 0; }
+}
+
 @media print {
-    html, body { width: 4in; min-height: 6in; background: white; }
+    html, body { width: 4in; min-height: 6in; background: white; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
     .print-toolbar { display: none; }
     .shipping-label { margin: 0; border: 0; }
 }

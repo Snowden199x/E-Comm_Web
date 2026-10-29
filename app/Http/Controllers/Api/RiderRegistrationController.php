@@ -42,7 +42,7 @@ class RiderRegistrationController extends Controller
             'email_verification_token' => ['required_without:google_registration_token', 'nullable', 'string', 'size:64'],
             'google_registration_token' => ['required_without:email_verification_token', 'nullable', 'string', 'size:64'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'phone_number' => ['required', 'string', 'max:30'],
+            'phone_number' => ['required', 'regex:/^09[0-9]{9}$/'],
             'province_code' => ['required', 'regex:/^[0-9]{9}$/'],
             'city_code' => ['required', 'regex:/^[0-9]{9}$/'],
             'barangay_code' => ['required', 'regex:/^[0-9]{9}$/'],
@@ -128,12 +128,15 @@ class RiderRegistrationController extends Controller
                     'or_cr_path' => $stored['or_cr'],
                 ]);
 
-                \App\Models\Communication\Notification::create([
-                    'user_id' => $station->staff?->user_id ?? $center->user_id, 'type' => 'logistics_rider_application',
-                    'title' => 'New rider application',
-                    'message' => $rider->name.' applied to '.$station->name.'.',
-                    'link' => route('lgp.station.riders'),
-                ]);
+                $stationManagerId = $station->staff?->user_id;
+                if ($stationManagerId) {
+                    \App\Models\Communication\Notification::create([
+                        'user_id' => $stationManagerId, 'type' => 'logistics_rider_application',
+                        'title' => 'New '.$data['vehicle_type'].' Rider application',
+                        'message' => $rider->name.' applied to '.$station->name.' Station Hub. Review the application in Rider Management.',
+                        'link' => route('lgp.station.riders', ['tab' => 'applications']),
+                    ]);
+                }
 
                 return $rider;
             });

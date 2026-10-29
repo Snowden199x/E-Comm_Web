@@ -43,7 +43,7 @@ class BuyerRegistrationController extends Controller
             'barangay' => 'required|string',
             'street' => 'required|string|max:255',
             'zip_code' => 'required|string',
-            'contact_number' => 'required|string',
+            'contact_number' => ['required', 'regex:/^09[0-9]{9}$/'],
             'agree_terms' => 'accepted',
             'verification_token' => 'required|string',
         ]);

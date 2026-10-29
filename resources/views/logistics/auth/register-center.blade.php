@@ -364,7 +364,7 @@
                             <div>
                                 <label class="block text-[0.85rem] font-semibold text-gray-700 mb-1">Contact Number <span class="text-red-500">*</span></label>
                                 <input type="text" name="contact_number" required placeholder="09XX XXX XXXX"
-                                    inputmode="numeric" pattern="[0-9]{10,11}" maxlength="11"
+                                    inputmode="numeric" pattern="09[0-9]{9}" minlength="11" maxlength="11" title="Enter 11 digits starting with 09."
                                     oninput="this.value = this.value.replace(/\D/g, '').slice(0, 11)"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition-all duration-200">
                             </div>

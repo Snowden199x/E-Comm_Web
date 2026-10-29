@@ -37,7 +37,7 @@ class TransportDriverRegistrationController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
             'email_verification_token' => ['required', 'string', 'size:64'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'phone_number' => ['required', 'string', 'max:30'],
+            'phone_number' => ['required', 'regex:/^09[0-9]{9}$/'],
             'province_hub_id' => ['required', 'integer', 'exists:logistics_facilities,id'],
             'birthday' => ['required', 'date', 'before:today'],
             'sex' => ['required', Rule::in(['male', 'female'])],

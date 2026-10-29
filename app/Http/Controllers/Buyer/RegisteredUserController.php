@@ -36,7 +36,7 @@ class RegisteredUserController extends Controller
             'barangay' => ['required', 'string', 'max:255'],
             'street' => ['required', 'string', 'max:255'],
             'zip_code' => ['required', 'string', 'max:10'],
-            'contact_number' => ['required', 'digits_between:10,15'],
+            'contact_number' => ['required', 'regex:/^09[0-9]{9}$/'],
             'password' => ['required', 'confirmed', Rules\Password::min(8)->mixedCase()->numbers()->symbols()],
             'agree_terms' => ['accepted'],
         ]);

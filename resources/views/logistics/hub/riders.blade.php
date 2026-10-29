@@ -10,7 +10,7 @@
 <x-logistics.shell title="Rider Management" :role="$role">
     <div class="lg-page"
          x-data="{
-            tab: 'active',
+            tab: new URLSearchParams(window.location.search).get('tab') === 'applications' ? 'applications' : 'active',
             q: '',
             riders: @js($riders),
             reviewUrl: @js($reviewUrl),

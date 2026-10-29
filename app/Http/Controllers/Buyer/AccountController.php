@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Buyer;
 use App\Http\Controllers\Controller;
 use App\Models\Profiles\BuyerDetail;
 use App\Services\ProfilePhotoService;
+use App\Services\PsgcAddressResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -36,19 +37,32 @@ class AccountController extends Controller
         return view('buyer.account', compact('buyerDetail', 'policies', 'deliveryCompanies'));
     }
 
-    public function update(Request $request, ProfilePhotoService $photos)
+    public function update(Request $request, ProfilePhotoService $photos, PsgcAddressResolver $addresses)
     {
-        $request->validate([
+        $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
+        $rules = [
             'name' => 'required|string|max:255',
             'phone_number' => 'nullable|string|max:20',
-            'street' => 'nullable|string|max:255',
-            'house_no' => 'nullable|string|max:255',
-            'zip_code' => 'nullable|string|max:20',
-            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
             'profile_picture' => 'nullable|image|max:2048',
             'banner' => 'nullable|image|max:4096',
-        ]);
+        ];
+        if ($buyerDetail) {
+            $rules += [
+                'province' => 'required|string|max:255',
+                'municipality' => 'required|string|max:255',
+                'barangay' => 'required|string|max:255',
+                'street' => 'required|string|max:255',
+                'house_no' => 'nullable|string|max:255',
+                'zip_code' => 'nullable|string|max:20',
+                'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+                'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+            ];
+        }
+        $request->validate($rules);
+
+        $address = $buyerDetail
+            ? $addresses->resolve($request->only('province', 'municipality', 'barangay'))
+            : null;
 
         $userData = [
             'name' => $request->name,
@@ -57,16 +71,21 @@ class AccountController extends Controller
 
         auth()->user()->update($userData);
 
-        $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
-
         if ($buyerDetail) {
+            $locationChanged = $buyerDetail->province !== $address['province']
+                || $buyerDetail->municipality !== $address['municipality'];
             $detailData = [
+                ...$address,
                 'street' => $request->street,
                 'house_no' => $request->house_no,
                 'zip_code' => $request->zip_code,
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
             ];
+            if ($locationChanged) {
+                // A preferred carrier is valid only for the saved delivery municipality.
+                $detailData['preferred_delivery_company_id'] = null;
+            }
 
             if ($request->hasFile('banner')) {
                 $detailData['banner_path'] = $request->file('banner')->store('buyer-banners', 'public');

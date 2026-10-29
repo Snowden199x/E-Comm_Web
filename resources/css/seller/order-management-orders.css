@@ -127,6 +127,14 @@
 .omo-card { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 1px 3px rgba(60, 20, 70, .05); overflow: hidden; transition: opacity .2s; }
 .omo-card.is-loading::before { content: ''; position: absolute; top: 0; left: 0; z-index: 3; width: 38%; height: 3px; background: linear-gradient(90deg, transparent, var(--plum-700), transparent); animation: omo-bar 1s linear infinite; }
 .omo-card.is-loading .omo-table-wrap { opacity: .6; }
+.omo-loading-row td { padding: 18px 20px; }
+.omo-loading-skeleton { display: grid; gap: 14px; }
+.omo-loading-skeleton i { display: block; height: 15px; border-radius: 8px; background: linear-gradient(90deg, #eee9f0 25%, #f8f6f9 42%, #eee9f0 65%); background-size: 380% 100%; animation: omo-skeleton 1.25s ease-in-out infinite; }
+.omo-loading-skeleton i:nth-child(2) { width: 88%; }
+.omo-loading-skeleton i:nth-child(3) { width: 94%; }
+.omo-loading-skeleton i:nth-child(4) { width: 72%; }
+@keyframes omo-skeleton { to { background-position: -120% 0; } }
+@media (prefers-reduced-motion: reduce) { .omo-loading-skeleton i { animation: none; } }
 .omo-table-wrap { width: 100%; overflow-x: auto; transition: opacity .2s; }
 
 .omo-table { width: 100%; min-width: 820px; border-collapse: collapse; font-size: 13px; }

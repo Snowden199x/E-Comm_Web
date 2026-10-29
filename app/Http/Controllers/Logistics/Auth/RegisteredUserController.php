@@ -7,6 +7,7 @@ use App\Models\Communication\Notification;
 use App\Models\Profiles\LogisticsCenter;
 use App\Models\User;
 use App\Services\LocationCatalog;
+use App\Services\PsgcAddressResolver;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class RegisteredUserController extends Controller
         ]);
     }
 
-    public function store(Request $request, LocationCatalog $locations): JsonResponse
+    public function store(Request $request, LocationCatalog $locations, PsgcAddressResolver $addresses): JsonResponse
     {
         $validated = $request->validate([
             'last_name' => ['required', 'string', 'max:255'],
@@ -47,7 +48,7 @@ class RegisteredUserController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'birthday' => ['required', 'date', 'before:today'],
             'valid_id' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'contact_number' => ['required', 'digits_between:10,15'],
+            'contact_number' => ['required', 'regex:/^09[0-9]{9}$/'],
             'province' => ['required', 'string', 'max:255'],
             'municipality' => ['required', 'string', 'max:255'],
             'barangay' => ['required', 'string', 'max:255'],
@@ -60,6 +61,8 @@ class RegisteredUserController extends Controller
             'business_permit' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'agree_terms' => ['accepted'],
         ]);
+
+        $validated = array_merge($validated, $addresses->resolve($validated));
 
         $email = strtolower($validated['email']);
         $coverageProvinceCode = $locations->provinceCodeForName($validated['province']);
