@@ -143,6 +143,7 @@
                         <footer class="flex flex-wrap items-center justify-between gap-3 border-t border-[#f1e8f2] px-4 py-3 sm:px-5">
                             <p class="text-[13px] text-[#5b4a60]">{{ $order->items->sum('quantity') }} {{ Str::plural('item', $order->items->sum('quantity')) }}, total
                                 <span class="ml-1 text-[16px] font-semibold text-[#52245b]">{{ $fmt($order->payable_total) }}</span>
+                                @unless (in_array($order->status, ['delivered', 'completed', 'cancelled', 'returned', 'delivery_failed'], true))<span class="ml-2 text-[12px] text-[#805487]">Pay on delivery</span>@endunless
                             </p>
                             <div class="flex flex-wrap gap-2">
                                 @if ($seller)

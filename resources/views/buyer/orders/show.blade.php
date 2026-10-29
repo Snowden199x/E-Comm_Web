@@ -222,6 +222,9 @@
                         <div class="flex justify-between gap-3"><dt class="text-[#7a6a7e]">Shipping fee</dt><dd>{{ $fmt($order->shipping_fee ?? 0) }}</dd></div>
                         <div class="flex items-baseline justify-between gap-3 border-t border-[#f1e8f2] pt-3"><dt class="font-semibold text-[#2b1730]">Total</dt><dd class="text-[20px] font-semibold leading-none text-[#52245b]">{{ $fmt($order->payable_total) }}</dd></div>
                         <div class="flex justify-between gap-3"><dt class="text-[#7a6a7e]">Payment</dt><dd>Cash on delivery</dd></div>
+                        @unless(in_array($order->status, ['delivered', 'completed', 'cancelled', 'returned'], true))
+                            <div class="rounded-lg bg-[#faf5fa] px-3 py-2 text-[12px] text-[#52245b]">Please have {{ $fmt($order->cod_amount ?? $order->payable_total) }} ready in cash for the rider.</div>
+                        @endunless
                     </dl>
                 </section>
 

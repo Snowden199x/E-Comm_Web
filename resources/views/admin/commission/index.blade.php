@@ -10,7 +10,7 @@
 
     {{--
         Month/search refresh the cards and table together. Seller details use the named Admin route.
-        The product commission is fixed at 10% and has no rate editor.
+        The commission uses the rate saved on each order; the rate itself is edited on the Delivery Fees page.
     --}}
     <div class="rg-page mx-auto w-full max-w-[1280px] p-4 sm:p-6" x-data="{
         // Filters

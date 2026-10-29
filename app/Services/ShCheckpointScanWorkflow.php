@@ -106,7 +106,7 @@ class ShCheckpointScanWorkflow
     public function history(ShScannerStation $station): array
     {
         return ShCheckpointScanEvent::query()->where('station_id', $station->id)
-            ->with(['order:id,number,tracking_number', 'checkpoint:id,code,name'])
+            ->with(['order:id,tracking_number', 'checkpoint:id,code,name'])
             ->latest()->limit(20)->get()->map(fn ($event) => [
                 'tracking_number' => $event->order?->tracking_number,
                 'checkpoint' => $event->checkpoint?->code,

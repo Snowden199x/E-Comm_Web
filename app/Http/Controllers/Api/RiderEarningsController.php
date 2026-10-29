@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Ecommerce\Order;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +30,7 @@ class RiderEarningsController extends Controller
         $summary = (clone $base)->selectRaw('COALESCE(SUM(line.amount), 0) as accrued_total, COUNT(*) as hub_credits')->first();
         $rows = (clone $base)->leftJoin('logistics_facilities as facility', 'facility.id', '=', 'line.facility_id')
             ->orderByDesc('line.created_at')->limit(100)
-            ->get(['line.id', 'line.amount', 'line.created_at', 'line.route_position', 'facility.name as facility_name', 'orders.number as order_number']);
+            ->get(['line.id', 'line.amount', 'line.created_at', 'line.route_position', 'facility.name as facility_name', 'orders.id as order_id']);
 
         return response()->json([
             'summary' => [
@@ -38,7 +39,7 @@ class RiderEarningsController extends Controller
             ],
             'earnings' => $rows->map(fn ($row) => [
                 'id' => (int) $row->id,
-                'order_number' => $row->order_number,
+                'order_number' => Order::numberFor((int) $row->order_id),
                 'hub' => $row->facility_name,
                 'route_position' => (int) $row->route_position,
                 'amount' => number_format((float) $row->amount, 2, '.', ''),

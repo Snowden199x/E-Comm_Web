@@ -9,7 +9,7 @@
     $cards = [
         ['label' => 'Completed sales', 'value' => '₱' . number_format($stats['total_sales'], 2), 'hint' => $noSales ? 'No completed sales in ' . $monthLabel . ' yet' : 'Delivered and completed orders in ' . $monthLabel,
             'icon' => 'trending-up', 'tone' => 'bg-[#F1E7F3] text-[#5b2963]'],
-        ['label' => 'Commission earned', 'value' => '₱' . number_format($stats['total_commission'], 2), 'hint' => $rateText . '% of completed sales',
+        ['label' => 'Commission earned', 'value' => '₱' . number_format($stats['total_commission'], 2), 'hint' => 'Each order at its saved rate',
             'icon' => 'scale', 'tone' => 'bg-green-50 text-green-700'],
     ];
 @endphp
@@ -29,13 +29,13 @@
     {{-- Rate --}}
     <div class="rg-card rounded-2xl border border-[#ece4ec] bg-white p-5 shadow-[0_1px_2px_rgba(43,23,48,0.04)]" style="--i: 2">
         <div class="flex items-start justify-between gap-3">
-            <p class="text-[13px] font-medium text-gray-500">Commission rate</p>
+            <p class="text-[13px] font-medium text-gray-500">Current commission rate</p>
             <span class="flex h-9 w-9 items-center justify-center rounded-full bg-amber-50 text-amber-700" aria-hidden="true"><x-admin.icon name="tag" class="h-[18px] w-[18px]" /></span>
         </div>
         <div class="mt-3 flex items-end justify-between gap-3">
             <p class="font-display text-2xl font-semibold tabular-nums text-[#2B1730]">{{ $rateText }}%</p>
         </div>
-        <p class="mt-1 text-xs text-gray-500">Fixed Vendo share of product sales</p>
+        <p class="mt-1 text-xs text-gray-500">Applies to new orders. Set on Delivery Fees.</p>
     </div>
 
     {{-- Sellers --}}

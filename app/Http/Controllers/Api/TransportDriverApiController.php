@@ -50,7 +50,7 @@ class TransportDriverApiController extends Controller
             ->with(['origin:id,name,municipality,province,address',
                 'destination:id,name,municipality,province,address',
                 'vehicle:id,vehicle_code,plate_number,vehicle_type',
-                'orders:id,number,tracking_number,status'])
+                'orders:id,tracking_number,status'])
             ->orderByRaw("CASE WHEN status = 'in_transit' THEN 0 ELSE 1 END")
             ->orderBy('scheduled_departure_at')->limit(50)->get()
             ->map(fn (LogisticsTransportTrip $trip) => $this->tripPayload($trip));

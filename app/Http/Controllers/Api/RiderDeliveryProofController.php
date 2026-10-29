@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
+use App\Models\Finance\OrderCodCollection;
 use App\Models\Profiles\OrderDeliveryProof;
 use App\Services\OrderScanWorkflow;
 use App\Services\RiderAccessService;
@@ -11,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class RiderDeliveryProofController extends Controller
 {
@@ -22,6 +24,8 @@ class RiderDeliveryProofController extends Controller
             'recipient_name' => ['required', 'string', 'min:2', 'max:120'],
             'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'notes' => ['nullable', 'string', 'max:500'],
+            // Cash handed over by the Buyer. Required for COD orders that track cash; checked against the order below.
+            'cash_collected' => ['nullable', 'numeric', 'min:0', 'max:9999999.99'],
         ]);
         $rider = $request->user();
         $center = $access->approvedCenter($rider);
@@ -59,6 +63,24 @@ class RiderDeliveryProofController extends Controller
                     'recipient_name' => $data['recipient_name'], 'photo_path' => $path,
                     'notes' => $data['notes'] ?? null, 'captured_at' => now(),
                 ]);
+                // COD cash: the Rider must report exactly the amount due. Orders created before cash tracking
+                // (null money_status) skip this. A mismatch aborts the whole transaction, so no proof or scan is kept.
+                if ($locked->money_status === 'not_collected') {
+                    $dueCents = (int) round(((float) $locked->cod_amount) * 100);
+                    $reported = $data['cash_collected'] ?? null;
+                    if ($reported === null || (int) round(((float) $reported) * 100) !== $dueCents) {
+                        throw ValidationException::withMessages([
+                            'cash_collected' => 'Enter the exact cash collected: ₱'.number_format($dueCents / 100, 2).'.',
+                        ]);
+                    }
+                    OrderCodCollection::create([
+                        'order_id' => $locked->id, 'rider_user_id' => $rider->id, 'station_hub_id' => $stationId,
+                        'amount' => number_format($dueCents / 100, 2, '.', ''),
+                        'scan_key' => $data['scan_key'], 'collected_at' => now(),
+                    ]);
+                    $locked->money_status = 'collected_by_rider';
+                    $locked->save();
+                }
                 return [$workflow->record($rider, $center, [
                     'tracking_number' => $locked->tracking_number,
                     'scan_type' => 'delivered', 'scan_key' => $data['scan_key'],
