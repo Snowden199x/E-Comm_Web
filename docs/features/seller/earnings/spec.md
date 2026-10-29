@@ -8,4 +8,6 @@
 
 **Status.** **Pending**: the order has cash tracking but Vendo has not yet confirmed its cash; the page shows how far the cash has travelled (for example "Remitted to Province Hub"). **Credited**: `money_status` is `credited_to_seller`. When an Admin confirms a Logistics Company's batch to Vendo, its orders move to `credited_to_seller` automatically; a discrepancy keeps them Pending until resolved. **Earlier order**: `money_status` is null (placed before cash tracking); these are listed but excluded from totals. The top cards show Pending, Credited and commission on credited orders; a status filter and pagination (15 per page) are available. The page is scoped to the signed-in Seller's own orders.
 
-Not built: payout details or withdrawals (not needed), a Seller notification when earnings are credited, and CSV export.
+When an Admin confirms a Company batch to Vendo (or resolves its discrepancy), `CashRemittanceService` sends each Seller one `earnings_credited` notification with the net amount of the orders that just became credited, linking to the Credited filter.
+
+Not built: payout details or withdrawals (not needed) and CSV export.

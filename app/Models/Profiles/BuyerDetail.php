@@ -9,11 +9,11 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 #[Fillable([
     'user_id', 'last_name', 'first_name', 'middle_name', 'sex', 'birthday', 'valid_id_path',
     'id_type', 'valid_id_path_2', 'province', 'municipality', 'barangay', 'street', 'house_no', 'zip_code',
-    'banner_path'
+    'banner_path', 'latitude', 'longitude', 'preferred_delivery_company_id'
 ])]
 class BuyerDetail extends Model
 {
-    protected $casts = ['birthday' => 'date'];
+    protected $casts = ['birthday' => 'date', 'latitude' => 'float', 'longitude' => 'float'];
 
     public function user()
     {

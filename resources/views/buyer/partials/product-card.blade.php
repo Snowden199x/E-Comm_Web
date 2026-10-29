@@ -48,10 +48,10 @@
     class="group relative flex w-full flex-col overflow-hidden rounded-lg border border-[#eee6ef] bg-white transition-all duration-300 ease-vendo hover:-translate-y-0.5 hover:border-[#cfb2d4] hover:shadow-[0_14px_26px_-16px_rgba(64,33,67,0.5)]">
 
     <!-- Photo -->
-    <div class="relative aspect-square overflow-hidden bg-[#f8f3e6]">
+    <div class="vb-img-shell relative aspect-square overflow-hidden bg-[#f8f3e6]">
         <img src="{{ $imageUrl }}" alt="" loading="lazy"
             class="vb-img h-full w-full object-cover group-hover:scale-105"
-            onload="this.classList.add('is-loaded')">
+            onload="this.classList.add('is-loaded'); this.parentElement.classList.add('is-loaded')">
 
         @if ($discount > 0 && ! $soldOut)
             <span class="absolute left-2 top-2 rounded bg-[#402143] px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-white">-{{ $discount }}%</span>

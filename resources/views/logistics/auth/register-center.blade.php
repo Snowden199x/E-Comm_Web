@@ -485,6 +485,14 @@
                             </div>
                         </div>
 
+                        <div class="mb-5 rounded-lg border border-gray-200 p-3.5">
+                            <p class="mb-1 text-[0.8rem] font-semibold text-gray-700">Pin the company address on the map <span class="font-normal text-gray-500">(optional)</span></p>
+                            <p class="mb-2 text-[0.7rem] leading-4 text-gray-500">Search the address or move the pin, and the province, city, barangay, street and ZIP above are filled for you.</p>
+                            <x-address-map :lat="old('latitude')" :lng="old('longitude')"
+                                title="Pin the company address"
+                                description="Search the address or drag the pin. The address fields above update from the map." />
+                        </div>
+
                         <hr class="border-gray-200 mb-5">
 
                         <div class="mb-1">

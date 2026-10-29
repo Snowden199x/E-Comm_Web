@@ -52,6 +52,34 @@ class LogisticsCenterMatcher
         return $stations->count() === 1 ? $stations->first() : null;
     }
 
+    /**
+     * The active Station Hub of one Company for a municipality. Unlike stationForAddress(), this
+     * ignores another Company's primary coverage row, so a Buyer can compare every Company whose
+     * network reaches both the Seller and the delivery address.
+     */
+    public function stationForCompanyAt(string $province, string $city, int $companyId): ?LogisticsFacility
+    {
+        $codes = $this->locations->codesForNames($province, $city);
+        if (! $codes) {
+            return null;
+        }
+
+        $primaryId = DB::table('primary_logistics_coverage')
+            ->where('province_code', $codes[0])->where('municipality_code', $codes[1])
+            ->value('station_hub_id');
+        if ($primaryId) {
+            $primary = $this->stationQuery($codes, $companyId)->whereKey($primaryId)->first();
+            if ($primary) {
+                return $primary;
+            }
+        }
+
+        // One active Station Hub per municipality per Company; more than one is ambiguous.
+        $stations = $this->stationQuery($codes, $companyId)->orderBy('id')->limit(2)->get();
+
+        return $stations->count() === 1 ? $stations->first() : null;
+    }
+
     private function stationsForAddress(string $province, string $city, ?int $companyId = null)
     {
         $codes = $this->locations->codesForNames($province, $city);

@@ -68,8 +68,13 @@ class RegisteredBuyerController extends Controller
             'barangay' => 'required|string',
             'street' => 'required|string|max:255',
             'zip_code' => 'required|string',
-            'contact_number' => 'required|string',
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+            // Philippine mobile numbers: 11 digits, starting with 09.
+            'contact_number' => ['required', 'string', 'regex:/^09[0-9]{9}$/'],
             'agree_terms' => 'accepted',
+        ], [
+            'contact_number.regex' => 'Enter an 11-digit mobile number that starts with 09 (for example 09171234567).',
         ]);
 
         $googleProof = $request->session()->get('google_registration_verification', []);
@@ -117,6 +122,8 @@ class RegisteredBuyerController extends Controller
                     'house_no' => null,
                     'street' => $request->street,
                     'zip_code' => $request->zip_code,
+                    'latitude' => $request->latitude,
+                    'longitude' => $request->longitude,
                 ]);
 
                 $otp?->delete();

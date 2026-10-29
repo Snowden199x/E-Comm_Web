@@ -16,11 +16,24 @@ class CheckoutShippingQuoteService
         private LogisticsFacilityRouteResolver $routes,
     ) {}
 
-    public function quote(?string $sellerProvince, ?string $sellerCity, string $buyerProvince, string $buyerCity): array
+    public static function feeCentsFor(int $hubCount): int
     {
+        return self::MINIMUM_FEE_CENTS
+            + max(0, $hubCount - self::INCLUDED_HUBS) * self::ADDITIONAL_HUB_FEE_CENTS;
+    }
+
+    /**
+     * @param  int|null  $companyId  The Logistics Company the Buyer chose. When given, both stations
+     *                               must belong to that Company; otherwise the address match is used.
+     */
+    public function quote(?string $sellerProvince, ?string $sellerCity, string $buyerProvince, string $buyerCity, ?int $companyId = null): array
+    {
+        $station = fn (string $province, string $city) => $companyId
+            ? $this->centers->stationForCompanyAt($province, $city, $companyId)
+            : $this->centers->stationForAddress($province, $city);
         $origin = filled($sellerProvince) && filled($sellerCity)
-            ? $this->centers->stationForAddress($sellerProvince, $sellerCity) : null;
-        $destination = $this->centers->stationForAddress($buyerProvince, $buyerCity);
+            ? $station($sellerProvince, $sellerCity) : null;
+        $destination = $station($buyerProvince, $buyerCity);
         if (! $origin || ! $destination) {
             throw ValidationException::withMessages([
                 'shipping_city_code' => 'Shipping is not available for this address yet. Logistics must configure one active Station Hub for both the seller and delivery municipality.',
@@ -35,8 +48,7 @@ class CheckoutShippingQuoteService
         }
 
         $hubCount = count($route);
-        $feeCents = self::MINIMUM_FEE_CENTS
-            + max(0, $hubCount - self::INCLUDED_HUBS) * self::ADDITIONAL_HUB_FEE_CENTS;
+        $feeCents = self::feeCentsFor($hubCount);
 
         return [
             'shipping_fee' => number_format($feeCents / 100, 2, '.', ''),
