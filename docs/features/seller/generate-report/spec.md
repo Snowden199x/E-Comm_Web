@@ -9,6 +9,8 @@ The seller Reports page now has period filters, summary cards, a sales chart, to
 
 ## Seller page
 
+The preview modal shows an animated skeleton while the report is fetched and a clear error message if the request fails.
+
 Keep the seller sidebar and topbar. The page opens with **Today** selected, a period selector, four summary cards, a sales chart, a top-products table, and the included order rows. Preview and Download PDF each offer Today, This Week, This Month, and This Year, consistent with Admin Reports. **Preview** loads the selected period into a modal on the same page; the modal also offers a download of that report. **Download PDF** exports the selected period. Changing the page period updates its summary and URL; each report action uses the period chosen in its own menu. Show an empty report with zero totals when the period has no deliveries.
 
 | Period | Boundary in the app timezone | Chart grouping |

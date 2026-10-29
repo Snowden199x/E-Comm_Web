@@ -208,7 +208,23 @@
                             @if ($buyerDetail)
                                 <div class="border-t border-[#f1e8f2] pt-4">
                                     <h3 class="text-[13px] font-semibold text-[#402143]">Delivery address</h3>
-                                    <div class="mt-3 grid gap-4 sm:grid-cols-[120px_1fr_140px]">
+                                    <p class="mt-1 text-[12px] leading-5 text-[#7a6a7e]">Search or pin the address with Geoapify. Review the filled address before saving.</p>
+                                    <div class="mt-3 grid gap-4 sm:grid-cols-2">
+                                        <div>
+                                            <label for="acc-province" class="{{ $label }}">Province</label>
+                                            <input id="acc-province" type="text" name="province" value="{{ old('province', $buyerDetail->province) }}" class="{{ $field }}" required>
+                                            @error('province')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
+                                        </div>
+                                        <div>
+                                            <label for="acc-municipality" class="{{ $label }}">Municipality / city</label>
+                                            <input id="acc-municipality" type="text" name="municipality" value="{{ old('municipality', $buyerDetail->municipality) }}" class="{{ $field }}" required>
+                                            @error('municipality')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
+                                        </div>
+                                        <div>
+                                            <label for="acc-barangay" class="{{ $label }}">Barangay</label>
+                                            <input id="acc-barangay" type="text" name="barangay" value="{{ old('barangay', $buyerDetail->barangay) }}" class="{{ $field }}" required>
+                                            @error('barangay')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
+                                        </div>
                                         <div>
                                             <label for="acc-house" class="{{ $label }}">House no.</label>
                                             <input id="acc-house" type="text" name="house_no" value="{{ old('house_no', $buyerDetail->house_no) }}" class="{{ $field }}">
@@ -225,13 +241,6 @@
                                             @error('zip_code')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
                                         </div>
                                     </div>
-
-                                    <dl class="mt-4 grid gap-3 rounded-md bg-[#faf6fb] p-3.5 text-[13px] sm:grid-cols-3">
-                                        <div><dt class="text-[11px] font-medium uppercase tracking-wide text-[#9a8a9d]">Barangay</dt><dd class="mt-0.5 text-[#2b1730]">{{ $buyerDetail->barangay ?: 'Not set' }}</dd></div>
-                                        <div><dt class="text-[11px] font-medium uppercase tracking-wide text-[#9a8a9d]">Municipality</dt><dd class="mt-0.5 text-[#2b1730]">{{ $buyerDetail->municipality ?: 'Not set' }}</dd></div>
-                                        <div><dt class="text-[11px] font-medium uppercase tracking-wide text-[#9a8a9d]">Province</dt><dd class="mt-0.5 text-[#2b1730]">{{ $buyerDetail->province ?: 'Not set' }}</dd></div>
-                                    </dl>
-                                    <p class="mt-2 text-[12px] text-[#9a8a9d]">Barangay, municipality and province come from your registration and are used to route your parcels.</p>
 
                                     <div class="mt-4 rounded-md border border-[#e5dce7] p-3.5">
                                         <h4 class="text-[13px] font-semibold text-[#402143]">Map pin</h4>
@@ -371,7 +380,7 @@
                         <div class="rounded-md border border-dashed border-[#e5dce7] px-3.5 py-3 text-[12px] text-[#7a6a7e]">
                             <span class="font-medium text-[#402143]">Delivery map pin:</span>
                             @if ($buyerDetail?->latitude && $buyerDetail?->longitude)
-                                saved ({{ number_format((float) $buyerDetail->latitude, 5) }}, {{ number_format((float) $buyerDetail->longitude, 5) }}).
+                                saved for this address.
                             @else
                                 not set yet.
                             @endif

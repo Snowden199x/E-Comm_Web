@@ -42,7 +42,7 @@
                         <td><span class="ops-badge {{ $review->reply ? 'ops-badge--delivered' : 'ops-badge--to_ship' }}">{{ $review->reply ? 'Replied' : 'Awaiting reply' }}</span>@if($review->report)<small class="ops-review">Reported</small>@endif</td>
                         <td><a class="ops-button ops-button--small" href="{{ route('seller.feedback.show', $review) }}" data-panel data-panel-title="Feedback Details">View</a></td>
                     </tr>
-                @empty<tr><td colspan="8" class="ops-empty">No published reviews match these filters.</td></tr>@endforelse
+                @empty<tr><td colspan="8" class="ops-empty"><div class="ops-empty__state"><span aria-hidden="true">★</span><strong>No reviews match these filters</strong><small>Published buyer reviews will appear here when your products receive feedback.</small></div></td></tr>@endforelse
             </tbody></table></div>
             @include('seller.operations.pagination', ['records' => $rows])
         </section>

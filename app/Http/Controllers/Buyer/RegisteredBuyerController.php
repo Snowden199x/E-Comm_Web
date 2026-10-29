@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\OtpVerification;
 use App\Models\Profiles\BuyerDetail;
 use App\Models\User;
+use App\Services\PsgcAddressResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -46,7 +47,7 @@ class RegisteredBuyerController extends Controller
             ->where('is_verified', true)->where('expires_at', '>', now())->first();
     }
 
-    public function store(Request $request)
+    public function store(Request $request, PsgcAddressResolver $addresses)
     {
         $request->merge(['email' => strtolower(trim($request->string('email')->value()))]);
         $request->validate([
@@ -76,7 +77,6 @@ class RegisteredBuyerController extends Controller
         ], [
             'contact_number.regex' => 'Enter an 11-digit mobile number that starts with 09 (for example 09171234567).',
         ]);
-
         $googleProof = $request->session()->get('google_registration_verification', []);
         $googleVerified = ($googleProof['role'] ?? null) === 'buyer'
             && ($googleProof['email'] ?? null) === $request->email
@@ -85,6 +85,8 @@ class RegisteredBuyerController extends Controller
         if (! $googleVerified && ! $otp) {
             throw ValidationException::withMessages(['email' => 'Please verify your email first.']);
         }
+
+        $request->merge($addresses->resolve($request->only('province', 'municipality', 'barangay')));
 
         $paths = [];
         try {

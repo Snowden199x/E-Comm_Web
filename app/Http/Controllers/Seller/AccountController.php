@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\ProfilePhotoService;
 use App\Models\Category;
 use App\Models\Profiles\SellerCategoryRequest;
+use App\Services\PsgcAddressResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -26,15 +27,30 @@ class AccountController extends Controller
         return view('seller.account.index', compact('seller', 'policies', 'categoryRequests', 'availableCategories'));
     }
 
-    public function update(Request $request)
+    public function update(Request $request, PsgcAddressResolver $addresses)
     {
         $validated = $request->validate([
-            'phone_number' => ['nullable', 'string', 'max:20'],
+            'phone_number' => ['nullable', 'regex:/^09[0-9]{9}$/'],
             'shop_description' => ['nullable', 'string', 'max:1000'],
+            'province' => ['required', 'string', 'max:255'],
+            'municipality' => ['required', 'string', 'max:255'],
+            'barangay' => ['required', 'string', 'max:255'],
+            'street' => ['required', 'string', 'max:255'],
+            'zip_code' => ['nullable', 'string', 'max:20'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
         ]);
+        $address = $addresses->resolve($validated);
         $seller = $request->user();
         $seller->update(['phone_number' => $validated['phone_number'] ?? null]);
-        $seller->sellerDetail()->update(['shop_description' => $validated['shop_description'] ?? null]);
+        $seller->sellerDetail()->update([
+            ...$address,
+            'street' => $validated['street'],
+            'zip_code' => $validated['zip_code'] ?? null,
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
+            'shop_description' => $validated['shop_description'] ?? null,
+        ]);
 
         return back()->with('success', 'Profile updated.');
     }

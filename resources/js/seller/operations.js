@@ -136,7 +136,12 @@ async function openPanel(link) {
     selectedRow = link.closest('tr');
     selectedRow?.classList.add('is-selected');
     document.getElementById('opsPanelTitle').textContent = link.dataset.panelTitle || 'Details';
-    content.replaceChildren(Object.assign(document.createElement('p'), { textContent: 'Loading…', className: 'ops-muted' }));
+    const skeleton = document.createElement('div');
+    skeleton.className = 'ops-loading-skeleton';
+    skeleton.setAttribute('aria-label', 'Loading details');
+    skeleton.setAttribute('role', 'status');
+    skeleton.innerHTML = '<i></i><i></i><i></i><i></i>';
+    content.replaceChildren(skeleton);
     if (!drawer.open) drawer.showModal();
     content.setAttribute('aria-busy', 'true');
     try {
