@@ -56,7 +56,7 @@
 </table>
 
 <h3 class="font-bold text-gray-900 mb-3">Commission Report by Seller
-    ({{ rtrim(rtrim(number_format($rate, 2), '0'), '.') }}%)</h3>
+    (per-order rates; current {{ rtrim(rtrim(number_format($rate, 2), '0'), '.') }}%)</h3>
 <table class="w-full text-sm mb-2">
     <thead>
         <tr class="text-left text-gray-500 border-b">

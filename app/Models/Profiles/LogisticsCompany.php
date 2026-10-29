@@ -6,7 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class LogisticsCompany extends Model
 {
-    protected $fillable = ['logistics_center_id', 'business_name', 'status'];
+    /** Used when a Company has no rider pay set; matches the migration default. */
+    public const DEFAULT_RIDER_PAY_PER_PARCEL = 10.00;
+
+    protected $fillable = ['logistics_center_id', 'business_name', 'status', 'rider_pay_per_parcel'];
+
+    protected function casts(): array
+    {
+        return ['rider_pay_per_parcel' => 'decimal:2'];
+    }
 
     public function logisticsCenter()
     {

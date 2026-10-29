@@ -32,6 +32,10 @@ return [
             ['label' => 'Messages', 'icon' => 'message', 'route' => 'lgp.company.messages'],
             ['label' => 'Reports', 'icon' => 'bar-chart', 'route' => 'lgp.company.reports'],
         ]],
+        ['label' => 'Money', 'items' => [
+            ['label' => 'Cash Remittances', 'icon' => 'file', 'route' => 'lgp.company.cash'],
+            ['label' => 'Rider Payment', 'icon' => 'bike', 'route' => 'lgp.company.rider-pay'],
+        ]],
         ['label' => 'System', 'items' => [
             ['label' => 'Account Management', 'icon' => 'shield', 'route' => 'lgp.company.account'],
         ]],
@@ -55,6 +59,7 @@ return [
             ['label' => 'Parcel Tracking', 'icon' => 'search', 'route' => 'lgp.province.tracking'],
         ]],
         ['label' => 'Business', 'items' => [
+            ['label' => 'Cash Remittances', 'icon' => 'file', 'route' => 'lgp.province.cash'],
             ['label' => 'Messages', 'icon' => 'message', 'route' => 'lgp.province.messages'],
             ['label' => 'Reports', 'icon' => 'bar-chart', 'route' => 'lgp.province.reports'],
         ]],
@@ -83,6 +88,8 @@ return [
             ['label' => 'Riders', 'icon' => 'users', 'route' => 'lgp.station.riders'],
         ]],
         ['label' => 'Business', 'items' => [
+            ['label' => 'Cash Collections', 'icon' => 'file', 'route' => 'lgp.station.cash'],
+            ['label' => 'Cash Discrepancies', 'icon' => 'alert', 'route' => 'lgp.station.cash.discrepancies'],
             ['label' => 'Messages', 'icon' => 'message', 'route' => 'lgp.station.messages'],
             ['label' => 'Reports', 'icon' => 'bar-chart', 'route' => 'lgp.station.reports'],
         ]],

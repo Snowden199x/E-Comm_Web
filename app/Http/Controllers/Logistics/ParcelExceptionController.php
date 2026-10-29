@@ -32,7 +32,7 @@ class ParcelExceptionController extends Controller
             ->whereHas('facilityStops', fn ($query) => $query->where('facility_id', $facility->id)
                 ->whereNotNull('arrived_at')->whereNull('departed_at'))
             ->whereDoesntHave('logisticsExceptions', fn ($query) => $query->where('status', 'open'))
-            ->latest()->limit(100)->get(['id', 'number', 'tracking_number']);
+            ->latest()->limit(100)->get(['id', 'tracking_number']);
         $detours = $role === 'company' ? collect() : $company->facilities()->where('is_active', true)
             ->orderBy('name')->get(['id', 'name', 'province', 'municipality']);
 

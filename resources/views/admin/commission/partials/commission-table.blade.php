@@ -96,6 +96,6 @@
 </div>
 
 <p class="mt-3 text-xs leading-relaxed text-gray-500">
-    Commission = completed sales × {{ rtrim(rtrim(number_format($rate, 2), '0'), '.') }}%. A sale counts when its order is delivered or completed,
+    Commission = completed sales × the seller commission rate saved on each order (currently {{ rtrim(rtrim(number_format($rate, 2), '0'), '.') }}% for new orders; orders placed before rates were saved use 10%). A sale counts when its order is delivered or completed,
     and it is placed in the month the order was created.
 </p>

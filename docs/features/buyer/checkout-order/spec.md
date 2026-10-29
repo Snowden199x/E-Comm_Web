@@ -25,3 +25,5 @@ Payment gateway, taxes/fees, checkout idempotency key, and retry semantics remai
 ## Related documentation
 
 See [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+
+COD notice (28 October 2026): the checkout payment method card shows the live amount to pay in cash (items minus voucher plus delivery fee) and the order page shows a "have ₱X ready" line until delivery, using the order's saved `cod_amount`. New orders also save `cod_amount`, `money_status` and rate snapshots; see the [COD cash and delivery fee design](../../../design/cod-cash-and-delivery-fee-distribution.md).
