@@ -16,7 +16,24 @@ class AccountController extends Controller
         $policies = \App\Models\Communication\PlatformPolicy::availableForRole('buyer');
         $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
 
-        return view('buyer.account', compact('buyerDetail', 'policies'));
+        // Only Companies with an active Station Hub in the Buyer's own municipality can be preferred.
+        $deliveryCompanies = collect();
+        if ($buyerDetail) {
+            $codes = app(\App\Services\LocationCatalog::class)->codesForNames($buyerDetail->province, $buyerDetail->municipality);
+            if ($codes) {
+                $deliveryCompanies = \App\Models\Profiles\LogisticsCompany::query()
+                    ->where('status', 'approved')
+                    ->whereHas('logisticsCenter.user', fn ($user) => $user->where('role', 'logistics_center')
+                        ->where('status', 'approved')->whereNull('archived_at')
+                        ->where(fn ($active) => $active->whereNull('account_status')->orWhere('account_status', 'active')))
+                    ->whereHas('facilities', fn ($facility) => $facility->where('kind', 'station_hub')
+                        ->where('is_active', true)
+                        ->where('province_code', $codes[0])->where('municipality_code', $codes[1]))
+                    ->orderBy('business_name')->get();
+            }
+        }
+
+        return view('buyer.account', compact('buyerDetail', 'policies', 'deliveryCompanies'));
     }
 
     public function update(Request $request, ProfilePhotoService $photos)
@@ -27,6 +44,8 @@ class AccountController extends Controller
             'street' => 'nullable|string|max:255',
             'house_no' => 'nullable|string|max:255',
             'zip_code' => 'nullable|string|max:20',
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
             'profile_picture' => 'nullable|image|max:2048',
             'banner' => 'nullable|image|max:4096',
         ]);
@@ -45,6 +64,8 @@ class AccountController extends Controller
                 'street' => $request->street,
                 'house_no' => $request->house_no,
                 'zip_code' => $request->zip_code,
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
             ];
 
             if ($request->hasFile('banner')) {
@@ -101,6 +122,21 @@ class AccountController extends Controller
         }
 
         return back()->with('success', 'Banner removed.');
+    }
+
+    public function updateDeliveryPreference(Request $request)
+    {
+        $data = $request->validate([
+            'preferred_delivery_company_id' => ['nullable', 'integer', 'exists:logistics_companies,id'],
+        ]);
+
+        $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
+        if ($buyerDetail) {
+            $buyerDetail->update(['preferred_delivery_company_id' => $data['preferred_delivery_company_id'] ?? null]);
+        }
+
+        return redirect()->route('buyer.account.index', ['tab' => 'delivery'])
+            ->with('success', 'Delivery preference saved.');
     }
 
     public function updatePassword(Request $request)

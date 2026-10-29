@@ -37,6 +37,8 @@
         'cityCode' => (string) $defaultCityCode,
         'province' => $registeredProvince,
         'city' => $registeredCity,
+        'latitude' => $buyerDetail?->latitude,
+        'longitude' => $buyerDetail?->longitude,
     ]];
     $selectedId = $registeredUsable ? 'registered' : null;
     $restoreSaved = true;
@@ -89,6 +91,7 @@
         <input type="hidden" name="shipping_longitude" :value="current?.longitude ?? ''">
         @foreach ($sellerGroups as $sellerKey => $sellerItems)
             <input type="hidden" name="shipping_quotes[{{ $sellerKey }}]" :value="shippingQuotes[{{ $sellerKey }}]?.shipping_fee || ''">
+            <input type="hidden" name="logistics_company_ids[{{ $sellerKey }}]" :value="logisticsChoices[{{ $sellerKey }}] || ''">
         @endforeach
 
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -99,7 +102,7 @@
             </a>
         </div>
 
-        @foreach (['checkout_revision', 'items', 'quantity'] as $field)
+        @foreach (['checkout_revision', 'items', 'quantity', 'shipping_quotes', 'logistics_company_ids'] as $field)
             @error($field)
                 <p class="mt-3 rounded-md border border-[#f0c9d0] bg-[#fdf1f3] px-3 py-2.5 text-[13px] text-[#a32b43]" role="alert">{{ $message }}</p>
             @enderror
@@ -229,10 +232,51 @@
                                 </ul>
 
                                 <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-[#e5dce7] pt-3 text-[12px]">
-                                    <span class="text-[#7a6a7e]">Shipping · <span x-show="quotingShipping" x-cloak>Getting route quote…</span><span x-show="shippingQuotes[{{ $sellerKey }}]" x-cloak x-text="shippingQuotes[{{ $sellerKey }}] ? shippingQuotes[{{ $sellerKey }}].hub_count + ' hubs' : ''"></span></span>
+                                    <span class="flex items-center gap-2 text-[#7a6a7e]">Shipping <span aria-hidden="true">·</span>
+                                        <span x-show="quotingShipping" x-cloak class="inline-flex items-center gap-2" role="status">
+                                            <span class="vb-skel h-3 w-16 rounded"></span>
+                                            <span class="sr-only">Getting route quote</span>
+                                        </span>
+                                        <span x-show="shippingQuotes[{{ $sellerKey }}]" x-cloak x-text="shippingQuotes[{{ $sellerKey }}] ? shippingQuotes[{{ $sellerKey }}].hub_count + ' hubs' : ''"></span>
+                                    </span>
                                     <span class="font-semibold text-[#402143]" x-show="shippingQuotes[{{ $sellerKey }}]" x-cloak x-text="shippingQuotes[{{ $sellerKey }}] ? '₱' + Number(shippingQuotes[{{ $sellerKey }}].shipping_fee).toFixed(2) : ''"></span>
                                 </div>
+
+                                {{-- Only Companies with an active Station Hub near both the Seller and this address. --}}
+                                <div class="mt-3 rounded-lg border border-[#e5dce7] bg-[#faf7fb] p-3"
+                                    x-show="(shippingQuotes[{{ $sellerKey }}]?.options || []).length" x-cloak>
+                                    <p class="text-[12px] font-semibold text-[#402143]">Choose a Logistics provider</p>
+                                    <p class="text-[11px] leading-4 text-[#7a6a7e]">Only providers with a Station Hub near both this shop and your address are shown.</p>
+                                    <div class="mt-2 space-y-2" role="radiogroup" aria-label="Logistics provider for this shop">
+                                        <template x-for="option in (shippingQuotes[{{ $sellerKey }}]?.options || [])" :key="option.company_id">
+                                            <label class="block cursor-pointer">
+                                                <input type="radio" class="peer sr-only"
+                                                    :name="'logistics-{{ $sellerKey }}'" :value="String(option.company_id)"
+                                                    x-model="logisticsChoices[{{ $sellerKey }}]"
+                                                    @change="chooseLogistics({{ $sellerKey }}, option)">
+                                                <span class="flex items-start gap-2.5 rounded-md border bg-white p-2.5 transition-colors duration-200 ease-vendo peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#805487]"
+                                                    :class="logisticsChoices[{{ $sellerKey }}] === String(option.company_id) ? 'border-[#805487] bg-[#faf5fa] shadow-[inset_0_0_0_1px_#805487]' : 'border-[#e5dce7] hover:border-[#c9a9ce]'">
+                                                    <span class="mt-0.5 grid h-[16px] w-[16px] flex-shrink-0 place-items-center rounded-full border-2 transition-colors duration-200"
+                                                        :class="logisticsChoices[{{ $sellerKey }}] === String(option.company_id) ? 'border-[#805487] bg-[#805487]' : 'border-[#c9bccc] bg-white'" aria-hidden="true">
+                                                        <span class="h-1.5 w-1.5 rounded-full bg-white" x-show="logisticsChoices[{{ $sellerKey }}] === String(option.company_id)"></span>
+                                                    </span>
+                                                    <span class="min-w-0 flex-1">
+                                                        <span class="flex flex-wrap items-center gap-1.5">
+                                                            <span class="text-[12px] font-semibold text-[#2b1730]" x-text="option.company_name"></span>
+                                                            <span x-show="option.is_cheapest" class="rounded bg-[#e8c874] px-1.5 py-0.5 text-[10px] font-semibold text-[#402143]">Lowest fee</span>
+                                                        </span>
+                                                        <span class="mt-0.5 block text-[11px] leading-4 text-[#6f5f73]"
+                                                            x-text="option.hub_count + (option.hub_count === 1 ? ' hub · ' : ' hubs · ') + option.route.map(h => h.name).join(' → ')"></span>
+                                                    </span>
+                                                    <span class="flex-shrink-0 text-[12px] font-semibold text-[#52245b]" x-text="'₱' + Number(option.shipping_fee).toFixed(2)"></span>
+                                                </span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </div>
                                 <p x-show="shippingQuoteError" x-cloak class="mt-1 text-[12px] text-[#a32b43]" role="alert" x-text="shippingQuoteError"></p>
+                                @error('logistics_company_ids.' . $sellerKey)<p class="mt-1 text-[12px] text-[#a32b43]" role="alert">{{ $message }}</p>@enderror
+                                @error('shipping_quotes.' . $sellerKey)<p class="mt-1 text-[12px] text-[#a32b43]" role="alert">{{ $message }}</p>@enderror
 
                                 @if ($sellerNotesEnabled)
                                     <div class="mt-3" x-data="{ note: @js((string) old('seller_notes.' . $sellerKey, '')) }">
@@ -361,7 +405,7 @@
                 <h2 id="address-dialog-title" class="pr-8 text-[16px] font-semibold text-[#2b1730]">Add a delivery address</h2>
                 <p class="mt-1 text-[12px] text-[#7a6a7e]">This address is used for this checkout. Your registered address stays on your account.</p>
 
-                <div class="mt-4 space-y-3.5">
+                <div class="mt-4 space-y-3.5" x-on:maps-address.window="applyMapAddress($event)">
                     <div>
                         <label for="addr-label" class="text-[12px] font-medium text-[#5b4a60]">Label <span class="font-normal text-[#9a8a9d]">(optional)</span></label>
                         <input id="addr-label" type="text" x-ref="label" x-model="draft.label" maxlength="40" placeholder="Home, office, parents' house"
@@ -395,11 +439,18 @@
                             <p class="mt-1 text-[12px] text-[#a32b43]" x-show="errors.city" x-text="errors.city"></p>
                         </div>
                     </div>
-                    <div>
-                        <button type="button" @click="captureDraftLocation()" :disabled="locatingAddress === 'draft'"
-                            class="inline-flex h-9 items-center rounded-md border border-[#805487] px-3.5 text-[12px] font-medium text-[#52245b] hover:bg-[#f5ecf6] disabled:opacity-60"
-                            x-text="locatingAddress === 'draft' ? 'Getting location…' : (draft.latitude && draft.longitude ? 'Update delivery pin' : 'Use this device’s location')"></button>
-                        <p class="mt-1 text-[11px] text-[#7a6a7e]">Use this only when the device is at the delivery address. The pin is sent to Vendo and the assigned Rider.</p>
+                    <div class="rounded-md border border-[#e5dce7] p-3.5">
+                        <p class="text-[12px] font-medium text-[#5b4a60]">Delivery pin</p>
+                        <p class="mt-0.5 text-[11px] leading-4 text-[#7a6a7e]">Place the pin on the map, or use this device’s location when you are at the address.</p>
+                        <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                            <x-address-map emit-only lat="" lng="" button="Pin this address on the map"
+                                title="Pin this delivery address"
+                                description="Search the address or move the pin. The address fields below are filled from the map and stay editable." />
+                            <button type="button" @click="captureDraftLocation()" :disabled="locatingAddress === 'draft'"
+                                class="inline-flex h-9 items-center rounded-md border border-[#e5dce7] px-3.5 text-[12px] font-medium text-[#52245b] transition-colors duration-200 hover:bg-[#f5ecf6] disabled:opacity-60"
+                                x-text="locatingAddress === 'draft' ? 'Getting location…' : 'Use this device’s location'"></button>
+                        </div>
+                        <p x-show="draft.formatted" x-cloak class="mt-1.5 break-words text-[11px] leading-4 text-[#2e6b46]" x-text="'Map address: ' + draft.formatted"></p>
                         <p x-show="locationError" x-cloak class="mt-1 text-[12px] text-[#a32b43]" role="alert" x-text="locationError"></p>
                     </div>
                 </div>
@@ -424,6 +475,7 @@
         submitting: false,
         voucherCodes: config.voucherCodes || {},
         shippingQuotes: {},
+        logisticsChoices: {},
         shippingQuoteError: '',
         quotingShipping: false,
         locatingAddress: null,
@@ -434,7 +486,7 @@
         voucherErrors: {},
         applyingVoucher: {},
         errors: {},
-        draft: { label: '', line: '', provinceCode: '', cityCode: '', latitude: null, longitude: null },
+        draft: { label: '', line: '', provinceCode: '', cityCode: '', latitude: null, longitude: null, formatted: '' },
 
         init() {
             // Bring back addresses added earlier in this tab (kept for two hours, like other form drafts)
@@ -468,12 +520,47 @@
         get cities() { return Object.entries((this.locations[this.draft.provinceCode] || {}).cities || {}); },
         get voucherDiscount() { return Object.values(this.voucherDiscounts).reduce((sum, amount) => sum + Number(amount || 0), 0); },
         get shippingFeeTotal() { return Object.values(this.shippingQuotes).reduce((sum, quote) => sum + Number(quote.shipping_fee || 0), 0); },
-        get shippingQuoteReady() { return config.sellerIds.every(id => this.shippingQuotes[id]) && !this.shippingQuoteError; },
+        get shippingQuoteReady() { return config.sellerIds.every(id => this.shippingQuotes[id] && this.logisticsChoices[id]) && !this.shippingQuoteError; },
         get payableTotal() { return Math.max(0, Number(config.subtotal) - this.voucherDiscount + this.shippingFeeTotal); },
+
+        applyMapAddress(event) {
+            const detail = event.detail || {};
+            const parts = detail.components || {};
+            if (detail.formatted) this.draft.formatted = detail.formatted;
+            if (parts.street || parts.barangay) {
+                this.draft.line = [parts.street, parts.barangay].filter(Boolean).join(', ');
+            } else if (parts.formatted) {
+                this.draft.line = parts.formatted;
+            }
+            if (detail.lat && detail.lng) {
+                this.draft.latitude = detail.lat;
+                this.draft.longitude = detail.lng;
+            }
+            if (parts.province) {
+                const province = Object.entries(this.locations).find(([code, entry]) =>
+                    window.vendoAddressKey(entry.name) === window.vendoAddressKey(parts.province));
+                if (province) {
+                    this.draft.provinceCode = province[0];
+                    if (parts.city) {
+                        const city = Object.entries(province[1].cities).find(([code, name]) =>
+                            window.vendoAddressKey(name) === window.vendoAddressKey(parts.city));
+                        if (city) this.draft.cityCode = city[0];
+                    }
+                }
+            }
+            this.locationError = '';
+        },
+
+        chooseLogistics(sellerId, option) {
+            const current = this.shippingQuotes[sellerId] || {};
+            this.shippingQuotes[sellerId] = { ...option, options: current.options || [] };
+            this.logisticsChoices[sellerId] = String(option.company_id);
+        },
 
         async refreshShippingQuote() {
             const address = this.current;
             this.shippingQuotes = {};
+            this.logisticsChoices = {};
             this.shippingQuoteError = '';
             if (!address) return;
             const selectedId = this.selected;
@@ -490,6 +577,10 @@
                 if (!response.ok) throw new Error(Object.values(data.errors || {}).flat()[0] || data.message || 'Could not calculate shipping for this address.');
                 if (this.selected !== selectedId) return;
                 this.shippingQuotes = data.quotes || {};
+                // The server picked the saved/cheapest Company; keep its choice visible.
+                for (const [sellerId, quote] of Object.entries(this.shippingQuotes)) {
+                    if (quote.company_id) this.logisticsChoices[sellerId] = String(quote.company_id);
+                }
             } catch (error) {
                 if (this.selected === selectedId) this.shippingQuoteError = error.message;
             } finally {
@@ -555,7 +646,8 @@
 
         openModal() {
             this.errors = {};
-            this.draft = { label: '', line: '', provinceCode: '', cityCode: '', latitude: null, longitude: null };
+            this.draft = { label: '', line: '', provinceCode: '', cityCode: '', latitude: null, longitude: null, formatted: '' };
+            window.dispatchEvent(new CustomEvent('map-reset'));
             this.modal = true;
             this.$nextTick(() => this.$refs.label && this.$refs.label.focus());
         },
@@ -627,6 +719,11 @@
             if (!this.shippingQuoteReady || this.quotingShipping) {
                 event.preventDefault();
                 if (!this.shippingQuoteError) this.shippingQuoteError = 'Wait for a valid Logistics quote before placing the order.';
+                return;
+            }
+            if (config.sellerIds.some(id => !this.logisticsChoices[id])) {
+                event.preventDefault();
+                this.shippingQuoteError = 'Choose a Logistics provider for every shop.';
                 return;
             }
             for (const [sellerId, code] of Object.entries(this.voucherCodes)) {
