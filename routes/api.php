@@ -45,6 +45,7 @@ Route::prefix('v1/rider')->group(function () {
     Route::middleware(['auth:sanctum', EnsureApprovedRiderToken::class, 'throttle:30,1'])->group(function () {
         Route::get('/assignments', [RiderScanController::class, 'assignments']);
         Route::get('/earnings', [\App\Http\Controllers\Api\RiderEarningsController::class, 'rider']);
+        Route::get('/cash', [\App\Http\Controllers\Api\RiderCashController::class, 'show']);
         Route::post('/tasks/{task}/exceptions', [\App\Http\Controllers\Api\RiderTaskExceptionController::class, 'store']);
         Route::post('/scans', [RiderScanController::class, 'store']);
         Route::post('/delivery-proofs', [RiderDeliveryProofController::class, 'store']);

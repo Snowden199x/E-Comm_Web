@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Logistics\PortalController;
 use App\Http\Controllers\Logistics\StationOperationsController;
+use App\Http\Controllers\Logistics\StationCashController;
+use App\Http\Controllers\Logistics\ProvinceCashController;
+use App\Http\Controllers\Logistics\CompanyCashController;
 use App\Http\Controllers\Logistics\PortalNotificationController;
 use App\Http\Controllers\Logistics\PortalReportController;
 use App\Http\Controllers\Logistics\PortalAccountController;
@@ -46,6 +49,12 @@ Route::prefix('logistics/portal')->name('lgp.')->middleware('auth')->group(funct
         Route::get('/handoffs', [PortalController::class, 'companyHandoffs'])->name('company.handoffs');
         Route::get('/exceptions', [ParcelExceptionController::class, 'index'])->defaults('portal_role', 'company')->name('company.exceptions');
         Route::post('/handoff-manifests', [CrossCompanyManifestController::class, 'store'])->name('company.handoff-manifests.store');
+        Route::get('/cash', [CompanyCashController::class, 'index'])->name('company.cash');
+        Route::post('/cash/remittances/{remittance}/receive', [CompanyCashController::class, 'receive'])->whereNumber('remittance')->name('company.cash.receive');
+        Route::patch('/cash/remittances/{remittance}/resolve', [CompanyCashController::class, 'resolve'])->whereNumber('remittance')->name('company.cash.resolve');
+        Route::post('/cash/remit', [CompanyCashController::class, 'remit'])->name('company.cash.remit');
+        Route::get('/rider-pay', [CompanyCashController::class, 'riderPay'])->name('company.rider-pay');
+        Route::patch('/rider-pay', [CompanyCashController::class, 'updateRiderPay'])->name('company.rider-pay.update');
         Route::get('/reports', [PortalReportController::class, 'index'])->defaults('portal_role', 'company')->name('company.reports');
         Route::get('/reports/export', [PortalReportController::class, 'export'])->defaults('portal_role', 'company')->name('company.reports.export');
         Route::get('/messages', [PortalMessageController::class, 'index'])->defaults('portal_role', 'company')->name('company.messages');
@@ -80,6 +89,10 @@ Route::prefix('logistics/portal')->name('lgp.')->middleware('auth')->group(funct
         Route::patch('/trips/{trip}/depart', [PortalController::class, 'departTrip'])->whereNumber('trip')->name('province.trips.depart');
         Route::patch('/trips/{trip}/arrive', [PortalController::class, 'arriveTrip'])->whereNumber('trip')->name('province.trips.arrive');
         Route::get('/tracking', [PortalController::class, 'facilityTracking'])->name('province.tracking');
+        Route::get('/cash', [ProvinceCashController::class, 'index'])->name('province.cash');
+        Route::post('/cash/remittances/{remittance}/receive', [ProvinceCashController::class, 'receive'])->whereNumber('remittance')->name('province.cash.receive');
+        Route::patch('/cash/remittances/{remittance}/resolve', [ProvinceCashController::class, 'resolve'])->whereNumber('remittance')->name('province.cash.resolve');
+        Route::post('/cash/remit', [ProvinceCashController::class, 'remit'])->name('province.cash.remit');
         Route::get('/reports', [PortalReportController::class, 'index'])->defaults('portal_role', 'province')->name('province.reports');
         Route::get('/reports/export', [PortalReportController::class, 'export'])->defaults('portal_role', 'province')->name('province.reports.export');
         Route::get('/messages', [PortalMessageController::class, 'index'])->defaults('portal_role', 'province')->name('province.messages');
@@ -108,6 +121,11 @@ Route::prefix('logistics/portal')->name('lgp.')->middleware('auth')->group(funct
         Route::get('/riders', [PortalController::class, 'stationRiders'])->name('station.riders');
         Route::post('/riders/{courierDetail}/review', [PortalController::class, 'reviewRider'])->whereNumber('courierDetail')->name('station.riders.review');
         Route::patch('/riders/{courierDetail}/status', [PortalController::class, 'updateRiderStatus'])->whereNumber('courierDetail')->name('station.riders.status');
+        Route::get('/cash', [StationCashController::class, 'index'])->name('station.cash');
+        Route::post('/cash/riders/{courierDetail}/receive', [StationCashController::class, 'receive'])->whereNumber('courierDetail')->name('station.cash.receive');
+        Route::post('/cash/remit', [StationCashController::class, 'remit'])->name('station.cash.remit');
+        Route::get('/cash/discrepancies', [StationCashController::class, 'discrepancies'])->name('station.cash.discrepancies');
+        Route::patch('/cash/remittances/{remittance}/resolve', [StationCashController::class, 'resolve'])->whereNumber('remittance')->name('station.cash.resolve');
         Route::get('/reports', [PortalReportController::class, 'index'])->defaults('portal_role', 'station')->name('station.reports');
         Route::get('/reports/export', [PortalReportController::class, 'export'])->defaults('portal_role', 'station')->name('station.reports.export');
         Route::get('/messages', [PortalMessageController::class, 'index'])->defaults('portal_role', 'station')->name('station.messages');

@@ -78,7 +78,7 @@
         </tbody>
     </table>
 
-    <h3>Commission Report by Seller ({{ rtrim(rtrim(number_format($rate, 2), '0'), '.') }}%)</h3>
+    <h3>Commission Report by Seller (per-order rates; current {{ rtrim(rtrim(number_format($rate, 2), '0'), '.') }}%)</h3>
     <table class="data">
         <thead>
             <tr>

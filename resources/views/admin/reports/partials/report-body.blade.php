@@ -27,7 +27,7 @@
 
     $kpis = [
         ['Completed sales', '₱' . number_format($completedSales, 2), 'Delivered and completed orders', 'trending-up', 'bg-[#F1E7F3] text-[#5b2963]'],
-        ['Commission earned', '₱' . number_format($totalCommission, 2), $rateText . '% of completed sales', 'scale', 'bg-green-50 text-green-700'],
+        ['Commission earned', '₱' . number_format($totalCommission, 2), 'Each order at its saved rate', 'scale', 'bg-green-50 text-green-700'],
         ['Orders completed', number_format($completed), $placed > 0 ? number_format($placed) . ' placed' . ($completionRate !== null ? ' · ' . $completionRate . '% completed' : '') : 'No orders placed', 'package', 'bg-sky-50 text-sky-700'],
         ['Top seller', $topSeller['name'] ?? '—', $topSeller ? '₱' . number_format($topSeller['sales'], 2) . ' in sales' : 'No completed sales', 'store', 'bg-amber-50 text-amber-700'],
     ];
@@ -36,7 +36,7 @@
 <div data-report="{{ json_encode($payload) }}" class="hidden" aria-hidden="true"></div>
 
 <p class="mb-4 text-sm text-gray-500">
-    Showing <span class="font-medium text-[#2B1730]">{{ $periodLabel }}</span> · commission rate {{ $rateText }}%
+    Showing <span class="font-medium text-[#2B1730]">{{ $periodLabel }}</span> · current commission rate {{ $rateText }}%
 </p>
 
 {{-- KPI cards --}}
@@ -186,5 +186,5 @@
 </section>
 
 <p class="mt-3 text-xs leading-relaxed text-gray-500">
-    Sales and commission count delivered and completed orders only, using the current {{ $rateText }}% rate for every period shown.
+    Sales and commission count delivered and completed orders only, using the seller commission rate saved on each order (currently {{ $rateText }}% for new orders; orders placed before rates were saved use 10%).
 </p>

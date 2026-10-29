@@ -52,3 +52,6 @@ Owner migration, asset compilation and end-to-end verification remain pending.
 ## Role portal pages (13 October 2026)
 
 The Company, Province Hub and Station preview pages (`routes/logistics_preview.php`) now follow [the logistics design system](../../../design/logistics-design-system.md): dashboards lead with an attention list, work pages use a select-then-bulk-bar pattern, reject/return actions need a typed reason, deactivation asks for confirmation, and results appear in a shared toast region. This is presentation only and uses hard-coded data; see `docs/logs/PROGRESS-2026-10-13.md` for the file list and limits.
+
+The Station Hub sidebar (`config/logistics_nav.php`) gained **Cash Collections** and **Cash Discrepancies** in the Business group (28 October 2026); see the [Station Hub cash collections spec](../station-cash-collections/spec.md).
+The Province Hub sidebar gained **Cash Remittances**, and the Company sidebar gained a **Money** group with **Cash Remittances** and **Rider Payment** (28 October 2026); see the [Province Hub and Company cash spec](../province-company-cash/spec.md).

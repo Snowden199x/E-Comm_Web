@@ -138,6 +138,10 @@ class RiderScanController extends Controller
                 ] : null,
                 'delivery_proof_required' => ! $linehaul && ! $pickup
                     && $facilityStops->isNotEmpty() && $order->destination_station_id !== null,
+                // COD cash the Rider must collect from the Buyer; the app sends it back as `cash_collected` with the delivery proof.
+                'cash_to_collect' => ! $linehaul && ! $pickup && $order->cod_amount !== null
+                    ? number_format((float) $order->cod_amount, 2, '.', '') : null,
+                'cash_collection_required' => ! $linehaul && ! $pickup && $order->money_status === 'not_collected',
                 'destination_center' => $destination?->business_name,
                 'planned_route' => $linehaul ? [
                     'current_step' => $facilityStops->isNotEmpty() ? $facilityStops->filter(fn ($stop) => $stop->arrived_at)->count() + 1 : $order->route_step,

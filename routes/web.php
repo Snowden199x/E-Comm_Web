@@ -148,6 +148,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/seller/{seller}', [CommissionController::class, 'sellerDetail'])->name('seller-detail');
         });
 
+        Route::prefix('delivery-fees')->name('delivery-fees.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\DeliveryFeeController::class, 'index'])->name('index');
+            Route::put('/', [\App\Http\Controllers\Admin\DeliveryFeeController::class, 'update'])->name('update');
+        });
+
+        Route::prefix('cash-remittances')->name('remittances.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\CashRemittanceController::class, 'index'])->name('index');
+            Route::post('/{remittance}/receive', [\App\Http\Controllers\Admin\CashRemittanceController::class, 'receive'])->whereNumber('remittance')->name('receive');
+            Route::patch('/{remittance}/resolve', [\App\Http\Controllers\Admin\CashRemittanceController::class, 'resolve'])->whereNumber('remittance')->name('resolve');
+        });
+
         Route::prefix('seller-compliance')->name('seller-compliance.')->group(function () {
             Route::get('/', [SellerComplianceController::class, 'overview'])->name('overview');
             Route::get('/products-for-review', [SellerComplianceController::class, 'productsForReview'])->name('products-for-review');
@@ -333,6 +344,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::patch('/orders/{order}', [OrderController::class, 'update'])->whereNumber('order')->name('orders.update');
         Route::get('/completed-orders', [CompletedOrdersController::class, 'index'])->name('completed-orders.index');
         Route::get('/completed-orders/{order}', [CompletedOrdersController::class, 'show'])->whereNumber('order')->name('completed-orders.show');
+        Route::get('/earnings', [\App\Http\Controllers\Seller\EarningsController::class, 'index'])->name('earnings.index');
         Route::get('/complaints', [\App\Http\Controllers\Seller\ComplaintController::class, 'index'])->name('complaints.index');
         Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('vouchers.index');
         Route::post('/vouchers', [SellerVoucherController::class, 'store'])->name('vouchers.store');

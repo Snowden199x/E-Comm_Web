@@ -89,14 +89,13 @@ class ReportController extends Controller
         $lastDay = $end->copy()->startOfDay();
 
         while ($cursor->lte($lastDay)) {
-            $dayTotal = OrderItem::whereHas('order', function ($q) use ($cursor) {
-                    $q->whereIn('status', ['delivered', 'completed'])->whereDate('created_at', $cursor->toDateString());
-                })
-                ->selectRaw('SUM(quantity * price) as total')->value('total') ?? 0;
+            [$dayTotal, $dayCommission] = $this->itemTotals(function ($q) use ($cursor) {
+                $q->whereIn('status', ['delivered', 'completed'])->whereDate('created_at', $cursor->toDateString());
+            });
 
             $labels[] = $cursor->format('M j');
             $sales[] = round($dayTotal, 2);
-            $commission[] = round($dayTotal * ($rate / 100), 2);
+            $commission[] = round($dayCommission, 2);
 
             $cursor->addDay();
         }
@@ -130,15 +129,14 @@ class ReportController extends Controller
         $commission = [];
 
         for ($mon = 1; $mon <= 12; $mon++) {
-            $monthTotal = OrderItem::whereHas('order', function ($q) use ($year, $mon) {
-                    $q->whereIn('status', ['delivered', 'completed'])
-                        ->whereYear('created_at', $year)->whereMonth('created_at', $mon);
-                })
-                ->selectRaw('SUM(quantity * price) as total')->value('total') ?? 0;
+            [$monthTotal, $monthCommission] = $this->itemTotals(function ($q) use ($year, $mon) {
+                $q->whereIn('status', ['delivered', 'completed'])
+                    ->whereYear('created_at', $year)->whereMonth('created_at', $mon);
+            });
 
             $labels[] = Carbon::create($year, $mon, 1)->format('M');
             $sales[] = round($monthTotal, 2);
-            $commission[] = round($monthTotal * ($rate / 100), 2);
+            $commission[] = round($monthCommission, 2);
         }
 
         return [
@@ -166,18 +164,34 @@ class ReportController extends Controller
         ];
     }
 
+    /**
+     * Item sales and seller commission for the orders matched by the constraint. Commission uses each
+     * order's saved seller rate (fixed rate for older orders), never the current setting.
+     *
+     * @return array{0: float, 1: float} [sales, commission]
+     */
+    private function itemTotals(\Closure $orderConstraint): array
+    {
+        $row = OrderItem::whereHas('order', $orderConstraint)
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->selectRaw('COALESCE(SUM(order_items.quantity * order_items.price), 0) as total, '
+                .'COALESCE(SUM(order_items.quantity * order_items.price * '.CommissionSetting::orderRateSql().' / 100), 0) as commission')
+            ->first();
+
+        return [(float) $row->total, (float) $row->commission];
+    }
+
     private function sellerBreakdown(float $rate, \Closure $dateConstraint)
     {
         return User::where('role', 'seller')
             ->get()
             ->map(function ($seller) use ($rate, $dateConstraint) {
-                $itemsTotal = OrderItem::whereHas('order', function ($q) use ($seller, $dateConstraint) {
-                        $q->where('seller_id', $seller->id)->whereIn('status', ['delivered', 'completed']);
-                        $dateConstraint($q);
-                    })
-                    ->selectRaw('SUM(quantity * price) as total')->value('total') ?? 0;
+                [$itemsTotal, $commission] = $this->itemTotals(function ($q) use ($seller, $dateConstraint) {
+                    $q->where('seller_id', $seller->id)->whereIn('status', ['delivered', 'completed']);
+                    $dateConstraint($q);
+                });
 
-                return ['name' => $seller->name, 'sales' => $itemsTotal, 'commission' => $itemsTotal * ($rate / 100)];
+                return ['name' => $seller->name, 'sales' => $itemsTotal, 'commission' => $commission];
             })
             ->filter(fn ($s) => $s['sales'] > 0)
             ->sortByDesc('sales')

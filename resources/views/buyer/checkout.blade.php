@@ -307,6 +307,7 @@
                             <div class="text-[13px]">
                                 <p class="font-semibold text-[#2b1730]">Cash on delivery</p>
                                 <p class="mt-0.5 text-[#5b4a60]">Pay in cash when your order is delivered. Other payment methods are not available yet.</p>
+                                <p class="mt-2 font-semibold text-[#52245b]" x-show="payableTotal > 0" x-cloak>Pay <span x-text="'₱' + payableTotal.toFixed(2)"></span> in cash to the rider (items plus delivery fee).</p>
                             </div>
                         </div>
                     </div>

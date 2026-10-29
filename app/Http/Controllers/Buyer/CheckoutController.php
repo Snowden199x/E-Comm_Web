@@ -9,7 +9,9 @@ use App\Models\Ecommerce\Order;
 use App\Models\Ecommerce\Product;
 use App\Models\Ecommerce\ProductVariant;
 use App\Models\Ecommerce\SellerVoucher;
+use App\Models\Finance\DeliveryFeeSetting;
 use App\Models\Profiles\BuyerDetail;
+use App\Models\Profiles\LogisticsCompany;
 use App\Services\InventoryService;
 use App\Services\CheckoutShippingQuoteService;
 use App\Services\LocationCatalog;
@@ -128,6 +130,8 @@ class CheckoutController extends Controller
                     }
                 }
             }
+            // Rates in force right now; each order saves its own copy so later changes never alter it.
+            $feeSettings = DeliveryFeeSetting::current();
             foreach ($cartItems->groupBy(fn ($item) => $products[$item->product_id]->seller_id) as $sellerId => $items) {
                 $sellerDetail = $products[$items->first()->product_id]->seller?->sellerDetail;
                 $shippingQuote = $shippingQuotes->quote(
@@ -152,12 +156,23 @@ class CheckoutController extends Controller
                     $discountCents = app(SellerVoucherService::class)->discountCents(
                         $voucher, $items, $products, $variants, $request->user()->id);
                 }
+                $itemsTotal = $items->sum(fn ($item) => $item->quantity * ($item->product_variant_id
+                    ? $variants[$item->product_variant_id]->price : $products[$item->product_id]->price));
+                // COD: the exact cash the Rider must collect (items - voucher + delivery fee), frozen now.
+                $codCents = max(0, (int) round(((float) $itemsTotal) * 100) - $discountCents
+                    + (int) round(((float) $shippingQuote['shipping_fee']) * 100));
+                $riderPay = LogisticsCompany::query()->whereKey($shippingQuote['delivery_company_id'] ?? 0)
+                    ->value('rider_pay_per_parcel') ?? LogisticsCompany::DEFAULT_RIDER_PAY_PER_PARCEL;
                 $order = Order::create([
                     'buyer_id' => $request->user()->id, 'seller_id' => $sellerId,
                     'buyer_note' => $buyerNote !== '' ? $buyerNote : null,
-                    'total_amount' => $items->sum(fn ($item) => $item->quantity * ($item->product_variant_id
-                        ? $variants[$item->product_variant_id]->price : $products[$item->product_id]->price)),
+                    'total_amount' => $itemsTotal,
                     'shipping_fee' => $shippingQuote['shipping_fee'],
+                    'cod_amount' => number_format($codCents / 100, 2, '.', ''),
+                    'money_status' => 'not_collected',
+                    'rider_pay_rate' => number_format((float) $riderPay, 2, '.', ''),
+                    'vendo_delivery_commission_rate' => $feeSettings->vendo_delivery_commission_rate,
+                    'seller_commission_rate' => $feeSettings->seller_commission_rate,
                     'shipping_hub_count' => $shippingQuote['hub_count'],
                     'shipping_route_snapshot' => $shippingQuote['route'],
                     'status' => 'placed', 'payment_mode' => $request->payment_mode,
@@ -213,9 +228,9 @@ class CheckoutController extends Controller
         $quotes = [];
         foreach ($items->groupBy(fn ($item) => $item->product->seller_id) as $sellerId => $sellerItems) {
             $seller = $sellerItems->first()->product->seller->sellerDetail;
-            $quotes[$sellerId] = $shippingQuotes->quote(
+            $quotes[$sellerId] = collect($shippingQuotes->quote(
                 $seller?->province, $seller?->municipality, $location['province'], $location['city'],
-            );
+            ))->except('delivery_company_id')->all();
         }
 
         return response()->json(['quotes' => $quotes]);

@@ -32,6 +32,8 @@
             'label' => 'Business',
             'items' => [
                 ['route' => 'admin.commission.index', 'active' => 'admin.commission.*', 'icon' => 'commission-menu.svg', 'label' => 'Commission'],
+                ['route' => 'admin.delivery-fees.index', 'active' => 'admin.delivery-fees.*', 'icon' => 'commission-menu.svg', 'label' => 'Delivery Fees'],
+                ['route' => 'admin.remittances.index', 'active' => 'admin.remittances.*', 'icon' => 'reports-menu.svg', 'label' => 'Cash Remittances'],
                 ['route' => 'admin.reports.index', 'active' => 'admin.reports.*', 'icon' => 'reports-menu.svg', 'label' => 'Reports'],
                 ['route' => 'admin.messages.index', 'active' => 'admin.messages.*', 'icon' => 'messages-menu.svg', 'label' => 'Messages'],
             ],

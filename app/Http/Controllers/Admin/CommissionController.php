@@ -36,17 +36,19 @@ class CommissionController extends Controller
     {
         [$year, $mon] = explode('-', $month);
 
-        $itemsTotal = OrderItem::whereHas('order', function ($q) use ($year, $mon) {
+        $totals = OrderItem::whereHas('order', function ($q) use ($year, $mon) {
                 $q->whereIn('status', ['delivered', 'completed'])
                     ->whereYear('created_at', $year)
                     ->whereMonth('created_at', $mon);
             })
-            ->selectRaw('SUM(quantity * price) as total')
-            ->value('total') ?? 0;
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->selectRaw('COALESCE(SUM(order_items.quantity * order_items.price), 0) as total, '
+                .'COALESCE(SUM(order_items.quantity * order_items.price * '.CommissionSetting::orderRateSql().' / 100), 0) as commission')
+            ->first();
 
         return [
-            'total_sales' => $itemsTotal,
-            'total_commission' => $itemsTotal * ($rate / 100),
+            'total_sales' => (float) $totals->total,
+            'total_commission' => (float) $totals->commission,
             'total_sellers' => User::where('role', 'seller')->count(),
         ];
     }
@@ -71,17 +73,19 @@ class CommissionController extends Controller
             ->paginate(8)
             ->withQueryString()
             ->through(function ($seller) use ($rate, $year, $mon) {
-                $itemsTotal = OrderItem::whereHas('order', function ($q) use ($seller, $year, $mon) {
+                $totals = OrderItem::whereHas('order', function ($q) use ($seller, $year, $mon) {
                         $q->where('seller_id', $seller->id)
                             ->whereIn('status', ['delivered', 'completed'])
                             ->whereYear('created_at', $year)
                             ->whereMonth('created_at', $mon);
                     })
-                    ->selectRaw('SUM(quantity * price) as total')
-                    ->value('total') ?? 0;
+                    ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                    ->selectRaw('COALESCE(SUM(order_items.quantity * order_items.price), 0) as total, '
+                        .'COALESCE(SUM(order_items.quantity * order_items.price * '.CommissionSetting::orderRateSql().' / 100), 0) as commission')
+                    ->first();
 
-                $seller->total_sales = $itemsTotal;
-                $seller->commission_owed = $itemsTotal * ($rate / 100);
+                $seller->total_sales = (float) $totals->total;
+                $seller->commission_owed = (float) $totals->commission;
 
                 return $seller;
             });
@@ -93,7 +97,7 @@ class CommissionController extends Controller
         $month = $request->get('month', now()->format('Y-m'));
         [$year, $mon] = explode('-', $month);
 
-        $items = OrderItem::with('product')
+        $items = OrderItem::with(['product', 'order:id,seller_commission_rate'])
             ->whereHas('order', function ($q) use ($seller, $year, $mon) {
                 $q->where('seller_id', $seller->id)
                     ->whereIn('status', ['delivered', 'completed'])
@@ -111,7 +115,8 @@ class CommissionController extends Controller
                     'name' => $product->name ?? 'Product removed',
                     'quantity' => $quantity,
                     'sales' => $sales,
-                    'commission' => $sales * ($rate / 100),
+                    'commission' => $group->sum(fn ($item) => $item->quantity * $item->price
+                        * ((float) ($item->order?->seller_commission_rate ?? CommissionSetting::FIXED_RATE)) / 100),
                 ];
             })
             ->sortByDesc('sales')
