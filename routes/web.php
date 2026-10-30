@@ -275,6 +275,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::post('/checkout', [BuyerCheckoutController::class, 'store'])->middleware('auth')->name('checkout.store');
     Route::post('/checkout/shipping-quote', [BuyerCheckoutController::class, 'shippingQuote'])->middleware(['auth', 'throttle:20,1'])->name('checkout.shipping-quote');
     Route::post('/checkout/voucher-quote', [BuyerCheckoutController::class, 'voucherQuote'])->middleware(['auth', 'throttle:20,1'])->name('checkout.voucher-quote');
+    Route::get('/vouchers', [\App\Http\Controllers\Buyer\VoucherController::class, 'index'])->middleware('auth')->name('vouchers.index');
+    Route::get('/complaints', [\App\Http\Controllers\Buyer\ComplaintController::class, 'index'])->middleware('auth')->name('complaints.index');
     Route::get('/orders', [BuyerOrderController::class, 'index'])->middleware('auth')->name('orders.index');
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->middleware('auth')->name('orders.show');
     Route::patch('/orders/{order}/cancel', [BuyerOrderController::class, 'cancel'])->middleware('auth')->whereNumber('order')->name('orders.cancel');
@@ -295,6 +297,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/account', [BuyerAccountController::class, 'index'])->middleware('auth')->name('account.index');
     Route::put('/account', [BuyerAccountController::class, 'update'])->middleware('auth')->name('account.update');
     Route::put('/account/password', [BuyerAccountController::class, 'updatePassword'])->middleware('auth')->name('account.password');
+    Route::put('/account/delivery-preference', [BuyerAccountController::class, 'updateDeliveryPreference'])->middleware('auth')->name('account.delivery-preference');
     Route::post('/account/profile-picture', [BuyerAccountController::class, 'uploadProfilePicture'])->middleware('auth')->name('account.profile-picture.upload');
     Route::delete('/account/profile-picture', [BuyerAccountController::class, 'removeProfilePicture'])->middleware('auth')->name('account.profile-picture.remove');
     Route::post('/account/banner', [BuyerAccountController::class, 'uploadBanner'])->middleware('auth')->name('account.banner.upload');

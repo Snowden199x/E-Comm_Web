@@ -14,4 +14,4 @@ Shared rules: confirming or resolving locks the batch and its orders, a batch ca
 
 Sidebar entries (`config/logistics_nav.php`): Province Business group gains **Cash Remittances**; the Company sidebar gains a **Money** group with **Cash Remittances** and **Rider Payment**.
 
-Known gaps: Vendo/Admin confirmation, Seller earnings and Admin rate editing are not built. Shortage liability is recorded only as notes. Parcels that settle as `review` (route mismatch) are counted with no Rider payment, so the Company keeps the full delivery fee.
+Known gaps: shortage liability is recorded only as notes, and no step reverses a batch when an order is later returned. Parcels that settle as `review` (route mismatch) are counted with no Rider payment, so the Company keeps the full delivery fee. Vendo's receipt confirmation is on the [Admin cash remittances page](../../admin/delivery-fees-and-remittances/spec.md), Seller earnings on the [Seller earnings page](../../seller/earnings/spec.md), and the Admin rate editor on the [Admin delivery fees page](../../admin/delivery-fees-and-remittances/spec.md).

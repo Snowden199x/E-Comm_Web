@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\User;
 use App\Models\Communication\Notification;
+use App\Services\PsgcAddressResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -33,7 +34,7 @@ class RegisteredUserController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, PsgcAddressResolver $addresses): JsonResponse
     {
         $validated = $request->validate([
             'last_name' => ['required', 'string', 'max:255'],
@@ -43,12 +44,14 @@ class RegisteredUserController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'birthday' => ['required', 'date', 'before:today'],
             'valid_id' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'contact_number' => ['required', 'digits_between:10,15'],
+            'contact_number' => ['required', 'regex:/^09[0-9]{9}$/'],
             'province' => ['required', 'string', 'max:255'],
             'municipality' => ['required', 'string', 'max:255'],
             'barangay' => ['required', 'string', 'max:255'],
             'street' => ['required', 'string', 'max:255'],
             'zip_code' => ['required', 'string', 'max:10'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
             'password' => ['required', 'confirmed', Rules\Password::min(8)->mixedCase()->numbers()->symbols()],
             'business_name' => ['required', 'string', 'max:255'],
             'business_permit' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
@@ -56,7 +59,6 @@ class RegisteredUserController extends Controller
             'categories.*' => ['exists:categories,id'],
             'agree_terms' => ['accepted'],
         ]);
-
         $email = strtolower($validated['email']);
 
         $verification = $request->session()->get('registration_verification', []);
@@ -74,6 +76,8 @@ class RegisteredUserController extends Controller
                 'email' => 'Please verify your email address before submitting.',
             ]);
         }
+
+        $validated = array_merge($validated, $addresses->resolve($validated));
 
         $user = User::create([
             'name' => trim($validated['first_name'].' '.$validated['last_name']),
@@ -100,6 +104,8 @@ class RegisteredUserController extends Controller
             'barangay' => $validated['barangay'],
             'street' => $validated['street'],
             'zip_code' => $validated['zip_code'],
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
             'business_name' => $validated['business_name'],
             'business_permit_path' => $businessPermitPath,
         ]);

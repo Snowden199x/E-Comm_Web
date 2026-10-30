@@ -1,6 +1,6 @@
 # Vendo Web Test Suite
 
-**Reviewed:** 23 October 2026
+**Reviewed:** 29 October 2026
 
 ## Run the PHP web suite
 
@@ -26,4 +26,4 @@ The repository has no `npm test` script. `tests/Frontend/buyer-registration.test
 
 ## Current verification
 
-On 30 October 2026, `php artisan test` completed with **40 passed and 5 failed**. The 5 failures are the pre-existing `GD extension is not installed` registration tests; the Rider notification API tests add 6 passing tests and 22 assertions. This is local test-suite evidence only; it does not verify production MySQL/MariaDB behavior, browser rendering, mail delivery, or deployed services.
+On 30 October 2026, after merging the Buyer mobile API work with the daily delivery window and Rider notification work, `php artisan test` completed with **46 passed and 5 failed** (183 assertions). The 5 failures are the pre-existing `GD extension is not installed` registration tests in `BuyerRegistrationProgressTest`; they are environment failures, not regressions. This is local test-suite evidence only; it does not verify production MySQL/MariaDB behavior, browser rendering, mail delivery, or deployed services.

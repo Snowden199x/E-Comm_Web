@@ -1,6 +1,6 @@
 # Vendo COD Cash Flow and Delivery Fee Distribution
 
-**Status:** Proposed design. Steps 2 to 8 (database foundation, per-parcel settlement and rate snapshots, cash collected at delivery on the web API, Station Hub, Province Hub, Company and Vendo Admin cash pages, Rider Payment settings, Seller earnings, Buyer COD notices, and per-order seller rates in the Admin Commission and Reports pages) are written in code with owner migration and verification pending. Not implemented: the mobile app change (`E-Comm_Mobile`), returns and failed-delivery reversals, and the open business decisions in section 9. Section 6 describes the code as it was before step 2.
+**Status:** Proposed design, partly implemented. Steps 2 to 7 of the implementation order (database foundation, per-parcel settlement and rate snapshots, cash collected at delivery on the web API, Station Hub, Province Hub, Company and Vendo Admin cash pages, Rider Payment settings, Seller earnings, Buyer COD notices, and per-order seller rates in the Admin Commission and Reports pages) are written in code with owner migration and verification pending; see the [29 October pull review](2026-10-29-cod-cash-pull-review.md). Not implemented: step 8 (returns and failed-delivery reversals), the mobile app change (`E-Comm_Mobile`), and the open business decisions in section 9. Section 6 describes the code as it was before step 2.
 **Reviewed:** 28 October 2026, against the code in `E-Comm_Web.zip` (static read only; no tests or walkthroughs were run).
 **Related:** [commission-calculation-and-settlement.md](commission-calculation-and-settlement.md), [logistics-hub-restructure-backend-spec.md](logistics-hub-restructure-backend-spec.md), `docs/order-logistics-flow-decisions.md`
 
@@ -107,7 +107,7 @@ Two side states: `discrepancy` (a shortage or overage is open at any hop) and `v
 
 ## 5. Proposed data shape
 
-> Proposed only. Add new migrations; do not edit migrations that may already have run.
+> The migrations below now exist. The shape is additive: add new migrations, and do not edit migrations that may already have run.
 
 | Table or column | Purpose |
 |---|---|

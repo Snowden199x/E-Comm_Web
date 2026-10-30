@@ -104,6 +104,31 @@
 .vb-img { opacity: 0; transition: opacity 0.5s var(--vb-ease), transform 0.6s var(--vb-ease); }
 .vb-img.is-loaded { opacity: 1; }
 
+/* ---------- Loading skeleton ----------
+   Shown while a card image is still downloading, and anywhere a panel is waiting on data.
+   The shimmer stops for Settings > Reduce animations and the OS reduce-motion setting. */
+.vb-skel {
+    display: block;
+    background: linear-gradient(90deg, #f1ecf2 25%, #e8e0ea 37%, #f1ecf2 63%);
+    background-size: 300% 100%;
+    animation: vb-shimmer 1.3s linear infinite;
+}
+@keyframes vb-shimmer {
+    from { background-position: 100% 0; }
+    to   { background-position: -100% 0; }
+}
+.vb-img-shell { position: relative; background: #f1ecf2; }
+.vb-img-shell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, #f1ecf2 25%, #e8e0ea 37%, #f1ecf2 63%);
+    background-size: 300% 100%;
+    animation: vb-shimmer 1.3s linear infinite;
+    transition: opacity 0.3s var(--vb-ease);
+}
+.vb-img-shell.is-loaded::before { opacity: 0; }
+
 /* Thin progress bar that runs while the next page is loading (link click or form submit) */
 .vb-progress {
     position: fixed;
@@ -205,6 +230,7 @@ html.vb-text-xl body { zoom: 1.16; }
     .vb-header { animation: none; }
     .vb-rise, html.vb-js .vb-reveal { opacity: 1; transform: none; }
     .vb-float { animation: none; }
+    .vb-skel, .vb-img-shell::before { animation: none; }
     .vb-dot.is-active .vb-dot__fill { animation: none !important; transform: scaleX(1); }
 }
 html.vb-calm *, html.vb-calm *::before, html.vb-calm *::after {
@@ -215,6 +241,7 @@ html.vb-calm *, html.vb-calm *::before, html.vb-calm *::after {
 }
 html.vb-calm .vb-rise, html.vb-calm.vb-js .vb-reveal { opacity: 1; transform: none; }
 html.vb-calm .vb-float { animation: none; }
+html.vb-calm .vb-skel, html.vb-calm .vb-img-shell::before { animation: none; }
 html.vb-calm .vb-dot.is-active .vb-dot__fill { animation: none !important; transform: scaleX(1); }
 
 [x-cloak] { display: none !important; }

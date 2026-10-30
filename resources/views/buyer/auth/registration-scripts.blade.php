@@ -20,6 +20,12 @@ document.addEventListener('alpine:init', () => {
 
         init() {
             this.$nextTick(() => this.restoreDraft());
+            // Mobile numbers are exactly 11 digits: drop spaces, dashes and anything past the 11th digit.
+            const phone = this.field('contact_number');
+            phone?.addEventListener('input', () => {
+                const clean = phone.value.replace(/\D/g, '').slice(0, 11);
+                if (clean !== phone.value) phone.value = clean;
+            });
         },
         destroy() {
             clearTimeout(this.expiryTimer);

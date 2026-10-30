@@ -128,7 +128,12 @@
     async function load(silent = false) {
         const seq = ++listSeq;
         const card = el('omoCard');
-        if (!silent) { card.classList.add('is-loading'); card.setAttribute('aria-busy', 'true'); }
+        if (!silent) {
+            card.classList.add('is-loading');
+            card.setAttribute('aria-busy', 'true');
+            const body = el('omoTableBody');
+            body.innerHTML = '<tr class="omo-loading-row" aria-hidden="true"><td colspan="7"><div class="omo-loading-skeleton"><i></i><i></i><i></i><i></i></div></td></tr>';
+        }
         try {
             const params = new URLSearchParams(Object.entries(state).filter(([, value]) => value !== '' && value != null));
             const data = await api(`${app.dataset.endpoint}?${params}`);
@@ -148,7 +153,11 @@
         } catch (error) {
             if (seq === listSeq && !silent) showError(error.message);
         } finally {
-            if (seq === listSeq) { card.classList.remove('is-loading'); card.setAttribute('aria-busy', 'false'); }
+            if (seq === listSeq) {
+                card.classList.remove('is-loading');
+                card.setAttribute('aria-busy', 'false');
+                if (el('omoTableBody').querySelector('.omo-loading-row')) el('omoTableBody').innerHTML = rowsHtml;
+            }
         }
     }
 

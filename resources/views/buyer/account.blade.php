@@ -12,9 +12,11 @@
     $user = auth()->user();
     $aliases = ['settings' => 'preferences', 'policies' => 'privacy'];
     $requested = $aliases[request('tab', 'profile')] ?? request('tab', 'profile');
-    $tab = in_array($requested, ['profile', 'security', 'preferences', 'notifications', 'saved', 'privacy'], true) ? $requested : 'profile';
+    $tab = in_array($requested, ['profile', 'security', 'preferences', 'delivery', 'notifications', 'saved', 'privacy'], true) ? $requested : 'profile';
     if ($errors->has('current_password') || $errors->has('password') || session('password_success')) {
         $tab = 'security';
+    } elseif ($errors->has('preferred_delivery_company_id')) {
+        $tab = 'delivery';
     } elseif ($errors->any()) {
         $tab = 'profile';
     }
@@ -28,6 +30,7 @@
         ],
         'Settings' => [
             'preferences' => ['Appearance and motion', 'M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z'],
+            'delivery' => ['Delivery preference', 'M3 7h11v8H3zM14 10h4l3 3v2h-7zM6.5 18a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 18a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z'],
             'notifications' => ['Notifications', 'M18 16v-5a6 6 0 1 0-12 0v5l-2 3h16zM10 21a2 2 0 0 0 4 0'],
             'saved' => ['Saved items', 'M12 20.4s-7.6-4.6-9.2-9.5C1.7 7.5 3.8 4.6 6.9 4.6c1.9 0 3.6 1 5.1 3 1.5-2 3.2-3 5.1-3 3.1 0 5.2 2.9 4.1 6.3-1.6 4.9-9.2 9.5-9.2 9.5z'],
             'privacy' => ['Privacy and policies', 'M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6zM9 12l2 2 4-4'],
@@ -205,7 +208,23 @@
                             @if ($buyerDetail)
                                 <div class="border-t border-[#f1e8f2] pt-4">
                                     <h3 class="text-[13px] font-semibold text-[#402143]">Delivery address</h3>
-                                    <div class="mt-3 grid gap-4 sm:grid-cols-[120px_1fr_140px]">
+                                    <p class="mt-1 text-[12px] leading-5 text-[#7a6a7e]">Search or pin the address with Geoapify. Review the filled address before saving.</p>
+                                    <div class="mt-3 grid gap-4 sm:grid-cols-2">
+                                        <div>
+                                            <label for="acc-province" class="{{ $label }}">Province</label>
+                                            <input id="acc-province" type="text" name="province" value="{{ old('province', $buyerDetail->province) }}" class="{{ $field }}" required>
+                                            @error('province')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
+                                        </div>
+                                        <div>
+                                            <label for="acc-municipality" class="{{ $label }}">Municipality / city</label>
+                                            <input id="acc-municipality" type="text" name="municipality" value="{{ old('municipality', $buyerDetail->municipality) }}" class="{{ $field }}" required>
+                                            @error('municipality')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
+                                        </div>
+                                        <div>
+                                            <label for="acc-barangay" class="{{ $label }}">Barangay</label>
+                                            <input id="acc-barangay" type="text" name="barangay" value="{{ old('barangay', $buyerDetail->barangay) }}" class="{{ $field }}" required>
+                                            @error('barangay')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
+                                        </div>
                                         <div>
                                             <label for="acc-house" class="{{ $label }}">House no.</label>
                                             <input id="acc-house" type="text" name="house_no" value="{{ old('house_no', $buyerDetail->house_no) }}" class="{{ $field }}">
@@ -223,12 +242,18 @@
                                         </div>
                                     </div>
 
-                                    <dl class="mt-4 grid gap-3 rounded-md bg-[#faf6fb] p-3.5 text-[13px] sm:grid-cols-3">
-                                        <div><dt class="text-[11px] font-medium uppercase tracking-wide text-[#9a8a9d]">Barangay</dt><dd class="mt-0.5 text-[#2b1730]">{{ $buyerDetail->barangay ?: 'Not set' }}</dd></div>
-                                        <div><dt class="text-[11px] font-medium uppercase tracking-wide text-[#9a8a9d]">Municipality</dt><dd class="mt-0.5 text-[#2b1730]">{{ $buyerDetail->municipality ?: 'Not set' }}</dd></div>
-                                        <div><dt class="text-[11px] font-medium uppercase tracking-wide text-[#9a8a9d]">Province</dt><dd class="mt-0.5 text-[#2b1730]">{{ $buyerDetail->province ?: 'Not set' }}</dd></div>
-                                    </dl>
-                                    <p class="mt-2 text-[12px] text-[#9a8a9d]">Barangay, municipality and province come from your registration and are used to route your parcels.</p>
+                                    <div class="mt-4 rounded-md border border-[#e5dce7] p-3.5">
+                                        <h4 class="text-[13px] font-semibold text-[#402143]">Map pin</h4>
+                                        <p class="mt-0.5 text-[12px] leading-5 text-[#7a6a7e]">Put a pin on your exact door so the Rider does not have to guess. Checkout uses it for every delivery to this address.</p>
+                                        <div class="mt-2.5">
+                                            <x-address-map :lat="$buyerDetail->latitude" :lng="$buyerDetail->longitude"
+                                                :address="trim(implode(', ', array_filter([$buyerDetail->house_no, $buyerDetail->street, $buyerDetail->barangay, $buyerDetail->municipality, $buyerDetail->province])))"
+                                                title="Pin your delivery address"
+                                                description="Search your address or move the pin. The address fields update from the map; save changes below to keep the pin." />
+                                            @error('latitude')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
+                                            @error('longitude')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
+                                        </div>
+                                    </div>
                                 </div>
                             @endif
 
@@ -315,6 +340,53 @@
                             class="inline-flex h-9 items-center rounded-md px-4 text-[13px] font-medium transition-colors duration-200"
                             x-text="confirmReset ? 'Click again to reset' : 'Reset to defaults'"></button>
                     </div>
+                </section>
+
+                <!-- ===================== Settings: delivery preference ===================== -->
+                <section x-show="tab === 'delivery'" @if ($tab !== 'delivery') x-cloak @endif
+                    x-transition:enter="transition duration-500 ease-vendo" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
+                    class="{{ $card }}" aria-labelledby="acc-delivery-title">
+                    <div class="border-b border-[#f1e8f2] p-5">
+                        <h2 id="acc-delivery-title" class="text-[15px] font-semibold text-[#402143]">Delivery preference</h2>
+                        <p class="mt-0.5 text-[12px] leading-5 text-[#7a6a7e]">Choose the Logistics provider you prefer. Checkout preselects it when it serves both the Seller and your address; otherwise the lowest fee is preselected and you can still change it per order.</p>
+                    </div>
+
+                    <form action="{{ route('buyer.account.delivery-preference') }}" method="POST" class="space-y-4 p-5">
+                        @csrf
+                        @method('PUT')
+
+                        @if ($buyerDetail && $deliveryCompanies->isNotEmpty())
+                            <div class="max-w-[440px]">
+                                <label for="acc-delivery-company" class="{{ $label }}">Preferred Logistics provider</label>
+                                <select id="acc-delivery-company" name="preferred_delivery_company_id" class="{{ $field }}">
+                                    <option value="">No preference — use the lowest fee</option>
+                                    @foreach ($deliveryCompanies as $company)
+                                        <option value="{{ $company->id }}" @selected((int) old('preferred_delivery_company_id', $buyerDetail->preferred_delivery_company_id) === $company->id)>{{ $company->business_name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('preferred_delivery_company_id')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
+                                <p class="mt-1.5 text-[11px] leading-4 text-[#8a7a8e]">These providers have an active Station Hub in {{ $buyerDetail->municipality ?: 'your municipality' }}, so they can reach your address.</p>
+                            </div>
+                            <div class="flex justify-end border-t border-[#f1e8f2] pt-4">
+                                <button type="submit" class="{{ $primary }}">Save preference</button>
+                            </div>
+                        @else
+                            <div class="rounded-md bg-[#faf6fb] p-4">
+                                <p class="text-[13px] font-medium text-[#2b1730]">No provider reaches your address yet</p>
+                                <p class="mt-1 text-[12px] leading-5 text-[#7a6a7e]">A Logistics Company must open an active Station Hub in your municipality before its network can deliver to you. You can still shop, and checkout shows only the providers that serve both ends of the route.</p>
+                            </div>
+                        @endif
+
+                        <div class="rounded-md border border-dashed border-[#e5dce7] px-3.5 py-3 text-[12px] text-[#7a6a7e]">
+                            <span class="font-medium text-[#402143]">Delivery map pin:</span>
+                            @if ($buyerDetail?->latitude && $buyerDetail?->longitude)
+                                saved for this address.
+                            @else
+                                not set yet.
+                            @endif
+                            <button type="button" @click="go('profile')" class="font-medium text-[#52245b] underline underline-offset-2 hover:text-[#402143]">Update it in your profile</button>.
+                        </div>
+                    </form>
                 </section>
 
                 <!-- ===================== Settings: notifications ===================== -->

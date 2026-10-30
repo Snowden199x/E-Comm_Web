@@ -19,6 +19,7 @@ use Illuminate\View\View;
 use App\Models\User;
 use App\Models\Communication\Notification;
 use App\Models\Profiles\LogisticsDocumentRequest;
+use App\Services\PsgcAddressResolver;
 
 class PortalAccountController extends Controller
 {
@@ -79,7 +80,7 @@ class PortalAccountController extends Controller
         ]);
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request, PsgcAddressResolver $addresses): RedirectResponse
     {
         $role = (string) $request->route('portal_role');
         $data = $request->validate([
@@ -88,13 +89,27 @@ class PortalAccountController extends Controller
             'business_name' => [$role === 'company' ? 'required' : 'prohibited', 'string', 'max:160'],
             'street' => [$role === 'company' ? 'nullable' : 'prohibited', 'string', 'max:160'],
             'house_no' => [$role === 'company' ? 'nullable' : 'prohibited', 'string', 'max:80'],
+            'province' => [$role === 'company' ? 'required' : 'prohibited', 'string', 'max:255'],
+            'municipality' => [$role === 'company' ? 'required' : 'prohibited', 'string', 'max:255'],
+            'barangay' => [$role === 'company' ? 'required' : 'prohibited', 'string', 'max:255'],
+            'zip_code' => [$role === 'company' ? 'nullable' : 'prohibited', 'string', 'max:20'],
+            'latitude' => [$role === 'company' ? 'nullable' : 'prohibited', 'numeric', 'between:-90,90'],
+            'longitude' => [$role === 'company' ? 'nullable' : 'prohibited', 'numeric', 'between:-180,180', 'required_with:latitude'],
         ]);
-        DB::transaction(function () use ($request, $role, $data) {
+        $address = $role === 'company' ? $addresses->resolve($data) : null;
+        DB::transaction(function () use ($request, $role, $data, $address) {
             $request->user()->update(['name' => $data['name'], 'phone_number' => $data['phone_number']]);
             if ($role === 'company') {
                 $center = $request->user()->logisticsCenterDetail;
-                $center->update(['business_name' => $data['business_name'], 'street' => $data['street'] ?? null,
-                    'house_no' => $data['house_no'] ?? null]);
+                $center->update([
+                    'business_name' => $data['business_name'],
+                    'street' => $data['street'] ?? null,
+                    'house_no' => $data['house_no'] ?? null,
+                    'zip_code' => $data['zip_code'] ?? null,
+                    'latitude' => $data['latitude'] ?? null,
+                    'longitude' => $data['longitude'] ?? null,
+                    ...$address,
+                ]);
                 $center->company->update(['business_name' => $data['business_name']]);
             }
         });

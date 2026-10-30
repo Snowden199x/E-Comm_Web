@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 
 #[Fillable([
     'user_id', 'last_name', 'first_name', 'middle_name', 'sex', 'birthday', 'valid_id_path',
-    'province', 'municipality', 'barangay', 'street', 'house_no', 'zip_code',
+    'province', 'municipality', 'barangay', 'street', 'house_no', 'zip_code', 'latitude', 'longitude',
     'business_name', 'business_permit_path', 'coverage_province_code', 'coverage_province',
 ])]
 class LogisticsCenter extends Model
 {
-    protected $casts = ['birthday' => 'date'];
+    protected $casts = ['birthday' => 'date', 'latitude' => 'float', 'longitude' => 'float'];
 
     public function user()
     {

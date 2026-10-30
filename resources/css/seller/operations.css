@@ -66,6 +66,17 @@
 .ops-menu a:hover { background:#f4eef5; border-radius:5px; }
 .ops-menu .ops-menu__disabled { display:block; padding:9px 10px; color:#777; font-size:12px; }
 .ops-empty { height:240px; text-align:center; color:#827886; font-size:12px; }
+.ops-empty__state { display:grid; justify-items:center; gap:7px; max-width:360px; margin:auto; padding:24px 14px; }
+.ops-empty__state > span { display:grid; place-items:center; width:38px; height:38px; border-radius:12px; background:#f4edf5; color:#815488; font-size:20px; font-weight:700; }
+.ops-empty__state strong { color:#392b3d; font-size:13px; }
+.ops-empty__state small { color:#827886; font-size:11px; line-height:1.5; font-weight:400; }
+.ops-loading-skeleton { display:grid; gap:13px; padding:20px 4px; }
+.ops-loading-skeleton i { display:block; width:100%; height:14px; border-radius:8px; background:linear-gradient(90deg,#eee9f0 25%,#faf8fb 42%,#eee9f0 65%); background-size:380% 100%; animation:ops-skeleton 1.25s ease-in-out infinite; }
+.ops-loading-skeleton i:nth-child(2) { width:82%; }
+.ops-loading-skeleton i:nth-child(3) { width:94%; }
+.ops-loading-skeleton i:nth-child(4) { width:66%; }
+@keyframes ops-skeleton { to { background-position:-120% 0; } }
+@media (prefers-reduced-motion: reduce) { .ops-loading-skeleton i { animation:none; } }
 .ops-pagination { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:20px; color:#817a83; font-size:10px; }
 .ops-pagination nav { display:flex; gap:7px; }
 .ops-pagination nav>a,.ops-pagination nav>span { width:25px; height:25px; display:grid; place-items:center; border:1px solid #e3dce7; border-radius:6px; color:#76667e; }

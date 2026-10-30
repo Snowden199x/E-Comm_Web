@@ -850,10 +850,20 @@
                                     Contact Number <span class="text-red-500">*</span>
                                 </label>
 
-                                <input type="text" name="contact_number" required inputmode="numeric" pattern="[0-9]{10,15}" maxlength="15" placeholder="09XX XXX XXXX"
+                                <input type="text" name="contact_number" required inputmode="numeric" pattern="09[0-9]{9}" minlength="11" maxlength="11" placeholder="09XX XXX XXXX"
+                                    title="11 digits, starting with 09" autocomplete="tel-national"
                                     class="w-full rounded-md border border-gray-200 bg-white text-gray-800 text-[0.85rem] placeholder-gray-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/25 focus:border-[#3b1735] transition">
+                                <p class="mt-1 text-[0.72rem] text-gray-500">11 digits, starting with 09.</p>
                             </div>
 
+                        </div>
+
+                        <div class="mb-3 rounded-xl border border-gray-200 p-3.5">
+                            <p class="mb-1 text-[0.8rem] font-semibold text-gray-700">Pin your address on the map <span class="font-normal text-gray-500">(optional)</span></p>
+                            <p class="mb-2 text-[0.7rem] leading-4 text-gray-500">Search your address or move the pin, and the province, city, barangay, street and ZIP above are filled for you.</p>
+                            <x-address-map :lat="old('latitude')" :lng="old('longitude')"
+                                title="Pin your address"
+                                description="Search your address or drag the pin. The address fields in this step update from the map." />
                         </div>
 
                         <div class="flex justify-end gap-3">

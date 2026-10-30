@@ -28,6 +28,11 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'geoapify' => [
+        // Browser key for Geoapify map tiles and geocoding. Restrict it to this site's referrers.
+        'key' => env('GEOAPIFY_API_KEY'),
+    ],
+
     'google' => [
         'web_client_id' => env('GOOGLE_WEB_CLIENT_ID'),
         'allowed_client_ids' => array_values(array_filter(array_map(

@@ -4,6 +4,7 @@ namespace App\Models\Ecommerce;
 
 use App\Models\User;
 use App\Models\Profiles\LogisticsCenter;
+use App\Models\Profiles\LogisticsCompany;
 use App\Models\Communication\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -284,7 +285,7 @@ class Order extends Model
         'payment_mode',
         'shipping_address',
         'shipping_province_code', 'shipping_city_code', 'shipping_province', 'shipping_city',
-        'logistics_center_id', 'destination_logistics_center_id', 'route_plan_id', 'next_route_checkpoint_id', 'route_step',
+        'logistics_center_id', 'delivery_company_id', 'destination_logistics_center_id', 'route_plan_id', 'next_route_checkpoint_id', 'route_step',
         'origin_station_id', 'origin_province_hub_id', 'destination_station_id', 'destination_province_hub_id',
         'route_type', 'shipping_barangay_code', 'shipping_barangay',
         'tracking_number', 'carrier_name', 'carrier_tracking_number', 'estimated_delivery_from', 'estimated_delivery_to', 'shipping_fee',
@@ -321,6 +322,12 @@ class Order extends Model
     public function logisticsCenter()
     {
         return $this->belongsTo(LogisticsCenter::class);
+    }
+
+    /** The Company the Buyer chose at checkout; null for older orders. */
+    public function deliveryCompany()
+    {
+        return $this->belongsTo(LogisticsCompany::class, 'delivery_company_id');
     }
 
     public function destinationLogisticsCenter()

@@ -1,6 +1,6 @@
 # Vendo Project Documentation
 
-This documentation describes the Laravel web application as it exists in the repository, checked on **23 October 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
+This documentation describes the Laravel web application as it exists in the repository, checked on **29 October 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
 
 ## Start here
 
@@ -19,11 +19,12 @@ This documentation describes the Laravel web application as it exists in the rep
 - [Seller earnings](features/seller/earnings/spec.md) — per-order earnings after Vendo's commission, credited automatically once Vendo confirms the cash.
 - [Admin delivery fees and cash remittances](features/admin/delivery-fees-and-remittances/spec.md) — editing Vendo's commission rates, delivery fee distribution history, and confirming cash from Logistics Companies.
 - [Station Hub cash collections](features/logistics/station-cash-collections/spec.md) — receiving Rider COD cash, resolving discrepancies and sending verified cash to the Province Hub.
+- [Buyer mobile API](features/buyer/mobile-api/spec.md) — the `/api/v1/buyer` token API (auth, storefront, saved items, cart, COD checkout, orders, notifications) and the Flutter buyer screens connected to it.
 - [Parcel exception and detour workflow](features/logistics/parcel-exceptions/spec.md) and [Rider delivery-proof API](features/courier/delivery-proof-api/spec.md) — current web exception and new facility-route delivery evidence contracts; the Rider app still needs integration.
 - [Google sign-in](features/shared/google-auth/spec.md) — verified web and Rider token exchange, registration continuation, configuration, and platform limits.
 - [Shared site branding](features/shared/site-branding/spec.md) — the Vendo browser tab icon and Buyer product video display.
 - [Commission and settlement design](design/commission-calculation-and-settlement.md) — fixed Admin 10% merchandise commission, route-based Buyer shipping fee, Rider/Driver accrual, and remaining payout gaps.
-- [COD cash and delivery fee distribution](design/cod-cash-and-delivery-fee-distribution.md) — COD-only cash flow from Rider to Vendo and Seller, delivery fee split between Rider, Vendo and Logistics Company, pages per role, and the implementation order. Database foundation written; the rest is planned.
+- [COD cash and delivery fee distribution](design/cod-cash-and-delivery-fee-distribution.md) — COD-only cash flow from Rider to Vendo and Seller, delivery fee split between Rider, Vendo and Logistics Company, pages per role, and the implementation order. Steps 2 to 7 are written in code with owner migration and verification pending; returns and reversals are not built. See the [29 October pull review](design/2026-10-29-cod-cash-pull-review.md).
 - [Web form reload recovery](features/shared/form-draft-recovery/spec.md) — which forms retain unfinished work in the current tab and which inputs must be re-entered.
 - [Role workspace redesign](design/2026-10-04-role-workspace-redesign.md) — design and implementation boundaries for the 4 October Buyer, Seller, Logistics, and Admin UI update.
 - [Logistics portal design system](design/logistics-design-system.md) — colours, type, interaction rules, and checklist for the Company / Province Hub / Station pages (13 October pass).

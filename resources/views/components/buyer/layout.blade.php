@@ -272,6 +272,8 @@
                                 <p class="text-[11px] text-[#9a8a9d]">Buyer account</p>
                             </div>
                             <a href="{{ route('buyer.orders.index') }}" class="block px-4 py-2.5 transition-colors duration-150 hover:bg-[#f7eff8]">My Orders</a>
+                            <a href="{{ route('buyer.vouchers.index') }}" class="block px-4 py-2.5 transition-colors duration-150 hover:bg-[#f7eff8]">My Vouchers</a>
+                            <a href="{{ route('buyer.complaints.index') }}" class="block px-4 py-2.5 transition-colors duration-150 hover:bg-[#f7eff8]">Complaints</a>
                             <button type="button" @click="o = false; $dispatch('open-favorites')" class="flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors duration-150 hover:bg-[#f7eff8]">
                                 Saved items
                                 <span x-show="$store.fav.items.length" x-cloak x-text="$store.fav.items.length" class="rounded-full bg-[#f3e8f5] px-1.5 text-[11px] font-medium leading-[18px] text-[#52245b]"></span>

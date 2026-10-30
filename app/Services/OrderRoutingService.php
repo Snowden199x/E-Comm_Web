@@ -40,9 +40,21 @@ class OrderRoutingService
             }
             $order->loadMissing('seller.sellerDetail');
             $seller = $order->seller?->sellerDetail;
+            // Honour the Company the Buyer picked at checkout. If that Company no longer serves one
+            // end, fall back to the address match so the parcel is not stranded in routing.
+            $companyId = (int) ($order->delivery_company_id ?? 0);
             $origin = $seller ? $this->centers->stationForAddress($seller->province, $seller->municipality) : null;
             $destination = $order->shipping_province && $order->shipping_city
                 ? $this->centers->stationForAddress($order->shipping_province, $order->shipping_city) : null;
+            if ($companyId && $seller) {
+                $chosenOrigin = $this->centers->stationForCompanyAt($seller->province, $seller->municipality, $companyId);
+                $chosenDestination = $order->shipping_province && $order->shipping_city
+                    ? $this->centers->stationForCompanyAt($order->shipping_province, $order->shipping_city, $companyId) : null;
+                if ($chosenOrigin && $chosenDestination) {
+                    $origin = $chosenOrigin;
+                    $destination = $chosenDestination;
+                }
+            }
 
             if (! $origin || ! $destination || ! $origin->parent?->is_active || ! $destination->parent?->is_active) {
                 return;

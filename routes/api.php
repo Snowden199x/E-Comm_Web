@@ -5,13 +5,26 @@ use App\Http\Controllers\Api\RiderEmailOtpController;
 use App\Http\Controllers\Api\RiderGoogleAuthController;
 use App\Http\Controllers\Api\RiderPasswordResetController;
 use App\Http\Controllers\Api\RiderRegistrationController;
+use App\Http\Controllers\Api\RiderNotificationController;
 use App\Http\Controllers\Api\RiderScanController;
 use App\Http\Controllers\Api\RiderFacilityScanController;
-use App\Http\Controllers\Api\RiderNotificationController;
 use App\Http\Controllers\Api\RiderDeliveryProofController;
 use App\Http\Controllers\Api\RiderDeliveryRescheduleController;
 use App\Http\Controllers\Api\ShScannerAuthController;
 use App\Http\Controllers\Api\ShScannerScanController;
+use App\Http\Controllers\Api\Buyer\BuyerAccountController;
+use App\Http\Controllers\Api\Buyer\BuyerAuthController;
+use App\Http\Controllers\Api\Buyer\BuyerCartController;
+use App\Http\Controllers\Api\Buyer\BuyerCatalogController;
+use App\Http\Controllers\Api\Buyer\BuyerCheckoutController;
+use App\Http\Controllers\Api\Buyer\BuyerEmailOtpController;
+use App\Http\Controllers\Api\Buyer\BuyerLocationController;
+use App\Http\Controllers\Api\Buyer\BuyerNotificationController;
+use App\Http\Controllers\Api\Buyer\BuyerOrderController;
+use App\Http\Controllers\Api\Buyer\BuyerPasswordResetController;
+use App\Http\Controllers\Api\Buyer\BuyerRegistrationController;
+use App\Http\Controllers\Api\Buyer\BuyerSavedItemController;
+use App\Http\Middleware\EnsureApprovedBuyerToken;
 use App\Http\Middleware\EnsureApprovedRiderToken;
 use App\Http\Middleware\EnsureApprovedTransportDriverToken;
 use App\Http\Middleware\EnsureShScannerStation;
@@ -59,6 +72,59 @@ Route::prefix('v1/rider')->group(function () {
             ->whereNumber('order');
         Route::post('/facility-scans', [RiderFacilityScanController::class, 'store']);
         Route::post('/logout', [RiderAuthController::class, 'logout']);
+    });
+});
+
+Route::prefix('v1/buyer')->group(function () {
+    Route::post('/login', [BuyerAuthController::class, 'login'])->middleware('throttle:10,1');
+    Route::post('/email/otp/send', [BuyerEmailOtpController::class, 'sendRegistrationCode'])->middleware('throttle:5,1');
+    Route::post('/email/otp/verify', [BuyerEmailOtpController::class, 'verifyRegistrationCode'])->middleware('throttle:10,1');
+    Route::post('/register', [BuyerRegistrationController::class, 'store'])->middleware('throttle:5,1');
+    Route::get('/locations', [BuyerLocationController::class, 'index'])->middleware('throttle:30,1');
+    Route::get('/locations/{cityCode}/barangays', [BuyerLocationController::class, 'barangays'])->middleware('throttle:30,1');
+    Route::post('/password/otp/send', [BuyerPasswordResetController::class, 'sendCode'])->middleware('throttle:5,1');
+    Route::post('/password/otp/verify', [BuyerPasswordResetController::class, 'verifyCode'])->middleware('throttle:10,1');
+    Route::post('/password/reset', [BuyerPasswordResetController::class, 'reset'])->middleware('throttle:5,1');
+
+    Route::middleware(['auth:sanctum', EnsureApprovedBuyerToken::class, 'throttle:120,1'])->group(function () {
+        Route::post('/logout', [BuyerAuthController::class, 'logout']);
+        Route::get('/me', [BuyerAuthController::class, 'me']);
+
+        Route::get('/home', [BuyerCatalogController::class, 'home']);
+        Route::get('/categories', [BuyerCatalogController::class, 'categories']);
+        Route::get('/products', [BuyerCatalogController::class, 'products']);
+        Route::get('/products/{product}', [BuyerCatalogController::class, 'product'])->whereNumber('product');
+        Route::get('/sellers', [BuyerCatalogController::class, 'sellers']);
+        Route::get('/sellers/{seller}', [BuyerCatalogController::class, 'seller'])->whereNumber('seller');
+
+        Route::get('/saved-items', [BuyerSavedItemController::class, 'index']);
+        Route::post('/saved-items/{product}', [BuyerSavedItemController::class, 'store'])->whereNumber('product');
+        Route::delete('/saved-items/{product}', [BuyerSavedItemController::class, 'destroy'])->whereNumber('product');
+        Route::delete('/saved-items', [BuyerSavedItemController::class, 'clear']);
+
+        Route::get('/cart', [BuyerCartController::class, 'index']);
+        Route::post('/cart', [BuyerCartController::class, 'store']);
+        Route::patch('/cart/{cartItem}', [BuyerCartController::class, 'update'])->whereNumber('cartItem');
+        Route::delete('/cart/{cartItem}', [BuyerCartController::class, 'destroy'])->whereNumber('cartItem');
+
+        Route::post('/checkout/preview', [BuyerCheckoutController::class, 'preview']);
+        Route::post('/checkout/shipping-quote', [BuyerCheckoutController::class, 'shippingQuote'])->middleware('throttle:20,1');
+        Route::post('/checkout/voucher-quote', [BuyerCheckoutController::class, 'voucherQuote'])->middleware('throttle:20,1');
+        Route::post('/checkout', [BuyerCheckoutController::class, 'store'])->middleware('throttle:10,1');
+
+        Route::get('/orders', [BuyerOrderController::class, 'index']);
+        Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->whereNumber('order');
+        Route::patch('/orders/{order}/cancel', [BuyerOrderController::class, 'cancel'])->whereNumber('order');
+        Route::post('/orders/{order}/complete', [BuyerOrderController::class, 'complete'])->whereNumber('order');
+        Route::post('/order-items/{orderItem}/review', [BuyerOrderController::class, 'review'])->whereNumber('orderItem');
+
+        Route::get('/notifications', [BuyerNotificationController::class, 'index']);
+        Route::post('/notifications/read-all', [BuyerNotificationController::class, 'readAll']);
+        Route::post('/notifications/{notification}/read', [BuyerNotificationController::class, 'markRead'])->whereNumber('notification');
+
+        Route::get('/account', [BuyerAccountController::class, 'show']);
+        Route::put('/account', [BuyerAccountController::class, 'update']);
+        Route::put('/account/password', [BuyerAccountController::class, 'updatePassword']);
     });
 });
 
