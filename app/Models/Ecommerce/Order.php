@@ -62,6 +62,7 @@ class Order extends Model
 
     protected $casts = ['shipping_fee' => 'decimal:2', 'voucher_discount' => 'decimal:2', 'shipping_route_snapshot' => 'array', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date',
         'delivered_at' => 'datetime', 'pickup_verified_at' => 'datetime',
+        'delivery_scheduled_for' => 'date', 'delivery_failed_at' => 'datetime',
         'cod_amount' => 'decimal:2', 'rider_pay_rate' => 'decimal:2',
         'vendo_delivery_commission_rate' => 'decimal:2', 'seller_commission_rate' => 'decimal:2'];
 
@@ -287,6 +288,7 @@ class Order extends Model
         'origin_station_id', 'origin_province_hub_id', 'destination_station_id', 'destination_province_hub_id',
         'route_type', 'shipping_barangay_code', 'shipping_barangay',
         'tracking_number', 'carrier_name', 'carrier_tracking_number', 'estimated_delivery_from', 'estimated_delivery_to', 'shipping_fee',
+        'delivery_scheduled_for', 'delivery_failed_at',
         'shipping_hub_count', 'shipping_route_snapshot',
         'cod_amount', 'money_status', 'rider_pay_rate', 'vendo_delivery_commission_rate', 'seller_commission_rate',
     ];

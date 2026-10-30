@@ -10,6 +10,8 @@ use App\Models\Profiles\LogisticsFacility;
 use App\Models\Profiles\LogisticsTransportTrip;
 use App\Models\Profiles\OrderFacilityStop;
 use App\Models\Profiles\RiderTask;
+use App\Services\DeliveryCutoff;
+use App\Services\StationPickupExpiry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,9 +20,15 @@ use Illuminate\View\View;
 
 class StationOperationsController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, StationPickupExpiry $expiry, DeliveryCutoff $cutoff): View
     {
         $station = $this->station($request);
+        // Close any delivery window that has passed before the delivery queue is
+        // read, so a late parcel already shows as Delivery Failed.
+        $cutoff->sweep();
+        // Release pickup assignments the Rider never scanned, so these lists show
+        // which parcels are free to assign again.
+        $expiry->expireOverdue($station->id);
         $mode = (string) $request->route('mode');
         abort_unless(in_array($mode, ['pickups', 'tasks', 'delivery-queue', 'incoming', 'sorting', 'outgoing'], true), 404);
         $riders = $station->riders()->whereHas('user', fn ($user) => $user->where('status', 'approved')
@@ -75,7 +83,7 @@ class StationOperationsController extends Controller
         }
         if ($mode === 'tasks') {
             $rows = RiderTask::query()->where('station_hub_id', $station->id)
-                ->whereIn('status', ['assigned', 'in_progress', 'failed'])->with(['order.seller', 'order.buyer', 'rider.user'])->latest()->limit(200)->get()
+                ->whereIn('status', ['assigned', 'in_progress', 'failed', 'expired'])->with(['order.seller', 'order.buyer', 'rider.user'])->latest()->limit(200)->get()
                 ->map(fn ($task) => ['id' => $task->order_id, 'tracking' => $task->order?->tracking_number,
                     'seller' => $task->order?->seller?->name, 'buyer' => $task->order?->buyer?->name,
                     'address' => $task->type === 'pickup' ? 'Seller pickup' : $task->order?->shipping_address,
@@ -94,9 +102,12 @@ class StationOperationsController extends Controller
         ]);
     }
 
-    public function assign(Request $request, Order $order): RedirectResponse
+    public function assign(Request $request, Order $order, StationPickupExpiry $expiry): RedirectResponse
     {
         $station = $this->station($request);
+        // Expire a stale pickup assignment first, so the hub can hand this parcel
+        // to a different Rider with no leftover task in the way.
+        $expiry->expireOverdue($station->id);
         $data = $request->validate(['type' => ['required', 'in:pickup,delivery'],
             'rider_id' => ['required', 'integer', 'exists:courier_details,id']]);
         DB::transaction(function () use ($request, $order, $station, $data) {
