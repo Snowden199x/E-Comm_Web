@@ -7,44 +7,66 @@ use App\Models\Communication\Notification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/** Notifications for the authenticated Rider only. */
 class RiderNotificationController extends Controller
 {
+    /**
+     * Notifications addressed to the signed-in Rider.
+     *
+     * The app polls this while it is open, so `since` returns only rows newer
+     * than the highest id it already has. `latest_id` lets the app move its
+     * watermark forward without re-reading everything.
+     */
     public function index(Request $request): JsonResponse
     {
-        $owned = Notification::query()->where('user_id', $request->user()->id);
-        $notifications = (clone $owned)->latest()->limit(50)->get();
+        $rider = $request->user();
+        $data = $request->validate(['since' => ['nullable', 'integer', 'min:0']]);
+        $since = (int) ($data['since'] ?? 0);
+
+        $query = Notification::query()->where('user_id', $rider->id);
+        $items = (clone $query)
+            ->when($since > 0, fn ($notifications) => $notifications->where('id', '>', $since))
+            ->latest('id')->limit(50)->get()
+            ->map(fn (Notification $notification) => [
+                'id' => $notification->id,
+                'type' => $notification->type,
+                'title' => $notification->title,
+                'message' => $notification->message,
+                'read_at' => $notification->read_at?->toIso8601String(),
+                'time_ago' => $notification->timeAgo(),
+                'created_at' => $notification->created_at?->toIso8601String(),
+            ]);
 
         return response()->json([
-            'data' => $notifications->map(fn (Notification $item) => [
-                'id' => $item->id,
-                'type' => $item->type,
-                'title' => $item->title,
-                'message' => $item->message,
-                'read_at' => $item->read_at?->toIso8601String(),
-                'created_at' => $item->created_at?->toIso8601String(),
-                'time_ago' => $item->created_at?->diffForHumans(),
-            ])->values(),
-            'unread_count' => (clone $owned)->whereNull('read_at')->count(),
+            'data' => $items,
+            'unread_count' => (clone $query)->whereNull('read_at')->count(),
+            'latest_id' => (int) ((clone $query)->max('id') ?? 0),
         ])->header('Cache-Control', 'private, no-store');
     }
 
-    public function markRead(Request $request, int $notification): JsonResponse
+    public function read(Request $request, Notification $notification): JsonResponse
     {
-        $record = Notification::query()->where('user_id', $request->user()->id)->findOrFail($notification);
-        if (! $record->read_at) {
-            $record->update(['read_at' => now()]);
+        abort_unless((int) $notification->user_id === (int) $request->user()->id, 404);
+        if (! $notification->read_at) {
+            $notification->update(['read_at' => now()]);
         }
 
-        return response()->json(['unread_count' => Notification::query()
-            ->where('user_id', $request->user()->id)->whereNull('read_at')->count()]);
+        return response()->json([
+            'ok' => true,
+            'unread_count' => $this->unreadCount($request),
+        ]);
     }
 
     public function readAll(Request $request): JsonResponse
     {
-        Notification::query()->where('user_id', $request->user()->id)->whereNull('read_at')
-            ->update(['read_at' => now()]);
+        Notification::query()->where('user_id', $request->user()->id)
+            ->whereNull('read_at')->update(['read_at' => now()]);
 
-        return response()->json(['unread_count' => 0]);
+        return response()->json(['ok' => true, 'unread_count' => 0]);
+    }
+
+    private function unreadCount(Request $request): int
+    {
+        return Notification::query()->where('user_id', $request->user()->id)
+            ->whereNull('read_at')->count();
     }
 }

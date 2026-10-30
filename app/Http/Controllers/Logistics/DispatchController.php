@@ -145,6 +145,9 @@ class DispatchController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            $this->notifyRider($user->id, 'rider_task_assigned',
+                'Pickup assignment '.$record->number,
+                'Your Main Hub assigned this parcel for pickup. Open the Rider app and scan it at the seller.');
         }, 3);
 
         return back()->with('success', 'Pickup courier assigned. Waiting for the rider pickup scan.');
@@ -324,6 +327,11 @@ class DispatchController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            $this->notifyRider($rider->id, 'rider_task_assigned',
+                'Truck assignment '.$record->number,
+                $previousRiderId
+                    ? 'This parcel moved to your truck route. Open the Rider app for the updated route plan.'
+                    : 'Your Main Hub assigned this parcel to your truck route. Open the Rider app for the route plan.');
         }, 3);
 
         return back()->with('success', 'Truck Rider assigned. Facility arrivals and sorting are recorded with the Logistics scanner.');
@@ -428,6 +436,19 @@ class DispatchController extends Controller
             'order_id' => $record->id, 'actor_id' => $request->user()->id,
             'action' => 'delivery_courier_assigned', 'to_logistics_center_id' => $centerId,
             'courier_id' => $courierId, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->notifyRider($courierId, 'rider_task_assigned',
+            'Delivery assignment '.$record->number,
+            'This parcel is ready for drop-off. Open the Rider app to see the buyer details and start the delivery.');
+    }
+
+    private function notifyRider(int $userId, string $type, string $title, string $message): void
+    {
+        Notification::create([
+            'user_id' => $userId,
+            'type' => $type,
+            'title' => $title,
+            'message' => $message,
         ]);
     }
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
 use App\Models\Profiles\LogisticsFacility;
 use App\Models\Profiles\RiderTask;
+use App\Services\DeliveryCutoff;
 use App\Services\OrderScanWorkflow;
 use App\Services\RiderAccessService;
 use Illuminate\Http\JsonResponse;
@@ -15,9 +16,12 @@ use Illuminate\Validation\Rule;
 
 class RiderScanController extends Controller
 {
-    public function assignments(Request $request, RiderAccessService $access): JsonResponse
+    public function assignments(Request $request, RiderAccessService $access, DeliveryCutoff $cutoff): JsonResponse
     {
         $rider = $request->user();
+        // Close yesterday's delivery window before building the list, so a
+        // parcel past the 5:00 PM cutoff shows as failed instead of stale.
+        $cutoff->sweep();
         $center = $access->approvedCenter($rider);
         abort_unless($center, 403, 'Approved logistics membership required.');
         $isTruck = $rider->courierDetail?->vehicle_type === 'Truck';
@@ -49,7 +53,7 @@ class RiderScanController extends Controller
             } else {
                 $query->orWhere(fn ($delivery) => $delivery->where('delivery_courier_id', $rider->id)
                     ->where('destination_logistics_center_id', $center->id)
-                    ->whereIn('status', ['assigned_to_rider', 'out_for_delivery']));
+                    ->whereIn('status', ['assigned_to_rider', 'out_for_delivery', 'delivery_failed']));
             }
         })->with($relations)
             ->latest()->limit(100)->get();
@@ -59,7 +63,7 @@ class RiderScanController extends Controller
             ->whereIn('status', ['assigned', 'in_progress', 'failed'])
             ->latest('id')->get()->unique('order_id')->keyBy('order_id');
 
-        $assignments = $orders->map(function (Order $order) use ($rider, $center, $isTruck, $tasks) {
+        $assignments = $orders->map(function (Order $order) use ($rider, $center, $isTruck, $tasks, $cutoff) {
             $facilityStops = $order->facilityStops;
             $linehaul = $isTruck && (int) $order->linehaul_rider_id === (int) $rider->id
                 && in_array($order->status, ['sorted', 'to_soc5', 'to_soc6', 'in_transit_to_hub'], true);
@@ -142,6 +146,16 @@ class RiderScanController extends Controller
                 'cash_to_collect' => ! $linehaul && ! $pickup && $order->cod_amount !== null
                     ? number_format((float) $order->cod_amount, 2, '.', '') : null,
                 'cash_collection_required' => ! $linehaul && ! $pickup && $order->money_status === 'not_collected',
+                // The daily delivery window. A failed parcel keeps its Rider and
+                // can be rescheduled for the next day from the app.
+                'delivery_window' => ! $linehaul && ! $pickup ? [
+                    'cutoff_label' => $cutoff->label(),
+                    'deadline_label' => $cutoff->deadlineLabel($order),
+                    'closed' => $order->status === 'delivery_failed',
+                    'scheduled_for' => $cutoff->isScheduledForLater($order) ? $order->delivery_scheduled_for->toDateString() : null,
+                    'scheduled_for_label' => $cutoff->isScheduledForLater($order) ? $order->delivery_scheduled_for->format('j M Y') : null,
+                    'reschedulable' => $order->status === 'delivery_failed',
+                ] : null,
                 'destination_center' => $destination?->business_name,
                 'planned_route' => $linehaul ? [
                     'current_step' => $facilityStops->isNotEmpty() ? $facilityStops->filter(fn ($stop) => $stop->arrived_at)->count() + 1 : $order->route_step,

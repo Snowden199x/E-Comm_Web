@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\RiderNotificationController;
 use App\Http\Controllers\Api\RiderScanController;
 use App\Http\Controllers\Api\RiderFacilityScanController;
 use App\Http\Controllers\Api\RiderDeliveryProofController;
+use App\Http\Controllers\Api\RiderDeliveryRescheduleController;
 use App\Http\Controllers\Api\ShScannerAuthController;
 use App\Http\Controllers\Api\ShScannerScanController;
 use App\Http\Controllers\Api\Buyer\BuyerAccountController;
@@ -60,12 +61,15 @@ Route::prefix('v1/rider')->group(function () {
         Route::get('/assignments', [RiderScanController::class, 'assignments']);
         Route::get('/notifications', [RiderNotificationController::class, 'index']);
         Route::post('/notifications/read-all', [RiderNotificationController::class, 'readAll']);
-        Route::post('/notifications/{notification}/read', [RiderNotificationController::class, 'markRead'])->whereNumber('notification');
+        Route::post('/notifications/{notification}/read', [RiderNotificationController::class, 'read'])
+            ->whereNumber('notification');
         Route::get('/earnings', [\App\Http\Controllers\Api\RiderEarningsController::class, 'rider']);
         Route::get('/cash', [\App\Http\Controllers\Api\RiderCashController::class, 'show']);
         Route::post('/tasks/{task}/exceptions', [\App\Http\Controllers\Api\RiderTaskExceptionController::class, 'store']);
         Route::post('/scans', [RiderScanController::class, 'store']);
         Route::post('/delivery-proofs', [RiderDeliveryProofController::class, 'store']);
+        Route::post('/deliveries/{order}/reschedule', [RiderDeliveryRescheduleController::class, 'store'])
+            ->whereNumber('order');
         Route::post('/facility-scans', [RiderFacilityScanController::class, 'store']);
         Route::post('/logout', [RiderAuthController::class, 'logout']);
     });

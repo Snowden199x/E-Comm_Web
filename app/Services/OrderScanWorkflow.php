@@ -12,7 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class OrderScanWorkflow
 {
-    public function __construct(private ShippingEarningsSettlementService $shippingSettlement) {}
+    public function __construct(
+        private ShippingEarningsSettlementService $shippingSettlement,
+        private DeliveryCutoff $deliveryCutoff,
+    ) {}
 
     private const TRANSITIONS = [
         'pickup' => ['ready_for_pickup', 'picked_up', 'courier_id', 'logistics_center_id'],
@@ -62,6 +65,18 @@ class OrderScanWorkflow
                     409, 'This scan key was already used for a different scan.');
 
                 return $this->response($order, $center, $existing, true);
+            }
+
+            // The delivery window is a hard stop: no dispatch or handover after
+            // the cutoff, and a rescheduled parcel cannot go out before its day.
+            if (in_array($data['scan_type'], ['out_for_delivery', 'delivered'], true)
+                && $this->deliveryCutoff->isClosed()) {
+                abort(409, 'The '.$this->deliveryCutoff->label().' delivery window has closed. '
+                    .'Reschedule this parcel in the Rider app to deliver it another day.');
+            }
+            if ($data['scan_type'] === 'out_for_delivery' && $this->deliveryCutoff->isScheduledForLater($order)) {
+                abort(409, 'This parcel is scheduled for delivery on '
+                    .$order->delivery_scheduled_for->format('j M Y').'. Scan it out for delivery that day.');
             }
 
             abort_unless($order->status === $transition[0], 409,

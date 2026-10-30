@@ -555,6 +555,9 @@ class PortalController extends Controller
     public function stationDashboard(Request $request): View
     {
         $station = $this->facility($request);
+        // Close a delivery window that passed before counting today's queue, so
+        // the dashboard's Delivery Failed figure matches the delivery list.
+        app(\App\Services\DeliveryCutoff::class)->sweep();
         $stage = $this->stageCounts($station);
         $riders = $station->riders()->with('user')->get();
         $incomingTrip = $station->company?->trips()->with('origin')->where('destination_facility_id', $station->id)
