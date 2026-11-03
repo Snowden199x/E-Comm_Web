@@ -74,6 +74,7 @@
             </div>
             <div class="lg-page-head__actions">
                 <a href="{{ route('lgp.station.pickups') }}" class="lg-btn lg-btn--outline"><x-logistics.icon name="inbox" :size="18" /> Pickup requests</a>
+                <a href="{{ route('lgp.station.trips') }}" class="lg-btn lg-btn--outline"><x-logistics.icon name="truck" :size="18" /> Assign driver</a>
                 <a href="{{ route('lgp.station.tasks') }}" class="lg-btn"><x-logistics.icon name="bike" :size="18" /> Assign tasks</a>
             </div>
         </div>
@@ -145,7 +146,7 @@
                 </div>
                 <div class="lg-note" style="margin-top:16px">
                     <x-logistics.icon name="truck" :size="18" />
-                    <span>{{ number_format($waitingForTransfer) }} {{ $waitingForTransfer === 1 ? 'parcel is' : 'parcels are' }} waiting for a transfer to {{ $incoming['from'] ?? 'the Province Hub' }}. The Province Hub schedules that trip. See <a href="{{ route('lgp.station.outgoing') }}">Outgoing Transfers</a>.</span>
+                    <span>{{ number_format($waitingForTransfer) }} {{ $waitingForTransfer === 1 ? 'parcel is' : 'parcels are' }} waiting for a transfer. Assign one of your Transport Drivers and the hub they must reach in <a href="{{ route('lgp.station.trips') }}">Driver Assignments</a>, or see <a href="{{ route('lgp.station.outgoing') }}">Outgoing Transfers</a>.</span>
                 </div>
             </section>
 

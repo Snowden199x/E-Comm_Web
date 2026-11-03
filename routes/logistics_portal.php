@@ -121,6 +121,20 @@ Route::prefix('logistics/portal')->name('lgp.')->middleware('auth')->group(funct
         Route::get('/riders', [PortalController::class, 'stationRiders'])->name('station.riders');
         Route::post('/riders/{courierDetail}/review', [PortalController::class, 'reviewRider'])->whereNumber('courierDetail')->name('station.riders.review');
         Route::patch('/riders/{courierDetail}/status', [PortalController::class, 'updateRiderStatus'])->whereNumber('courierDetail')->name('station.riders.status');
+        // Transport Drivers: a station-only driver is approved here. Drivers
+        // who applied to the Province Hub or both are read-only on this page.
+        Route::get('/drivers', [PortalController::class, 'stationDrivers'])->name('station.drivers');
+        // Driver Assignments: the Station Hub assigns one of its drivers to a
+        // trip and names the station hub the driver must reach.
+        Route::get('/trips', [PortalController::class, 'stationTrips'])->name('station.trips');
+        Route::post('/trips', [PortalController::class, 'storeStationTrip'])->name('station.trips.store');
+        Route::patch('/trips/{trip}/cancel', [PortalController::class, 'cancelTrip'])->whereNumber('trip')->name('station.trips.cancel');
+        Route::patch('/trips/{trip}/depart', [PortalController::class, 'departTrip'])->whereNumber('trip')->name('station.trips.depart');
+        Route::patch('/trips/{trip}/arrive', [PortalController::class, 'arriveTrip'])->whereNumber('trip')->name('station.trips.arrive');
+        Route::post('/drivers/{driver}/review', [PortalController::class, 'reviewStationDriver'])->whereNumber('driver')->name('station.drivers.review');
+        Route::patch('/drivers/{driver}/status', [PortalController::class, 'updateStationDriverStatus'])->whereNumber('driver')->name('station.drivers.status');
+        Route::get('/drivers/{driver}/documents/{document}', [PortalController::class, 'stationDriverDocument'])
+            ->whereNumber('driver')->whereIn('document', ['license', 'valid-id'])->name('station.drivers.document');
         Route::get('/cash', [StationCashController::class, 'index'])->name('station.cash');
         Route::post('/cash/riders/{courierDetail}/receive', [StationCashController::class, 'receive'])->whereNumber('courierDetail')->name('station.cash.receive');
         Route::post('/cash/remit', [StationCashController::class, 'remit'])->name('station.cash.remit');

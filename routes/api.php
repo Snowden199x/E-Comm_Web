@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\RiderAuthController;
 use App\Http\Controllers\Api\RiderEmailOtpController;
 use App\Http\Controllers\Api\RiderGoogleAuthController;
 use App\Http\Controllers\Api\RiderPasswordResetController;
+use App\Http\Controllers\Api\RiderProfileController;
 use App\Http\Controllers\Api\RiderRegistrationController;
 use App\Http\Controllers\Api\RiderNotificationController;
 use App\Http\Controllers\Api\RiderScanController;
@@ -33,12 +34,20 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1/transport-drivers')->group(function () {
     Route::post('/login', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'login'])->middleware('throttle:5,1');
     Route::get('/province-hubs', [\App\Http\Controllers\Api\TransportDriverRegistrationController::class, 'hubs'])->middleware('throttle:30,1');
+    Route::get('/locations', [\App\Http\Controllers\Api\TransportDriverRegistrationController::class, 'locations'])->middleware('throttle:30,1');
+    Route::get('/locations/{cityCode}/barangays', [\App\Http\Controllers\Api\TransportDriverRegistrationController::class, 'barangays'])->middleware('throttle:30,1');
+    Route::post('/application-status', [\App\Http\Controllers\Api\TransportDriverRegistrationController::class, 'status'])->middleware('throttle:10,1');
+    Route::post('/password/otp/send', [\App\Http\Controllers\Api\TransportDriverPasswordResetController::class, 'sendCode'])->middleware('throttle:5,1');
+    Route::post('/password/otp/verify', [\App\Http\Controllers\Api\TransportDriverPasswordResetController::class, 'verifyCode'])->middleware('throttle:10,1');
+    Route::post('/password/reset', [\App\Http\Controllers\Api\TransportDriverPasswordResetController::class, 'reset'])->middleware('throttle:5,1');
     Route::post('/email/otp/send', [RiderEmailOtpController::class, 'sendRegistrationCode'])->middleware('throttle:5,1');
     Route::post('/email/otp/verify', [RiderEmailOtpController::class, 'verifyRegistrationCode'])->middleware('throttle:10,1');
     Route::post('/register', [\App\Http\Controllers\Api\TransportDriverRegistrationController::class, 'store'])->middleware('throttle:5,1');
     Route::middleware(['auth:sanctum', EnsureApprovedTransportDriverToken::class, 'throttle:30,1'])->group(function () {
+        Route::get('/me', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'me']);
         Route::get('/trips', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'trips']);
         Route::get('/earnings', [\App\Http\Controllers\Api\RiderEarningsController::class, 'transportDriver']);
+        Route::post('/trips/{trip}/scan', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'scan']);
         Route::post('/trips/{trip}/depart', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'depart']);
         Route::post('/trips/{trip}/arrive', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'arrive']);
         Route::post('/logout', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'logout']);
@@ -59,6 +68,10 @@ Route::prefix('v1/rider')->group(function () {
 
     Route::middleware(['auth:sanctum', EnsureApprovedRiderToken::class, 'throttle:30,1'])->group(function () {
         Route::get('/assignments', [RiderScanController::class, 'assignments']);
+        Route::get('/profile', [RiderProfileController::class, 'show']);
+        Route::put('/profile', [RiderProfileController::class, 'update']);
+        Route::post('/profile/photo', [RiderProfileController::class, 'uploadPhoto']);
+        Route::put('/profile/password', [RiderProfileController::class, 'updatePassword']);
         Route::get('/notifications', [RiderNotificationController::class, 'index']);
         Route::post('/notifications/read-all', [RiderNotificationController::class, 'readAll']);
         Route::post('/notifications/{notification}/read', [RiderNotificationController::class, 'read'])

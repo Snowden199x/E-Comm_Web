@@ -49,6 +49,12 @@ class LogisticsFacility extends Model
         return $this->hasMany(TransportDriverDetail::class, 'province_hub_id');
     }
 
+    /** Drivers linked to this Station Hub (station-only, and both/province drivers living nearby). */
+    public function stationTransportDrivers()
+    {
+        return $this->hasMany(TransportDriverDetail::class, 'station_hub_id');
+    }
+
     public function isProvinceHub(): bool
     {
         return in_array($this->kind, ['province_hub', 'main_hub'], true);

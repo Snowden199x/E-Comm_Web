@@ -50,7 +50,9 @@ class RiderRegistrationController extends Controller
             'zip_code' => ['required', 'string', 'max:20'],
             'vehicle_type' => ['required', Rule::in(['Motorcycle', 'Van', 'L300', 'Truck'])],
             'plate_number' => ['required', 'string', 'max:50'],
-            'valid_id' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
+            // The Rider app no longer asks for a separate Valid ID: the driver's
+            // licence is the identity document. Older builds may still send one.
+            'valid_id' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
             'drivers_license' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
             'or_cr' => ['required', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
         ]);
@@ -90,6 +92,9 @@ class RiderRegistrationController extends Controller
         try {
             $rider = DB::transaction(function () use ($data, $request, $address, $barangay, $center, $station, $email, &$stored) {
                 foreach (['valid_id', 'drivers_license', 'or_cr'] as $field) {
+                    if (! $request->hasFile($field)) {
+                        continue;
+                    }
                     $stored[$field] = $request->file($field)->store('private/rider-verification', 'local');
                 }
 
@@ -123,7 +128,7 @@ class RiderRegistrationController extends Controller
                     'zip_code' => $data['zip_code'],
                     'vehicle_type' => $data['vehicle_type'],
                     'plate_number' => $data['plate_number'],
-                    'valid_id_path' => $stored['valid_id'],
+                    'valid_id_path' => $stored['valid_id'] ?? $stored['drivers_license'],
                     'drivers_license_path' => $stored['drivers_license'],
                     'or_cr_path' => $stored['or_cr'],
                 ]);

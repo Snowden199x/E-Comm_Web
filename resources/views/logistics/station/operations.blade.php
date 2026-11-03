@@ -5,7 +5,7 @@
         'delivery-queue' => ['Delivery Queue', 'Assign sorted parcels to a local Rider for final delivery.'],
         'incoming' => ['Incoming Parcels', 'Scan arriving parcels with the camera button in the header. Arrival also records sorting.'],
         'sorting' => ['Parcel Sorting', 'Parcels scanned and sorted at this station, with their next planned stop.'],
-        'outgoing' => ['Outgoing Transfers', 'Sorted parcels waiting for a Province Hub trip. Scan departure after the trip is scheduled.'],
+        'outgoing' => ['Outgoing Transfers', 'Sorted parcels waiting for a trip. Assign a driver and its destination hub in Driver Assignments, then scan departure.'],
     ];
     [$title, $description] = $pages[$mode];
 @endphp
@@ -16,8 +16,14 @@
                 <h1>{{ $title }}</h1>
                 <p>{{ $description }}</p>
             </div>
-            @if (in_array($mode, ['incoming', 'sorting', 'outgoing'], true))
-                <div class="lg-page-head__actions"><span class="lg-hint">{{ $station->name }}</span></div>
+            @if (in_array($mode, ['incoming', 'sorting', 'outgoing', 'delivery-queue'], true))
+                <div class="lg-page-head__actions">
+                    <span class="lg-hint">{{ $station->name }}</span>
+                    {{-- A driver can be sent to another hub from here, next to the local Rider delivery work. --}}
+                    @if (in_array($mode, ['outgoing', 'delivery-queue'], true))
+                        <a href="{{ route('lgp.station.trips') }}" class="lg-btn"><x-logistics.icon name="truck" :size="18" /> Assign driver</a>
+                    @endif
+                </div>
             @endif
         </div>
 

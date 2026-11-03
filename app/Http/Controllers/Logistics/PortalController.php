@@ -635,14 +635,15 @@ class PortalController extends Controller
     public function provinceDrivers(Request $request): View
     {
         $hub = $this->facility($request);
-        $drivers = $hub->transportDrivers()->with(['user', 'trips.origin', 'trips.destination'])->latest()->get()
-            ->map(fn ($driver) => $this->driverCard($driver))->values()->all();
+        $drivers = $hub->transportDrivers()->with(['user', 'trips.origin', 'trips.destination', 'stationHub', 'approvedBy'])
+            ->latest()->get()->map(fn ($driver) => $this->driverCard($driver))->values()->all();
 
         return view('logistics.province.drivers', [
             'hub' => ['id' => $hub->id, 'name' => $hub->name], 'drivers' => $drivers,
             'today' => today()->toDateString(),
             'reviewUrl' => route('lgp.province.drivers.review', '__driver__'),
             'statusUrl' => route('lgp.province.drivers.status', '__driver__'),
+            'documentUrl' => route('lgp.province.drivers.document', ['driver' => '__driver__', 'document' => '__document__']),
         ]);
     }
 
@@ -650,18 +651,22 @@ class PortalController extends Controller
     {
         $hub = $this->facility($request);
         abort_unless((int) $driver->province_hub_id === (int) $hub->id, 404);
+        abort_if($driver->apply_to === TransportDriverDetail::APPLY_STATION, 409,
+            'This driver applied to a Station Hub only. Its Station Hub reviews the application.');
         $data = $request->validate(['decision' => ['required', Rule::in(['approve', 'reject'])],
             'reason' => ['required_if:decision,reject', 'nullable', 'string', 'min:10', 'max:300']]);
 
-        $driver = DB::transaction(function () use ($driver, $data) {
+        $driver = DB::transaction(function () use ($driver, $data, $hub) {
             $driver = TransportDriverDetail::query()->lockForUpdate()->findOrFail($driver->id);
             $user = User::query()->lockForUpdate()->findOrFail($driver->user_id);
             abort_unless($driver->status === 'pending' && $user->status === 'pending', 409, 'This application has already been reviewed.');
             if ($data['decision'] === 'approve') {
                 abort_unless($driver->license_expires_at && $driver->license_expires_at->toDateString() >= today()->toDateString(), 409, 'The driver license has expired.');
-                $driver->update(['status' => 'available']);
-                $user->update(['status' => 'approved', 'account_status' => 'active']);
+                $driver->update(['status' => 'available', 'approved_by' => auth()->id(), 'approved_at' => now()]);
+                $user->update(['status' => 'approved', 'account_status' => 'active', 'rejection_reason' => null]);
             } else {
+                // approved_by only records an approval; a rejection is kept on
+                // the account so the applicant sees the reason.
                 $driver->update(['status' => 'inactive']);
                 $user->update(['status' => 'disapproved', 'rejection_reason' => $data['reason'], 'account_status' => 'deactivated']);
             }
@@ -670,7 +675,7 @@ class PortalController extends Controller
                 'title' => $data['decision'] === 'approve' ? 'Driver application approved' : 'Driver application declined',
                 'message' => $data['decision'] === 'approve' ? 'Your Province Hub approved your application.' : $data['reason']]);
 
-            return $driver->load(['user', 'trips.origin', 'trips.destination']);
+            return $driver->load(['user', 'trips.origin', 'trips.destination', 'stationHub', 'approvedBy']);
         }, 3);
 
         return response()->json(['driver' => $this->driverCard($driver), 'message' => 'Driver application reviewed.']);
@@ -680,6 +685,8 @@ class PortalController extends Controller
     {
         $hub = $this->facility($request);
         abort_unless((int) $driver->province_hub_id === (int) $hub->id, 404);
+        abort_if($driver->apply_to === TransportDriverDetail::APPLY_STATION, 409,
+            'A station-only driver is managed by its Station Hub.');
         $data = $request->validate(['status' => ['required', Rule::in(['available', 'inactive'])]]);
 
         $driver = DB::transaction(function () use ($driver, $data) {
@@ -693,7 +700,7 @@ class PortalController extends Controller
             $driver->update(['status' => $data['status']]);
             $user->update(['account_status' => $data['status'] === 'available' ? 'active' : 'deactivated']);
 
-            return $driver->load(['user', 'trips.origin', 'trips.destination']);
+            return $driver->load(['user', 'trips.origin', 'trips.destination', 'stationHub', 'approvedBy']);
         }, 3);
 
         return response()->json(['driver' => $this->driverCard($driver), 'message' => 'Driver availability updated.']);
@@ -708,6 +715,277 @@ class PortalController extends Controller
             && Storage::disk('local')->exists($path), 404);
 
         return Storage::disk('local')->response($path);
+    }
+
+    /**
+     * Station Hub Drivers page. A station-only driver is reviewed here. Drivers
+     * who applied to the Province Hub or to both are listed read-only, because
+     * only the Province Hub may approve them.
+     */
+    public function stationDrivers(Request $request): View
+    {
+        $station = $this->facility($request);
+        $drivers = $station->stationTransportDrivers()
+            ->with(['user', 'trips.origin', 'trips.destination', 'provinceHub', 'approvedBy'])
+            ->latest()->get()->map(fn ($driver) => $this->driverCard($driver))->values()->all();
+
+        return view('logistics.station.drivers', [
+            'station' => ['id' => $station->id, 'name' => $station->name],
+            'drivers' => $drivers,
+            'today' => today()->toDateString(),
+            'reviewUrl' => route('lgp.station.drivers.review', '__driver__'),
+            'statusUrl' => route('lgp.station.drivers.status', '__driver__'),
+            'documentUrl' => route('lgp.station.drivers.document', ['driver' => '__driver__', 'document' => '__document__']),
+            // Assigning a driver is done on the Driver Assignments page, where
+            // the destination hub and the parcels are chosen too.
+            'assignUrl' => route('lgp.station.trips', ['driver' => '__driver__']),
+        ]);
+    }
+
+    public function reviewStationDriver(Request $request, TransportDriverDetail $driver): JsonResponse
+    {
+        $station = $this->facility($request);
+        abort_unless((int) $driver->station_hub_id === (int) $station->id, 404);
+        abort_unless($driver->apply_to === TransportDriverDetail::APPLY_STATION, 403,
+            'This driver applied to the Province Hub. Only the Province Hub reviews that application.');
+        $data = $request->validate(['decision' => ['required', Rule::in(['approve', 'reject'])],
+            'reason' => ['required_if:decision,reject', 'nullable', 'string', 'min:10', 'max:300']]);
+
+        $driver = DB::transaction(function () use ($driver, $data) {
+            $driver = TransportDriverDetail::query()->lockForUpdate()->findOrFail($driver->id);
+            $user = User::query()->lockForUpdate()->findOrFail($driver->user_id);
+            abort_unless($driver->status === 'pending' && $user->status === 'pending', 409, 'This application has already been reviewed.');
+            if ($data['decision'] === 'approve') {
+                abort_unless($driver->license_expires_at && $driver->license_expires_at->toDateString() >= today()->toDateString(), 409, 'The driver license has expired.');
+                $driver->update(['status' => 'available', 'approved_by' => auth()->id(), 'approved_at' => now()]);
+                $user->update(['status' => 'approved', 'account_status' => 'active', 'rejection_reason' => null]);
+            } else {
+                // approved_by only records an approval; a rejection is kept on
+                // the account so the applicant sees the reason.
+                $driver->update(['status' => 'inactive']);
+                $user->update(['status' => 'disapproved', 'rejection_reason' => $data['reason'], 'account_status' => 'deactivated']);
+            }
+            \App\Models\Communication\Notification::create(['user_id' => $user->id,
+                'type' => 'driver_application_decision',
+                'title' => $data['decision'] === 'approve' ? 'Driver application approved' : 'Driver application declined',
+                'message' => $data['decision'] === 'approve' ? 'Your Station Hub approved your application.' : $data['reason']]);
+
+            return $driver->load(['user', 'trips.origin', 'trips.destination', 'stationHub', 'approvedBy']);
+        }, 3);
+
+        return response()->json(['driver' => $this->driverCard($driver), 'message' => 'Driver application reviewed.']);
+    }
+
+    public function updateStationDriverStatus(Request $request, TransportDriverDetail $driver): JsonResponse
+    {
+        $station = $this->facility($request);
+        abort_unless((int) $driver->station_hub_id === (int) $station->id, 404);
+        abort_unless($driver->apply_to === TransportDriverDetail::APPLY_STATION, 403,
+            'This driver is managed by the Province Hub.');
+        $data = $request->validate(['status' => ['required', Rule::in(['available', 'inactive'])]]);
+
+        $driver = DB::transaction(function () use ($driver, $data) {
+            $driver = TransportDriverDetail::query()->lockForUpdate()->findOrFail($driver->id);
+            $user = User::query()->lockForUpdate()->findOrFail($driver->user_id);
+            abort_unless($user->status === 'approved' && $driver->status !== 'on_trip', 409,
+                'A driver must be approved and off trip before changing availability.');
+            if ($data['status'] === 'available') {
+                abort_unless($driver->license_expires_at && $driver->license_expires_at->toDateString() >= today()->toDateString(), 409, 'The driver license has expired.');
+            }
+            $driver->update(['status' => $data['status']]);
+            $user->update(['account_status' => $data['status'] === 'available' ? 'active' : 'deactivated']);
+
+            return $driver->load(['user', 'trips.origin', 'trips.destination', 'stationHub', 'approvedBy']);
+        }, 3);
+
+        return response()->json(['driver' => $this->driverCard($driver), 'message' => 'Driver availability updated.']);
+    }
+
+    public function stationDriverDocument(Request $request, TransportDriverDetail $driver, string $document)
+    {
+        $station = $this->facility($request);
+        abort_unless((int) $driver->station_hub_id === (int) $station->id, 404);
+        $path = $document === 'license' ? $driver->drivers_license_path : $driver->valid_id_path;
+        abort_unless(str_starts_with((string) $path, 'private/transport-drivers/')
+            && Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path);
+    }
+
+    /**
+     * Station Hub → Driver Assignments. The Station Hub picks one of the
+     * Transport Drivers linked to it, the Province Hub or Station Hub that the
+     * driver must reach, and the parcels to load. Saving creates a scheduled
+     * trip, which is what shows up on the driver's phone in the Driver app.
+     */
+    public function stationTrips(Request $request): View
+    {
+        $station = $this->facility($request);
+        abort_unless($station->kind === 'station_hub', 404);
+        $trips = LogisticsTransportTrip::query()
+            ->where('logistics_company_id', $station->logistics_company_id)
+            ->where(fn ($query) => $query->where('origin_facility_id', $station->id)
+                ->orWhere('destination_facility_id', $station->id))
+            ->with(['origin', 'destination', 'driver.user', 'vehicle', 'orders'])
+            ->latest()->limit(60)->get()
+            ->map(fn (LogisticsTransportTrip $trip) => $this->tripCard($trip) + [
+                'can_cancel' => (int) $trip->origin_facility_id === (int) $station->id && $trip->status === 'scheduled',
+                'can_depart' => (int) $trip->origin_facility_id === (int) $station->id,
+                'can_arrive' => (int) $trip->destination_facility_id === (int) $station->id,
+            ])->values()->all();
+
+        $destinations = $this->stationTripDestinations($station);
+        // Only parcels already sorted here for that destination, and not yet on
+        // another trip, can be loaded (the same rule the Province Hub form uses).
+        // Each row carries the details the station needs to check the load, and
+        // whether the parcel's delivery address is inside the destination hub
+        // (it ends there) or is only passing through it.
+        $parcels = $destinations->mapWithKeys(fn ($destination) => [
+            (string) $destination['id'] => $this->eligibleTripOrders($station, (int) $station->id, (int) $destination['id'])
+                ->with(['buyer:id,name', 'facilityStops' => fn ($query) => $query->where('facility_id', $station->id)])
+                ->get()->map(fn ($order) => [
+                    'order' => $order->id,
+                    'tracking' => $order->tracking_number ?: $order->number,
+                    'number' => $order->number,
+                    'buyer' => $order->buyer?->name,
+                    'town' => $order->shipping_city ?: null,
+                    'province' => $order->shipping_province ?: null,
+                    'barangay' => $order->shipping_barangay ?: null,
+                    'where' => collect([$order->shipping_barangay, $order->shipping_city, $order->shipping_province])
+                        ->filter()->unique()->implode(', '),
+                    'sorted' => $order->facilityStops->first()?->sorted_at?->toIso8601String(),
+                    'delivers_here' => $this->addressIsInsideHub($order, $destination),
+                ])->sortByDesc('delivers_here')->values()->all(),
+        ])->all();
+        $drivers = $station->stationTransportDrivers()->where('status', 'available')
+            ->whereDate('license_expires_at', '>=', today())
+            ->whereHas('user', fn ($query) => $query->where('status', 'approved')->where('account_status', 'active'))
+            ->with('user')->get()
+            ->map(fn (TransportDriverDetail $driver) => [
+                'id' => $driver->id, 'name' => $driver->user?->name ?? 'Transport Driver',
+                'category' => $driver->license_category, 'expiry' => $driver->license_expires_at?->toDateString(),
+                'apply_label' => $driver->applyLabel(),
+            ])->values()->all();
+        $vehicles = ($station->company?->vehicles()->where('province_hub_id', $station->parent_id)
+            ->where('status', 'available')->get() ?? collect())
+            ->map(fn (LogisticsCompanyVehicle $vehicle) => [
+                'id' => $vehicle->id, 'code' => $vehicle->vehicle_code, 'type' => $vehicle->vehicle_type,
+                'plate' => $vehicle->plate_number,
+            ])->values()->all();
+
+        return view('logistics.station.trips', [
+            'station' => ['id' => $station->id, 'name' => $station->name],
+            'trips' => $trips, 'destinations' => $destinations->all(),
+            'drivers' => $drivers, 'vehicles' => $vehicles, 'parcels' => $parcels,
+            // Same shape as the datetime-local inputs, so the page can check a
+            // past departure before it is sent.
+            'now' => now()->format('Y-m-d\\TH:i'),
+            'selectedDriver' => (int) $request->query('driver', 0),
+            'defaultDeparture' => now()->addHour()->format('Y-m-d\\TH:i'),
+            'defaultArrival' => now()->addHours(6)->format('Y-m-d\\TH:i'),
+            'storeUrl' => route('lgp.station.trips.store'),
+            'cancelUrl' => route('lgp.station.trips.cancel', '__trip__'),
+            'departUrl' => route('lgp.station.trips.depart', '__trip__'),
+            'arriveUrl' => route('lgp.station.trips.arrive', '__trip__'),
+        ]);
+    }
+
+    /**
+     * The facilities this Station Hub may send a driver to: its Province Hub and
+     * the other active Station Hubs in the same network.
+     */
+    private function stationTripDestinations(LogisticsFacility $station)
+    {
+        $label = fn (LogisticsFacility $facility) => [
+            'id' => $facility->id, 'name' => $facility->name,
+            'kind' => $facility->isProvinceHub() ? 'Province Hub' : 'Station Hub',
+            'municipality' => $facility->municipality,
+            'province' => $facility->province,
+            'area' => trim(($facility->municipality ?? '').', '.($facility->province ?? ''), ', '),
+        ];
+        $provinceHub = $station->parent_id
+            ? LogisticsFacility::query()->whereKey($station->parent_id)->where('is_active', true)->first()
+            : null;
+        $stations = LogisticsFacility::query()->where('kind', 'station_hub')->where('is_active', true)
+            ->where('parent_id', $station->parent_id)->where('id', '!=', $station->id)
+            ->orderBy('municipality')->orderBy('name')->get();
+
+        return collect($provinceHub ? [$label($provinceHub)] : [])
+            ->concat($stations->map($label))->values();
+    }
+
+    /**
+     * True when the delivery address sits in the same municipality (and province,
+     * when both are known) as the hub, so the parcel is delivered from there
+     * instead of only passing through.
+     */
+    private function addressIsInsideHub(\App\Models\Ecommerce\Order $order, array $destination): bool
+    {
+        $normalize = fn (?string $value) => mb_strtolower(trim(preg_replace('/\s+/', ' ', (string) $value)));
+        $town = $normalize($order->shipping_city);
+        $hubTown = $normalize($destination['municipality'] ?? null);
+        if ($town === '' || $hubTown === '' || $town !== $hubTown) {
+            return false;
+        }
+        $province = $normalize($order->shipping_province);
+        $hubProvince = $normalize($destination['province'] ?? null);
+
+        return $province === '' || $hubProvince === '' || $province === $hubProvince;
+    }
+
+    public function storeStationTrip(Request $request): JsonResponse
+    {
+        $station = $this->facility($request);
+        abort_unless($station->kind === 'station_hub' && $station->parent_id, 404);
+        $data = $request->validate([
+            'destination_id' => ['required', 'integer', Rule::in($this->stationTripDestinations($station)->pluck('id')->all())],
+            'driver_id' => ['required', 'integer'], 'vehicle_id' => ['required', 'integer'],
+            'departure' => ['required', 'date'], 'expected_arrival_at' => ['required', 'date', 'after:departure'],
+            'orders' => ['required', 'array', 'min:1'],
+            'orders.*' => ['required', 'integer', 'distinct', 'exists:orders,id'],
+        ]);
+        $destinationId = (int) $data['destination_id'];
+        abort_if(\Illuminate\Support\Carbon::parse($data['departure'])->isPast(), 422, 'Scheduled departure must be in the future.');
+
+        $trip = DB::transaction(function () use ($station, $data, $destinationId) {
+            // Only a driver linked to this Station Hub can be assigned here, and
+            // the licence is checked again against the departure date.
+            $driver = $station->stationTransportDrivers()->whereKey($data['driver_id'])->lockForUpdate()->firstOrFail();
+            abort_unless($driver->status === 'available'
+                && $driver->license_expires_at?->toDateString() >= substr($data['departure'], 0, 10), 422,
+                'The selected driver is unavailable or has a licence that expires before this departure.');
+            $driverUser = User::query()->lockForUpdate()->findOrFail($driver->user_id);
+            abort_unless($driverUser->status === 'approved' && $driverUser->account_status === 'active', 422,
+                'The selected driver account is not active.');
+            $vehicle = $station->company->vehicles()->where('province_hub_id', $station->parent_id)
+                ->whereKey($data['vehicle_id'])->lockForUpdate()->firstOrFail();
+            abort_unless($vehicle->status === 'available', 422, 'The selected vehicle is no longer available.');
+
+            $orders = collect($data['orders'])->map(fn ($id) => $this->eligibleTripOrders($station, (int) $station->id, $destinationId)
+                ->lockForUpdate()->findOrFail($id));
+            $trip = LogisticsTransportTrip::create([
+                'logistics_company_id' => $station->logistics_company_id, 'trip_type' => 'station_transfer',
+                'origin_facility_id' => $station->id, 'destination_facility_id' => $destinationId,
+                'driver_id' => $driver->id, 'vehicle_id' => $vehicle->id, 'status' => 'scheduled',
+                'scheduled_departure_at' => $data['departure'],
+                'expected_arrival_at' => $data['expected_arrival_at'], 'created_by' => auth()->id(),
+            ]);
+            $trip->orders()->attach($orders->pluck('id')->all());
+            $driver->update(['status' => 'on_trip']);
+            $vehicle->update(['status' => 'on_trip']);
+
+            return $trip->load(['origin', 'destination', 'driver.user', 'vehicle', 'orders']);
+        }, 3);
+
+        $code = 'TRP-'.str_pad((string) $trip->id, 5, '0', STR_PAD_LEFT);
+        $parcels = $trip->orders->count();
+
+        return response()->json([
+            'trip' => $this->tripCard($trip) + ['can_cancel' => true, 'can_depart' => true, 'can_arrive' => false],
+            'message' => $code.' assigned to '.($trip->driver?->user?->name ?? 'the driver').' for '
+                .($trip->destination?->name ?? 'the destination hub').' with '.$parcels.' '
+                .($parcels === 1 ? 'parcel' : 'parcels').'. It is on the driver app now.',
+        ], 201);
     }
 
     public function provinceParcels(Request $request): View
@@ -757,7 +1035,10 @@ class PortalController extends Controller
             ->map(fn ($facility) => ['id' => $facility->id, 'slug' => (string) $facility->id, 'name' => $facility->name])->values();
         $otherHubs = $hub->company->provinceHubs()->where('id', '!=', $hub->id)->where('is_active', true)->get()
             ->map(fn ($facility) => ['id' => $facility->id, 'slug' => (string) $facility->id, 'name' => $facility->name])->values();
+        // A station-only driver never leaves its Station Hub, so it cannot be
+        // assigned to an inter-hub trip.
         $drivers = $hub->transportDrivers()->where('status', 'available')->whereDate('license_expires_at', '>=', today())
+            ->where('apply_to', '!=', TransportDriverDetail::APPLY_STATION)
             ->whereHas('user', fn ($q) => $q->where('status', 'approved')->where('account_status', 'active'))
             ->with('user')->get()->map(fn ($driver) => [
                 'id' => $driver->id, 'name' => $driver->user?->name ?? 'Transport Driver',
@@ -829,7 +1110,7 @@ class PortalController extends Controller
                 'scheduled_departure_at' => $data['departure'],
                 'expected_arrival_at' => $data['expected_arrival_at'], 'created_by' => auth()->id(),
             ]);
-            $trip->orders()->attach($orders->modelKeys());
+            $trip->orders()->attach($orders->pluck('id')->all());
             $driver->update(['status' => 'on_trip']);
             $vehicle->update(['status' => 'on_trip']);
 
@@ -1171,13 +1452,28 @@ class PortalController extends Controller
             'email' => $driver->user?->email ?? '', 'phone' => $driver->user?->phone_number ?? '',
             'birthday' => $driver->birthday?->toDateString(), 'sex' => $driver->sex ?: '—',
             'address' => $driver->home_address ?: '—',
+            'vehicle' => $driver->vehicle_type ?: 'Not specified',
+            'plate' => $driver->plate_number ?: '—',
             'license' => $driver->license_number, 'category' => $driver->license_category,
             'expiry' => $driver->license_expires_at?->toDateString(),
+            // The Driver app registers with the licence alone, so the stored
+            // valid ID is usually that same file. Keep a separate link only
+            // when a distinct identity document was uploaded.
+            'has_valid_id' => $driver->valid_id_path && $driver->valid_id_path !== $driver->drivers_license_path,
             'status' => $driver->status, 'trip' => $current ? 'TRP-'.str_pad((string) $current->id, 5, '0', STR_PAD_LEFT) : null,
+            'rejected' => $driver->user?->status === 'disapproved',
             'done' => $driver->trips->where('status', 'completed')->count(),
             'applied' => $driver->created_at?->toDateString(),
-            'license_url' => route('lgp.province.drivers.document', [$driver, 'license']),
-            'valid_id_url' => route('lgp.province.drivers.document', [$driver, 'valid-id']),
+            // Who reviews the application. Only a station-only driver is
+            // approved by the Station Hub; everyone else by the Province Hub.
+            'apply_to' => $driver->apply_to ?: TransportDriverDetail::APPLY_PROVINCE,
+            'apply_label' => $driver->applyLabel(),
+            'reviewed_by_kind' => $driver->worksStationToStation() ? 'station_hub' : 'province_hub',
+            'station' => $driver->stationHub?->name,
+            'station_id' => $driver->stationHub?->id,
+            'station_area' => $driver->stationHub ? trim(($driver->stationHub->municipality ?? '').' '.($driver->stationHub->province ?? '')) : null,
+            'reviewed_by' => $driver->approvedBy?->name,
+            'reviewed_at' => $driver->approved_at?->toDateString(),
         ];
     }
 

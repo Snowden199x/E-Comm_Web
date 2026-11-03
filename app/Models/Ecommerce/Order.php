@@ -288,6 +288,8 @@ class Order extends Model
         'logistics_center_id', 'delivery_company_id', 'destination_logistics_center_id', 'route_plan_id', 'next_route_checkpoint_id', 'route_step',
         'origin_station_id', 'origin_province_hub_id', 'destination_station_id', 'destination_province_hub_id',
         'route_type', 'shipping_barangay_code', 'shipping_barangay',
+        // Buyer-selected delivery pin, shared only with the assigned Rider.
+        'shipping_latitude', 'shipping_longitude',
         'tracking_number', 'carrier_name', 'carrier_tracking_number', 'estimated_delivery_from', 'estimated_delivery_to', 'shipping_fee',
         'delivery_scheduled_for', 'delivery_failed_at',
         'shipping_hub_count', 'shipping_route_snapshot',
