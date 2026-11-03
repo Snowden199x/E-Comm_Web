@@ -1,101 +1,117 @@
 {{--
-    Commission table. Rendered inside #cm-region; needs $sellers, $rate, $month, and $stats (for the share bar).
-    Row click opens that seller's breakdown popup (index.blade.php: openSellerDetail).
-    Page buttons carry data-page and are handled by the page scope; the old $sellers->links() pointed at the
-    bare /commission/table route after the first refresh.
+    Seller commission table. Rendered inside #cm-table and swapped on every month, search or page change.
+    Needs: $sellers, $stats, $rate, $month.
+    The "View breakdown" button is the main way in; clicking the row does the same. Page buttons carry
+    data-page and are handled by the page scope (index.blade.php: onTableClick).
 --}}
 @php
     $monthTotal = (float) ($stats['total_sales'] ?? 0);
+    $monthLabel = \Carbon\Carbon::parse($month . '-01')->format('F Y');
+    $previousMonthLabel = \Carbon\Carbon::parse($month . '-01')->subMonth()->format('F Y');
+    $isSearching = request()->filled('search');
+    $noSalesAtAll = ! $isSearching && $monthTotal <= 0;
+
+    // Account status chips follow the admin design system: hold = warning, switched off = neutral.
     $stateLabel = fn ($s) => match (true) {
-        $s->status !== 'approved' => ['Not approved', 'border-gray-300 bg-gray-50 text-gray-600'],
-        $s->account_status === 'suspended' => ['Suspended', 'border-red-600/60 bg-red-50 text-red-700'],
-        $s->account_status === 'deactivated' => ['Deactivated', 'border-[#d9826b]/60 bg-[#FBF1EE] text-[#b4452a]'],
+        $s->status !== 'approved' => ['Not approved', 'border-vd-line-strong bg-vd-tint text-vd-muted'],
+        $s->account_status === 'suspended' => ['Suspended', 'border-vd-warning-line bg-vd-warning-bg text-vd-warning-ink'],
+        $s->account_status === 'deactivated' => ['Deactivated', 'border-vd-line-strong bg-vd-tint text-vd-muted'],
         default => null,
     };
 @endphp
 
-<div class="overflow-hidden rounded-2xl border border-[#ece4ec] bg-white shadow-[0_1px_2px_rgba(43,23,48,0.04)]">
+<div class="overflow-hidden rounded-xl border border-vd-line bg-white">
     @if ($sellers->isEmpty())
-        <div class="flex flex-col items-center px-6 py-16 text-center">
-            <span class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#F1E9F1] text-[#5b2963]"><x-admin.icon name="store" class="h-7 w-7" /></span>
-            <p class="font-display text-base font-semibold text-[#2B1730]">{{ request()->filled('search') ? 'No sellers found' : 'No sellers yet' }}</p>
-            <p class="mt-1 max-w-sm text-sm text-gray-500">
-                {{ request()->filled('search') ? 'No seller matches that name or email. Check the spelling or clear the search.' : 'Seller commissions will be listed here once sellers join.' }}
-            </p>
-            @if (request()->filled('search'))
+        @if ($isSearching)
+            <x-admin.empty-state filtered filteredTitle="No sellers found" filteredText="Check the spelling, or search by email instead.">
                 <button type="button" @click="q = ''; apply()"
-                    class="mt-5 inline-flex h-10 items-center rounded-full border border-[#cdbbd2] px-5 text-sm font-medium text-[#3b1735] transition duration-200 hover:bg-[#3b1735] hover:text-white active:scale-95">
+                    class="inline-flex h-9 items-center rounded-lg border border-vd-line-strong bg-white px-4 text-[13px] font-medium text-vd-plum transition-colors duration-200 hover:bg-vd-tint">
                     Clear search
                 </button>
-            @endif
-        </div>
+            </x-admin.empty-state>
+        @else
+            <x-admin.empty-state icon="store" title="No sellers" text="Approved sellers and their commission appear here." />
+        @endif
+    @elseif ($noSalesAtAll)
+        <x-admin.empty-state icon="package" title="No completed sales in {{ $monthLabel }}" text="Delivered and completed orders appear here. Pick another month.">
+            <button type="button" @click="shiftMonth(-1)"
+                class="inline-flex h-9 items-center rounded-lg border border-vd-line-strong bg-white px-4 text-[13px] font-medium text-vd-plum transition-all duration-200 hover:border-vd-plum hover:bg-vd-plum hover:text-white active:scale-95">
+                Go to {{ $previousMonthLabel }}
+            </button>
+        </x-admin.empty-state>
     @else
         <div class="thin-scroll overflow-x-auto">
-            <table class="w-full min-w-[760px] text-left text-sm">
-                <caption class="sr-only">Seller sales and commission for {{ \Carbon\Carbon::parse($month . '-01')->format('F Y') }}. Select a row to see the product breakdown.</caption>
+            <table class="w-full min-w-[820px] text-left text-sm">
+                <caption class="sr-only">Seller sales and commission for {{ $monthLabel }}</caption>
                 <thead>
-                    <tr class="border-b border-[#ece4ec] bg-[#FBF8FB] text-[13px] text-gray-500">
+                    <tr class="border-b border-vd-line bg-vd-tint text-[13px] text-vd-muted">
                         <th scope="col" class="px-5 py-3 font-medium">Seller</th>
-                        <th scope="col" class="px-4 py-3 text-center font-medium">Completed orders</th>
-                        <th scope="col" class="px-4 py-3 font-medium">Sales</th>
+                        <th scope="col" class="px-4 py-3 text-center font-medium">Orders</th>
+                        <th scope="col" class="px-4 py-3 text-right font-medium">Sales</th>
+                        <th scope="col" class="px-4 py-3 font-medium">Share</th>
                         <th scope="col" class="px-4 py-3 text-right font-medium">Commission</th>
-                        <th scope="col" class="w-10 px-3 py-3"><span class="sr-only">Details</span></th>
+                        <th scope="col" class="px-5 py-3 text-right font-medium"><span class="sr-only">Action</span></th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-[#f3edf4]">
+                <tbody class="divide-y divide-vd-line">
                     @foreach ($sellers as $seller)
                         @php
-                            $hasSales = (float) $seller->total_sales > 0;
-                            $share = $monthTotal > 0 ? min(100, ((float) $seller->total_sales / $monthTotal) * 100) : 0;
+                            $sales = (float) $seller->total_sales;
+                            $commission = (float) $seller->commission_owed;
+                            $hasSales = $sales > 0;
+                            $share = $monthTotal > 0 ? min(100, ($sales / $monthTotal) * 100) : 0;
                             $state = $stateLabel($seller);
                             $avatarUrl = $seller->profile_picture ? asset('storage/' . ltrim($seller->profile_picture, '/')) : '';
                         @endphp
-                        <tr style="--i: {{ $loop->index }}" tabindex="0" role="button" aria-label="See commission breakdown for {{ $seller->name }}"
-                            @click="openSellerDetail({{ $seller->id }}, @js($seller->name), @js($avatarUrl))"
-                            @keydown.enter.self="openSellerDetail({{ $seller->id }}, @js($seller->name), @js($avatarUrl))"
-                            class="cursor-pointer transition-colors duration-150 hover:bg-[#FBF8FB] focus-visible:bg-[#FBF8FB] focus-visible:outline-none
-                                   focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#3b1735]/40 {{ $hasSales ? '' : 'text-gray-500' }}">
+                        <tr style="--i: {{ $loop->index }}"
+                            @click="if (!$event.target.closest('button')) $el.querySelector('[data-open-seller]').click()"
+                            class="cursor-pointer transition-colors duration-200 hover:bg-vd-tint">
                             <td class="px-5 py-3">
                                 <div class="flex items-center gap-3">
                                     <x-admin.avatar :user="$seller" />
                                     <div class="min-w-0">
                                         <p class="flex items-center gap-2">
-                                            <span class="max-w-[220px] truncate font-medium text-[#2B1730]" title="{{ $seller->name }}">{{ $seller->name }}</span>
+                                            <span class="max-w-[220px] truncate font-medium text-vd-ink" title="{{ $seller->name }}">{{ $seller->name }}</span>
                                             @if ($state)
                                                 <span class="inline-flex flex-shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium {{ $state[1] }}">{{ $state[0] }}</span>
                                             @endif
                                         </p>
-                                        <p class="max-w-[260px] truncate text-xs text-gray-500" title="{{ $seller->email }}">{{ $seller->email }}</p>
+                                        <p class="max-w-[260px] truncate text-xs text-vd-muted" title="{{ $seller->email }}">{{ $seller->email }}</p>
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-center tabular-nums text-gray-700">{{ number_format($seller->completed_orders_count) }}</td>
+                            <td class="px-4 py-3 text-center tabular-nums {{ $hasSales ? 'text-vd-ink' : 'text-vd-muted' }}">{{ number_format($seller->completed_orders_count) }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums {{ $hasSales ? 'text-vd-ink' : 'text-vd-muted' }}">₱{{ number_format($sales, 2) }}</td>
                             <td class="px-4 py-3">
-                                <p class="font-medium tabular-nums {{ $hasSales ? 'text-[#2B1730]' : 'text-gray-400' }}">₱{{ number_format($seller->total_sales, 2) }}</p>
                                 @if ($hasSales)
-                                    <div class="mt-1.5 flex items-center gap-2" title="{{ number_format($share, 1) }}% of this month's sales">
-                                        <div class="h-1.5 w-24 overflow-hidden rounded-full bg-[#F1E9F1]">
-                                            <div class="h-full rounded-full bg-[#5b2963]" style="width: {{ max(3, round($share)) }}%"></div>
+                                    <div class="flex items-center gap-2" title="{{ number_format($share, 1) }}% of this month's sales">
+                                        <div class="h-1.5 w-24 overflow-hidden rounded-full bg-vd-lavender">
+                                            <div class="h-full rounded-full bg-vd-plum" style="width: {{ max(3, round($share)) }}%"></div>
                                         </div>
-                                        <span class="text-[11px] tabular-nums text-gray-500">{{ number_format($share, 0) }}%</span>
+                                        <span class="w-9 text-xs tabular-nums text-vd-muted">{{ number_format($share, 0) }}%</span>
                                     </div>
+                                @else
+                                    <span class="text-xs text-vd-muted">No sales</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums {{ $hasSales ? 'text-green-700' : 'text-gray-400' }}">
-                                ₱{{ number_format($seller->commission_owed, 2) }}
+                            <td class="px-4 py-3 text-right font-semibold tabular-nums {{ $hasSales ? 'text-vd-ink' : 'text-vd-muted' }}">₱{{ number_format($commission, 2) }}</td>
+                            <td class="px-5 py-3 text-right">
+                                <button type="button" data-open-seller data-id="{{ $seller->id }}" data-name="{{ $seller->name }}" data-avatar="{{ $avatarUrl }}"
+                                    @click="openFromButton($el)" aria-haspopup="dialog" aria-label="View commission breakdown for {{ $seller->name }}"
+                                    class="inline-flex h-8 items-center rounded-lg border border-vd-line-strong bg-white px-3 text-[13px] font-medium text-vd-plum transition-all duration-200
+                                           hover:border-vd-plum hover:bg-vd-plum hover:text-white active:scale-95
+                                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40">
+                                    View breakdown
+                                </button>
                             </td>
-                            <td class="px-3 py-3 text-gray-400" aria-hidden="true"><x-admin.icon name="chevron-right" class="h-4 w-4" /></td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
 
-        @include('admin.seller-compliance.partials.pagination', ['paginator' => $sellers])
+        @include('admin.partials.pagination', ['paginator' => $sellers])
     @endif
 </div>
 
-<p class="mt-3 text-xs leading-relaxed text-gray-500">
-    Commission = completed sales × the seller commission rate saved on each order (currently {{ rtrim(rtrim(number_format($rate, 2), '0'), '.') }}% for new orders; orders placed before rates were saved use 10%). A sale counts when its order is delivered or completed,
-    and it is placed in the month the order was created.
-</p>
+<p class="mt-3 text-xs text-vd-muted">Counts delivered and completed orders. Each order uses the rate saved when it was placed.</p>

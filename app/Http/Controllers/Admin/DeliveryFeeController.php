@@ -37,10 +37,22 @@ class DeliveryFeeController extends Controller
     public function update(Request $request): RedirectResponse
     {
         abort_unless(auth('admin')->user()?->is_super_admin, 403, 'Only a super admin can change commission rates.');
+
+        // Each message says the fix. They show under the field, so they need no field name.
+        $rule = ['required', 'numeric', 'min:0', 'max:100', 'decimal:0,2'];
+        $messages = [];
+        foreach (['vendo_delivery_commission_rate', 'seller_commission_rate'] as $field) {
+            $messages["{$field}.required"] = 'Enter a rate from 0 to 100.';
+            $messages["{$field}.numeric"] = 'Use numbers only, like 7.5.';
+            $messages["{$field}.min"] = 'Enter a rate from 0 to 100.';
+            $messages["{$field}.max"] = 'Enter a rate from 0 to 100.';
+            $messages["{$field}.decimal"] = 'Use at most 2 decimals, like 7.25.';
+        }
+
         $data = $request->validate([
-            'vendo_delivery_commission_rate' => ['required', 'numeric', 'min:0', 'max:100'],
-            'seller_commission_rate' => ['required', 'numeric', 'min:0', 'max:100'],
-        ]);
+            'vendo_delivery_commission_rate' => $rule,
+            'seller_commission_rate' => $rule,
+        ], $messages);
 
         DeliveryFeeSetting::current()->update([
             'vendo_delivery_commission_rate' => number_format((float) $data['vendo_delivery_commission_rate'], 2, '.', ''),
@@ -48,6 +60,6 @@ class DeliveryFeeController extends Controller
             'updated_by' => auth('admin')->id(),
         ]);
 
-        return back()->with('success', 'Rates saved. They apply to new orders only; existing orders keep the rates they were placed with.');
+        return back()->with('success', 'Rates saved. New orders use them; existing orders keep their rates.');
     }
 }

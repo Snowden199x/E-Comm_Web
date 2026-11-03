@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Complaints\Complaint;
 use App\Models\Communication\Conversation;
 use App\Models\Communication\Notification;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,7 +14,7 @@ use Illuminate\View\View;
 
 class CaseMessageController extends Controller
 {
-    public function adminStore(Request $request, Complaint $complaint): RedirectResponse
+    public function adminStore(Request $request, Complaint $complaint): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'recipient_id' => ['required', 'integer'],
@@ -44,6 +45,10 @@ class CaseMessageController extends Controller
                 'link' => route($recipient->role.'.case-messages.show', $complaint),
             ]);
         });
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true]);
+        }
 
         return back()->with('case_message_sent', true);
     }

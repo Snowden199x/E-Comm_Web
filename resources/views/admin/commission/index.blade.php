@@ -1,59 +1,72 @@
 <x-admin.layout title="Commission">
-    {{-- Shared Registrations/User Management motion + loading styles (rg- prefix). --}}
+    {{-- Shared card and row motion (rg- prefix). --}}
     @vite('resources/css/admin/registrations.css')
 
     @php
         $monthDate = \Carbon\Carbon::parse($month . '-01');
         $initialSearch = request()->string('search')->trim()->toString();
-        $effective = $stats['total_sales'] > 0 ? ($stats['total_commission'] / $stats['total_sales']) * 100 : null;
     @endphp
 
     {{--
-        Month/search refresh the cards and table together. Seller details use the named Admin route.
-        The commission uses the rate saved on each order; the rate itself is edited on the Delivery Fees page.
+        Month, search and page changes fetch this page again and swap two regions: #cm-cards and #cm-table.
+        Both always describe the same month. The seller breakdown comes from the named JSON route.
+        The commission uses the rate saved on each order; the rate itself is edited on Delivery Fees.
     --}}
-    <div class="rg-page mx-auto w-full max-w-[1280px] p-4 sm:p-6" x-data="{
+    <div class="rg-page mx-auto w-full max-w-[1440px] p-4 sm:p-6 lg:p-7" x-data="{
         // Filters
         q: @js($initialSearch),
         month: @js($month),
+        lastMonth: @js($month),
         page: {{ $sellers->currentPage() }},
+
+        // Loading: the skeleton shows only when a request takes longer than 150 ms, so fast loads do not flicker.
         loading: false,
+        slow: false,
         failed: false,
+        failedMsg: '',
         ctrl: null,
         timer: null,
+        slowTimer: null,
         pageUrl: @js(route('admin.commission.index')),
         detailUrl: @js(route('admin.commission.seller-detail', ['seller' => '__ID__'])),
 
         // Seller breakdown dialog
-        sellerDetailOpen: false,
+        detailOpen: false,
         detailLoading: false,
-        detailFailed: false,
+        detailError: '',
+        detailCtrl: null,
+        detailTrigger: null,
         sellerDetail: null,
         detailMeta: { id: null, name: '', avatar: '' },
-        sellerChart: null,
-
-        init() {
-            this.$watch('sellerDetailOpen', (open) => { if (!open && this.sellerChart) { this.sellerChart.destroy(); this.sellerChart = null; } });
-        },
 
         // ----- Month and search ------------------------------------------------
+        monthKey(d) {
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        },
+        get currentMonth() {
+            return this.monthKey(new Date());
+        },
+        get isCurrentMonth() {
+            return this.month >= this.currentMonth;
+        },
         get monthLabel() {
             const [y, m] = this.month.split('-').map(Number);
             return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         },
-        get isCurrentMonth() {
-            const n = new Date();
-            return this.month === n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
-        },
         shiftMonth(delta) {
+            if (delta > 0 && this.isCurrentMonth) return;
             const [y, m] = this.month.split('-').map(Number);
-            const d = new Date(y, m - 1 + delta, 1);
-            this.month = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+            this.month = this.monthKey(new Date(y, m - 1 + delta, 1));
             this.apply();
         },
         thisMonth() {
-            const n = new Date();
-            this.month = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+            this.month = this.currentMonth;
+            this.apply();
+        },
+        // The native picker can be cleared or set to a future month: put back the last valid month.
+        onMonthPick() {
+            if (!/^\d{4}-\d{2}$/.test(this.month)) { this.month = this.lastMonth; return; }
+            if (this.month > this.currentMonth) this.month = this.currentMonth;
             this.apply();
         },
         params() {
@@ -71,162 +84,193 @@
         apply() {
             clearTimeout(this.timer);
             this.page = 1;
+            this.lastMonth = this.month;
             this.load();
         },
-        onRegionClick(event) {
+        onTableClick(event) {
             const btn = event.target.closest('[data-page]');
             if (!btn || btn.disabled) return;
             this.page = Number(btn.dataset.page);
             this.load(true);
         },
 
-        // Fetches the full page and swaps #cm-region (cards + table) so both always describe the same month.
+        // Short, specific messages: what happened and what to do.
+        errorText(status) {
+            if (!navigator.onLine) return 'You are offline. Reconnect, then select Retry.';
+            if (status === 401 || status === 419) return 'Your session ended. Reload the page and sign in again.';
+            if (status === 403) return 'This account cannot view commission. Sign in with an admin account.';
+            if (status >= 500) return 'Vendo could not load the figures. Select Retry. If it keeps failing, reload the page.';
+            return 'Check your connection, then select Retry.';
+        },
+
+        // Fetches the page and swaps the cards and table together so both always describe the same month.
         async load(scrollToTable = false) {
             if (this.ctrl) this.ctrl.abort();
             const ctrl = new AbortController();
             this.ctrl = ctrl;
             this.loading = true;
             this.failed = false;
+            clearTimeout(this.slowTimer);
+            this.slowTimer = setTimeout(() => { this.slow = true; }, 150);
 
             const url = this.pageUrl + '?' + this.params().toString();
             try {
                 const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' }, signal: ctrl.signal });
                 if (res.redirected && res.url !== new URL(url, location.origin).href) { window.location.href = res.url; return; }
-                if (!res.ok) throw new Error('HTTP ' + res.status);
+                if (!res.ok) { const err = new Error('HTTP ' + res.status); err.status = res.status; throw err; }
 
                 const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-                const next = doc.getElementById('cm-region');
-                if (!next) throw new Error('Missing region');
+                const cards = doc.getElementById('cm-cards');
+                const table = doc.getElementById('cm-table');
+                if (!cards || !table) throw new Error('Missing region');
                 if (ctrl.signal.aborted) return;
 
-                const region = this.$refs.region;
-                region.innerHTML = next.innerHTML;
-                region.classList.remove('rg-fresh');
-                void region.offsetWidth; // restart the row animation
-                region.classList.add('rg-fresh');
+                for (const [el, next] of [[this.$refs.cards, cards], [this.$refs.table, table]]) {
+                    el.innerHTML = next.innerHTML;
+                    el.classList.remove('rg-fresh');
+                    void el.offsetWidth; // restart the row animation
+                    el.classList.add('rg-fresh');
+                }
 
                 history.replaceState(null, '', url);
-                if (scrollToTable) region.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                if (scrollToTable) this.$refs.table.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             } catch (e) {
                 if (e.name === 'AbortError') return;
+                this.failedMsg = this.errorText(e.status);
                 this.failed = true;
             } finally {
-                if (this.ctrl === ctrl) { this.loading = false; this.ctrl = null; }
+                if (this.ctrl === ctrl) {
+                    clearTimeout(this.slowTimer);
+                    this.loading = false;
+                    this.slow = false;
+                    this.ctrl = null;
+                }
             }
         },
 
         peso(n) {
             return '₱' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         },
+        shareOf(value) {
+            const total = this.sellerDetail ? Number(this.sellerDetail.total_sales) : 0;
+            return total > 0 ? Math.round((Number(value) / total) * 100) : 0;
+        },
 
         // ----- Seller breakdown dialog ------------------------------------------
-        async openSellerDetail(id, name, avatar) {
+        openFromButton(btn) {
+            this.openSellerDetail(btn.dataset.id, btn.dataset.name, btn.dataset.avatar, btn);
+        },
+        async openSellerDetail(id, name, avatar, trigger = null) {
+            if (trigger) this.detailTrigger = trigger;
+            if (this.detailCtrl) this.detailCtrl.abort();
+            const ctrl = new AbortController();
+            this.detailCtrl = ctrl;
+
             this.detailMeta = { id, name, avatar };
             this.sellerDetail = null;
-            this.detailFailed = false;
+            this.detailError = '';
             this.detailLoading = true;
-            this.sellerDetailOpen = true;
+            this.detailOpen = true;
+            this.$nextTick(() => this.$refs.detailClose && this.$refs.detailClose.focus());
+
             try {
                 const res = await fetch(this.detailUrl.replace('__ID__', id) + '?month=' + encodeURIComponent(this.month), {
                     headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    signal: ctrl.signal,
                 });
-                if (!res.ok) throw new Error('HTTP ' + res.status);
+                if (!res.ok) { const err = new Error('HTTP ' + res.status); err.status = res.status; throw err; }
                 this.sellerDetail = await res.json();
-                this.detailLoading = false;
-                this.$nextTick(() => this.renderChart());
             } catch (e) {
-                this.detailLoading = false;
-                this.detailFailed = true;
+                if (e.name === 'AbortError') return;
+                this.detailError = this.errorText(e.status);
+            } finally {
+                if (this.detailCtrl === ctrl) { this.detailLoading = false; this.detailCtrl = null; }
             }
         },
-        renderChart() {
-            if (this.sellerChart) this.sellerChart.destroy();
-            const ctx = this.$refs.sellerChartCanvas;
-            if (!ctx || !this.sellerDetail || !this.sellerDetail.items.length || typeof Chart === 'undefined') return;
-            const top = this.sellerDetail.items.slice(0, 8);
-            this.sellerChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: top.map(i => i.name.length > 18 ? i.name.slice(0, 17) + '…' : i.name),
-                    datasets: [{ label: 'Sales', data: top.map(i => i.sales), backgroundColor: '#5b2963', borderRadius: 6, maxBarThickness: 28 }],
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ' ' + this.peso(c.parsed.x) } } },
-                    scales: {
-                        x: { beginAtZero: true, grid: { color: '#f3edf4' }, ticks: { callback: (v) => v >= 1000 ? '₱' + (v / 1000) + 'k' : '₱' + v } },
-                        y: { grid: { display: false } },
-                    },
-                },
-            });
+        closeDetail() {
+            if (!this.detailOpen) return;
+            if (this.detailCtrl) { this.detailCtrl.abort(); this.detailCtrl = null; }
+            this.detailOpen = false;
+            this.detailLoading = false;
+            if (this.detailTrigger && document.contains(this.detailTrigger)) this.detailTrigger.focus();
         },
-    }" @keydown.escape.window="sellerDetailOpen = false">
+    }" @keydown.escape.window="closeDetail()">
 
         {{-- Header --}}
-        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-                <h1 class="font-display text-2xl font-semibold text-[#2B1730]">Commission</h1>
-                <p class="mt-1 text-sm text-gray-500">What Vendo earns from each seller's completed sales, month by month.</p>
+                <h1 class="font-display text-xl font-semibold leading-tight text-vd-ink sm:text-2xl">Commission</h1>
+                <p class="mt-1 text-sm text-vd-muted">Commission earned from completed sales, by month.</p>
             </div>
 
             {{-- Month switcher --}}
             <div class="flex flex-wrap items-center gap-2">
-                <div class="inline-flex items-center rounded-full border border-[#ddd0e0] bg-white p-1">
-                    <button type="button" @click="shiftMonth(-1)" aria-label="Previous month"
-                        class="flex h-9 w-9 items-center justify-center rounded-full text-gray-600 transition duration-150 hover:bg-[#F1E9F1]
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                <button type="button" x-show="!isCurrentMonth" x-cloak @click="thisMonth()"
+                    class="inline-flex h-10 items-center rounded-full px-3 text-[13px] font-medium text-vd-plum transition-colors duration-200 hover:bg-vd-lavender
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40">
+                    Go to this month
+                </button>
+                <div class="inline-flex items-center rounded-full border border-vd-orchid bg-vd-paper p-1">
+                    <button type="button" @click="shiftMonth(-1)" aria-label="Show previous month"
+                        class="flex h-8 w-8 items-center justify-center rounded-full text-vd-plum transition duration-200 hover:bg-vd-lavender active:scale-95
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40">
                         <x-admin.icon name="chevron-left" class="h-4 w-4" stroke="2.2" />
                     </button>
-                    <label class="relative flex h-9 min-w-[10.5rem] cursor-pointer items-center justify-center px-3 text-sm font-medium text-[#2B1730]">
+                    <label class="relative flex h-8 min-w-[10rem] cursor-pointer items-center justify-center rounded-full px-3 text-[13px] font-medium text-vd-ink transition-colors duration-200 hover:bg-white focus-within:ring-2 focus-within:ring-vd-plum/30">
                         <span x-text="monthLabel">{{ $monthDate->format('F Y') }}</span>
                         {{-- The native month picker sits invisibly on top, so the label stays styled. --}}
-                        <input type="month" x-model="month" @change="apply()" aria-label="Choose month"
+                        <input type="month" x-model="month" :max="currentMonth" @change="onMonthPick()" @click="$el.showPicker && $el.showPicker()" aria-label="Choose month"
                             class="absolute inset-0 h-full w-full cursor-pointer opacity-0">
                     </label>
-                    <button type="button" @click="shiftMonth(1)" aria-label="Next month"
-                        class="flex h-9 w-9 items-center justify-center rounded-full text-gray-600 transition duration-150 hover:bg-[#F1E9F1]
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                    <button type="button" @click="shiftMonth(1)" :disabled="isCurrentMonth" aria-label="Show next month"
+                        class="flex h-8 w-8 items-center justify-center rounded-full text-vd-plum transition duration-200 hover:bg-vd-lavender active:scale-95
+                               disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:active:scale-100
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40">
                         <x-admin.icon name="chevron-right" class="h-4 w-4" stroke="2.2" />
                     </button>
                 </div>
-                <button type="button" x-show="!isCurrentMonth" x-cloak @click="thisMonth()"
-                    class="inline-flex h-11 items-center rounded-full px-4 text-sm font-medium text-[#3b1735] transition duration-200 hover:bg-[#F1E9F1]
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
-                    This month
-                </button>
             </div>
         </div>
 
-        {{-- Cards + table (swapped together on every month/search/page change) --}}
-        <div class="relative">
-            <div x-show="loading" x-cloak x-transition.opacity class="rg-bar" role="progressbar" aria-label="Loading commission"></div>
+        {{-- Summary cards --}}
+        <div x-show="slow" x-cloak aria-hidden="true">@include('admin.commission.partials.skeleton', ['part' => 'cards'])</div>
+        <div id="cm-cards" x-ref="cards" x-show="!slow" :aria-busy="loading" aria-live="polite">
+            @include('admin.commission.partials.summary-cards')
+        </div>
 
-            <div id="cm-region" x-ref="region" data-month-sales="{{ (float) $stats['total_sales'] }}"
-                class="rg-table-wrap" :aria-busy="loading" @click="onRegionClick($event)">
-                @include('admin.commission.partials.summary-cards')
+        {{-- Search --}}
+        <div class="mb-5 group relative w-full sm:max-w-[400px]">
+            <x-admin.icon name="search" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-vd-plum transition-transform duration-200 group-focus-within:scale-110" />
+            <input type="text" x-model="q" @input="onSearch()" @keydown.escape="q = ''; apply()"
+                autocomplete="off" aria-label="Search sellers" placeholder="Search seller name or email…"
+                class="h-10 w-full rounded-full border border-vd-orchid bg-vd-paper pl-10 pr-9 text-[13px] text-vd-ink placeholder:text-vd-muted
+                       transition-all duration-200 ease-out hover:border-vd-plum hover:bg-white
+                       focus:border-vd-plum focus:bg-white focus:outline-none focus:ring-2 focus:ring-vd-plum/20 focus:shadow-[0_4px_12px_-6px_rgba(59,23,53,0.35)]">
+            <button type="button" x-show="q !== ''" x-cloak @click="q = ''; apply()" aria-label="Clear search"
+                x-transition:enter="transition duration-150 ease-out" x-transition:enter-start="scale-75 opacity-0" x-transition:enter-end="scale-100 opacity-100"
+                x-transition:leave="transition duration-100 ease-in" x-transition:leave-start="scale-100 opacity-100" x-transition:leave-end="scale-75 opacity-0"
+                class="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-vd-muted transition-colors duration-200 hover:bg-vd-lavender hover:text-vd-plum">
+                <x-admin.icon name="x" class="h-3.5 w-3.5" />
+            </button>
+        </div>
 
-                {{-- Toolbar --}}
-                <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="relative w-full sm:max-w-sm">
-                        <x-admin.icon name="search" class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                        <input type="search" x-model="q" @input="onSearch()" autocomplete="off" aria-label="Search sellers"
-                            placeholder="Search seller name or email"
-                            class="h-11 w-full rounded-full border border-[#ddd0e0] bg-white pl-10 pr-4 text-sm text-[#2B1730] placeholder:text-gray-400
-                                   transition duration-200 hover:border-[#cdbbd2] focus:border-[#3b1735] focus:outline-none focus:ring-2 focus:ring-[#3b1735]/20">
-                    </div>
-                    <p class="text-xs text-gray-500">Select a seller to see which products earned the commission.</p>
-                </div>
+        {{-- The page could not refresh --}}
+        <div x-show="failed" x-cloak role="alert"
+            class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-vd-danger-line bg-vd-danger-bg p-4 text-sm text-vd-danger-ink">
+            <span class="flex items-center gap-3">
+                <x-admin.icon name="alert-circle" class="h-[18px] w-[18px] flex-shrink-0" />
+                <span><span class="font-semibold">Could not load commission.</span> <span x-text="failedMsg"></span></span>
+            </span>
+            <button type="button" @click="load()"
+                class="inline-flex h-9 items-center rounded-lg border border-vd-danger-line bg-white px-3 text-[13px] font-semibold text-vd-danger-ink transition-colors duration-200 hover:border-vd-danger-ink">
+                Retry
+            </button>
+        </div>
 
-                @include('admin.commission.partials.commission-table')
-            </div>
-
-            <div x-show="failed" x-cloak role="alert"
-                class="mt-4 flex flex-col items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 sm:flex-row sm:items-center">
-                <span>We couldn't refresh the commission figures. Check your connection and try again.</span>
-                <button type="button" @click="load()" class="rounded-full border border-red-300 bg-white px-4 py-1.5 text-[13px] font-medium text-red-700 hover:bg-red-100">Try again</button>
-            </div>
+        {{-- Table --}}
+        <div x-show="slow" x-cloak aria-hidden="true">@include('admin.commission.partials.skeleton', ['part' => 'table'])</div>
+        <div id="cm-table" x-ref="table" x-show="!slow" :aria-busy="loading" aria-live="polite" @click="onTableClick($event)">
+            @include('admin.commission.partials.commission-table')
         </div>
 
         @include('admin.commission.partials.seller-detail-modal')

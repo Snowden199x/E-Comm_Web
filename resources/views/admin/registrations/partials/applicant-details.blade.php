@@ -17,30 +17,30 @@
     $ext = fn (?string $path, string $fallback) => strtolower(pathinfo((string) $path, PATHINFO_EXTENSION)) ?: $fallback;
 
     $statusChip = [
-        'pending' => ['Pending review', 'bg-[#FDF3E2] text-[#B45309] ring-[#F3D9A6]'],
-        'approved' => ['Approved', 'bg-green-50 text-green-700 ring-green-200'],
-        'disapproved' => ['Rejected', 'bg-red-50 text-red-600 ring-red-200'],
-    ][$user->status] ?? [ucfirst((string) $user->status), 'bg-gray-100 text-gray-600 ring-gray-200'];
+        'pending' => ['Pending', 'border-vd-warning-line bg-vd-warning-bg text-vd-warning-ink'],
+        'approved' => ['Approved', 'border-vd-success-line bg-vd-success-bg text-vd-success-ink'],
+        'disapproved' => ['Rejected', 'border-vd-danger-line bg-vd-danger-bg text-vd-danger-ink'],
+    ][$user->status] ?? [ucfirst((string) $user->status), 'border-vd-line-strong bg-vd-tint text-vd-muted'];
 
     $tabs = [
-        ['personal', 'Personal Information', 'personal-information-icon.svg'],
-        ['address', 'User Address', 'address-icon.svg'],
+        ['personal', 'Personal information', 'personal-information-icon.svg'],
+        ['address', 'Address', 'address-icon.svg'],
     ];
     if ($hasBusiness) {
-        $tabs[] = ['business', 'Business Information', 'business-information-icon.svg'];
+        $tabs[] = ['business', 'Business information', 'business-information-icon.svg'];
     }
     $tabKeys = array_column($tabs, 0);
 
     $dash = '—';
     $personalRows = $details ? [
-        ['Last Name', $details->last_name],
-        ['First Name', $details->first_name],
-        ['Middle Name', $details->middle_name ?: $dash],
+        ['Last name', $details->last_name],
+        ['First name', $details->first_name],
+        ['Middle name', $details->middle_name ?: $dash],
         ['Sex', $details->sex ? ucfirst($details->sex) : $dash],
         ['Birthday', $details->birthday ? $details->birthday->format('F j, Y') : $dash],
         ['Age', $details->birthday ? $details->age : $dash],
         ['Email', $user->email],
-        ['Phone Number', $user->phone_number ?: $dash],
+        ['Phone', $user->phone_number ?: $dash],
     ] : [];
 
     $streetLine = $details ? trim(($details->house_no ?? '') . ' ' . ($details->street ?? '')) : '';
@@ -48,13 +48,13 @@
         ['Province', $details->province ?: $dash],
         ['Municipality', $details->municipality ?: $dash],
         ['Barangay', $details->barangay ?: $dash],
-        ['Street / House No.', $streetLine !== '' ? $streetLine : $dash],
-        ['Zip Code', $details->zip_code ?: $dash],
+        ['Street / house no.', $streetLine !== '' ? $streetLine : $dash],
+        ['Zip code', $details->zip_code ?: $dash],
     ] : [];
 
-    $panelBase = 'col-start-1 row-start-1 rounded-2xl border border-[#ece4ec] bg-white p-5 transition-[opacity,transform,visibility] duration-300 ease-vendo sm:p-6';
-    $dtClass = 'text-[13px] text-gray-500';
-    $ddClass = 'min-w-0 break-words text-sm font-medium text-[#2B1730]';
+    $panelBase = 'col-start-1 row-start-1 rounded-2xl border border-vd-line bg-white p-5 transition-[opacity,transform,visibility] duration-300 ease-vendo sm:p-5';
+    $dtClass = 'text-[13px] text-vd-muted';
+    $ddClass = 'min-w-0 break-words text-sm font-medium text-vd-ink';
 @endphp
 
 <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[320px_minmax(0,1fr)]" x-data="{
@@ -85,44 +85,44 @@
 }" x-init="if ($refs.tabbar) { new ResizeObserver(() => move()).observe($refs.tabbar); $nextTick(() => move()); }">
 
     {{-- ============ Profile card ============ --}}
-    <aside class="overflow-hidden rounded-2xl border border-[#ece4ec] bg-white lg:sticky lg:top-6">
-        <div class="flex items-center gap-4 border-b border-[#ece4ec] p-5">
+    <aside class="overflow-hidden rounded-2xl border border-vd-line bg-white lg:sticky lg:top-6">
+        <div class="flex items-center gap-4 border-b border-vd-line p-5">
             <x-admin.avatar :user="$user" size="h-16 w-16" text="text-xl" />
             <div class="min-w-0">
-                <p class="truncate text-base font-semibold text-[#2B1730]">{{ $user->name }}</p>
-                <p class="text-[13px] text-gray-500">{{ $roleLabel }} Applicant</p>
-                <span class="mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset {{ $statusChip[1] }}">
+                <p class="truncate text-base font-semibold text-vd-ink">{{ $user->name }}</p>
+                <p class="text-[13px] text-vd-muted">{{ $roleLabel }} applicant</p>
+                <span class="mt-1.5 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium {{ $statusChip[1] }}">
                     {{ $statusChip[0] }}
                 </span>
             </div>
         </div>
 
-        <dl class="divide-y divide-[#f3edf4] px-5 text-[13px]">
+        <dl class="divide-y divide-vd-line px-5 text-[13px]">
             <div class="flex items-start justify-between gap-4 py-3.5">
-                <dt class="flex flex-shrink-0 items-center gap-2 text-gray-500">
+                <dt class="flex flex-shrink-0 items-center gap-2 text-vd-muted">
                     <img src="{{ asset('assets/icons/registration/user-email-icon.svg') }}" alt="" class="h-4 w-4"> Email
                 </dt>
-                <dd class="min-w-0 break-all text-right font-medium text-[#2B1730]">{{ $user->email }}</dd>
+                <dd class="min-w-0 break-all text-right font-medium text-vd-ink">{{ $user->email }}</dd>
             </div>
             <div class="flex items-start justify-between gap-4 py-3.5">
-                <dt class="flex flex-shrink-0 items-center gap-2 text-gray-500">
+                <dt class="flex flex-shrink-0 items-center gap-2 text-vd-muted">
                     <img src="{{ asset('assets/icons/registration/user-phone-icon.svg') }}" alt="" class="h-4 w-4"> Phone
                 </dt>
-                <dd class="min-w-0 text-right font-medium text-[#2B1730]">{{ $user->phone_number ?: $dash }}</dd>
+                <dd class="min-w-0 text-right font-medium text-vd-ink">{{ $user->phone_number ?: $dash }}</dd>
             </div>
             @if ($hasBusiness && $details)
                 <div class="flex items-start justify-between gap-4 py-3.5">
-                    <dt class="flex flex-shrink-0 items-center gap-2 text-gray-500">
+                    <dt class="flex flex-shrink-0 items-center gap-2 text-vd-muted">
                         <img src="{{ asset('assets/icons/registration/user-business-name-icon.svg') }}" alt="" class="h-4 w-4"> Business
                     </dt>
-                    <dd class="min-w-0 break-words text-right font-medium text-[#2B1730]">{{ $details->business_name ?: $dash }}</dd>
+                    <dd class="min-w-0 break-words text-right font-medium text-vd-ink">{{ $details->business_name ?: $dash }}</dd>
                 </div>
             @endif
             <div class="flex items-start justify-between gap-4 py-3.5">
-                <dt class="flex flex-shrink-0 items-center gap-2 text-gray-500">
-                    <img src="{{ asset('assets/icons/registration/user-date-applied-icon.svg') }}" alt="" class="h-4 w-4"> Date Applied
+                <dt class="flex flex-shrink-0 items-center gap-2 text-vd-muted">
+                    <img src="{{ asset('assets/icons/registration/user-date-applied-icon.svg') }}" alt="" class="h-4 w-4"> Date applied
                 </dt>
-                <dd class="min-w-0 text-right font-medium text-[#2B1730]">{{ $user->created_at->format('M j, Y') }}</dd>
+                <dd class="min-w-0 text-right font-medium text-vd-ink">{{ $user->created_at->format('M j, Y') }}</dd>
             </div>
         </dl>
     </aside>
@@ -133,11 +133,11 @@
         @if ($details)
         <div class="mb-3 overflow-x-auto pb-1 thin-scroll">
             <div x-ref="tabbar" role="tablist" aria-label="Application sections" @keydown="keynav($event)"
-                class="relative inline-flex gap-1 rounded-full border border-[#ece4ec] bg-white p-1">
+                class="relative inline-flex gap-1 rounded-full border border-vd-line bg-white p-1">
 
                 {{-- Sliding highlight --}}
                 <span aria-hidden="true"
-                    class="absolute inset-y-1 left-0 rounded-full bg-[#3b1735] shadow-sm"
+                    class="absolute inset-y-1 left-0 rounded-full bg-vd-plum"
                     :class="ready ? 'transition-[transform,width] duration-300 ease-vendo' : ''"
                     :style="`width:${ind.w}px;transform:translateX(${ind.x}px);opacity:${ind.w ? 1 : 0}`"></span>
 
@@ -146,9 +146,9 @@
                         aria-controls="{{ $uid }}-panel-{{ $key }}"
                         :aria-selected="tab === '{{ $key }}'" :tabindex="tab === '{{ $key }}' ? 0 : -1"
                         @click="select('{{ $key }}')"
-                        :class="tab === '{{ $key }}' ? 'text-white' : 'text-gray-600 hover:text-[#3b1735]'"
+                        :class="tab === '{{ $key }}' ? 'text-white' : 'text-vd-ink hover:text-vd-plum'"
                         class="relative z-10 whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-medium transition-colors duration-200
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40">
                         {{ $label }}
                     </button>
                 @endforeach
@@ -157,10 +157,7 @@
         @endif
 
         @if (! $details)
-            <div class="rounded-2xl border border-[#ece4ec] bg-white px-6 py-14 text-center">
-                <p class="text-base font-semibold text-[#2B1730]">No details submitted yet</p>
-                <p class="mt-1 text-sm text-gray-500">This applicant hasn't completed their profile, so there's nothing to review.</p>
-            </div>
+            <x-admin.empty-state class="rounded-2xl border border-vd-line bg-white" icon="file-text" title="No details submitted" text="This applicant hasn't filled in their profile." />
         @else
             {{-- Panels share one grid cell, so switching tabs cross-fades without the card changing height. --}}
             <div class="grid">
@@ -170,9 +167,9 @@
                     :aria-hidden="tab !== 'personal'" :inert="tab !== 'personal'"
                     :class="tab === 'personal' ? 'visible translate-y-0 opacity-100' : 'pointer-events-none invisible translate-y-1.5 opacity-0'"
                     class="{{ $panelBase }}">
-                    <h3 class="mb-5 flex items-center gap-2.5 text-base font-semibold text-[#3b1735]">
+                    <h3 class="mb-5 flex items-center gap-2.5 text-base font-semibold text-vd-plum">
                         <img src="{{ asset('assets/icons/registration/personal-information-icon.svg') }}" alt="" class="h-5 w-5">
-                        Personal Information
+                        Personal information
                     </h3>
                     <div class="grid gap-6 {{ $hasSecondId ? '' : 'md:grid-cols-[minmax(0,1fr)_260px]' }}">
                         <dl class="grid grid-cols-[110px_minmax(0,1fr)] content-start gap-x-4 gap-y-3.5">
@@ -190,7 +187,7 @@
                     :aria-hidden="tab !== 'address'" :inert="tab !== 'address'"
                     :class="tab === 'address' ? 'visible translate-y-0 opacity-100' : 'pointer-events-none invisible translate-y-1.5 opacity-0'"
                     class="{{ $panelBase }}">
-                    <h3 class="mb-5 flex items-center gap-2.5 text-base font-semibold text-[#3b1735]">
+                    <h3 class="mb-5 flex items-center gap-2.5 text-base font-semibold text-vd-plum">
                         <img src="{{ asset('assets/icons/registration/address-icon.svg') }}" alt="" class="h-5 w-5">
                         Address
                     </h3>
@@ -211,12 +208,12 @@
                         :aria-hidden="tab !== 'business'" :inert="tab !== 'business'"
                         :class="tab === 'business' ? 'visible translate-y-0 opacity-100' : 'pointer-events-none invisible translate-y-1.5 opacity-0'"
                         class="{{ $panelBase }}">
-                        <h3 class="mb-5 flex items-center gap-2.5 text-base font-semibold text-[#3b1735]">
+                        <h3 class="mb-5 flex items-center gap-2.5 text-base font-semibold text-vd-plum">
                             <img src="{{ asset('assets/icons/registration/business-information-icon.svg') }}" alt="" class="h-5 w-5">
-                            Business Information
+                            Business information
                         </h3>
                         <dl class="grid grid-cols-[130px_minmax(0,1fr)] content-start gap-x-4 gap-y-3.5">
-                            <dt class="{{ $dtClass }}">Business Name</dt>
+                            <dt class="{{ $dtClass }}">Business name</dt>
                             <dd class="{{ $ddClass }}">{{ $details->business_name ?: $dash }}</dd>
 
                             @if ($role === 'logistics_center')
@@ -229,35 +226,35 @@
                                 <dd class="min-w-0">
                                     <div class="flex flex-wrap gap-2">
                                         @forelse ($user->categories as $category)
-                                            <span class="rounded-full border border-[#d9ccdc] bg-[#F7F1F7] px-3 py-1 text-xs font-medium text-[#3b1735]">{{ $category->name }}</span>
+                                            @include('admin.partials.category-chip', ['category' => $category])
                                         @empty
-                                            <span class="text-sm text-gray-400">None selected</span>
+                                            <span class="text-sm text-vd-muted">None selected</span>
                                         @endforelse
                                     </div>
                                 </dd>
                             @endif
 
-                            <dt class="{{ $dtClass }}">Business Permit</dt>
+                            <dt class="{{ $dtClass }}">Business permit</dt>
                             <dd class="min-w-0">
                                 @if ($details->business_permit_path)
                                     @php
                                         $permitExt = $ext($details->business_permit_path, 'pdf');
                                         $permitPayload = [
                                             'url' => route('admin.verification-documents.show', [$user, 'business-permit']),
-                                            'title' => 'Business Permit',
+                                            'title' => 'Business permit',
                                             'subtitle' => $user->name,
                                             'filename' => 'business_permit.' . $permitExt,
                                             'kind' => $permitExt === 'pdf' ? 'pdf' : 'image',
                                         ];
                                     @endphp
                                     <button type="button" aria-haspopup="dialog" @click="$dispatch('open-document', @js($permitPayload))"
-                                        class="inline-flex max-w-full items-center gap-2 rounded-lg border border-[#d9ccdc] px-3 py-1.5 text-[13px] font-normal text-[#3b1735]
-                                               transition duration-200 hover:bg-[#F7F1F7] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
+                                        class="inline-flex max-w-full items-center gap-2 rounded-lg border border-vd-line-strong px-3 py-1.5 text-[13px] font-normal text-vd-plum
+                                               transition duration-200 hover:bg-vd-tint active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40">
                                         <x-admin.icon name="file" class="h-4 w-4 flex-shrink-0" />
                                         <span class="truncate">business_permit.{{ $permitExt }}</span>
                                     </button>
                                 @else
-                                    <span class="text-sm text-gray-400">Not submitted</span>
+                                    <span class="text-sm text-vd-muted">Not submitted</span>
                                 @endif
                             </dd>
                         </dl>

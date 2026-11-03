@@ -1,682 +1,397 @@
-<x-admin.layout>
-    <div class="p-4 sm:p-5 lg:p-6" x-data="{ tab: '{{ $errors->any() && old('email_username') !== null ? 'admin-accounts' : request('tab', 'my-account') }}', showCreateModal: {{ $errors->any() && old('email_username') !== null ? 'true' : 'false' }}, editProfile: false, changePass: false, actionId: null }" x-init="$watch('tab', value => {
+<x-admin.layout title="Account management">
+    {{-- Table loading bar and row animation shared with Registrations and User Management (rg- prefix). --}}
+    @vite('resources/css/admin/registrations.css')
+
+    @php
+        $isSuper = (bool) $currentAdmin->is_super_admin;
+
+        // After a failed form the page comes back with old input: reopen the popup that sent it.
+        $sentFrom = old('form');
+        $hasErrors = $errors->any();
+        $reopen = fn (string $form) => $hasErrors && $sentFrom === $form;
+
+        $startTab = $reopen('create') ? 'admin-accounts' : request('tab', 'my-account');
+        $startTab = ($startTab === 'admin-accounts' && $isSuper) ? 'admin-accounts' : 'my-account';
+
+        $initialStatus = request()->string('status', 'all')->toString();
+        $initialStatus = in_array($initialStatus, ['all', 'active', 'suspended', 'archived'], true) ? $initialStatus : 'all';
+
+        $statusOptions = [
+            'all' => ['All status', 'users'],
+            'active' => ['Active', 'check-circle'],
+            'suspended' => ['Suspended', 'ban'],
+            'archived' => ['Archived', 'archive'],
+        ];
+
+        $tabs = [['my-account', 'My Account', 'user']];
+        if ($isSuper) {
+            $tabs[] = ['admin-accounts', 'Admin Accounts', 'shield-check'];
+        }
+
+        // Shared look for this page.
+        $focus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40';
+        $card = 'rounded-2xl border border-vd-line bg-white p-5';
+        $label = 'mb-1.5 block text-xs font-medium text-vd-muted';
+        $input = 'block h-10 w-full rounded-lg border border-vd-line-strong bg-white px-3 text-sm text-vd-ink placeholder:text-vd-muted transition-colors duration-200 hover:border-vd-plum-soft focus:border-vd-plum focus:outline-none focus:ring-2 focus:ring-vd-plum/20';
+        // Errors and old input belong to the form that sent them (the popups share one error bag).
+        $bad = fn (string $name, string $form) => $reopen($form) && ($errors->has($name) || ($name === 'email_username' && $errors->has('email')));
+        $field = fn (string $name, string $form) => $input . ($bad($name, $form) ? ' !border-vd-danger-ink' : '');
+        $msg = fn (string $name, string $form) => $reopen($form) ? ($errors->first($name) ?: ($name === 'email_username' ? $errors->first('email') : '')) : '';
+        $val = fn (string $name, string $form, $default = '') => $reopen($form) ? old($name, $default) : $default;
+        $primary = "inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-vd-plum px-5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-vd-plum-hover focus-visible:ring-offset-2 {$focus}";
+        $secondary = "inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-vd-line-strong bg-white px-3.5 text-[13px] font-medium text-vd-plum transition-all duration-200 hover:border-vd-plum hover:bg-vd-plum hover:text-white active:scale-95 {$focus}";
+        $cancel = "inline-flex h-10 items-center justify-center rounded-lg border border-vd-line-strong bg-white px-4 text-sm font-medium text-vd-ink transition-colors duration-200 hover:bg-vd-tint {$focus}";
+    @endphp
+
+    <div class="rg-page mx-auto w-full max-w-[1440px] p-4 sm:p-6 lg:p-7" x-data="{
+        tab: @js($startTab),
+        showCreate: @js($reopen('create')),
+        editProfile: @js($reopen('profile')),
+        changePass: @js($reopen('password')),
+
+        // Admin list filters
+        q: '',
+        status: @js($initialStatus),
+        loading: false,
+        failed: false,
+        timer: null,
+        ctrl: null,
+        tableUrl: @js(route('admin.account-management.table')),
+
+        get filtered() { return this.q.trim() !== '' || this.status !== 'all'; },
+
+        onSearch() { clearTimeout(this.timer); this.timer = setTimeout(() => this.load(), 300); },
+        apply() { clearTimeout(this.timer); this.load(); },
+        clearAll() { this.q = ''; this.status = 'all'; this.apply(); },
+
+        async load() {
+            if (this.ctrl) this.ctrl.abort();
+            const ctrl = new AbortController();
+            this.ctrl = ctrl;
+            this.loading = true;
+            this.failed = false;
+
+            const p = new URLSearchParams();
+            if (this.q.trim()) p.set('search', this.q.trim());
+            if (this.status !== 'all') p.set('status', this.status);
+            const qs = p.toString();
+
+            try {
+                const res = await fetch(this.tableUrl + (qs ? '?' + qs : ''), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' },
+                    signal: ctrl.signal,
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const html = await res.text();
+                if (ctrl.signal.aborted) return;
+
+                const region = this.$refs.adminsRegion;
+                region.innerHTML = html;
+                region.classList.remove('rg-fresh');
+                void region.offsetWidth; // restart the row animation
+                region.classList.add('rg-fresh');
+            } catch (e) {
+                if (e.name !== 'AbortError') this.failed = true;
+            } finally {
+                if (this.ctrl === ctrl) this.loading = false;
+            }
+        },
+    }" x-init="$watch('tab', value => {
         const url = new URL(window.location);
         url.searchParams.set('tab', value);
         window.history.replaceState({}, '', url);
     })">
 
-        @if (session('generated_password'))
-            <div x-data="{ show: true }" x-show="show" x-cloak
-                class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-
-                <div class="bg-white rounded-2xl p-6 w-full max-w-md">
-
-                    <h3 class="font-bold text-lg text-gray-900 mb-2">
-                        Admin Credentials
-                    </h3>
-
-                    <p class="text-sm text-gray-500 mb-4">
-                        Copy these now and give to the admin. This is shown only once
-                        unless viewed again from their profile before they set their own password.
-                    </p>
-
-                    <div class="bg-gray-50 rounded-lg p-4 space-y-2 mb-4">
-                        <p class="text-sm text-gray-700">
-                            Email:
-                            <span class="font-mono">{{ session('generated_email') }}</span>
-                        </p>
-
-                        <p class="text-sm text-gray-700">
-                            Temporary Password:
-                            <span class="font-mono font-bold">{{ session('generated_password') }}</span>
-                        </p>
-                    </div>
-
-                    <button type="button" @click="show = false"
-                        class="w-full bg-[#3b1735] text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-[#4d1f45]">
-                        Got it, close
-                    </button>
-
-                </div>
-            </div>
-        @endif
-
-        <div class="mb-6">
-            <h2 class="text-2xl font-bold text-gray-900">
-                Account Management
-            </h2>
-
-            <p class="text-gray-500">
-                Manage your administrator profile, security settings, and authorized admin accounts.
-            </p>
+        <div class="mb-5">
+            <h1 class="font-display text-xl font-semibold leading-tight text-vd-ink sm:text-2xl">Account Management</h1>
+            <p class="mt-1 text-sm text-vd-muted">Manage your profile, security and admin accounts.</p>
         </div>
 
-        @if (session('confirmation'))
-            <div x-data="{ show: true }" x-show="show" x-cloak x-init="setTimeout(() => show = false, 5000)"
-                x-transition:enter="transform ease-out duration-300"
-                x-transition:enter-start="translate-x-full opacity-0" x-transition:enter-end="translate-x-0 opacity-100"
-                x-transition:leave="transform ease-in duration-200" x-transition:leave-start="translate-x-0 opacity-100"
-                x-transition:leave-end="translate-x-full opacity-0"
-                class="fixed top-5 right-5 z-[9999] w-[360px] bg-white border border-green-200 shadow-xl rounded-xl p-4">
+        @include('admin.account-management.partials.notice')
+        @include('admin.account-management.partials.credentials-dialog')
 
-                @php
-                    $messages = [
-                        'created' => 'Admin account created. An invite has been sent to their email.',
-                        'admin-updated' => 'Admin information updated.',
-                        'suspended' => 'Admin account suspended.',
-                        'reactivated' => 'Admin account reactivated.',
-                        'deactivated' => 'Admin account deactivated.',
-                        'reset-link-sent' => 'Password reset link sent to the admin.',
-                        'profile-updated' => 'Profile updated successfully.',
-                        'password-updated' => 'Password updated successfully.',
-                        'admin-deleted' => 'Admin account deleted successfully.',
-                        'admin-archived' => 'Admin account archived.',
-                        'admin-restored' => 'Admin account restored.',
-                    ];
-                @endphp
+        {{-- Tabs --}}
+        @if (count($tabs) > 1)
+            <nav aria-label="Account sections" class="mb-5 max-w-full overflow-x-auto thin-scroll">
+                <div role="tablist" class="inline-flex min-w-max gap-1 rounded-2xl border border-vd-line-strong bg-white p-1.5">
+                    @foreach ($tabs as [$key, $name, $icon])
+                        <button type="button" role="tab" @click="tab = '{{ $key }}'" :aria-selected="tab === '{{ $key }}'"
+                            :class="tab === '{{ $key }}' ? 'border-vd-plum-soft bg-vd-lavender text-vd-plum' : 'border-transparent text-vd-ink hover:bg-vd-tint hover:text-vd-plum'"
+                            class="flex items-center gap-2 whitespace-nowrap rounded-xl border px-4 py-2 text-sm font-medium transition-colors duration-200 {{ $focus }}">
+                            <x-admin.icon name="{{ $icon }}" class="h-[18px] w-[18px]" />
+                            {{ $name }}
+                        </button>
+                    @endforeach
+                </div>
+            </nav>
+        @endif
 
-                <div class="flex items-start gap-3">
+        {{-- MY ACCOUNT --}}
+        <div x-show="tab === 'my-account'" role="tabpanel" class="grid grid-cols-1 gap-5 lg:grid-cols-2">
 
-                    <!-- Success Icon -->
-                    <div class="flex-shrink-0 w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
-                        <span class="text-green-600 text-lg font-bold">
-                            ✓
+            {{-- Profile --}}
+            <section class="{{ $card }}" aria-labelledby="profile-title">
+                <div class="mb-5 flex items-start justify-between gap-3">
+                    <div>
+                        <h2 id="profile-title" class="font-display text-base font-semibold text-vd-ink">Profile</h2>
+                        <p class="mt-0.5 text-[13px] text-vd-muted">Your name and contact details.</p>
+                    </div>
+                    <button type="button" @click="editProfile = true" aria-haspopup="dialog" class="{{ $secondary }}">
+                        <x-admin.icon name="pencil" class="h-3.5 w-3.5" /> Edit profile
+                    </button>
+                </div>
+
+                <div class="flex items-start gap-4">
+                    <x-admin.avatar :user="$currentAdmin" size="h-16 w-16" text="text-xl" />
+
+                    <dl class="grid min-w-0 flex-1 grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+                        @foreach ([
+                            ['First name', $currentAdmin->first_name],
+                            ['Last name', $currentAdmin->last_name],
+                            ['Middle initial', $currentAdmin->middle_initial],
+                            ['Contact number', $currentAdmin->phone_number],
+                            ['Primary email', $currentAdmin->email],
+                            ['Secondary email', $currentAdmin->recovery_email],
+                        ] as [$name, $value])
+                            <div class="min-w-0">
+                                <dt class="text-xs text-vd-muted">{{ $name }}</dt>
+                                <dd class="mt-0.5 break-words font-medium text-vd-ink">{{ $value ?: '—' }}</dd>
+                            </div>
+                        @endforeach
+                    </dl>
+                </div>
+
+                <div class="mt-5 flex flex-wrap gap-8 border-t border-vd-line pt-4">
+                    <div>
+                        <p class="mb-1.5 text-xs text-vd-muted">Role</p>
+                        <x-admin.status-pill :tone="$isSuper ? 'plum' : 'neutral'">{{ $isSuper ? 'Super Admin' : 'Admin' }}</x-admin.status-pill>
+                    </div>
+                    <div>
+                        <p class="mb-1.5 text-xs text-vd-muted">Status</p>
+                        <x-admin.status-pill :tone="$currentAdmin->account_status === 'active' ? 'success' : 'danger'">{{ ucfirst($currentAdmin->account_status) }}</x-admin.status-pill>
+                    </div>
+                </div>
+            </section>
+
+            {{-- Sign-in and security --}}
+            <section class="{{ $card }}" aria-labelledby="security-title">
+                <h2 id="security-title" class="font-display text-base font-semibold text-vd-ink">Sign-in and security</h2>
+                <p class="mt-0.5 text-[13px] text-vd-muted">Keep your account safe.</p>
+
+                <div class="mt-5 flex items-center justify-between gap-3 rounded-xl border border-vd-line p-4">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-vd-orchid text-white">
+                            <x-admin.icon name="key" class="h-[18px] w-[18px]" />
                         </span>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-vd-ink">Password</p>
+                            <p class="text-xs text-vd-muted">Change it if you think someone else knows it.</p>
+                        </div>
                     </div>
-
-                    <!-- Message -->
-                    <div class="flex-1 pt-0.5">
-
-                        <p class="text-sm font-semibold text-gray-900">
-                            Success
-                        </p>
-
-                        <p class="text-sm text-gray-500 mt-0.5">
-                            {{ $messages[session('confirmation')] ?? 'Done.' }}
-                        </p>
-
-                    </div>
-
-                    <!-- Close -->
-                    <button type="button" @click="show = false"
-                        class="text-gray-400 hover:text-gray-600 text-lg leading-none">
-                        &times;
+                    <button type="button" @click="changePass = true" aria-haspopup="dialog" class="{{ $primary }} !h-9 flex-shrink-0 !px-4 !text-[13px]">
+                        Change password
                     </button>
-
                 </div>
 
-            </div>
-        @endif
-
-        <!-- Tabs -->
-        <div class="flex items-center gap-2 mb-6 bg-white rounded-xl p-1 w-fit shadow-sm">
-
-            <button type="button" @click="tab = 'my-account'"
-                :class="tab === 'my-account' ? 'bg-[#3b1735] text-white' : 'text-gray-600'"
-                class="px-4 py-2 rounded-lg text-sm font-medium transition">
-                My Account
-            </button>
-
-            @if ($currentAdmin->is_super_admin)
-                <button type="button" @click="tab = 'admin-accounts'"
-                    :class="tab === 'admin-accounts' ? 'bg-[#3b1735] text-white' : 'text-gray-600'"
-                    class="px-4 py-2 rounded-lg text-sm font-medium transition">
-                    Admin Accounts
-                </button>
-            @endif
-
-        </div>
-
-        <!-- MY ACCOUNT TAB -->
-        <div x-show="tab === 'my-account'">
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-                <!-- Profile Information -->
-                <div class="bg-white rounded-2xl p-5 shadow-sm">
-
-                    <div class="flex items-center justify-between mb-4">
-
-                        <div>
-                            <h3 class="font-bold text-gray-900">
-                                Profile Information
-                            </h3>
-
-                            <p class="text-sm text-gray-500">
-                                View and manage your personal information
-                            </p>
-                        </div>
-
-                        <button type="button" @click="editProfile = true"
-                            class="text-sm font-medium text-[#3b1735] border border-[#3b1735] px-3 py-1.5 rounded-lg hover:bg-[#3b1735] hover:text-white transition">
-                            Edit Profile
-                        </button>
-
+                <div class="mt-4 rounded-xl border border-vd-line">
+                    <div class="flex items-center justify-between border-b border-vd-line px-4 py-3">
+                        <p class="text-sm font-medium text-vd-ink">Sign-in history</p>
+                        <span class="text-xs text-vd-muted">Latest 100</span>
                     </div>
 
-                    <div class="flex items-start gap-4">
-
-                        <div
-                            class="w-16 h-16 rounded-full bg-[#3b1735] text-white flex items-center justify-center text-xl font-bold overflow-hidden flex-shrink-0">
-
-                            @if ($currentAdmin->profile_picture)
-                                <img src="{{ asset('storage/' . $currentAdmin->profile_picture) }}"
-                                    class="w-full h-full object-cover">
-                            @else
-                                {{ strtoupper(substr($currentAdmin->first_name ?? $currentAdmin->name, 0, 1)) }}{{ strtoupper(substr($currentAdmin->last_name ?? '', 0, 1)) }}
-                            @endif
-
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm flex-1">
-
-                            <div>
-                                <p class="text-gray-400">First Name</p>
-                                <p class="font-medium text-gray-900">
-                                    {{ $currentAdmin->first_name ?? '—' }}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p class="text-gray-400">Last Name</p>
-                                <p class="font-medium text-gray-900">
-                                    {{ $currentAdmin->last_name ?? '—' }}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p class="text-gray-400">Middle Initial</p>
-                                <p class="font-medium text-gray-900">
-                                    {{ $currentAdmin->middle_initial ?? '—' }}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p class="text-gray-400">Contact Number</p>
-                                <p class="font-medium text-gray-900">
-                                    {{ $currentAdmin->phone_number ?? '—' }}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p class="text-gray-400">Primary Email</p>
-                                <p class="font-medium text-gray-900">
-                                    {{ $currentAdmin->email }}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p class="text-gray-400">Secondary Email</p>
-                                <p class="font-medium text-gray-900">
-                                    {{ $currentAdmin->recovery_email ?? '—' }}
-                                </p>
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <div class="flex gap-6 mt-4 pt-4 border-t border-gray-100">
-
-                        <div>
-                            <p class="text-xs text-gray-400 mb-1">
-                                Role
-                            </p>
-
-                            <span class="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                                {{ $currentAdmin->is_super_admin ? 'Super Admin' : 'Admin' }}
-                            </span>
-                        </div>
-
-                        <div>
-                            <p class="text-xs text-gray-400 mb-1">
-                                Status
-                            </p>
-
-                            <span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                {{ ucfirst($currentAdmin->account_status) }}
-                            </span>
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <!-- Login & Security -->
-                <div class="bg-white rounded-2xl p-5 shadow-sm">
-
-                    <h3 class="font-bold text-gray-900 mb-4">
-                        Login & Security
-                    </h3>
-
-                    <div class="flex items-center justify-between p-3 border border-gray-100 rounded-lg mb-3">
-
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">
-                                Change Password
-                            </p>
-
-                            <p class="text-xs text-gray-500">
-                                Update your password to keep your account secure
-                            </p>
-                        </div>
-
-                        <button type="button" @click="changePass = true"
-                            class="text-sm font-medium text-white bg-[#3b1735] px-3 py-1.5 rounded-lg hover:bg-[#4d1f45]">
-                            Change
-                        </button>
-
-                    </div>
-
-                    <!-- Login Session History -->
-                    <div class="mt-3 p-3 border border-gray-100 rounded-lg">
-
-                        <div class="flex items-center justify-between mb-3">
-
-                            <p class="text-sm font-medium text-gray-900">
-                                Login Session History
-                            </p>
-
-                            <span class="text-xs text-gray-400">
-                                Latest 100
-                            </span>
-
-                        </div>
-
-                        <div class="h-[180px] overflow-y-auto space-y-2 pr-1">
-
-                            @forelse ($loginSessions as $session)
-                                <div class="p-3 bg-gray-50 rounded-lg">
-
-                                    <div class="flex items-start justify-between gap-3">
-
-                                        <div>
-
-                                            <p class="text-xs font-medium text-gray-900">
-                                                {{ $session->login_at->format('M d, Y \a\t g:i A') }}
-                                            </p>
-
-                                            <p class="text-xs text-gray-500 mt-1">
-                                                IP: {{ $session->ip_address ?? 'Unknown' }}
-                                            </p>
-
-                                            <p class="text-xs text-gray-500 mt-1">
-                                                {{ $session->browser }} · {{ $session->device }}
-                                            </p>
-
-                                        </div>
-
-                                        <span class="w-2 h-2 mt-1.5 rounded-full bg-green-500 flex-shrink-0"></span>
-
+                    @if ($loginSessions->isEmpty())
+                        <x-admin.empty-state size="sm" icon="monitor" title="No sign-ins recorded" text="Your sign-ins appear here." />
+                    @else
+                        <ul class="thin-scroll max-h-[260px] divide-y divide-vd-line overflow-y-auto">
+                            @foreach ($loginSessions as $session)
+                                <li class="flex items-center gap-3 px-4 py-3 transition-colors duration-200 hover:bg-vd-tint">
+                                    <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-vd-lavender text-vd-plum">
+                                        <x-admin.icon name="monitor" class="h-4 w-4" />
+                                    </span>
+                                    <div class="min-w-0">
+                                        <p class="text-[13px] font-medium text-vd-ink">{{ $session->login_at->format('M d, Y \a\t g:i A') }}</p>
+                                        <p class="truncate text-xs text-vd-muted">{{ $session->browser }} · {{ $session->device }} · IP {{ $session->ip_address ?? 'unknown' }}</p>
                                     </div>
-
-                                </div>
-
-                            @empty
-
-                                <p class="text-xs text-gray-500 text-center py-3">
-                                    No login sessions recorded yet.
-                                </p>
-                            @endforelse
-
-                        </div>
-
-                    </div>
-
+                                    @if ($loop->first)
+                                        <x-admin.status-pill tone="success" class="ml-auto flex-shrink-0">Latest</x-admin.status-pill>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
                 </div>
-
-            </div>
-
+            </section>
         </div>
 
-        <!-- ADMIN ACCOUNTS TAB -->
-        @if ($currentAdmin->is_super_admin)
-            <div x-show="tab === 'admin-accounts'" x-cloak>
+        {{-- ADMIN ACCOUNTS --}}
+        @if ($isSuper)
+            <div x-show="tab === 'admin-accounts'" x-cloak role="tabpanel">
+                <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-display text-base font-semibold text-vd-ink">Administrator accounts</h2>
+                        <p class="mt-0.5 text-[13px] text-vd-muted">Admins who can sign in to the Vendo Admin Panel.</p>
+                    </div>
+                    <button type="button" @click="showCreate = true" aria-haspopup="dialog" class="{{ $primary }}">
+                        <x-admin.icon name="plus" class="h-4 w-4" /> Create admin account
+                    </button>
+                </div>
 
-                <div class="bg-white rounded-2xl p-5 shadow-sm">
+                @include('admin.partials.filter-toolbar', [
+                    'searchLabel' => 'Search admins',
+                    'searchPlaceholder' => 'Search name or email…',
+                    'hideDate' => true,
+                    'dropdownModel' => 'status',
+                    'dropdownOptions' => $statusOptions,
+                    'dropdownAll' => 'All status',
+                    'dropdownLabel' => 'Filter by status',
+                ])
 
-                    <div class="flex items-center justify-between mb-4">
+                {{-- The table could not refresh --}}
+                <div x-show="failed" x-cloak role="alert"
+                    class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-vd-danger-line bg-vd-danger-bg p-4 text-sm text-vd-danger-ink">
+                    <span class="flex items-center gap-3">
+                        <x-admin.icon name="alert-circle" class="h-[18px] w-[18px] flex-shrink-0" />
+                        Couldn't load admins. Check your connection, then try again.
+                    </span>
+                    <button type="button" @click="load()"
+                        class="inline-flex h-9 items-center rounded-lg border border-vd-danger-line bg-white px-3 text-[13px] font-semibold text-vd-danger-ink transition-colors duration-200 hover:border-vd-danger-ink">
+                        Try again
+                    </button>
+                </div>
 
+                <div class="relative">
+                    <div x-show="loading" x-cloak class="rg-bar" role="progressbar" aria-label="Loading admins"></div>
+                    <div id="admins-table-wrap" x-ref="adminsRegion" class="rg-table-wrap" aria-live="polite" :aria-busy="loading">
+                        @include('admin.account-management.partials.admins-table')
+                    </div>
+                </div>
+            </div>
+
+            {{-- Create admin --}}
+            <x-admin.dialog model="showCreate" title="Create admin account" text="We generate a temporary password and show it once." size="lg">
+                <form method="POST" action="{{ route('admin.account-management.store') }}" data-draft-key="admin-{{ auth('admin')->id() }}-create-admin" class="space-y-4">
+                    @csrf
+                    <input type="hidden" name="form" value="create">
+
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
-                            <h3 class="font-bold text-gray-900">
-                                Administrator Accounts
-                            </h3>
-
-                            <p class="text-sm text-gray-500">
-                                Manage authorized administrators who can access the Vendo Admin Panel.
-                            </p>
+                            <label for="first_name" class="{{ $label }}">First name</label>
+                            <input id="first_name" name="first_name" type="text" required autocomplete="off" value="{{ $val('first_name', 'create') }}" class="{{ $field('first_name', 'create') }}">
+                            @if ($m = $msg('first_name', 'create')) <p class="mt-1 text-xs text-vd-danger-ink">{{ $m }}</p> @endif
                         </div>
-
-                        <button type="button" @click="showCreateModal = true"
-                            class="bg-[#3b1735] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#4d1f45]">
-                            + Create Admin Account
-                        </button>
-
+                        <div>
+                            <label for="last_name" class="{{ $label }}">Last name</label>
+                            <input id="last_name" name="last_name" type="text" required autocomplete="off" value="{{ $val('last_name', 'create') }}" class="{{ $field('last_name', 'create') }}">
+                            @if ($m = $msg('last_name', 'create')) <p class="mt-1 text-xs text-vd-danger-ink">{{ $m }}</p> @endif
+                        </div>
+                        <div>
+                            <label for="middle_initial" class="{{ $label }}">Middle initial <span class="font-normal">(optional)</span></label>
+                            <input id="middle_initial" name="middle_initial" type="text" maxlength="5" autocomplete="off" value="{{ $val('middle_initial', 'create') }}" class="{{ $field('middle_initial', 'create') }}">
+                            @if ($m = $msg('middle_initial', 'create')) <p class="mt-1 text-xs text-vd-danger-ink">{{ $m }}</p> @endif
+                        </div>
+                        <div>
+                            <label for="phone_number" class="{{ $label }}">Contact number <span class="font-normal">(optional)</span></label>
+                            <input id="phone_number" name="phone_number" type="text" autocomplete="off" value="{{ $val('phone_number', 'create') }}" class="{{ $field('phone_number', 'create') }}">
+                            @if ($m = $msg('phone_number', 'create')) <p class="mt-1 text-xs text-vd-danger-ink">{{ $m }}</p> @endif
+                        </div>
                     </div>
 
-                    <div x-data="{
-                        q: '',
-                        statusVal: '{{ request('status', 'all') }}',
-                        timer: null,
-                        modalOpen: false,
-                        abortController: null,
-                    
-                        fetchTable() {
-                            if (this.abortController) {
-                                this.abortController.abort();
-                            }
-                            this.abortController = new AbortController();
-                    
-                            const params = new URLSearchParams({ search: this.q, status: this.statusVal });
-                            fetch('{{ route('admin.account-management.table') }}?' + params, { signal: this.abortController.signal })
-                                .then(r => r.text())
-                                .then(html => {
-                                    const el = document.getElementById('admins-table-wrap');
-                                    el.innerHTML = html;
-                                    window.Alpine.initTree(el);
-                                })
-                                .catch(err => { if (err.name !== 'AbortError') console.error(err); });
-                        },
-                    
-                        search() {
-                            clearTimeout(this.timer);
-                            this.timer = setTimeout(() => this.fetchTable(), 250);
-                        },
-                    
-                        init() {}
-                    }" x-on:modal-toggle.window="modalOpen = $event.detail">
-                        <div class="flex flex-wrap gap-3 mb-4">
-
-                            <input type="text" x-model="q" @input="search" autocomplete="off"
-                                placeholder="Search administrator..."
-                                class="w-64 rounded-lg border border-gray-200 text-sm px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/30">
-
-                            <select x-model="statusVal" @change="search"
-                                class="w-40 rounded-lg border border-gray-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3b1735]/30 focus:border-[#3b1735]">
-                                <option value="all">All Status</option>
-                                <option value="active">Active</option>
-                                <option value="suspended">Suspended</option>
-                            </select>
-
-                            <button type="button"
-                                @click="statusVal = (statusVal === 'archived' ? 'all' : 'archived'); search()"
-                                :class="statusVal === 'archived' ? 'bg-[#3b1735] text-white border-[#3b1735]' :
-                                    'border-gray-200 text-gray-700'"
-                                class="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium whitespace-nowrap">
-                                📁 Archived
-                            </button>
-
+                    <div>
+                        <label for="email_username" class="{{ $label }}">Email address</label>
+                        <div class="flex">
+                            <input id="email_username" name="email_username" type="text" required autocomplete="off" placeholder="juan.delacruz" value="{{ $val('email_username', 'create') }}"
+                                class="{{ $field('email_username', 'create') }} !rounded-r-none">
+                            <span class="inline-flex items-center whitespace-nowrap rounded-r-lg border border-l-0 border-vd-line-strong bg-vd-tint px-3 text-sm text-vd-muted">@vendo-ph.app</span>
                         </div>
-
-                        <div id="admins-table-wrap">
-                            @include('admin.account-management.partials.admins-table')
-                        </div>
-
+                        @if ($m = $msg('email_username', 'create')) <p class="mt-1 text-xs text-vd-danger-ink">{{ $m }}</p> @endif
+                        <p class="mt-1.5 text-xs text-vd-muted">The admin sets their own password at first sign-in.</p>
                     </div>
 
-                </div>
-
-            </div>
-
-            <!-- Create Admin Modal -->
-            <div x-show="showCreateModal" x-cloak
-                class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-                @click.self="showCreateModal = false">
-
-                <div class="bg-white rounded-2xl p-6 w-full max-w-lg" @click.stop>
-
-                    <div class="flex items-center justify-between mb-4">
-
-                        <h3 class="font-bold text-lg text-gray-900">
-                            Create Administrator
-                        </h3>
-
-                        <button type="button" @click="showCreateModal = false"
-                            class="text-gray-400 hover:text-gray-600 text-xl leading-none">
-                            &times;
-                        </button>
-
+                    <div class="flex items-center justify-end gap-3 pt-1">
+                        <button type="button" @click="showCreate = false" class="{{ $cancel }}">Cancel</button>
+                        <button type="submit" class="{{ $primary }}">Create account</button>
                     </div>
-
-                    <form method="POST" action="{{ route('admin.account-management.store') }}" data-draft-key="admin-{{ auth('admin')->id() }}-create-admin">
-
-                        @csrf
-
-                        <div class="grid grid-cols-2 gap-3 mb-3">
-
-                            <div>
-                                <x-input-label for="first_name" :value="__('First Name')" />
-
-                                <x-text-input id="first_name" class="block mt-1 w-full" type="text"
-                                    name="first_name" required />
-
-                                <x-input-error :messages="$errors->get('first_name')" class="mt-1" />
-                            </div>
-
-                            <div>
-                                <x-input-label for="last_name" :value="__('Last Name')" />
-
-                                <x-text-input id="last_name" class="block mt-1 w-full" type="text"
-                                    name="last_name" required />
-
-                                <x-input-error :messages="$errors->get('last_name')" class="mt-1" />
-                            </div>
-
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3 mb-3">
-
-                            <div>
-                                <x-input-label for="middle_initial" :value="__('Middle Initial')" />
-
-                                <x-text-input id="middle_initial" class="block mt-1 w-full" type="text"
-                                    name="middle_initial" maxlength="5" />
-                            </div>
-
-                            <div>
-                                <x-input-label for="phone_number" :value="__('Contact Number')" />
-
-                                <x-text-input id="phone_number" class="block mt-1 w-full" type="text"
-                                    name="phone_number" />
-                            </div>
-
-                        </div>
-
-                        <div class="mb-3">
-
-                            <x-input-label for="email_username" :value="__('Email Address')" />
-
-                            <div class="flex mt-1">
-
-                                <x-text-input id="email_username" class="block w-full rounded-r-none" type="text"
-                                    name="email_username" required placeholder="juan.delacruz" />
-
-                                <span
-                                    class="inline-flex items-center px-3 rounded-r-lg border border-l-0 border-gray-300 bg-gray-100 text-gray-500 text-sm whitespace-nowrap">
-                                    @vendo-ph.app
-                                </span>
-
-                            </div>
-
-                            <x-input-error :messages="$errors->get('email_username')" class="mt-1" />
-
-                        </div>
-
-                        <p class="text-xs text-gray-500 mb-4">
-                            A temporary password will be generated automatically.
-                            You'll see it once after creating the account — copy it to give to the admin.
-                            They'll be required to set their own password on first login.
-                        </p>
-
-                        <button type="submit"
-                            class="w-full bg-[#3b1735] text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-[#4d1f45]">
-                            Create Account
-                        </button>
-
-                    </form>
-
-                </div>
-
-            </div>
+                </form>
+            </x-admin.dialog>
         @endif
 
-        <!-- Edit Profile Modal -->
-        <div x-show="editProfile" x-cloak class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-            @click.self="editProfile = false">
+        {{-- Edit profile --}}
+        <x-admin.dialog model="editProfile" title="Edit profile" text="Changes show in the top bar right away." size="lg">
+            <form method="POST" action="{{ route('admin.account-management.profile.update') }}" enctype="multipart/form-data" x-target.push="main-content" class="space-y-4">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="form" value="profile">
 
-            <div class="bg-white rounded-2xl p-6 w-full max-w-lg" @click.stop>
-
-                <div class="flex items-center justify-between mb-4">
-
-                    <h3 class="font-bold text-lg text-gray-900">
-                        Edit Profile
-                    </h3>
-
-                    <button type="button" @click="editProfile = false"
-                        class="text-gray-400 hover:text-gray-600 text-xl leading-none">
-                        &times;
-                    </button>
-
+                <div>
+                    <label for="profile_picture" class="{{ $label }}">Profile picture</label>
+                    <input id="profile_picture" name="profile_picture" type="file" accept="image/*"
+                        class="block w-full text-sm text-vd-muted file:mr-3 file:h-9 file:cursor-pointer file:rounded-lg file:border file:border-vd-line-strong file:bg-white file:px-3 file:text-[13px] file:font-medium file:text-vd-plum file:transition-colors hover:file:bg-vd-tint">
+                    <p class="mt-1.5 text-xs text-vd-muted">JPG or PNG, up to 2 MB.</p>
+                    @if ($m = $msg('profile_picture', 'profile')) <p class="mt-1 text-xs text-vd-danger-ink">{{ $m }}</p> @endif
                 </div>
 
-                <form method="POST" action="{{ route('admin.account-management.profile.update') }}"
-                    enctype="multipart/form-data" x-target.push="main-content">
-
-                    @csrf
-                    @method('PUT')
-
-                    <div class="mb-3">
-
-                        <x-input-label for="profile_picture" :value="__('Profile Picture')" />
-
-                        <input type="file" id="profile_picture" name="profile_picture" accept="image/*"
-                            class="block mt-1 w-full text-sm text-gray-600">
-
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="edit_first_name" class="{{ $label }}">First name</label>
+                        <input id="edit_first_name" name="first_name" type="text" required value="{{ $val('first_name', 'profile', $currentAdmin->first_name) }}" class="{{ $field('first_name', 'profile') }}">
+                        @if ($m = $msg('first_name', 'profile')) <p class="mt-1 text-xs text-vd-danger-ink">{{ $m }}</p> @endif
                     </div>
-
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-
-                        <div>
-                            <x-input-label for="edit_first_name" :value="__('First Name')" />
-
-                            <x-text-input id="edit_first_name" class="block mt-1 w-full" type="text"
-                                name="first_name" :value="$currentAdmin->first_name" required />
-                        </div>
-
-                        <div>
-                            <x-input-label for="edit_last_name" :value="__('Last Name')" />
-
-                            <x-text-input id="edit_last_name" class="block mt-1 w-full" type="text"
-                                name="last_name" :value="$currentAdmin->last_name" required />
-                        </div>
-
+                    <div>
+                        <label for="edit_last_name" class="{{ $label }}">Last name</label>
+                        <input id="edit_last_name" name="last_name" type="text" required value="{{ $val('last_name', 'profile', $currentAdmin->last_name) }}" class="{{ $field('last_name', 'profile') }}">
+                        @if ($m = $msg('last_name', 'profile')) <p class="mt-1 text-xs text-vd-danger-ink">{{ $m }}</p> @endif
                     </div>
-
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-
-                        <div>
-                            <x-input-label for="edit_middle_initial" :value="__('Middle Initial')" />
-
-                            <x-text-input id="edit_middle_initial" class="block mt-1 w-full" type="text"
-                                name="middle_initial" :value="$currentAdmin->middle_initial" maxlength="5" />
-                        </div>
-
-                        <div>
-                            <x-input-label for="edit_phone_number" :value="__('Contact Number')" />
-
-                            <x-text-input id="edit_phone_number" class="block mt-1 w-full" type="text"
-                                name="phone_number" :value="$currentAdmin->phone_number" />
-                        </div>
-
+                    <div>
+                        <label for="edit_middle_initial" class="{{ $label }}">Middle initial</label>
+                        <input id="edit_middle_initial" name="middle_initial" type="text" maxlength="5" value="{{ $val('middle_initial', 'profile', $currentAdmin->middle_initial) }}" class="{{ $field('middle_initial', 'profile') }}">
                     </div>
-
-                    @if (!$currentAdmin->is_super_admin)
-                        <div class="mb-4">
-
-                            <x-input-label for="edit_recovery_email" :value="__('Secondary Email (for password recovery)')" />
-
-                            <x-text-input id="edit_recovery_email" class="block mt-1 w-full" type="email"
-                                name="recovery_email" :value="$currentAdmin->recovery_email" />
-
-                        </div>
-                    @endif
-
-                    <button type="submit"
-                        class="w-full bg-[#3b1735] text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-[#4d1f45]">
-                        Save Changes
-                    </button>
-
-                </form>
-
-            </div>
-
-        </div>
-
-        <!-- Change Password Modal -->
-        <div x-show="changePass" x-cloak class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-            @click.self="changePass = false">
-
-            <div class="bg-white rounded-2xl p-6 w-full max-w-md" @click.stop>
-
-                <div class="flex items-center justify-between mb-4">
-
-                    <h3 class="font-bold text-lg text-gray-900">
-                        Change Password
-                    </h3>
-
-                    <button type="button" @click="changePass = false"
-                        class="text-gray-400 hover:text-gray-600 text-xl leading-none">
-                        &times;
-                    </button>
-
+                    <div>
+                        <label for="edit_phone_number" class="{{ $label }}">Contact number</label>
+                        <input id="edit_phone_number" name="phone_number" type="text" value="{{ $val('phone_number', 'profile', $currentAdmin->phone_number) }}" class="{{ $field('phone_number', 'profile') }}">
+                    </div>
                 </div>
 
-                <form method="POST" action="{{ route('admin.account-management.profile.password') }}"
-                    x-target.push="main-content">
-
-                    @csrf
-                    @method('PUT')
-
-                    <div class="mb-3">
-
-                        <x-input-label for="current_password" :value="__('Current Password')" />
-
-                        <x-text-input id="current_password" class="block mt-1 w-full" type="password"
-                            name="current_password" required />
-
-                        <x-input-error :messages="$errors->get('current_password')" class="mt-1" />
-
+                @unless ($isSuper)
+                    <div>
+                        <label for="edit_recovery_email" class="{{ $label }}">Secondary email <span class="font-normal">(for password recovery)</span></label>
+                        <input id="edit_recovery_email" name="recovery_email" type="email" value="{{ $val('recovery_email', 'profile', $currentAdmin->recovery_email) }}" class="{{ $field('recovery_email', 'profile') }}">
+                        @if ($m = $msg('recovery_email', 'profile')) <p class="mt-1 text-xs text-vd-danger-ink">{{ $m }}</p> @endif
                     </div>
+                @endunless
 
-                    <div class="mb-3">
+                <div class="flex items-center justify-end gap-3 pt-1">
+                    <button type="button" @click="editProfile = false" class="{{ $cancel }}">Cancel</button>
+                    <button type="submit" class="{{ $primary }}">Save profile</button>
+                </div>
+            </form>
+        </x-admin.dialog>
 
-                        <x-input-label for="new_password" :value="__('New Password')" />
+        {{-- Change password --}}
+        <x-admin.dialog model="changePass" title="Change password" text="Use at least 8 characters." size="md">
+            <form method="POST" action="{{ route('admin.account-management.profile.password') }}" x-target.push="main-content" class="space-y-4">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="form" value="password">
 
-                        <x-text-input id="new_password" class="block mt-1 w-full" type="password" name="password"
-                            required />
-
-                        <x-input-error :messages="$errors->get('password')" class="mt-1" />
-
+                @foreach ([['current_password', 'current_password', 'Current password', 'current-password'], ['new_password', 'password', 'New password', 'new-password'], ['new_password_confirmation', 'password_confirmation', 'Confirm new password', 'new-password']] as [$id, $name, $text, $auto])
+                    <div x-data="{ show: false }">
+                        <label for="{{ $id }}" class="{{ $label }}">{{ $text }}</label>
+                        <div class="relative">
+                            <input id="{{ $id }}" name="{{ $name }}" required autocomplete="{{ $auto }}" :type="show ? 'text' : 'password'" class="{{ $field($name, 'password') }} pr-16">
+                            <button type="button" @click="show = !show" :aria-pressed="show" data-no-loading
+                                class="absolute right-1.5 top-1/2 h-7 -translate-y-1/2 rounded-md px-2 text-xs font-medium text-vd-plum transition-colors duration-200 hover:bg-vd-lavender {{ $focus }}">
+                                <span x-text="show ? 'Hide' : 'Show'">Show</span>
+                            </button>
+                        </div>
+                        @if ($m = $msg($name, 'password')) <p class="mt-1 text-xs text-vd-danger-ink">{{ $m }}</p> @endif
                     </div>
+                @endforeach
 
-                    <div class="mb-4">
-
-                        <x-input-label for="new_password_confirmation" :value="__('Confirm New Password')" />
-
-                        <x-text-input id="new_password_confirmation" class="block mt-1 w-full" type="password"
-                            name="password_confirmation" required />
-
-                    </div>
-
-                    <button type="submit"
-                        class="w-full bg-[#3b1735] text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-[#4d1f45]">
-                        Update Password
-                    </button>
-
-                </form>
-
-            </div>
-
-        </div>
-
+                <div class="flex items-center justify-end gap-3 pt-1">
+                    <button type="button" @click="changePass = false" class="{{ $cancel }}">Cancel</button>
+                    <button type="submit" class="{{ $primary }}">Change password</button>
+                </div>
+            </form>
+        </x-admin.dialog>
     </div>
 </x-admin.layout>

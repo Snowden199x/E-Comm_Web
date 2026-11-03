@@ -43,11 +43,12 @@
 
 /* Table is dimmed and inert while a request is in flight. */
 .rg-table-wrap {
-    transition: opacity 0.18s ease;
+    transition: opacity 0.25s ease, filter 0.25s ease;
 }
 
 .rg-table-wrap[aria-busy='true'] {
-    opacity: 0.55;
+    opacity: 0.5;
+    filter: saturate(0.85);
     pointer-events: none;
 }
 
@@ -68,7 +69,7 @@
     height: 2px;
     overflow: hidden;
     border-radius: 2px;
-    background: rgba(125, 85, 128, 0.15);
+    background: var(--vd-lavender);
 }
 
 .rg-bar::after {
@@ -77,12 +78,12 @@
     inset: 0 auto 0 0;
     width: 35%;
     border-radius: 2px;
-    background: #7d5580;
+    background: var(--vd-plum);
     animation: rg-bar-run 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 
-/* Stat cards (shared with Seller Compliance look): rise one after another, lift on hover.
+/* Stat cards: rise one after another; hover changes the border only.
    Set style="--i: n" on each card. Used by admin/partials/filter-stat-cards. */
 @keyframes rg-rise {
     from {
@@ -98,16 +99,11 @@
 .rg-card {
     animation: rg-rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
     animation-delay: calc(var(--i, 0) * 60ms);
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, background-color 0.2s ease;
-}
-
-.rg-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 16px 30px -22px rgba(43, 23, 48, 0.55);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.25s ease;
 }
 
 .rg-card:active {
-    transform: translateY(0) scale(0.99);
+    transform: scale(0.99);
 }
 
 @media (prefers-reduced-motion: reduce) {

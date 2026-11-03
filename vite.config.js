@@ -16,6 +16,7 @@ export default defineConfig({
 
                 // Admin
                  "resources/css/admin/layout.css",
+                "resources/css/admin/sidebar.css",
                 "resources/css/admin/registrations.css",
                 "resources/css/admin/seller-compliance.css",
                 "resources/css/admin/motion.css",

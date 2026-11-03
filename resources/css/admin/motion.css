@@ -1,90 +1,208 @@
 /*
- * Admin shell motion: loading screen, navigation progress bar, page entrance.
- * Prefix: vd-
+ * Admin shell motion and shared states. Prefix: vd-
+ *
+ *   1. Skeleton loading (first load + page-to-page navigation)
+ *   2. Navigation progress bar and page transitions
+ *   3. Button loading state
+ *   4. Empty state
+ *   5. Small menu / bell motion
  *
  * Flat colours only (no gradients). Everything is switched off for
  * prefers-reduced-motion, and the page still works if this file is missing.
+ * Behaviour lives in resources/js/admin/motion.js and button-loading.js.
  */
 
 :root {
     --vd-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Admin palette: keep in step with theme.extend.colors.vd in tailwind.config.js. */
+    --vd-ink: #2b1730;
+    --vd-muted: #6b5d70;
+    --vd-paper: #fbf7f2;
+    --vd-tint: #f7f1f7;
+    --vd-lavender: #e4daea;
+    --vd-plum-soft: #cdb9d4;
     --vd-plum: #3b1735;
-    --vd-gold: #e8c874;
+    --vd-line: #ece4ec;
+    --vd-line-strong: #ddd0e0;
+    --vd-success-bg: #e8f4ea;
+    --vd-success-line: #bfe0c6;
+    --vd-success-ink: #1f6b35;
+    --vd-warning-bg: #fbf1d6;
+    --vd-warning-line: #ebd79b;
+    --vd-warning-ink: #7a5a00;
+    --vd-danger-bg: #fbe6e6;
+    --vd-danger-line: #efc0c0;
+    --vd-danger-ink: #a32b2b;
+
+    --vd-peach: #f6dccf;
+    --vd-sand: #f3e9c8;
+    --vd-mauve: #e9d8ec;
+
+    --vd-gold: #e8c874; /* navigation progress bar and sidebar marker only */
+    --vd-block: #efe7f0; /* loading placeholders */
 }
 
-/* ---------- Loading screen (shown on every full page load) ---------- */
-.vd-splash {
+/* =====================================================================
+   1. Skeleton loading
+   ===================================================================== */
+
+@keyframes vd-pulse {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+}
+
+.vd-sk-block {
+    border-radius: 8px;
+    background: var(--vd-block);
+    animation: vd-pulse 1.3s ease-in-out infinite;
+}
+
+.vd-sk-card {
+    border: 1px solid var(--vd-line);
+    border-radius: 16px;
+    background: #fff;
+}
+
+/* A page-shaped skeleton shows one of four layouts. The page picks it with data-active;
+   "auto" follows body[data-skeleton], which sidebar links set when they are clicked. */
+.vd-sk-v {
+    display: none;
+}
+
+.vd-sk[data-active="dashboard"] .vd-sk-v[data-v="dashboard"],
+.vd-sk[data-active="table"] .vd-sk-v[data-v="table"],
+.vd-sk[data-active="split"] .vd-sk-v[data-v="split"],
+.vd-sk[data-active="form"] .vd-sk-v[data-v="form"],
+.vd-sk[data-active="cards"] .vd-sk-v[data-v="cards"],
+body[data-skeleton="dashboard"] .vd-sk[data-active="auto"] .vd-sk-v[data-v="dashboard"],
+body[data-skeleton="table"] .vd-sk[data-active="auto"] .vd-sk-v[data-v="table"],
+body[data-skeleton="split"] .vd-sk[data-active="auto"] .vd-sk-v[data-v="split"],
+body[data-skeleton="form"] .vd-sk[data-active="auto"] .vd-sk-v[data-v="form"],
+body[data-skeleton="cards"] .vd-sk[data-active="auto"] .vd-sk-v[data-v="cards"] {
+    display: block;
+}
+
+/* With no body[data-skeleton] at all, "auto" falls back to the table layout. */
+body:not([data-skeleton]) .vd-sk[data-active="auto"] .vd-sk-v[data-v="table"] {
+    display: block;
+}
+
+/* ---- First load: the whole shell, drawn as placeholders ---- */
+.vd-boot {
     position: fixed;
     inset: 0;
     z-index: 100;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--vd-plum);
+    background: var(--vd-paper);
     opacity: 1;
-    transition: opacity 0.45s var(--vd-ease), visibility 0s linear 0.45s;
+    transition: opacity 0.35s var(--vd-ease), visibility 0s linear 0.35s;
 }
 
-.vd-splash.is-done {
+.vd-boot.is-done {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
 }
 
-.vd-splash__inner {
+.vd-boot__rail {
+    display: none;
+    width: 272px;
+    flex: none;
+    padding: 0 12px;
+    background: var(--vd-plum);
+}
+
+@media (min-width: 1024px) {
+    .vd-boot__rail {
+        display: block;
+    }
+}
+
+html[data-rail="collapsed"] .vd-boot__rail {
+    width: 80px;
+}
+
+.vd-boot__rail .vd-sk-block {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.vd-boot__brand {
     display: flex;
-    flex-direction: column;
+    height: 72px;
     align-items: center;
-    gap: 18px;
-    transition: transform 0.45s var(--vd-ease);
+    gap: 12px;
+    padding: 0 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.vd-splash.is-done .vd-splash__inner {
-    transform: translateY(-8px) scale(0.98);
+.vd-boot__item {
+    display: flex;
+    height: 40px;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
 }
 
-.vd-splash__logo {
-    width: 56px;
-    height: 56px;
-    object-fit: contain;
-    animation: vd-breathe 1.6s ease-in-out infinite;
+html[data-rail="collapsed"] .vd-boot__item .vd-sk-block:last-child,
+html[data-rail="collapsed"] .vd-boot__brand .vd-sk-block:last-child {
+    display: none;
 }
 
-.vd-splash__text {
-    margin: 0;
-    font: 500 13px/1.4 "Inter", system-ui, sans-serif;
-    color: rgba(255, 255, 255, 0.72);
+.vd-boot__main {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
 }
 
-.vd-splash__track {
-    width: 168px;
-    height: 3px;
+.vd-boot__top {
+    display: flex;
+    height: 72px;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--vd-line);
+}
+
+.vd-boot__content {
+    flex: 1;
     overflow: hidden;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.16);
 }
 
-.vd-splash__track > span {
-    display: block;
-    height: 100%;
-    width: 100%;
-    border-radius: inherit;
-    background: var(--vd-gold);
-    transform-origin: left center;
-    animation: vd-fill 1.1s var(--vd-ease) forwards;
+/* ---- Page to page: the skeleton fades in over the old page, then out over the new one ---- */
+.vd-nav-skeleton {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    overflow: hidden;
+    background: var(--vd-paper);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.18s ease, visibility 0s linear 0.18s;
 }
 
-@keyframes vd-breathe {
-    0%, 100% { transform: scale(1); opacity: 0.92; }
-    50% { transform: scale(1.06); opacity: 1; }
+body.is-navigating .vd-nav-skeleton {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.2s ease;
 }
 
-@keyframes vd-fill {
-    from { transform: scaleX(0.04); }
-    to { transform: scaleX(0.92); }
+/* No transitions while the shell is still being drawn behind the boot skeleton. */
+body.vd-booting *,
+body.vd-booting *::before,
+body.vd-booting *::after {
+    transition: none !important;
 }
 
-/* ---------- Navigation progress bar (sidebar / link clicks that swap content) ---------- */
+/* =====================================================================
+   2. Navigation progress bar and page transitions
+   ===================================================================== */
+
 .vd-progress {
     position: fixed;
     inset: 0 0 auto 0;
@@ -117,27 +235,27 @@
     to { transform: scaleX(0.9); }
 }
 
-/* Content dims a little while the next page loads. */
+/* The old page lets go quietly while the skeleton comes in. */
 .vd-main {
-    transition: opacity 0.2s ease;
+    transition: opacity 0.18s ease;
 }
 
-.vd-main.is-loading {
-    opacity: 0.6;
+body.is-navigating .vd-main {
+    opacity: 0;
 }
 
-/* ---------- Page entrance (first load and every content swap) ---------- */
+/* Page entrance: fade and rise. "backwards" only, so no lingering transform
+   (fixed dialogs inside the page stay anchored to the viewport). */
 @keyframes vd-enter {
-    from { opacity: 0; transform: translateY(8px); }
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: none; }
 }
 
-/* "backwards" only: no lingering transform, so fixed dialogs stay viewport-anchored. */
 .vd-enter {
-    animation: vd-enter 0.4s var(--vd-ease) backwards;
+    animation: vd-enter 0.45s var(--vd-ease) backwards;
 }
 
-/* Stagger helper: set style="--i: n" on each item. */
+/* Stagger helper for pages: set style="--i: n" on each item. */
 @keyframes vd-rise {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: none; }
@@ -148,29 +266,192 @@
     animation-delay: calc(var(--i, 0) * 55ms + 120ms);
 }
 
-/* Placeholder blocks while content loads (flat opacity pulse, no shimmer gradient). */
-@keyframes vd-pulse {
-    0%, 100% { opacity: 0.55; }
-    50% { opacity: 1; }
-}
-
+/* Placeholder block for in-page loading (same pulse as the skeleton screens). */
 .vd-skeleton {
     border-radius: 8px;
-    background: #efe7f0;
-    animation: vd-pulse 1.2s ease-in-out infinite;
+    background: var(--vd-block);
+    animation: vd-pulse 1.3s ease-in-out infinite;
+}
+
+/* =====================================================================
+   3. Button loading state
+   The class is added by button-loading.js (or vdButtonLoading(button, true)).
+   Width does not change: the label and icon are hidden, not removed.
+   ===================================================================== */
+
+button[data-vd-busy],
+a[data-vd-busy] {
+    position: relative;
+    color: transparent !important;
+    cursor: progress;
+    pointer-events: none;
+    text-shadow: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+button[data-vd-busy] > *,
+a[data-vd-busy] > * {
+    opacity: 0;
+}
+
+button[data-vd-busy]::after,
+a[data-vd-busy]::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1.1em;
+    height: 1.1em;
+    min-width: 14px;
+    min-height: 14px;
+    margin: calc(max(1.1em, 14px) / -2) 0 0 calc(max(1.1em, 14px) / -2);
+    border: 2px solid rgba(128, 128, 128, 0.35);
+    border-top-color: var(--vd-spin-color, currentColor);
+    border-radius: 999px;
+    animation: vd-spin 0.7s linear infinite;
+}
+
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+    button[data-vd-busy]::after,
+    a[data-vd-busy]::after {
+        border-color: color-mix(in srgb, var(--vd-spin-color, #3b1735) 28%, transparent);
+        border-top-color: var(--vd-spin-color, #3b1735);
+    }
+}
+
+input[type="submit"][data-vd-busy] {
+    cursor: progress;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+@keyframes vd-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* =====================================================================
+   4. Empty state  (components/admin/empty-state.blade.php)
+   Static: a bordered icon chip, a title, one line of help and an optional action.
+   Tone only changes the chip: purple (default), green, orange (warning), red, gray.
+   ===================================================================== */
+
+.vd-empty {
+    --e-bg: var(--vd-lavender);
+    --e-fg: var(--vd-plum);
+    --e-line: var(--vd-plum-soft);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px;
+    text-align: center;
+}
+
+.vd-empty[hidden] { display: none; }
+.vd-empty[data-tone="green"] { --e-bg: var(--vd-success-bg); --e-fg: var(--vd-success-ink); --e-line: var(--vd-success-line); }
+.vd-empty[data-tone="orange"] { --e-bg: var(--vd-warning-bg); --e-fg: var(--vd-warning-ink); --e-line: var(--vd-warning-line); }
+.vd-empty[data-tone="red"] { --e-bg: var(--vd-danger-bg); --e-fg: var(--vd-danger-ink); --e-line: var(--vd-danger-line); }
+.vd-empty[data-tone="gray"] { --e-bg: var(--vd-tint); --e-fg: var(--vd-muted); --e-line: var(--vd-line-strong); }
+
+.vd-empty__disc {
+    display: flex;
+    width: 48px;
+    height: 48px;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    border: 1px solid var(--e-line);
+    border-radius: 12px;
+    background: var(--e-bg);
+    color: var(--e-fg);
+}
+
+.vd-empty__title {
+    margin: 0;
+    font-family: "Poppins", "Inter", sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--vd-ink);
+}
+
+.vd-empty__text {
+    max-width: 340px;
+    margin: 4px 0 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--vd-muted);
+}
+
+.vd-empty__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+/* Compact: dropdowns, side panels, cards inside a grid. */
+.vd-empty--sm { padding: 28px 16px; }
+.vd-empty--sm .vd-empty__disc { width: 40px; height: 40px; margin-bottom: 12px; }
+.vd-empty--sm .vd-empty__disc svg { width: 20px; height: 20px; }
+.vd-empty--sm .vd-empty__title { font-size: 14px; }
+.vd-empty--sm .vd-empty__text { font-size: 13px; }
+
+/* Large: a whole page or a panel that is the page's main content. */
+.vd-empty--lg { padding: 80px 24px; }
+.vd-empty--lg .vd-empty__disc { width: 56px; height: 56px; margin-bottom: 20px; }
+.vd-empty--lg .vd-empty__title { font-size: 18px; }
+
+/* =====================================================================
+   5. Small menu / bell motion
+   ===================================================================== */
+
+/* The notification dropdown is toggled with [hidden]; animating on show gives it a real entrance. */
+.admin-bell-menu:not([hidden]) {
+    animation: vd-pop 0.2s var(--vd-ease);
+    transform-origin: top right;
+}
+
+@keyframes vd-pop {
+    from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes vd-ring {
+    0%, 100% { transform: rotate(0); }
+    20% { transform: rotate(14deg); }
+    40% { transform: rotate(-12deg); }
+    60% { transform: rotate(8deg); }
+    80% { transform: rotate(-4deg); }
+}
+
+#adminBellButton:hover img {
+    animation: vd-ring 0.7s ease-in-out;
+    transform-origin: 50% 10%;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .vd-splash {
-        display: none;
+    .vd-boot,
+    .vd-nav-skeleton {
+        transition: none;
     }
 
-    .vd-splash__logo,
-    .vd-splash__track > span,
     .vd-progress.is-active > span,
     .vd-enter,
     .vd-rise,
-    .vd-skeleton {
+    .vd-skeleton,
+    .vd-sk-block,
+    .admin-bell-menu:not([hidden]),
+    #adminBellButton:hover img,
+    button[data-vd-busy]::after,
+    a[data-vd-busy]::after {
         animation: none !important;
+    }
+
+    button[data-vd-busy]::after,
+    a[data-vd-busy]::after {
+        border-top-color: var(--vd-spin-color, #3b1735);
+        border-right-color: var(--vd-spin-color, #3b1735);
     }
 }
