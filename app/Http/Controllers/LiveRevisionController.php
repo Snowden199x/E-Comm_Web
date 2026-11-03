@@ -71,7 +71,7 @@ class LiveRevisionController extends Controller
     public function admin(Request $request, string $scope): JsonResponse
     {
         abort_unless($request->user('admin')?->role === 'admin', 403);
-        abort_unless(in_array($scope, ['dashboard', 'cases', 'products', 'accounts', 'notifications'], true), 404);
+        abort_unless(in_array($scope, ['dashboard', 'cases', 'products', 'accounts', 'notifications', 'category-requests'], true), 404);
         $orders = fn () => $this->orders(Order::query());
         $products = fn () => DB::table('products')->orderBy('id')->get(['id', 'status', 'stock', 'price', 'updated_at']);
         $cases = fn () => DB::table('complaints')->orderBy('id')->get(['id', 'status', 'updated_at']);
@@ -85,6 +85,7 @@ class LiveRevisionController extends Controller
                 ->get(['id', 'role', 'status', 'account_status', 'updated_at']),
             'products' => [$products(), DB::table('product_images')->orderBy('id')->get(['id', 'product_id', 'path', 'sort_order'])],
             'notifications' => DB::table('notifications')->whereNull('user_id')->where('type', '!=', 'new_order')->orderBy('id')->get(['id', 'read_at']),
+            'category-requests' => DB::table('seller_category_requests')->orderBy('id')->get(['id', 'status', 'updated_at']),
         };
         return $this->respond($rows);
     }

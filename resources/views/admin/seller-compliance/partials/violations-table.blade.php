@@ -9,59 +9,58 @@
     $violCounts = \App\Models\Compliance\ProductViolation::whereIn('seller_id', $sellerIds)->selectRaw('seller_id, COUNT(*) as c')->groupBy('seller_id')->pluck('c', 'seller_id');
 @endphp
 
-<div class="sc-rows overflow-hidden rounded-2xl border border-[#ece4ec] bg-white shadow-[0_1px_2px_rgba(43,23,48,0.04)]">
+<div class="sc-rows overflow-hidden rounded-xl border border-vd-line bg-white">
     @if ($violations->isEmpty())
         @include('admin.seller-compliance.partials.empty-state', [
             'icon' => 'shield-check',
             'tone' => 'green',
             'title' => 'No violations recorded',
-            'text' => 'Rejected products and repeated warnings are recorded here. Nothing to act on right now.',
+            'text' => 'Rejected products appear here.',
             'filteredTitle' => 'No violations found',
-            'filteredText' => 'No violation matches this seller or date. Try a wider range or clear the filters.',
+            'filteredText' => 'Try a different seller or date, or clear the filters.',
         ])
     @else
         <div class="thin-scroll overflow-x-auto">
-            <table class="w-full min-w-[860px] text-left text-sm">
+            <table class="w-full min-w-[860px] text-center text-sm">
                 <caption class="sr-only">Violations committed by sellers. Select a row to see its details.</caption>
                 <thead>
-                    <tr class="border-b border-[#ece4ec] bg-[#FBF8FB] text-[13px] text-gray-500">
-                        <th scope="col" class="px-5 py-3 font-medium">Product</th>
+                    <tr class="border-b border-vd-line bg-vd-tint text-[13px] text-vd-muted">
+                        <th scope="col" class="px-5 py-3 text-left font-medium">Product</th>
                         <th scope="col" class="px-4 py-3 font-medium">Seller</th>
                         <th scope="col" class="px-4 py-3 font-medium">Reason</th>
                         <th scope="col" class="px-4 py-3 font-medium">Details</th>
                         <th scope="col" class="px-5 py-3 font-medium">Date</th>
-                        <th scope="col" class="w-10 px-3 py-3"><span class="sr-only">Details</span></th>
+                        <th scope="col" class="px-4 py-3 font-medium">Action</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-[#f3edf4]">
+                <tbody class="divide-y divide-vd-line">
                     @foreach ($violations as $violation)
-                        <tr style="--i: {{ $loop->index }}" tabindex="0" role="button" aria-label="View violation details for {{ $violation->product->name ?? 'this product' }}"
-                            @click="detailId = {{ $violation->id }}" @keydown.enter="detailId = {{ $violation->id }}" @keydown.space.prevent="detailId = {{ $violation->id }}"
-                            class="cursor-pointer transition-colors duration-150 hover:bg-[#FBF8FB] focus-visible:bg-[#FBF8FB] focus-visible:outline-none
-                                   focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#3b1735]/40">
-                            <td class="px-5 py-3">
-                                <p class="max-w-[220px] truncate font-medium text-[#2B1730]">{{ $violation->product->name ?? '—' }}</p>
+                        <tr style="--i: {{ $loop->index }}"
+                            @click="detailId = {{ $violation->id }}"
+                            class="cursor-pointer transition-colors duration-150 hover:bg-vd-tint">
+                            <td class="px-5 py-3 text-left">
+                                <p class="max-w-[220px] truncate font-medium text-vd-ink">{{ $violation->product->name ?? '—' }}</p>
                             </td>
                             <td class="px-4 py-3">
-                                <div class="flex items-center gap-2.5">
+                                <div class="flex items-center justify-center gap-2.5">
                                     <x-admin.avatar :user="$violation->seller" size="h-8 w-8" text="text-xs" />
-                                    <span class="max-w-[160px] truncate text-gray-700">{{ $violation->seller->name ?? '—' }}</span>
+                                    <span class="max-w-[160px] truncate text-vd-ink">{{ $violation->seller->name ?? '—' }}</span>
                                 </div>
                             </td>
                             <td class="px-4 py-3">
-                                <span class="inline-flex items-center gap-1.5 rounded-full border border-red-600/50 bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">
-                                    <x-admin.icon name="shield-x" class="h-3.5 w-3.5 flex-shrink-0" />
-                                    <span class="max-w-[200px] truncate">{{ $violation->reason }}</span>
-                                </span>
+                                <x-admin.status-pill tone="danger" icon="shield-x"><span class="max-w-[200px] truncate">{{ $violation->reason }}</span></x-admin.status-pill>
                             </td>
                             <td class="px-4 py-3">
-                                <p class="line-clamp-2 max-w-xs text-gray-500" title="{{ $violation->details }}">{{ $violation->details }}</p>
+                                <p class="mx-auto line-clamp-2 max-w-xs text-vd-muted" title="{{ $violation->details }}">{{ $violation->details }}</p>
                             </td>
                             <td class="whitespace-nowrap px-5 py-3">
-                                <p class="text-gray-700">{{ $violation->created_at->format('M d, Y') }}</p>
-                                <p class="text-xs text-gray-500">{{ $violation->created_at->format('g:i A') }}</p>
+                                <p class="text-vd-ink">{{ $violation->created_at->format('M d, Y') }}</p>
+                                <p class="text-xs text-vd-muted">{{ $violation->created_at->format('g:i A') }}</p>
                             </td>
-                            <td class="px-3 py-3 text-gray-400" aria-hidden="true"><x-admin.icon name="chevron-right" class="h-4 w-4" /></td>
+                            <td class="px-4 py-3">
+                                <button type="button" aria-haspopup="dialog" @click.stop="detailId = {{ $violation->id }}" aria-label="View violation for {{ $violation->product->name ?? 'this product' }}"
+                                    class="inline-flex h-8 items-center justify-center rounded-lg border border-vd-line-strong bg-white px-3 text-[13px] font-medium text-vd-plum transition-all duration-200 hover:border-vd-plum hover:bg-vd-plum hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40">View</button>
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>

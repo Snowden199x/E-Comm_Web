@@ -29,18 +29,18 @@
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+                <div class="bg-white rounded-2xl border border-[#ece4ec] p-6 sm:p-8">
 
-                    <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Set Your Password</h2>
+                    <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Set your password</h2>
                     <p class="text-sm text-gray-500 mb-6">
-                        For security, please create your own personal password before continuing.
+                        Create your own password to continue.
                     </p>
 
                     <form method="POST" action="{{ route('admin.account-management.force-password.store') }}">
                         @csrf
 
                         <div x-data="{ showPassword: false }">
-                            <x-input-label for="password" :value="__('New Password')" />
+                            <x-input-label for="password" :value="__('New password')" />
                             <div class="relative mt-1">
                                 <x-text-input id="password" class="block w-full pr-10"
                                     x-bind:type="showPassword ? 'text' : 'password'" name="password" required
@@ -55,7 +55,7 @@
                         </div>
 
                         <div class="mt-4" x-data="{ showConfirm: false }">
-                            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
+                            <x-input-label for="password_confirmation" :value="__('Confirm password')" />
                             <div class="relative mt-1">
                                 <x-text-input id="password_confirmation" class="block w-full pr-10"
                                     x-bind:type="showConfirm ? 'text' : 'password'" name="password_confirmation" required
@@ -71,7 +71,7 @@
 
                         <div class="mt-6">
                             <x-primary-button class="w-full justify-center bg-[#3b1735] hover:bg-[#4d1f45]">
-                                {{ __('Set Password & Continue') }}
+                                Set password and continue
                             </x-primary-button>
                         </div>
                     </form>

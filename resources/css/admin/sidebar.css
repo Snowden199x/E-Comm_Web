@@ -1,0 +1,357 @@
+/*
+ * Admin sidebar: link states, sliding highlight, per-icon hover motion.
+ * Prefix: vd-nav-   Markup: resources/views/admin/partials/sidebar.blade.php
+ * Behaviour (pill position, click feedback): resources/js/admin/sidebar.js
+ *
+ * Flat colours only. Everything is switched off for prefers-reduced-motion.
+ */
+
+.vd-aside {
+    --nav-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --nav-gold: #e8c874;
+}
+
+/* ---------- Scroll area ----------
+   On shorter screens the list scrolls. The rail is 80px wide, so a visible scrollbar track eats into
+   the icons and looks like a rendering glitch; wheel, touch and keyboard scrolling are unchanged. */
+.vd-nav-scroll {
+    scrollbar-width: none;
+}
+
+.vd-nav-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+/* ---------- Sliding highlight (one element, moved by sidebar.js) ---------- */
+.vd-nav-pill {
+    position: absolute;
+    top: 0;
+    left: 12px;
+    right: 12px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.13);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate3d(0, var(--y, 0px), 0);
+    transition: transform 0.5s var(--nav-ease), height 0.3s var(--nav-ease), opacity 0.25s ease;
+    will-change: transform;
+}
+
+.vd-nav-pill::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--nav-gold);
+}
+
+.vd-nav-pill.is-visible {
+    opacity: 1;
+}
+
+.vd-nav-pill.no-anim {
+    transition: none;
+}
+
+/* ---------- Group labels ---------- */
+.vd-nav-group {
+    height: 26px;
+    margin: 0;
+    overflow: hidden;
+    padding: 6px 12px 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    line-height: 18px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.46);
+    transition: height 0.3s var(--nav-ease), opacity 0.3s var(--nav-ease), padding 0.3s var(--nav-ease);
+}
+
+.vd-nav-rule {
+    height: 0;
+    margin: 0 12px;
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transition: height 0.3s var(--nav-ease), margin 0.3s var(--nav-ease), opacity 0.3s var(--nav-ease);
+}
+
+/* ---------- Link ---------- */
+.vd-nav-item {
+    position: relative;
+}
+
+.vd-nav-link {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    width: 100%;
+    height: 40px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px;
+    overflow: hidden;
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.2s ease, transform 0.25s var(--nav-ease);
+}
+
+/* Hover wash: slides in from the left instead of just appearing. */
+.vd-nav-link::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: rgba(255, 255, 255, 0.08);
+    opacity: 0;
+    transform: scaleX(0.88);
+    transform-origin: left center;
+    transition: opacity 0.2s ease, transform 0.4s var(--nav-ease);
+}
+
+.vd-nav-link:hover {
+    color: #fff;
+}
+
+.vd-nav-link:hover::before {
+    opacity: 1;
+    transform: none;
+}
+
+/* The sliding pill already shows the current page, so the wash stays off it. */
+.vd-nav-link[aria-current="page"]::before {
+    opacity: 0;
+}
+
+.vd-nav-link:active {
+    transform: scale(0.97);
+}
+
+.vd-nav-link:focus-visible {
+    outline: 2px solid var(--nav-gold);
+    outline-offset: -2px;
+}
+
+.vd-nav-link[aria-current="page"] {
+    color: #fff;
+    font-weight: 600;
+}
+
+/* ---------- Icon ---------- */
+.vd-nav-icon {
+    position: relative;
+    display: flex;
+    width: 40px;
+    height: 24px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.vd-nav-svg {
+    width: 20px;
+    height: 20px;
+    color: rgba(255, 255, 255, 0.68);
+    transition: color 0.2s ease, transform 0.4s var(--nav-ease);
+}
+
+.vd-nav-link:hover .vd-nav-svg {
+    color: #fff;
+    transform: translateX(2px) scale(1.08);
+}
+
+.vd-nav-link[aria-current="page"] .vd-nav-svg {
+    color: var(--nav-gold);
+}
+
+/* While the next page loads, the clicked item already looks current. */
+.vd-nav-link.is-pending .vd-nav-svg {
+    color: var(--nav-gold);
+    animation: vd-nav-pop 0.5s var(--nav-ease);
+}
+
+.vd-nav-link.is-pending {
+    color: #fff;
+    font-weight: 600;
+}
+
+#sidebar[data-pending] .vd-nav-link[aria-current="page"]:not(.is-pending) {
+    color: rgba(255, 255, 255, 0.78);
+    font-weight: 500;
+}
+
+#sidebar[data-pending] .vd-nav-link[aria-current="page"]:not(.is-pending) .vd-nav-svg {
+    color: rgba(255, 255, 255, 0.68);
+}
+
+/* Each icon moves in a way that suits it. */
+.vd-nav-link[data-anim="spin"]:hover .vd-nav-svg { transform: rotate(90deg) scale(1.06); }
+.vd-nav-link[data-anim="tilt"]:hover .vd-nav-svg { transform: rotate(-10deg) scale(1.1); }
+.vd-nav-link[data-anim="pop"]:hover .vd-nav-svg { transform: scale(1.16); }
+.vd-nav-link[data-anim="grow"]:hover .vd-nav-svg { transform: scaleY(1.14); transform-origin: 50% 100%; }
+.vd-nav-link[data-anim="drop"]:hover .vd-nav-svg { animation: vd-nav-drop 0.6s var(--nav-ease); transform: none; }
+.vd-nav-link[data-anim="drive"]:hover .vd-nav-svg { animation: vd-nav-drive 0.7s var(--nav-ease); transform: none; }
+.vd-nav-link[data-anim="exit"]:hover .vd-nav-svg { transform: translateX(4px); }
+
+/* ---------- Label and badge ---------- */
+.vd-nav-label {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: opacity 0.3s var(--nav-ease), transform 0.35s var(--nav-ease);
+}
+
+.vd-nav-link:hover .vd-nav-label {
+    transform: translateX(2px);
+}
+
+.vd-nav-badge {
+    display: flex;
+    height: 20px;
+    min-width: 20px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--nav-gold);
+    color: #2b1730;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    transition: opacity 0.3s var(--nav-ease), transform 0.3s var(--nav-ease);
+}
+
+.vd-nav-dot {
+    position: absolute;
+    top: 0;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--nav-gold);
+    box-shadow: 0 0 0 2px #3b1735;
+    opacity: 0;
+    transform: scale(0.4);
+    transition: opacity 0.25s ease, transform 0.3s var(--nav-ease);
+}
+
+.vd-nav-dot::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    border: 2px solid var(--nav-gold);
+    animation: vd-nav-ping 2s var(--nav-ease) infinite;
+}
+
+/* Logout reads as a quiet warning on hover. */
+.vd-nav-link--logout:hover {
+    color: #ffd1d1;
+}
+
+.vd-nav-link--logout:hover::before {
+    background: rgba(255, 110, 110, 0.14);
+}
+
+.vd-nav-link--logout:hover .vd-nav-svg {
+    color: #ffd1d1;
+}
+
+/* ---------- Collapsed rail (desktop only): labels fade, dots replace counts ---------- */
+@media (min-width: 1024px) {
+    .vd-aside[data-expanded="false"] .vd-nav-label,
+    .vd-aside[data-expanded="false"] .vd-nav-badge {
+        opacity: 0;
+        transform: translateX(-6px);
+    }
+
+    .vd-aside[data-expanded="false"] .vd-nav-group {
+        height: 0;
+        padding-top: 0;
+        opacity: 0;
+    }
+
+    .vd-aside[data-expanded="false"] .vd-nav-rule {
+        height: 1px;
+        margin-bottom: 8px;
+        opacity: 1;
+    }
+
+    .vd-aside[data-expanded="false"] .vd-nav-dot {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ---------- One-time cascade after the loading skeleton lifts ---------- */
+body.vd-intro .vd-nav-item {
+    animation: vd-nav-in 0.5s var(--nav-ease, cubic-bezier(0.16, 1, 0.3, 1)) backwards;
+    animation-delay: calc(var(--i, 0) * 26ms);
+}
+
+@keyframes vd-nav-in {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes vd-nav-pop {
+    0% { transform: scale(0.8); }
+    55% { transform: scale(1.22); }
+    100% { transform: scale(1); }
+}
+
+@keyframes vd-nav-drive {
+    0% { transform: translateX(0); }
+    35% { transform: translateX(-3px); }
+    70% { transform: translateX(5px); }
+    100% { transform: translateX(2px); }
+}
+
+@keyframes vd-nav-drop {
+    0% { transform: translateY(0); }
+    35% { transform: translateY(-4px); }
+    65% { transform: translateY(1px); }
+    100% { transform: translateY(0); }
+}
+
+@keyframes vd-nav-ping {
+    0% { transform: scale(1); opacity: 0.7; }
+    70%, 100% { transform: scale(2.1); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vd-nav-pill,
+    .vd-nav-link,
+    .vd-nav-link::before,
+    .vd-nav-svg,
+    .vd-nav-label {
+        transition: none !important;
+    }
+
+    .vd-nav-link .vd-nav-svg,
+    .vd-nav-link:hover .vd-nav-svg,
+    .vd-nav-link:hover .vd-nav-label {
+        transform: none !important;
+        animation: none !important;
+    }
+
+    body.vd-intro .vd-nav-item,
+    .vd-nav-dot::after,
+    .vd-nav-link.is-pending .vd-nav-svg {
+        animation: none !important;
+    }
+}

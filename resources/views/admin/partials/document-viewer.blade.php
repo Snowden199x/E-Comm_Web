@@ -20,7 +20,7 @@
         <div x-show="open"
             x-transition:enter="transition duration-300 ease-vendo" x-transition:enter-start="opacity-0 translate-y-3 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100"
             x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-            class="flex h-full max-h-[min(92dvh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-[0_30px_70px_-30px_rgba(0,0,0,0.7)]">
+            class="flex h-full max-h-[min(92dvh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white">
 
             {{-- Header --}}
             <div class="flex items-center gap-3 border-b border-[#ece4ec] px-4 py-3 sm:px-5">
@@ -97,7 +97,7 @@
                     class="absolute inset-0 flex overflow-auto p-4 thin-scroll">
                     <template x-if="kind === 'image' && src">
                         <img :src="src" :alt="title" :style="imageStyle" x-on:load="onImageLoad($event)" x-on:error="onImageError()"
-                            class="m-auto h-auto max-w-none flex-shrink-0 rounded-lg bg-white shadow-[0_10px_30px_-14px_rgba(43,23,48,0.5)]">
+                            class="m-auto h-auto max-w-none flex-shrink-0 rounded-lg bg-white">
                     </template>
                 </div>
 

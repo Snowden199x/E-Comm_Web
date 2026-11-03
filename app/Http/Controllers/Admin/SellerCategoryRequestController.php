@@ -19,8 +19,12 @@ class SellerCategoryRequestController extends Controller
     public function index(Request $request): View
     {
         $status = $request->validate(['status' => ['nullable', 'in:pending,approved,rejected']])['status'] ?? 'pending';
-        $categoryRequests = SellerCategoryRequest::query()->with(['seller', 'categories', 'reviewer'])
-            ->where('status', $status)->latest()->paginate(12)->withQueryString();
+        // Pending is a queue, so the longest wait comes first. Reviewed tabs show the latest first.
+        $categoryRequests = SellerCategoryRequest::query()->with(['seller.categories', 'categories', 'reviewer'])
+            ->where('status', $status)
+            ->orderBy('created_at', $status === 'pending' ? 'asc' : 'desc')
+            ->orderBy('id', $status === 'pending' ? 'asc' : 'desc')
+            ->paginate(12)->withQueryString();
         $counts = SellerCategoryRequest::query()->selectRaw('status, count(*) as total')->groupBy('status')
             ->pluck('total', 'status');
 
@@ -46,17 +50,28 @@ class SellerCategoryRequestController extends Controller
         $data = $request->validate([
             'decision' => ['required', 'in:approved,rejected'],
             'admin_note' => ['required_if:decision,rejected', 'nullable', 'string', 'max:1000'],
+        ], [
+            'decision.required' => 'Choose Approve or Reject.',
+            'decision.in' => 'Choose Approve or Reject.',
+            'admin_note.required_if' => 'Add a note so the seller knows what to fix.',
+            'admin_note.max' => 'Shorten the note to 1,000 characters or fewer.',
         ]);
 
-        DB::transaction(function () use ($request, $categoryRequest, $data) {
+        $message = '';
+
+        DB::transaction(function () use ($request, $categoryRequest, $data, &$message) {
             $record = SellerCategoryRequest::query()->whereKey($categoryRequest->id)->lockForUpdate()->firstOrFail();
             if ($record->status !== 'pending') {
-                throw ValidationException::withMessages(['decision' => 'This request was already reviewed.']);
+                throw ValidationException::withMessages(['decision' => 'Another admin already reviewed this request. Open the Approved or Rejected tab to see the decision.']);
             }
             $seller = User::query()->whereKey($record->seller_id)->lockForUpdate()->firstOrFail();
+            $categoryNames = $record->categories()->pluck('categories.name')->implode(', ');
             if ($data['decision'] === 'approved') {
                 $seller->categories()->syncWithoutDetaching($record->categories()->pluck('categories.id')->all());
             }
+            $message = $data['decision'] === 'approved'
+                ? "Approved. {$seller->name} can now sell in {$categoryNames}."
+                : "Rejected. {$seller->name} sees your note in Account Management.";
             $record->update([
                 'status' => $data['decision'],
                 'admin_note' => $data['admin_note'] ?? null,
@@ -74,6 +89,6 @@ class SellerCategoryRequestController extends Controller
             ]);
         }, 3);
 
-        return back()->with('success', 'Category request reviewed.');
+        return back()->with('success', $message);
     }
 }

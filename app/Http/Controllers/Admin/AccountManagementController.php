@@ -85,7 +85,11 @@ class AccountManagementController extends Controller
                 'regex:/^[a-zA-Z0-9._-]+$/',
             ],
         ], [
-            'email_username.regex' => 'Username can only contain letters, numbers, dots, dashes, and underscores. The @vendo-ph.app part is fixed and cannot be changed.',
+            'first_name.required' => 'Enter a first name.',
+            'last_name.required' => 'Enter a last name.',
+            'email_username.required' => 'Enter the email username, for example juan.delacruz.',
+            'email_username.regex' => 'Use only letters, numbers, dots, dashes and underscores. The @vendo-ph.app part is fixed.',
+            'phone_number.max' => 'Shorten the contact number to 20 characters or fewer.',
         ]);
 
         $validated['email'] = strtolower($validated['email_username']) . '@vendo-ph.app';
@@ -93,7 +97,7 @@ class AccountManagementController extends Controller
         $request->validate([
             'email' => ['unique:users,email'],
         ], [
-            'email.unique' => 'This email is already taken by another admin.',
+            'email.unique' => 'Another admin already uses this email. Try a different username.',
         ]);
 
         $temporaryPassword = \Illuminate\Support\Str::password(12);
@@ -219,6 +223,12 @@ class AccountManagementController extends Controller
             'phone_number' => ['nullable', 'string', 'max:20'],
             'recovery_email' => ['nullable', 'string', 'email', 'max:255'],
             'profile_picture' => ['nullable', 'image', 'max:2048'],
+        ], [
+            'first_name.required' => 'Enter your first name.',
+            'last_name.required' => 'Enter your last name.',
+            'recovery_email.email' => 'Enter a valid email, for example name@gmail.com.',
+            'profile_picture.image' => 'Upload a JPG or PNG image.',
+            'profile_picture.max' => 'Upload an image under 2 MB.',
         ]);
 
         $admin->fill($validated);
@@ -244,6 +254,10 @@ class AccountManagementController extends Controller
 
         $validated = $request->validate([
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'password.required' => 'Enter a new password.',
+            'password.min' => 'Use at least 8 characters.',
+            'password.confirmed' => "The passwords don't match. Retype the confirmation.",
         ]);
 
         $admin->update([
@@ -260,7 +274,7 @@ class AccountManagementController extends Controller
         $this->authorizeSuperAdmin();
 
         if (! $admin->must_change_password || empty($admin->temp_password_plain)) {
-            return back()->with('error', 'No temporary password available. The admin may have already set their own password.');
+            return back()->with('error', 'No temporary password to show. This admin already set their own.');
         }
 
         return back()
@@ -275,10 +289,15 @@ class AccountManagementController extends Controller
         $validated = $request->validate([
             'current_password' => ['required', 'string'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'current_password.required' => 'Enter your current password.',
+            'password.required' => 'Enter a new password.',
+            'password.min' => 'Use at least 8 characters.',
+            'password.confirmed' => "The new passwords don't match. Retype the confirmation.",
         ]);
 
         if (! Hash::check($validated['current_password'], $admin->password)) {
-            return back()->withErrors(['current_password' => 'Current password is incorrect.']);
+            return back()->withErrors(['current_password' => 'Current password is wrong. Check it and try again.']);
         }
 
         $admin->update([

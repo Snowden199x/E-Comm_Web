@@ -207,6 +207,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::prefix('messages')->name('messages.')->group(function () {
             Route::get('/', [MessageController::class, 'index'])->name('index');
             Route::get('/list', [MessageController::class, 'conversationsList'])->name('list');
+            Route::get('/cases/{complaint}/thread', [MessageController::class, 'caseThread'])->whereNumber('complaint')->name('case.thread');
+            Route::get('/cases/{complaint}/fetch', [MessageController::class, 'caseFetch'])->whereNumber('complaint')->name('case.fetch');
             Route::get('/{conversation}/thread', [MessageController::class, 'thread'])->name('thread');
             Route::get('/{conversation}/fetch', [MessageController::class, 'fetchMessages'])->name('fetch');
             Route::post('/{conversation}/send', [MessageController::class, 'send'])->name('send');

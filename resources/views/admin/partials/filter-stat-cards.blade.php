@@ -1,34 +1,28 @@
 {{--
-    Stat cards that also filter the table below (Registrations, User Management).
-    Same look and motion as the Seller Compliance cards: tinted round icon, staggered rise,
-    lift on hover. Must sit inside the page's Alpine scope (uses `type` and `apply()`).
+    Count cards that also filter the table below (Registrations, User Management).
+    Orchid outline, soft grey-mauve fill, solid orchid icon chip. The active card gets a plum border and a
+    ring, and clicking it again clears the filter. Must sit inside the page's Alpine scope (uses `type` and `apply()`).
 
-    $cards: [['key' => user type, 'label', 'value', 'icon' (x-admin.icon name), 'tone' (purple|plum|terracotta|gold)]]
+    $cards: [['key' => user type, 'label', 'value', 'img' => asset path of a ready-made round icon (optional),
+              'icon' => x-admin.icon name drawn white on an orchid circle (used when there is no img)]]
 --}}
-@php
-    $tones = [
-        'purple' => 'bg-[#F1E7F3] text-[#5b2963]',
-        'plum' => 'bg-[#EFE4F1] text-[#3b1735]',
-        'terracotta' => 'bg-[#F8E6DE] text-[#B4573B]',
-        'gold' => 'bg-[#F6EDC9] text-[#7A5A00]',
-    ];
-@endphp
-
-<div class="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+<div class="mb-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
     @foreach ($cards as $card)
-        <button type="button" @click="type = '{{ $card['key'] }}'; apply()" style="--i: {{ $loop->index }}"
+        <button type="button" @click="type = type === '{{ $card['key'] }}' ? 'all' : '{{ $card['key'] }}'; apply()" style="--i: {{ $loop->index }}"
             :aria-pressed="type === '{{ $card['key'] }}'"
-            :class="type === '{{ $card['key'] }}'
-                ? 'border-[#3b1735] bg-[#F7F1F7] ring-1 ring-[#3b1735]/20'
-                : 'border-[#ece4ec] bg-white hover:border-[#cdbbd2]'"
-            class="rg-card group flex items-center gap-3 rounded-2xl border p-3.5 text-left shadow-[0_1px_2px_rgba(43,23,48,0.04)]
-                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40 sm:p-4">
-            <span class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full transition duration-300 ease-vendo group-hover:scale-105 {{ $tones[$card['tone']] ?? $tones['purple'] }}">
-                <x-admin.icon :name="$card['icon']" class="h-[22px] w-[22px]" />
-            </span>
+            :class="type === '{{ $card['key'] }}' ? 'border-vd-plum bg-[#DDD0DB] ring-2 ring-vd-orchid/30' : 'border-vd-orchid bg-[#E6DEE5] hover:-translate-y-0.5 hover:border-vd-plum hover:bg-[#E0D5DF]'"
+            class="rg-card flex items-center gap-3 rounded-[18px] border px-4 py-3 text-left
+                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40">
+            @if (! empty($card['img']))
+                <img src="{{ asset($card['img']) }}" alt="" width="36" height="36" class="h-9 w-9 flex-shrink-0">
+            @else
+                <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-vd-orchid text-white">
+                    <x-admin.icon :name="$card['icon'] ?? 'package'" class="h-[18px] w-[18px]" />
+                </span>
+            @endif
             <span class="min-w-0 flex-1">
-                <span class="block truncate text-[13px] text-gray-500">{{ $card['label'] }}</span>
-                <span class="block text-2xl font-semibold leading-tight tracking-tight text-[#2B1730]">{{ number_format($card['value']) }}</span>
+                <span class="block truncate font-display text-[13px] font-medium text-vd-ink">{{ $card['label'] }}</span>
+                <span class="block font-display text-lg font-semibold leading-tight tabular-nums text-vd-ink">{{ number_format($card['value']) }}</span>
             </span>
         </button>
     @endforeach

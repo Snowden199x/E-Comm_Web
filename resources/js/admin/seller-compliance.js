@@ -54,11 +54,11 @@ document.addEventListener('alpine:init', () => {
 
             get categoryLabel() {
                 const found = this.categories.find(c => String(c.id) === String(this.f.category_id));
-                return found ? found.name : 'All categories';
+                return found ? found.name : 'All Categories';
             },
 
             get dateLabel() {
-                const labels = { all: 'All dates', today: 'Today', week: 'This week', month: 'This month' };
+                const labels = { all: 'All Dates', today: 'Today', week: 'This week', month: 'This month' };
                 if (this.f.date_filter === 'custom' && this.f.custom_date) {
                     const [y, m, d] = this.f.custom_date.split('-').map(Number);
                     return new Date(y, m - 1, d).toLocaleDateString('en-US', {
@@ -67,7 +67,7 @@ document.addEventListener('alpine:init', () => {
                         year: 'numeric',
                     });
                 }
-                return labels[this.f.date_filter] || 'All dates';
+                return labels[this.f.date_filter] || 'All Dates';
             },
 
             params() {

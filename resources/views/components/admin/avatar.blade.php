@@ -28,7 +28,7 @@
     $src = $picture ? asset('storage/' . ltrim((string) $picture, '/')) : null;
 @endphp
 
-<span {{ $attributes->class(['relative inline-flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#EFE4F1] font-semibold text-[#5b2963]', $size, $text]) }}
+<span {{ $attributes->class(['relative inline-flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-vd-lavender font-semibold text-vd-plum', $size, $text]) }}
     @if ($src) x-data="{ broken: false }" @endif>
     <span aria-hidden="true">{{ $initial }}</span>
     @if ($src)

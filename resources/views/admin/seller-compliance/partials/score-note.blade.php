@@ -4,6 +4,6 @@
     If the formula changes on the server (see docs/design/2026-10-07-admin-uiux-backend-needs.md), edit this one
     sentence so every popup stays accurate.
 --}}
-<p class="text-xs leading-relaxed text-gray-500">
-    Score = 100 − 10 for each violation, never below 0. Warnings do not lower it yet, and a score does not recover over time.
+<p class="text-xs leading-relaxed text-vd-muted">
+    Score = 100 − 10 per violation, never below 0. Warnings do not lower it. A score does not recover over time.
 </p>

@@ -86,7 +86,7 @@ class RegistrationController extends Controller
     } catch (\Throwable $e) {
         Log::error('Account approval email failed', ['user_id' => $user->id, 'exception' => $e]);
 
-        return back()->with('confirmation', 'approved')->with('warning', 'Account approved, but the approval email could not be sent.');
+        return back()->with('confirmation', 'approved')->with('warning', 'The confirmation email didn\'t send. Tell the applicant to sign in.');
     }
 
     return back()->with('confirmation', 'approved');
@@ -98,6 +98,10 @@ class RegistrationController extends Controller
         $request->validate([
             'reason' => 'required|string',
             'additional_details' => ['nullable', 'string', 'max:500', Rule::requiredIf(fn () => $request->input('reason') === 'Other (please specify)')],
+        ], [
+            'reason.required' => 'Pick a reason to reject this registration.',
+            'additional_details.required' => 'Add details when the reason is "Other".',
+            'additional_details.max' => 'Shorten the details to 500 characters or fewer.',
         ]);
 
         DB::transaction(function () use ($request, $user) {
