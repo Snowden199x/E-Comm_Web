@@ -6,6 +6,7 @@
             today: @js($today),
             reviewUrl: @js($reviewUrl),
             statusUrl: @js($statusUrl),
+            documentUrl: @js($documentUrl),
             working: false,
             q: '',
             tab: 'active',
@@ -19,11 +20,26 @@
             },
             labels: { available: 'Available', on_trip: 'On trip', off_duty: 'Off duty', inactive: 'Inactive', pending: 'Pending' },
             tones: { available: 'lg-pill--green', on_trip: 'lg-pill--blue', off_duty: 'lg-pill--gray', inactive: 'lg-pill--gray', pending: 'lg-pill--amber' },
+            // Only the Province Hub reviews province and both applications.
+            // A station-only driver is approved by its Station Hub.
+            canReview(d) { return d.status === 'pending' && d.reviewed_by_kind === 'province_hub'; },
+            waitingOnStation(d) { return d.status === 'pending' && d.reviewed_by_kind === 'station_hub'; },
+            statusLabel(d) {
+                if (this.waitingOnStation(d)) return 'Waiting for Station Hub approval';
+                if (d.rejected) return 'Rejected';
+                return this.labels[d.status] || d.status;
+            },
+            statusTone(d) {
+                if (this.waitingOnStation(d)) return 'lg-pill--amber';
+                if (d.rejected) return 'lg-pill--red';
+                return this.tones[d.status] || 'lg-pill--gray';
+            },
+            doc(d, kind) { return this.documentUrl.replace('__driver__', d.id).replace('__document__', kind); },
             get shown() {
                 const s = this.q.trim().toLowerCase();
                 return this.drivers
                     .filter(d => this.tabs[this.tab](d)
-                        && (!s || (d.name + ' ' + d.license + ' ' + d.phone + ' ' + d.email + ' ' + (d.trip || '')).toLowerCase().includes(s)))
+                        && (!s || (d.name + ' ' + d.license + ' ' + d.phone + ' ' + d.email + ' ' + (d.trip || '') + ' ' + (d.apply_label || '') + ' ' + (d.station || '')).toLowerCase().includes(s)))
                     .sort((a, b) => a.name.localeCompare(b.name));
             },
             count(k) { return this.drivers.filter(this.tabs[k]).length; },
@@ -83,8 +99,8 @@
                     const payload = c.kind === 'reject'
                         ? await this.request(this.reviewUrl.replace('__driver__', d.id), 'POST', { decision: 'reject', reason: c.reason.trim() })
                         : await this.request(this.statusUrl.replace('__driver__', d.id), 'PATCH', { status: 'inactive' });
-                    if (c.kind === 'reject') this.drivers = this.drivers.filter(x => x.id !== d.id);
-                    else Object.assign(d, payload.driver);
+                    Object.assign(d, payload.driver);
+                    if (c.kind === 'reject') this.tab = 'inactive';
                     c.open = false; this.view = null;
                     this.$dispatch('lg-toast', { type: 'success', message: payload.message });
                 } catch (error) { c.error = error.message; }
@@ -119,7 +135,7 @@
                 <table class="lg-table lg-table--stack lg-table--mid">
                     <thead>
                         <tr>
-                            <th>Driver</th><th>Licence</th><th>Expires</th><th>Status</th>
+                            <th>Driver</th><th>Applied to</th><th>Licence</th><th>Expires</th><th>Status</th>
                             <th x-show="tab === 'applications'">Applied</th>
                             <th x-show="tab !== 'applications'">Current trip</th>
                             <th x-show="tab !== 'applications'" class="is-num">Trips done</th>
@@ -130,20 +146,24 @@
                         <template x-for="d in shown" :key="d.id">
                             <tr>
                                 <td data-label="Driver"><div class="lg-cell-title" x-text="d.name"></div><div class="lg-cell-sub" x-text="d.phone"></div></td>
+                                <td data-label="Applied to">
+                                    <div class="lg-cell-title" x-text="d.apply_label"></div>
+                                    <div class="lg-cell-sub" x-text="d.station ? ('Station: ' + d.station) : 'No Station Hub matched'"></div>
+                                </td>
                                 <td data-label="Licence"><div class="lg-cell-title" x-text="d.license"></div><div class="lg-cell-sub" x-text="d.category"></div></td>
                                 <td data-label="Expires">
                                     <div x-text="fmt(d.expiry)"></div>
                                     <template x-if="expiryNote(d)"><span class="lg-pill" :class="expiryNote(d).tone" x-text="expiryNote(d).text"></span></template>
                                 </td>
-                                <td data-label="Status"><span class="lg-pill" :class="tones[d.status]" x-text="labels[d.status]"></span></td>
+                                <td data-label="Status"><span class="lg-pill" :class="statusTone(d)" x-text="statusLabel(d)"></span></td>
                                 <td data-label="Applied" x-show="tab === 'applications'" x-text="fmt(d.applied)"></td>
                                 <td data-label="Current trip" x-show="tab !== 'applications'" x-text="d.trip || 'None'"></td>
                                 <td data-label="Trips done" x-show="tab !== 'applications'" class="is-num" x-text="d.done"></td>
                                 <td data-label="Actions" class="is-actions">
                                     <div class="lg-actions">
-                                        <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="openView(d)" :aria-label="(d.status === 'pending' ? 'Review ' : 'View ') + d.name">
+                                        <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="openView(d)" :aria-label="(canReview(d) ? 'Review ' : 'View ') + d.name">
                                             <x-logistics.icon name="eye" :size="16" />
-                                            <span x-text="d.status === 'pending' ? 'Review' : 'View'"></span>
+                                            <span x-text="canReview(d) ? 'Review' : 'View'"></span>
                                         </button>
                                     </div>
                                 </td>
@@ -153,7 +173,7 @@
                 </table>
             </div>
 
-            <x-logistics.empty x-show="!shown.length && !q.trim() && tab === 'applications'" x-cloak icon="users" title="No applications waiting" text="Drivers apply in the driver app and choose your Province Hub. New applications show up here for review." />
+            <x-logistics.empty x-show="!shown.length && !q.trim() && tab === 'applications'" x-cloak icon="users" title="No applications waiting" text="Drivers apply in the Driver app and choose your Province Hub, or both hubs. New applications show up here for review." />
             <x-logistics.empty x-show="!shown.length && !q.trim() && tab !== 'applications'" x-cloak icon="users" title="No drivers in this tab" text="Approved drivers appear here by status." />
             <x-logistics.empty x-show="!shown.length && q.trim()" x-cloak icon="search" title="No drivers match" text="Check the spelling, or look in another tab.">
                 <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="q = ''">Clear search</button>
@@ -166,11 +186,23 @@
                 <div class="lg-modal__head">
                     <div>
                         <h3 id="drvTitle" x-text="view ? view.name : ''"></h3>
-                        <p x-show="view"><span class="lg-pill" :class="view ? tones[view.status] : ''" x-text="view ? labels[view.status] : ''"></span></p>
+                        <p x-show="view"><span class="lg-pill" :class="view ? statusTone(view) : ''" x-text="view ? statusLabel(view) : ''"></span></p>
                     </div>
                     <button type="button" class="lg-toast__close" @click="closeView()" aria-label="Close"><x-logistics.icon name="x" :size="18" /></button>
                 </div>
                 <div class="lg-modal__body lg-modal__body--grid" x-show="view">
+                    <template x-if="view && waitingOnStation(view)">
+                        <div class="lg-note">
+                            <x-logistics.icon name="info" :size="18" />
+                            <span>This driver applied to <strong x-text="view.apply_label"></strong>. Its Station Hub approves this application, so it is read-only here until that hub decides.</span>
+                        </div>
+                    </template>
+                    <template x-if="view && view.rejected">
+                        <div class="lg-note lg-note--warn">
+                            <x-logistics.icon name="alert" :size="18" />
+                            <span>This application was rejected. The applicant sees the reason in the Driver app.</span>
+                        </div>
+                    </template>
                     <template x-if="view && expired(view)">
                         <div class="lg-note lg-note--warn">
                             <x-logistics.icon name="alert" :size="18" />
@@ -185,6 +217,8 @@
                     </template>
 
                     <dl class="lg-facts" x-show="view">
+                        <div><dt>Applied to</dt><dd x-text="view && view.apply_label"></dd></div>
+                        <div><dt>Station Hub</dt><dd x-text="view && (view.station || 'Not matched') + (view.station_area ? ' · ' + view.station_area : '')"></dd></div>
                         <div><dt>Phone</dt><dd x-text="view && view.phone"></dd></div>
                         <div><dt>Email</dt><dd x-text="view && view.email"></dd></div>
                         <div><dt>Birthday</dt><dd x-text="view && fmt(view.birthday)"></dd></div>
@@ -194,28 +228,31 @@
                         <div><dt>Category</dt><dd x-text="view && view.category"></dd></div>
                         <div><dt>Licence expires</dt><dd x-text="view && fmt(view.expiry)"></dd></div>
                         <div><dt>Completed trips</dt><dd x-text="view && view.done"></dd></div>
+                        <div><dt>Reviewed by</dt><dd x-text="view ? (view.reviewed_by ? view.reviewed_by + (view.reviewed_at ? ' · ' + fmt(view.reviewed_at) : '') : 'Not reviewed yet') : ''"></dd></div>
                     </dl>
 
                     <div>
                         <p class="lg-section-sub" style="margin-bottom:8px">Documents</p>
                         <div class="lg-actions" style="flex-wrap:wrap;gap:8px">
-                            <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="openDoc(view?.license_url)"><x-logistics.icon name="file" :size="16" /> Driver's licence</button>
-                            <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="openDoc(view?.valid_id_url)"><x-logistics.icon name="file" :size="16" /> Valid ID</button>
+                            <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="openDoc(doc(view, 'license'))"><x-logistics.icon name="file" :size="16" /> Driver's licence</button>
+                            <template x-if="view && view.has_valid_id">
+                                <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="openDoc(doc(view, 'valid-id'))"><x-logistics.icon name="file" :size="16" /> Valid ID</button>
+                            </template>
                         </div>
                     </div>
                 </div>
                 <div class="lg-modal__foot" x-show="view">
                     <button type="button" class="lg-btn lg-btn--outline" @click="closeView()">Close</button>
-                    <template x-if="view && view.status === 'pending'">
+                    <template x-if="view && canReview(view)">
                         <span style="display:contents">
                             <button type="button" class="lg-btn lg-btn--danger" @click="askReject(view)">Reject</button>
                             <button type="button" class="lg-btn" :disabled="expired(view)" @click="approve(view)">Approve</button>
                         </span>
                     </template>
-                    <template x-if="view && (view.status === 'available' || view.status === 'off_duty')">
+                    <template x-if="view && !waitingOnStation(view) && (view.status === 'available' || view.status === 'off_duty') && !view.rejected">
                         <button type="button" class="lg-btn lg-btn--danger" @click="askDeactivate(view)">Deactivate</button>
                     </template>
-                    <template x-if="view && view.status === 'inactive'">
+                    <template x-if="view && !waitingOnStation(view) && view.status === 'inactive' && view.reviewed_by && !view.rejected">
                         <button type="button" class="lg-btn" :disabled="expired(view)" @click="activate(view)">Activate</button>
                     </template>
                 </div>

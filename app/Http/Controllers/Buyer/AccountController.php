@@ -79,8 +79,10 @@ class AccountController extends Controller
                 'street' => $request->street,
                 'house_no' => $request->house_no,
                 'zip_code' => $request->zip_code,
-                'latitude' => $request->latitude,
-                'longitude' => $request->longitude,
+                // Saving the profile without reopening the map must not erase a
+                // pin the Buyer already placed.
+                'latitude' => $request->filled('latitude') ? $request->latitude : $buyerDetail->latitude,
+                'longitude' => $request->filled('longitude') ? $request->longitude : $buyerDetail->longitude,
             ];
             if ($locationChanged) {
                 // A preferred carrier is valid only for the saved delivery municipality.

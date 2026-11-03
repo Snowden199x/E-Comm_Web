@@ -9,6 +9,7 @@ use App\Models\Ecommerce\Product;
 use App\Models\Ecommerce\ProductVariant;
 use App\Models\Ecommerce\SellerVoucher;
 use App\Models\Finance\DeliveryFeeSetting;
+use App\Models\Profiles\BuyerDetail;
 use App\Models\Profiles\LogisticsCompany;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,9 @@ class BuyerCheckoutService
      */
     public function place(User $buyer, array $data, array $location): array
     {
-        return DB::transaction(function () use ($buyer, $data, $location) {
+        $pin = $this->deliveryPin($buyer, $data, $location);
+
+        return DB::transaction(function () use ($buyer, $data, $location, $pin) {
             $selectedIds = array_values(array_map('intval', $data['items']));
             $cartItems = CartItem::where('user_id', $buyer->id)->whereIn('id', $selectedIds)->orderBy('id')->lockForUpdate()->get();
             if ($cartItems->count() !== count($selectedIds)) {
@@ -154,8 +157,8 @@ class BuyerCheckoutService
                     'shipping_city_code' => $data['shipping_city_code'],
                     'shipping_province' => $location['province'],
                     'shipping_city' => $location['city'],
-                    'shipping_latitude' => $data['shipping_latitude'] ?? null,
-                    'shipping_longitude' => $data['shipping_longitude'] ?? null,
+                    'shipping_latitude' => $pin['lat'],
+                    'shipping_longitude' => $pin['lng'],
                 ]);
                 if ($voucher) {
                     $this->vouchers->redeemLocked($voucher, $order->id, $buyer->id, $discountCents);
@@ -176,5 +179,37 @@ class BuyerCheckoutService
 
             return $orders;
         }, 3);
+    }
+
+    /**
+     * The pin the Rider should use for this delivery. A pin chosen on the
+     * checkout page wins; otherwise the Buyer's saved Account Management pin is
+     * used, but only when the delivery is in that pin's own municipality, so an
+     * order sent elsewhere never inherits the wrong location.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array{province:string, city:string}  $location
+     * @return array{lat: float|string|null, lng: float|string|null}
+     */
+    private function deliveryPin(User $buyer, array $data, array $location): array
+    {
+        $latitude = $data['shipping_latitude'] ?? null;
+        $longitude = $data['shipping_longitude'] ?? null;
+        if (filled($latitude) && filled($longitude)) {
+            return ['lat' => $latitude, 'lng' => $longitude];
+        }
+
+        $empty = ['lat' => null, 'lng' => null];
+        $detail = BuyerDetail::query()->where('user_id', $buyer->id)->first();
+        if ($detail === null || $detail->latitude === null || $detail->longitude === null) {
+            return $empty;
+        }
+        $sameProvince = strcasecmp(trim((string) $detail->province), trim((string) $location['province'])) === 0;
+        $sameCity = strcasecmp(trim((string) $detail->municipality), trim((string) $location['city'])) === 0;
+        if (! $sameProvince || ! $sameCity) {
+            return $empty;
+        }
+
+        return ['lat' => $detail->latitude, 'lng' => $detail->longitude];
     }
 }

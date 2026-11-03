@@ -1876,6 +1876,50 @@ html {
     accent-color: var(--lg-brand);
 }
 
+/* Parcel checklist in the Station Hub driver assignment form. A parcel whose
+   delivery address is inside the chosen hub is marked, because it ends its
+   journey there instead of only passing through. */
+.lg-parcel-option {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--lg-line);
+    border-radius: 10px;
+    color: var(--lg-ink-2);
+    cursor: pointer;
+    transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.lg-parcel-option:hover {
+    border-color: var(--lg-brand-line);
+    background: var(--lg-brand-soft);
+}
+
+.lg-parcel-option:has(input:checked) {
+    border-color: var(--lg-brand);
+    background: var(--lg-brand-soft);
+}
+
+.lg-parcel-option--here {
+    border-left: 3px solid var(--lg-green);
+}
+
+.lg-parcel-option input {
+    margin-top: 3px;
+    accent-color: var(--lg-brand);
+}
+
+.lg-parcel-option__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 12px;
+    margin-top: 4px;
+    color: var(--lg-muted);
+    font-size: 12px;
+}
+
 .lg-counter {
     color: var(--lg-faint);
     font-size: 12px;

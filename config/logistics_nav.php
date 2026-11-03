@@ -76,6 +76,7 @@ return [
             ['label' => 'Pickup Requests', 'icon' => 'package', 'route' => 'lgp.station.pickups'],
             ['label' => 'Task Assignment', 'icon' => 'bike', 'route' => 'lgp.station.tasks'],
             ['label' => 'Delivery Queue', 'icon' => 'map-pin', 'route' => 'lgp.station.delivery-queue'],
+            ['label' => 'Driver Assignments', 'icon' => 'calendar', 'route' => 'lgp.station.trips', 'active' => 'lgp.station.trips*'],
         ]],
         ['label' => 'Parcels', 'items' => [
             ['label' => 'Incoming Parcels', 'icon' => 'inbox', 'route' => 'lgp.station.incoming'],
@@ -86,6 +87,7 @@ return [
         ]],
         ['label' => 'People', 'items' => [
             ['label' => 'Riders', 'icon' => 'users', 'route' => 'lgp.station.riders'],
+            ['label' => 'Drivers', 'icon' => 'truck', 'route' => 'lgp.station.drivers'],
         ]],
         ['label' => 'Business', 'items' => [
             ['label' => 'Cash Collections', 'icon' => 'file', 'route' => 'lgp.station.cash'],

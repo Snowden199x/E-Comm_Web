@@ -320,7 +320,7 @@ Transport Driver registration
 -> Active Transport Driver
 ```
 
-Fields: full name, birthday, sex, home address, contact number, email, driver's license number, license category, **license expiration date**, driver's license upload, valid ID, Province Hub.
+Fields: full name, birthday, sex, home address, contact number, email, driver's license number, license category, **license expiration date**, driver's license upload (which also serves as the identity document), Province Hub.
 
 - The driver does **not** register a truck, plate number or OR/CR (the current `courier_details` flow asks for these).
 - Validate that the license is not expired, and re-check it before each trip is assigned.

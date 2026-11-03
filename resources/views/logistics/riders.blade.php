@@ -26,7 +26,11 @@
                         <div class="lg-row__actions">
                             @if($status === 'pending')
                                 <span class="lg-doc-links">
-                                    @foreach(['valid-id' => 'Valid ID', 'drivers-license' => 'License', 'or-cr' => 'OR / CR'] as $document => $label)
+                                    @foreach(array_filter([
+                                        'valid-id' => $rider->valid_id_path && $rider->valid_id_path !== $rider->drivers_license_path ? 'Valid ID' : null,
+                                        'drivers-license' => 'License',
+                                        'or-cr' => 'OR / CR',
+                                    ]) as $document => $label)
                                         <a class="lg-doc-link" href="{{ route('logistics.riders.verification-documents.show', [$rider, $document]) }}" target="_blank" rel="noopener noreferrer">{{ $label }}</a>
                                     @endforeach
                                 </span>

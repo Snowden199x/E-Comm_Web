@@ -16,6 +16,29 @@ use Illuminate\Validation\Rule;
 
 class RiderScanController extends Controller
 {
+    /**
+     * The Buyer's delivery pin saved in Account Management. It is used only when
+     * this order has no pin of its own and the parcel is going to the Buyer's
+     * registered municipality, so a Rider is never sent to a different place.
+     *
+     * @return array{lat: float|string|null, lng: float|string|null}
+     */
+    private function savedBuyerPin(Order $order): array
+    {
+        $empty = ['lat' => null, 'lng' => null];
+        $detail = $order->buyer?->buyerDetail;
+        if ($detail === null || $detail->latitude === null || $detail->longitude === null) {
+            return $empty;
+        }
+        $sameProvince = strcasecmp(trim((string) $order->shipping_province), trim((string) $detail->province)) === 0;
+        $sameCity = strcasecmp(trim((string) $order->shipping_city), trim((string) $detail->municipality)) === 0;
+        if (! $sameProvince || ! $sameCity) {
+            return $empty;
+        }
+
+        return ['lat' => $detail->latitude, 'lng' => $detail->longitude];
+    }
+
     public function assignments(Request $request, RiderAccessService $access, DeliveryCutoff $cutoff): JsonResponse
     {
         $rider = $request->user();
@@ -35,6 +58,9 @@ class RiderScanController extends Controller
         ];
         if (! $isTruck) {
             $relations[] = 'buyer:id,name,phone_number';
+            // The Buyer's saved delivery pin is the fallback for orders placed
+            // before the pin was stored on the order itself.
+            $relations[] = 'buyer.buyerDetail';
         }
 
         $orders = Order::query()->where(function ($query) use ($rider, $center, $isTruck) {
@@ -77,6 +103,7 @@ class RiderScanController extends Controller
             $destination = $order->destinationLogisticsCenter;
             $nextFacility = $facilityStops->first(fn ($stop) => ! $stop->arrived_at);
             $deliveryFacility = $facilityStops->last()?->facility;
+            $buyerPin = ! $linehaul && ! $pickup ? $this->savedBuyerPin($order) : ['lat' => null, 'lng' => null];
             $scanTarget = null;
             $awaitingOriginDeparture = $linehaul && $order->status === 'sorted'
                 && $facilityStops->isNotEmpty();
@@ -129,8 +156,8 @@ class RiderScanController extends Controller
                     'name' => $order->buyer?->name,
                     'phone' => $order->buyer?->phone_number,
                     'address' => $order->shipping_address,
-                    'latitude' => $order->shipping_latitude,
-                    'longitude' => $order->shipping_longitude,
+                    'latitude' => $order->shipping_latitude ?? $buyerPin['lat'],
+                    'longitude' => $order->shipping_longitude ?? $buyerPin['lng'],
                 ]),
                 'pickup_center' => $linehaul || $pickup ? $origin?->business_name
                     : ($deliveryFacility?->name ?: $destination?->business_name),
