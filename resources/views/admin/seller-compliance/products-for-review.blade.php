@@ -1,10 +1,10 @@
 <x-admin.layout title="Products for Review">
     @vite('resources/css/admin/seller-compliance.css')
 
-    <div class="sc-page mx-auto w-full max-w-[1280px] p-4 sm:p-6">
-        <div class="mb-6">
-            <h1 class="font-display text-2xl font-semibold text-[#2B1730]">Products for Review</h1>
-            <p class="mt-1 text-sm text-gray-500">Review products submitted by sellers before they go live.</p>
+    <div class="sc-page mx-auto w-full max-w-[1440px] p-4 sm:p-6 lg:p-7">
+        <div class="mb-5">
+            <h1 class="font-display text-xl font-semibold leading-tight text-vd-ink sm:text-2xl">Products for Review</h1>
+            <p class="mt-1 text-sm text-vd-muted">Approve, warn or reject new products.</p>
         </div>
 
         @include('admin.seller-compliance.partials.tabs')
@@ -13,8 +13,8 @@
             'cards' => [
                 ['label' => 'For Review', 'value' => $stats['for_review'], 'icon' => 'clipboard-check', 'color' => 'green'],
                 ['label' => 'Warnings Issued', 'value' => $stats['warnings_issued'], 'icon' => 'triangle-alert', 'color' => 'orange', 'href' => route('admin.seller-compliance.warnings')],
-                ['label' => 'Violations (Rejected)', 'value' => $stats['violations'], 'icon' => 'shield-x', 'color' => 'red', 'href' => route('admin.seller-compliance.violations')],
-                ['label' => 'Suspended Sellers', 'value' => $stats['suspended_sellers'], 'icon' => 'ban', 'color' => 'purple', 'href' => route('admin.seller-compliance.suspended-sellers')],
+                ['label' => 'Violations (Rejected)', 'value' => $stats['violations'], 'icon' => 'alert-circle', 'color' => 'red', 'href' => route('admin.seller-compliance.violations')],
+                ['label' => 'Suspended Sellers', 'value' => $stats['suspended_sellers'], 'icon' => 'lock', 'color' => 'purple', 'href' => route('admin.seller-compliance.suspended-sellers')],
             ],
         ])
 

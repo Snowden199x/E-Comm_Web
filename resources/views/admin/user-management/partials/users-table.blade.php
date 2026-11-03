@@ -1,162 +1,89 @@
 {{--
-    Expects the Alpine scope from user-management/index.blade.php
-    (openId, filtered, clearAll, status, statusLabel, statusMatch). Pagination uses data-page buttons
-    handled by that scope.
-
-    Status filter: statusMatch() hides rows whose state does not match while the server cannot filter by
-    account status yet. $pageStates tells the "no match on this page" message whether anything is left to show.
+    Expects the Alpine scope from user-management/index.blade.php (openId, clearAll).
+    The server filters by status, so every row shown matches the filters.
+    Pagination uses data-page buttons handled by that scope.
 --}}
 @php
-    $roleChip = [
-        'seller' => 'bg-[#F1E7F3] text-[#5b2963]',
-        'buyer' => 'bg-[#FBF0E1] text-[#8a5614]',
-        'logistics_center' => 'bg-[#E4F1EE] text-[#2b6258]',
-    ];
+    // Status colours: green = can sign in, deep red = suspended, salmon = deactivated, grey = rejected.
     $statusPill = [
-        'active' => ['Active', 'border-green-600/60 bg-green-50 text-green-700'],
-        'suspended' => ['Suspended', 'border-red-600/60 bg-red-50 text-red-700'],
-        'deactivated' => ['Deactivated', 'border-[#d9826b]/70 bg-[#FBF1EE] text-[#b4452a]'],
-        'disapproved' => ['Rejected', 'border-orange-500/60 bg-orange-50 text-orange-700'],
+        'active' => ['Active', 'border-[#2E8B3E] bg-[#DCEFD9] text-[#1F6B35]'],
+        'suspended' => ['Suspended', 'border-[#9B1C2C] bg-[#F9D6DA] text-[#9B1C2C]'],
+        'deactivated' => ['Deactivated', 'border-[#E58A76] bg-[#FDE6DF] text-[#C2452D]'],
+        'disapproved' => ['Rejected', 'border-[#B8B2BC] bg-[#F0EEF1] text-[#5E5663]'],
     ];
 
     $stateOf = fn ($u) => $u->status === 'disapproved' ? 'disapproved' : ($u->account_status ?: 'active');
-    $pageStates = $users->getCollection()->map($stateOf)->unique()->values()->all();
 
-    $current = $users->currentPage();
-    $last = $users->lastPage();
-    $pageWindow = collect([1, $last, $current - 1, $current, $current + 1])
-        ->filter(fn ($p) => $p >= 1 && $p <= $last)
-        ->unique()->sort()->values();
+    $isFiltered = request()->filled('search') || request()->filled('date') || request()->boolean('rejected')
+        || request()->filled('account_status') || ! in_array(request()->input('user_type', 'all'), ['all', ''], true);
 @endphp
 
-<div class="overflow-hidden rounded-2xl border border-[#ece4ec] bg-white shadow-[0_1px_2px_rgba(43,23,48,0.04)]">
+<div class="overflow-hidden rounded-xl border border-vd-line bg-white">
 
     @if ($users->isEmpty())
-        <div class="flex flex-col items-center px-6 py-16 text-center">
-            <span class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#F1E7F3] text-[#5b2963]">
-                <svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.13a6 6 0 00-12 0M9 11a4 4 0 100-8 4 4 0 000 8zm12 8.13a6 6 0 00-4.5-5.8M16 3.2a4 4 0 010 7.6" />
-                </svg>
-            </span>
-            <p class="text-base font-semibold text-[#2B1730]"
-                x-text="status !== 'all' ? 'No ' + statusLabel.toLowerCase() + ' users' : 'No users found'">No users found</p>
-            <p class="mt-1 max-w-sm text-sm text-gray-500" x-cloak
-                x-text="filtered
-                    ? 'Nothing matches these filters. Try a different name, date, user type, or status.'
-                    : 'Approved accounts will be listed here.'">
-                Approved accounts will be listed here.
-            </p>
-            <button type="button" x-show="filtered" x-cloak @click="clearAll()"
-                class="mt-5 inline-flex h-10 items-center rounded-full border border-[#cdbbd2] px-5 text-sm font-medium text-[#3b1735]
-                       transition duration-200 hover:bg-[#3b1735] hover:text-white active:scale-95">
-                Clear filters
-            </button>
-        </div>
+        @if ($isFiltered)
+            <x-admin.empty-state filtered>
+                <button type="button" @click="clearAll()"
+                    class="inline-flex h-9 items-center rounded-lg border border-vd-line-strong bg-white px-4 text-[13px] font-medium text-vd-plum transition-colors duration-200 hover:bg-vd-tint">
+                    Clear filters
+                </button>
+            </x-admin.empty-state>
+        @else
+            <x-admin.empty-state icon="users" title="No users" text="Approved accounts appear here." />
+        @endif
     @else
         <div class="overflow-x-auto thin-scroll">
-            <table class="w-full min-w-[820px] text-left text-sm">
-                <caption class="sr-only">Users. Select a row to open the profile.</caption>
+            <table class="w-full min-w-[820px] text-center text-sm">
+                <caption class="sr-only">Users</caption>
                 <thead>
-                    <tr class="border-b border-[#ece4ec] bg-[#FBF8FB] text-[13px] text-gray-500">
-                        <th scope="col" class="px-5 py-3 font-medium">User</th>
-                        <th scope="col" class="px-4 py-3 font-medium">User Type</th>
+                    <tr class="border-b border-vd-line bg-vd-tint text-[13px] text-vd-muted">
+                        <th scope="col" class="px-5 py-3 text-left font-medium">User</th>
+                        <th scope="col" class="px-4 py-3 font-medium">Type</th>
                         <th scope="col" class="px-4 py-3 font-medium">Email</th>
-                        <th scope="col" class="px-4 py-3 font-medium">Number</th>
-                        <th scope="col" class="px-4 py-3 font-medium">Date Joined</th>
-                        <th scope="col" class="px-5 py-3 font-medium">Status</th>
+                        <th scope="col" class="px-4 py-3 font-medium">Phone</th>
+                        <th scope="col" class="px-4 py-3 font-medium">Joined</th>
+                        <th scope="col" class="px-4 py-3 font-medium">Status</th>
+                        <th scope="col" class="px-5 py-3 text-center font-medium"><span class="sr-only">Action</span></th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-[#f3edf4]">
+                <tbody class="divide-y divide-vd-line">
                     @foreach ($users as $u)
-                        @php $accountState = $stateOf($u); $pill = $statusPill[$accountState] ?? [ucfirst((string) $accountState), 'border-gray-300 bg-gray-50 text-gray-600']; @endphp
-                        <tr style="--i: {{ $loop->index }}" x-show="statusMatch('{{ $accountState }}')" @click="openId = {{ $u->id }}"
-                            tabindex="0" aria-label="Open profile of {{ $u->name }}" @keydown.enter.self="openId = {{ $u->id }}"
-                            class="cursor-pointer transition-colors duration-150 hover:bg-[#FBF8FB] focus-visible:bg-[#FBF8FB] focus-visible:outline-none
-                                   focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#3b1735]/40">
-                            <td class="px-5 py-3">
+                        @php $accountState = $stateOf($u); $pill = $statusPill[$accountState] ?? [ucfirst((string) $accountState), 'border-[#B8B2BC] bg-[#F0EEF1] text-[#5E5663]']; @endphp
+                        {{-- Clicking anywhere on the row opens the profile; the View button is the keyboard path. --}}
+                        <tr style="--i: {{ $loop->index }}" @click="openId = {{ $u->id }}"
+                            class="cursor-pointer transition-colors duration-200 hover:bg-vd-tint">
+                            <td class="px-5 py-3 text-left">
                                 <div class="flex items-center gap-3">
-                                    @if ($u->profile_picture)
-                                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($u->profile_picture) }}" alt="" loading="lazy"
-                                            class="h-9 w-9 flex-shrink-0 rounded-full bg-[#EFE4F1] object-cover">
-                                    @else
-                                        <span aria-hidden="true"
-                                            class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#EFE4F1] text-[13px] font-semibold text-[#5b2963]">
-                                            {{ strtoupper(mb_substr($u->name, 0, 1)) }}
-                                        </span>
-                                    @endif
-                                    <button type="button" aria-haspopup="dialog" @click.stop="openId = {{ $u->id }}"
-                                        class="max-w-[220px] truncate rounded text-left font-medium text-[#2B1730] hover:text-[#3b1735] hover:underline
-                                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1735]/40">
-                                        {{ $u->name }}
-                                    </button>
+                                    <x-admin.avatar :user="$u" />
+                                    <span class="max-w-[220px] truncate font-medium text-vd-ink">{{ $u->name }}</span>
                                 </div>
                             </td>
                             <td class="px-4 py-3">
-                                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $roleChip[$u->role] ?? 'bg-gray-100 text-gray-600' }}">
-                                    {{ ucwords(str_replace('_', ' ', $u->role)) }}
-                                </span>
+                                @include('admin.partials.type-pill', ['role' => $u->role])
                             </td>
-                            <td class="max-w-[240px] truncate px-4 py-3 text-gray-600">{{ $u->email }}</td>
-                            <td class="whitespace-nowrap px-4 py-3 text-gray-600">{{ $u->phone_number ?? '—' }}</td>
-                            <td class="whitespace-nowrap px-4 py-3 text-gray-600">{{ $u->created_at->format('M j, Y') }}</td>
-                            <td class="px-5 py-3">
-                                <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium {{ $pill[1] }}"
+                            <td class="max-w-[240px] truncate px-4 py-3 text-center text-vd-muted">{{ $u->email }}</td>
+                            <td class="whitespace-nowrap px-4 py-3 text-vd-muted">{{ $u->phone_number ?? '—' }}</td>
+                            <td class="whitespace-nowrap px-4 py-3 text-vd-muted">{{ $u->created_at->format('M j, Y') }}</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center rounded-full border-[1.5px] px-3.5 py-0.5 text-xs font-semibold {{ $pill[1] }}"
                                     @if ($accountState === 'suspended') title="{{ $u->suspended_until ? 'Suspended until ' . $u->suspended_until->format('M j, Y') : 'Suspended with no end date' }}" @endif>
                                     {{ $pill[0] }}
                                 </span>
+                            </td>
+                            <td class="px-5 py-3 text-center">
+                                <button type="button" aria-haspopup="dialog" @click.stop="openId = {{ $u->id }}"
+                                    aria-label="View profile of {{ $u->name }}"
+                                    class="inline-flex h-8 items-center rounded-lg border border-vd-line-strong bg-white px-3 text-[13px] font-medium text-vd-plum transition-all duration-200 hover:border-vd-plum hover:bg-vd-plum hover:text-white active:scale-95
+                                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40">
+                                    View
+                                </button>
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
-
-            <div x-show="statusPageOnly && !@js($pageStates).includes(status)" x-cloak
-                class="flex flex-col items-center px-6 py-14 text-center">
-                <p class="text-base font-semibold text-[#2B1730]" x-text="'No ' + statusLabel.toLowerCase() + ' users on this page'"></p>
-                <p class="mt-1 max-w-sm text-sm text-gray-500">Try the next page, or clear the status filter to see everyone again.</p>
-                <button type="button" @click="status = 'all'; apply()"
-                    class="mt-5 inline-flex h-10 items-center rounded-full border border-[#cdbbd2] px-5 text-sm font-medium text-[#3b1735]
-                           transition duration-200 hover:bg-[#3b1735] hover:text-white active:scale-95">
-                    Show all statuses
-                </button>
-            </div>
         </div>
 
-        <div class="flex flex-col items-center justify-between gap-3 border-t border-[#ece4ec] px-5 py-3.5 sm:flex-row">
-            <p class="text-[13px] text-gray-500">
-                Showing <span class="font-medium text-gray-700">{{ $users->firstItem() }}–{{ $users->lastItem() }}</span>
-                of <span class="font-medium text-gray-700">{{ number_format($users->total()) }}</span> entries
-            </p>
-
-            @if ($users->hasPages())
-                <nav aria-label="Pagination" class="flex items-center gap-1.5">
-                    <button type="button" data-page="{{ $current - 1 }}" @if ($current <= 1) disabled @endif aria-label="Previous page"
-                        class="flex h-8 w-8 items-center justify-center rounded-lg border border-[#e2d6e5] text-gray-600 transition duration-150
-                               hover:bg-[#F7F1F7] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
-                    </button>
-
-                    @foreach ($pageWindow as $i => $p)
-                        @if ($i > 0 && $p - $pageWindow[$i - 1] > 1)
-                            <span class="px-1 text-gray-400" aria-hidden="true">…</span>
-                        @endif
-                        <button type="button" data-page="{{ $p }}" aria-label="Page {{ $p }}"
-                            @if ($p === $current) aria-current="page" @endif
-                            class="flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-[13px] font-medium transition duration-150
-                                   {{ $p === $current
-                                       ? 'border-[#3b1735] bg-[#3b1735] text-white'
-                                       : 'border-[#e2d6e5] text-gray-600 hover:bg-[#F7F1F7]' }}">
-                            {{ $p }}
-                        </button>
-                    @endforeach
-
-                    <button type="button" data-page="{{ $current + 1 }}" @if ($current >= $last) disabled @endif aria-label="Next page"
-                        class="flex h-8 w-8 items-center justify-center rounded-lg border border-[#e2d6e5] text-gray-600 transition duration-150
-                               hover:bg-[#F7F1F7] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-                    </button>
-                </nav>
-            @endif
-        </div>
+        @include('admin.partials.pagination', ['paginator' => $users])
     @endif
 </div>

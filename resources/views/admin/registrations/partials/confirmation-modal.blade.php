@@ -18,7 +18,7 @@
         <div x-show="show" @click.stop
             x-transition:enter="transition duration-300 ease-vendo" x-transition:enter-start="opacity-0 translate-y-3 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100"
             x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-            class="relative w-full max-w-sm overflow-hidden rounded-2xl bg-white text-center shadow-[0_30px_70px_-30px_rgba(43,23,48,0.6)]">
+            class="relative w-full max-w-sm overflow-hidden rounded-2xl bg-white text-center border border-vd-line-strong">
 
             <div class="px-6 pb-6 pt-8">
                 <img src="{{ asset('assets/icons/registration/' . ($approved ? 'registration-approved-icon.svg' : 'registration-reject-icon.svg')) }}"

@@ -1,5 +1,2 @@
-{{-- Outlined type pill (as in the mockup). Needs $complaint. Long type names wrap instead of being cut off. --}}
-<span class="inline-flex max-w-full items-center rounded-full border px-3 py-0.5 text-center text-xs font-medium leading-snug"
-    style="background-color: {{ $complaint->type_colors['bg'] }}; border-color: {{ $complaint->type_colors['border'] }}; color: {{ $complaint->type_colors['border'] }};">
-    {{ $complaint->type ?? 'Other' }}
-</span>
+{{-- Type chip. Needs $complaint. One neutral style: the type is a label, not a status, so it carries no colour. Long names wrap. --}}
+<span class="inline-flex max-w-full items-center rounded-full border border-vd-line-strong bg-vd-tint px-2.5 py-0.5 text-center text-xs font-medium leading-snug text-vd-ink">{{ $complaint->type ?? 'Other' }}</span>

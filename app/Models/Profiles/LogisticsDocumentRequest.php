@@ -2,6 +2,7 @@
 
 namespace App\Models\Profiles;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 class LogisticsDocumentRequest extends Model
@@ -19,5 +20,10 @@ class LogisticsDocumentRequest extends Model
     public function center()
     {
         return $this->belongsTo(LogisticsCenter::class, 'logistics_center_id');
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 }

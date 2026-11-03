@@ -5,6 +5,7 @@ import './seller-compliance.js';
 import './complaints.js';
 import './reports.js';
 import './motion.js';
+import './button-loading.js';
 
 const { body } = document;
 
@@ -12,14 +13,28 @@ const checkStatusUrl = body.dataset.checkStatusUrl;
 const loginUrl = body.dataset.loginUrl;
 
 if (checkStatusUrl && loginUrl) {
-    window.setInterval(() => {
+    // One check at a time: on a slow server (or `artisan serve`, which handles one request at a time) a
+    // fixed-rate poll piles up behind itself and starves page navigation.
+    let statusPending = false;
+
+    const checkStatus = () => {
+        if (statusPending || document.hidden) return;
+        statusPending = true;
+
         fetch(checkStatusUrl, { headers: { Accept: 'application/json' } })
             .then(response => response.json())
             .then(data => {
                 if (!data.active) window.location.href = loginUrl;
             })
-            .catch(() => {});
-    }, 5000);
+            .catch(() => {})
+            .finally(() => { statusPending = false; });
+    };
+
+    window.setInterval(checkStatus, 5000);
+    // A hidden tab skips its checks, so check straight away when it comes back.
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) checkStatus();
+    });
 }
 
 const bellWrap = document.getElementById('adminBellWrap');
@@ -68,8 +83,11 @@ if (bellWrap && bellButton && bellMenu) {
         } catch (_) {}
     }
 
+    let notificationsPending = false;
+
     async function refreshAdminNotifications() {
-        if (document.hidden || !bellWrap.dataset.recentUrl) return;
+        if (document.hidden || notificationsPending || !bellWrap.dataset.recentUrl) return;
+        notificationsPending = true;
 
         try {
             const response = await fetch(bellWrap.dataset.recentUrl, {
@@ -89,7 +107,10 @@ if (bellWrap && bellButton && bellMenu) {
             if (data.latest_id > latestId) playNotificationSound();
 
             latestId = Math.max(latestId, data.latest_id);
-        } catch (_) {}
+        } catch (_) {
+        } finally {
+            notificationsPending = false;
+        }
     }
 
     window.setInterval(refreshAdminNotifications, 3000);

@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LogisticsDocumentReviewController extends Controller
@@ -16,10 +17,16 @@ class LogisticsDocumentReviewController extends Controller
     public function index(Request $request)
     {
         $status = $request->validate(['status' => ['nullable', 'in:pending,approved,rejected']])['status'] ?? 'pending';
+        // Pending is a queue, so the longest wait comes first. Reviewed tabs show the latest first.
         $requests = LogisticsDocumentRequest::query()->where('status', $status)
-            ->with('center.user')->latest()->paginate(30)->withQueryString();
+            ->with(['center.user', 'reviewer'])
+            ->orderBy('created_at', $status === 'pending' ? 'asc' : 'desc')
+            ->orderBy('id', $status === 'pending' ? 'asc' : 'desc')
+            ->paginate(15)->withQueryString();
+        $counts = LogisticsDocumentRequest::query()->selectRaw('status, count(*) as total')->groupBy('status')
+            ->pluck('total', 'status');
 
-        return view('admin.logistics-documents.index', compact('requests', 'status'));
+        return view('admin.logistics-documents.index', compact('requests', 'status', 'counts'));
     }
 
     public function file(LogisticsDocumentRequest $documentRequest): StreamedResponse
@@ -29,6 +36,7 @@ class LogisticsDocumentReviewController extends Controller
             && Storage::disk('local')->exists($path), 404);
 
         return Storage::disk('local')->response($path, 'logistics-document.'.pathinfo($path, PATHINFO_EXTENSION), [
+            'Content-Disposition' => 'inline',
             'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff',
         ]);
     }
@@ -38,14 +46,28 @@ class LogisticsDocumentReviewController extends Controller
         $data = $request->validate([
             'decision' => ['required', 'in:approved,rejected'],
             'review_note' => ['required_if:decision,rejected', 'nullable', 'string', 'max:1000'],
+        ], [
+            'decision.required' => 'Choose Approve or Reject.',
+            'decision.in' => 'Choose Approve or Reject.',
+            'review_note.required_if' => 'Add a note so the company knows what to fix.',
+            'review_note.max' => 'Shorten the note to 1,000 characters or fewer.',
         ]);
-        DB::transaction(function () use ($request, $documentRequest, $data) {
+        $message = '';
+
+        DB::transaction(function () use ($request, $documentRequest, $data, &$message) {
             $item = LogisticsDocumentRequest::query()->whereKey($documentRequest->id)
                 ->lockForUpdate()->firstOrFail();
-            abort_unless($item->status === 'pending', 409, 'This request was already reviewed.');
+            if ($item->status !== 'pending') {
+                throw ValidationException::withMessages(['decision' => 'Another admin already reviewed this request. Open the Approved or Rejected tab to see the decision.']);
+            }
             $center = $item->center()->lockForUpdate()->firstOrFail();
-            abort_unless(Storage::disk('local')->exists($item->path), 409,
-                'The submitted document is missing from private storage.');
+            if (! Storage::disk('local')->exists($item->path)) {
+                throw ValidationException::withMessages(['decision' => 'The submitted file is missing from storage. Ask the company to upload it again, then reject this request.']);
+            }
+            $documentLabel = $item->document_type === 'valid_id' ? 'valid ID' : 'business permit';
+            $message = $data['decision'] === 'approved'
+                ? "Approved. {$center->business_name} now uses the new {$documentLabel}."
+                : "Rejected. {$center->business_name} sees your note in their account.";
             if ($data['decision'] === 'approved') {
                 $field = $item->document_type === 'valid_id' ? 'valid_id_path' : 'business_permit_path';
                 $center->update([$field => $item->path]);
@@ -60,6 +82,6 @@ class LogisticsDocumentReviewController extends Controller
                 'link' => route('lgp.company.account')]);
         }, 3);
 
-        return back()->with('success', 'Document request '.$data['decision'].'.');
+        return back()->with('success', $message);
     }
 }

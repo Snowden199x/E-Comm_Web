@@ -79,6 +79,15 @@ class UserManagementController extends Controller
             'additional_details' => ['nullable', 'string', 'max:500', Rule::requiredIf(fn () => in_array('Other', $request->input('reasons', []), true))],
             'duration_days' => ['nullable', 'required_unless:permanent,1', 'integer', 'min:1', 'max:365'],
             'permanent' => ['nullable', 'boolean'],
+        ], [
+            'reasons.required' => 'Pick at least one reason to suspend this account.',
+            'reasons.min' => 'Pick at least one reason to suspend this account.',
+            'additional_details.required' => 'Add details when the reason is "Other".',
+            'additional_details.max' => 'Shorten the details to 500 characters or fewer.',
+            'duration_days.required_unless' => 'Enter 1 to 365 days, or choose no end date.',
+            'duration_days.integer' => 'Enter 1 to 365 days, or choose no end date.',
+            'duration_days.min' => 'Enter 1 to 365 days, or choose no end date.',
+            'duration_days.max' => 'Enter 1 to 365 days, or choose no end date.',
         ]);
 
         DB::transaction(function () use ($user, $data) {

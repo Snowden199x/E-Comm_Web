@@ -1,6 +1,6 @@
 # Admin Dashboard
 
-**Status:** Implemented, reporting semantics need review (UI redesigned 7 October 2026; owner verification pending)  
+**Status:** Implemented, reporting semantics need review (UI redesigned 7 October and again 31 October 2026; owner verification pending)  
 **Reviewed:** 7 October 2026
 
 ## Current behavior
@@ -23,3 +23,7 @@ Confirm whether gross sales should include cancelled, returned, or unpaid orders
 ## Related documentation
 
 See [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+
+## 31 October 2026 update
+
+Follows the owner's mockup (see the [Admin design system](../../../design/admin-design-system.md) for the palette and rules): Greeting with the date and three quick actions (**Review registrations**, **Review products**, **Create announcement**); four tinted stat cards; Sales overview and Sales summary (flat, with a chart loading state and a **Reload page** error if Chart.js fails); Recent registrations table with view, approve and reject icon buttons and a details dialog; Recent complaints table (ID, From, Against, Status); Notifications; Pending registrations by type; and the Announcement card. Approve and reject show an `x-admin.flash` banner, including the email-failed warning. Every panel has an empty state. The earlier "Needs your attention" tiles and week-over-week chips were removed. Not verified in a browser.

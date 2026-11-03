@@ -68,13 +68,12 @@
 .sc-card {
     animation: sc-rise 0.4s var(--sc-ease) backwards;
     animation-delay: calc(var(--i, 0) * 60ms);
-    transition: transform 0.25s var(--sc-ease), box-shadow 0.25s var(--sc-ease), border-color 0.2s ease;
+    transition: transform 0.25s var(--sc-ease), background-color 0.2s ease, border-color 0.2s ease;
 }
 
 a.sc-card:hover,
 button.sc-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 16px 30px -22px rgba(43, 23, 48, 0.55);
+    transform: translateY(-2px);
 }
 
 /* Table rows settle in after a search, filter or page change (and on first load). */
