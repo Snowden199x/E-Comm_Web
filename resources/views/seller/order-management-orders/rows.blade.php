@@ -4,16 +4,16 @@
         || request()->filled('search') || request()->filled('date_from') || request()->filled('date_to');
 
     $emptyCopy = [
-        'new' => ['No new orders right now', 'New orders from buyers appear here as soon as they check out.'],
-        'pack' => ['Nothing to pack', 'Orders you accept will wait here until they are packed.'],
-        'pickup' => ['No parcels waiting for pickup', 'Orders marked ready for pickup show up here until a rider scans them.'],
-        'pending' => ['No deliveries in progress', 'Parcels on their way to buyers will be listed here.'],
-        'completed' => ['No delivered orders yet', 'Orders appear here once a rider scans them as delivered.'],
-        'cancelled' => ['No cancelled orders', 'Good news. Declined and cancelled orders would be listed here.'],
+        'new' => ['No new orders', 'New orders show here as soon as buyers check out.'],
+        'pack' => ['Nothing to pack', 'Accepted orders wait here until you pack them.'],
+        'pickup' => ['No parcels waiting for pickup', 'Orders you mark ready show here until a rider scans them.'],
+        'pending' => ['No orders in delivery', 'Parcels on their way to buyers show here.'],
+        'completed' => ['No delivered orders yet', 'Orders show here after a rider marks them delivered.'],
+        'cancelled' => ['No cancelled orders', 'Declined and cancelled orders show here.'],
     ];
     [$emptyTitle, $emptyText] = $filtered
-        ? ['No orders match your filters', 'Try a different search term or date range, or clear the filters to see every order.']
-        : ($emptyCopy[request('status', 'all')] ?? ['No orders yet', 'When buyers purchase your products, their orders will appear here for you to accept and prepare.']);
+        ? ['No orders match your filters', 'Change your search or dates, or clear the filters.']
+        : ($emptyCopy[request('status', 'all')] ?? ['No orders yet', 'Orders show here when buyers buy your products.']);
 @endphp
 @forelse ($orders as $order)
     @php
@@ -46,23 +46,18 @@
         <td class="omo-total">₱{{ number_format($order->payable_total, 2) }}<small class="omo-paytag omo-paytag--{{ strtolower($order->payment_mode ?? 'cod') === 'cod' ? 'cod' : 'paid' }}">{{ strtoupper($order->payment_mode ?? 'COD') }}@if($order->voucher_code ?? null) · Voucher @endif</small></td>
         <td><span class="omo-pill omo-pill--{{ $order->seller_group }}"><i aria-hidden="true"></i>{{ $order->status_label }}</span></td>
         <td class="omo-date">{{ $order->created_at->format('M j, Y') }}<small>{{ $order->created_at->format('g:i A') }}</small></td>
-        <td><button type="button" class="omo-view-btn" data-order="{{ $order->number }}" data-id="{{ $order->id }}" aria-label="View order {{ $order->number }}">View</button></td>
+        <td><button type="button" class="omo-view-btn" data-order="{{ $order->number }}" data-id="{{ $order->id }}" aria-label="View order {{ $order->number }}">View details<svg class="omo-ico omo-ico--nudge" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button></td>
     </tr>
 @empty
     <tr class="omo-empty-row">
         <td colspan="7" class="omo-empty">
-            <div class="omo-empty__art" aria-hidden="true">
-                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 22l20-10 20 10v22L32 54 12 44z"/><path d="M12 22l20 10 20-10M32 32v22"/>
-                    @if($filtered)<circle cx="48" cy="46" r="9" fill="var(--card, #fff)"/><path d="M44 42l8 8M52 42l-8 8"/>@endif
-                </svg>
-            </div>
+            <div class="omo-empty__art omo-tone-{{ $filtered ? 'lilac' : 'butter' }}" aria-hidden="true"><svg class="omo-ico omo-ico--float" viewBox="0 0 24 24"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/>@if($filtered)<path d="m17 17 4 4"/>@endif</svg></div>
             <h3>{{ $emptyTitle }}</h3>
             <p>{{ $emptyText }}</p>
             @if($filtered)
                 <button type="button" class="omo-btn omo-btn--primary omo-empty__btn" data-omo-clear>Clear filters</button>
             @elseif(request('status', 'all') === 'all')
-                <a class="omo-btn omo-btn--ghost omo-empty__btn" href="{{ route('seller.products.index') }}">Check your products</a>
+                <a class="omo-btn omo-btn--primary omo-empty__btn" href="{{ route('seller.products.index') }}">View products</a>
             @endif
         </td>
     </tr>

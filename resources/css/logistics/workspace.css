@@ -78,14 +78,13 @@ html {
     display: none !important;
 }
 
-.lg-body h1,
-.lg-body h2,
-.lg-body h3,
-.lg-body p {
+/* :where() keeps the reset at zero specificity, so a margin class (mt-1, .vd-empty__text) on a heading or paragraph still applies. */
+:where(.lg-body h1, .lg-body h2, .lg-body h3, .lg-body p) {
     margin: 0;
 }
 
-.lg-body a {
+/* :where() keeps this at zero specificity: a link with its own colour class (.lg-btn, text-white, text-vd-plum) keeps that colour. */
+:where(.lg-body a) {
     color: inherit;
 }
 
@@ -2635,3 +2634,63 @@ a.lg-stat:hover .lg-stat__go { color: var(--lg-brand); transform: translateX(3px
 /* Visually hidden text and file inputs. Used by Reports, Account and the shell badges. */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .sr-only:focus-visible + .lg-btn { outline: 2px solid var(--lg-brand); outline-offset: 2px; }
+
+/* ---- Icon motion. Same idea as the Admin sidebar and the Buyer header: each icon moves in a way that suits it
+   when its link, button or row is hovered or focused. The svg carries data-icon (components/logistics/icon.blade.php).
+   Put .lg-ico-host on a row or card that should animate its icons on hover. Off for prefers-reduced-motion. ---- */
+@media (prefers-reduced-motion: no-preference) {
+    .lg-icon { transform-origin: center; transition: transform 0.3s var(--lg-ease); }
+
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="home"] { transform: scale(1.16); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="check"] { transform: scale(1.18); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="check-circle"] { transform: scale(1.16); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="info"] { transform: scale(1.16); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="shield"] { transform: scale(1.16); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="eye"] { transform: scale(1.16); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="eye-off"] { transform: scale(1.16); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="menu"] { transform: scale(1.12); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="calendar"] { transform: scale(1.14); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="users"] { transform: rotate(-8deg) scale(1.1); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="search"] { transform: rotate(-12deg) scale(1.14); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="edit"] { transform: rotate(-10deg) scale(1.1); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="undo"] { transform: rotate(-14deg) scale(1.08); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="layers"] { transform: rotate(90deg) scale(1.08); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="plus"] { transform: rotate(90deg) scale(1.1); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="x"] { transform: rotate(90deg) scale(1.1); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="user-cog"] { transform: rotate(90deg) scale(1.06); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="refresh"] { transform: rotate(180deg); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="clock"] { transform: rotate(30deg) scale(1.08); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="bar-chart"] { transform: scaleY(1.14); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="building"] { transform: scaleY(1.1); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="arrow-right"] { transform: translateX(3px); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="log-out"] { transform: translateX(4px); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="chevron-down"] { transform: translateY(2px); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="bar-chart"], :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="building"] { transform-origin: 50% 100%; }
+
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="truck"] { animation: lg-ico-drive .7s var(--lg-ease); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="bike"] { animation: lg-ico-drive .7s var(--lg-ease); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="map-pin"] { animation: lg-ico-drop .6s var(--lg-ease); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="download"] { animation: lg-ico-drop .6s var(--lg-ease); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="package"] { animation: lg-ico-bump .55s var(--lg-ease); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="inbox"] { animation: lg-ico-lift .5s var(--lg-ease); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="file"] { animation: lg-ico-lift .5s var(--lg-ease); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="printer"] { animation: lg-ico-lift .5s var(--lg-ease); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="message"] { animation: lg-ico-nudge .5s var(--lg-ease); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="alert"] { animation: lg-ico-wiggle .45s var(--lg-ease); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="bell"] { animation: lg-ico-ring .9s var(--lg-ease); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="phone"] { animation: lg-ico-ring .8s var(--lg-ease); }
+    :is(a, button, summary, .lg-ico-host):is(:hover, :focus-visible) .lg-icon[data-icon="bell"] { transform-origin: 50% 12%; }
+
+    /* Shell images that are not inline icons: the bell in the top bar rings, Log out slides. */
+    button:hover .lg-bell-img { animation: vd-ring 0.7s ease-in-out; transform-origin: 50% 10%; }
+    .lg-logout-img { transition: transform 0.3s var(--lg-ease); }
+    button:hover .lg-logout-img { transform: translateX(4px); }
+}
+
+@keyframes lg-ico-drive { 0% { transform: translateX(0); } 35% { transform: translateX(-3px); } 70% { transform: translateX(5px); } 100% { transform: translateX(2px); } }
+@keyframes lg-ico-drop { 0% { transform: translateY(0); } 35% { transform: translateY(-4px); } 65% { transform: translateY(1px); } 100% { transform: translateY(0); } }
+@keyframes lg-ico-bump { 0% { transform: none; } 35% { transform: translateY(-3px) scale(1.14) rotate(-6deg); } 70% { transform: scale(0.96); } 100% { transform: none; } }
+@keyframes lg-ico-lift { 0%, 100% { transform: none; } 45% { transform: translateY(-3px); } }
+@keyframes lg-ico-nudge { 0%, 100% { transform: none; } 40% { transform: translateY(-3px) rotate(-8deg); } 70% { transform: rotate(4deg); } }
+@keyframes lg-ico-wiggle { 0%, 100% { transform: none; } 30% { transform: rotate(-10deg); } 60% { transform: rotate(8deg); } }
+@keyframes lg-ico-ring { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(16deg); } 30% { transform: rotate(-14deg); } 45% { transform: rotate(10deg); } 60% { transform: rotate(-8deg); } 75% { transform: rotate(4deg); } }

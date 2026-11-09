@@ -39,6 +39,17 @@ class AccountController extends Controller
             'zip_code' => ['nullable', 'string', 'max:20'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+        ], [
+            'phone_number.regex' => 'Contact number must be 11 digits and start with 09. Example: 09171234567.',
+            'shop_description.max' => 'Description is too long. Keep it under 1,000 characters.',
+            'province.required' => 'Enter your province.',
+            'municipality.required' => 'Enter your municipality or city.',
+            'barangay.required' => 'Enter your barangay.',
+            'street.required' => 'Enter your street address.',
+            'zip_code.max' => 'ZIP code is too long. Use 20 characters or fewer.',
+            'latitude.between' => 'Pin is outside the map range. Search your address again and drop the pin.',
+            'longitude.required_with' => 'Pin your pickup address on the map, then save again.',
+            'longitude.between' => 'Pin is outside the map range. Search your address again and drop the pin.',
         ]);
         $address = $addresses->resolve($validated);
         $seller = $request->user();
@@ -52,15 +63,20 @@ class AccountController extends Controller
             'shop_description' => $validated['shop_description'] ?? null,
         ]);
 
-        return back()->with('success', 'Profile updated.');
+        return back()->with('success', 'Changes saved.');
     }
 
     public function avatar(Request $request, ProfilePhotoService $photos)
     {
-        $request->validate(['avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']]);
+        $request->validate(['avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']], [
+            'avatar.required' => 'Choose a photo first.',
+            'avatar.image' => 'That file is not an image. Choose a JPG, PNG, or WebP photo.',
+            'avatar.mimes' => 'Photo must be a JPG, PNG, or WebP file.',
+            'avatar.max' => 'Photo is over 2 MB. Choose a smaller photo.',
+        ]);
         $photos->replace($request->user(), $request->file('avatar'), 'profile-pictures/sellers');
 
-        return back()->with('success', 'Profile photo updated.');
+        return back()->with('success', 'Photo saved.');
     }
 
     public function removeAvatar(Request $request, ProfilePhotoService $photos)
@@ -72,7 +88,12 @@ class AccountController extends Controller
 
     public function banner(Request $request)
     {
-        $request->validate(['banner' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096']]);
+        $request->validate(['banner' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096']], [
+            'banner.required' => 'Choose a banner first.',
+            'banner.image' => 'That file is not an image. Choose a JPG, PNG, or WebP banner.',
+            'banner.mimes' => 'Banner must be a JPG, PNG, or WebP file.',
+            'banner.max' => 'Banner is over 4 MB. Choose a smaller image.',
+        ]);
         $detail = $request->user()->sellerDetail;
         abort_unless($detail, 404);
         $old = $detail->shop_banner_path;
@@ -87,7 +108,7 @@ class AccountController extends Controller
             Storage::disk('public')->delete($old);
         }
 
-        return back()->with('success', 'Shop banner updated.');
+        return back()->with('success', 'Banner saved.');
     }
 
     public function removeBanner(Request $request)
@@ -108,10 +129,18 @@ class AccountController extends Controller
         $validated = $request->validate([
             'current_password' => ['required', 'string'],
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+        ], [
+            'current_password.required' => 'Enter your current password.',
+            'password.required' => 'Enter a new password.',
+            'password.confirmed' => 'New passwords do not match. Retype the confirmation.',
+            'password.min' => 'New password is too short. Use at least 8 characters.',
+            'password.mixed' => 'New password needs an uppercase and a lowercase letter.',
+            'password.numbers' => 'New password needs at least one number.',
+            'password.symbols' => 'New password needs at least one symbol, like ! or @.',
         ]);
         $seller = $request->user();
         if (! Hash::check($validated['current_password'], $seller->password)) {
-            return back()->withErrors(['current_password' => 'The current password is incorrect.']);
+            return back()->withErrors(['current_password' => 'Current password is incorrect. Retype it and try again.']);
         }
         $seller->update(['password' => $validated['password']]);
 

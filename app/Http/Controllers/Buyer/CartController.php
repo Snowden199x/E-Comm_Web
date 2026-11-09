@@ -52,7 +52,7 @@ class CartController extends Controller
         if ($product->has_variations) {
             $variant = $product->variants()->find($request->input('variant_id'));
             if (! $variant) {
-                throw ValidationException::withMessages(['variant_id' => 'Choose an available product variant.']);
+                throw ValidationException::withMessages(['variant_id' => 'Pick a variant first, then add to cart.']);
             }
         } elseif ($request->filled('variant_id')) {
             throw ValidationException::withMessages(['variant_id' => 'This product has no variants.']);
@@ -61,7 +61,7 @@ class CartController extends Controller
         foreach ($variant ? [] : ['color' => 'colors', 'size' => 'sizes'] as $input => $attribute) {
             $available = array_values(array_filter(array_map('trim', explode(',', $product->{$attribute} ?? ''))));
             if ($available && ! in_array($request->input($input), $available, true)) {
-                throw ValidationException::withMessages([$input => 'Choose an available '.$input.'.']);
+                throw ValidationException::withMessages([$input => 'Pick a '.$input.' first, then add to cart.']);
             }
             if (! $available && $request->filled($input)) {
                 throw ValidationException::withMessages([$input => 'This product has no '.$input.' options.']);
@@ -70,11 +70,11 @@ class CartController extends Controller
 
         $availableStock = $variant?->stock ?? $product->stock;
         if ($availableStock <= 0) {
-            return back()->withErrors(['quantity' => $product->name.' is currently unavailable.']);
+            return back()->withErrors(['quantity' => $product->name.' is out of stock. Save it to favorites and check back later.']);
         }
 
         if ($quantity > $availableStock) {
-            return back()->withErrors(['quantity' => 'Only '.$availableStock.' item(s) left in stock.']);
+            return back()->withErrors(['quantity' => 'Only '.$availableStock.' left in stock. Lower the quantity and try again.']);
         }
 
         CartItem::create([

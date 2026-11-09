@@ -13,6 +13,7 @@ const COLOR_OPTIONS = [
 ];
 
 function showMessage(message) {
+    if (typeof window.sellerBanner === 'function') { window.sellerBanner({ type: 'success', message }); return; }
     const toast = document.getElementById('opsToast');
     toast.textContent = message;
     toast.hidden = false;
@@ -147,7 +148,7 @@ async function openPanel(link) {
     try {
         const response = await fetch(link.href, { headers: { Accept: 'text/html', 'X-Requested-With': 'XMLHttpRequest' }, signal: controller.signal });
         if (response.redirected) { window.location.assign(response.url); return; }
-        if (!response.ok) throw new Error(response.status === 404 ? 'This record is no longer available.' : 'Unable to open details. Please close and try again.');
+        if (!response.ok) throw new Error(response.status === 404 ? 'This record was removed. Close this panel and refresh the page.' : 'Details did not load. Check your connection, then try again.');
         const html = await response.text();
         if (controller.signal.aborted) return;
         content.innerHTML = html;
@@ -157,7 +158,18 @@ async function openPanel(link) {
         drawer.scrollTop = 0;
     } catch (error) {
         if (error.name === 'AbortError') return;
-        content.replaceChildren(Object.assign(document.createElement('p'), { className: 'ops-alert', role: 'alert', textContent: error.message }));
+        const box = document.createElement('div');
+        box.className = 'do-error ops-alert';
+        box.setAttribute('role', 'alert');
+        const text = document.createElement('span');
+        text.textContent = error.message;
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'ops-button ops-button--small';
+        retry.textContent = 'Try again';
+        retry.addEventListener('click', () => openPanel(link));
+        box.append(text, retry);
+        content.replaceChildren(box);
     } finally {
         if (pending === controller) content.removeAttribute('aria-busy');
     }

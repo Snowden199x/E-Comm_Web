@@ -1,0 +1,15 @@
+@config "../../../tailwind.seller-map.config.js";
+
+@tailwind base;
+
+/* Mini reset, only inside the map wrapper. */
+.ac-map *, .ac-map ::before, .ac-map ::after { box-sizing: border-box; border-width: 0; border-style: solid; border-color: #e5e7eb; }
+.ac-map button, .ac-map input { font-family: inherit; font-size: 100%; line-height: inherit; color: inherit; margin: 0; }
+.ac-map button { background-color: transparent; background-image: none; cursor: pointer; }
+.ac-map button:disabled { cursor: not-allowed; }
+.ac-map svg, .ac-map img { display: block; max-width: 100%; }
+.ac-map h1, .ac-map h2, .ac-map h3, .ac-map p { margin: 0; }
+.ac-map ul { list-style: none; margin: 0; padding: 0; }
+[x-cloak] { display: none !important; }
+
+@tailwind utilities;

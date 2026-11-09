@@ -810,3 +810,155 @@ body.sd-sidebar-pinned .sd-brand__full {
 .sd-nav__svg { width: 22px; height: 22px; flex: none; color: #fff; }
 .sd-nav__svg { opacity: .55; transition: opacity .15s; }
 .sd-nav__item:hover .sd-nav__svg, .sd-nav__item.is-active .sd-nav__svg { opacity: 1; }
+
+/* =========================================================
+   Banners + icon motion (shared seller shell)
+   ========================================================= */
+.sd-banners { position: fixed; top: calc(var(--topbar-h) + 12px); right: 16px; z-index: 120; display: grid; gap: 8px; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+.sd-banner { --b-bg: #f1e8f4; --b-fg: #5a1d63; --b-line: #e0d0e5; display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 16px; border: 1px solid var(--b-line); border-radius: 14px; background: var(--b-bg); color: var(--b-fg); box-shadow: 0 10px 28px rgba(54, 9, 60, .14); pointer-events: auto; animation: sd-banner-in .3s cubic-bezier(.2, .9, .3, 1.2) both; }
+.sd-banner.is-leaving { animation: sd-banner-out .2s ease forwards; }
+.sd-banner--success { --b-bg: #e4f4ea; --b-fg: #2f6b45; --b-line: #c5e6d1; }
+.sd-banner--error { --b-bg: #fbe3e8; --b-fg: #9a3a4d; --b-line: #f2c5cf; }
+.sd-banner__icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: rgba(255, 255, 255, .7); flex: none; animation: sd-icon-pop .5s .15s cubic-bezier(.3, 1.6, .5, 1) both; }
+.sd-banner__text { display: grid; gap: 2px; flex: 1; min-width: 0; font-size: 13px; line-height: 1.4; }
+.sd-banner__text strong { font-weight: 600; }
+.sd-banner__text span { color: inherit; opacity: .85; overflow-wrap: anywhere; }
+.sd-banner__action { min-height: 32px; padding: 6px 12px; border: 0; border-radius: 8px; background: var(--b-fg); color: #fff; font: 600 12px 'Poppins', sans-serif; cursor: pointer; transition: transform .1s, opacity .15s; }
+.sd-banner__action:hover { opacity: .88; }
+.sd-banner__action:active { transform: scale(.96); }
+.sd-banner__close { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: inherit; cursor: pointer; opacity: .7; flex: none; }
+.sd-banner__close:hover { background: rgba(255, 255, 255, .7); opacity: 1; }
+.sd-banner :is(button):focus-visible { outline: 2px solid var(--b-fg); outline-offset: 2px; }
+@keyframes sd-banner-in { from { opacity: 0; transform: translateY(-12px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes sd-banner-out { to { opacity: 0; transform: translateX(24px); } }
+
+/* Icon motion */
+@keyframes sd-icon-pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes sd-icon-hop { 0% { transform: none; } 35% { transform: translateY(-3px) scale(1.12); } 70% { transform: translateY(0) scale(.97); } 100% { transform: none; } }
+@keyframes sd-icon-nudge { 40% { transform: translateX(3px); } 100% { transform: none; } }
+@keyframes sd-bell-ring { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(16deg); } 30% { transform: rotate(-14deg); } 45% { transform: rotate(10deg); } 60% { transform: rotate(-8deg); } 75% { transform: rotate(4deg); } }
+@keyframes sd-badge-pop { 0% { transform: scale(.5); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
+.sd-nav__item:hover > img, .sd-nav__item:hover > .sd-nav__svg { animation: sd-icon-hop .45s ease; }
+.sd-nav__item.is-active > img, .sd-nav__item.is-active > .sd-nav__svg { animation: sd-icon-pop .45s ease both; }
+.sd-logout .sd-nav__item:hover img { animation: sd-icon-nudge .4s ease; }
+.sd-topbar__bell svg, .sd-topbar__menu svg { transform-origin: 50% 12%; transition: transform .2s; }
+.sd-topbar__menu:hover svg { transform: scale(1.1); }
+.sd-bell-count { animation: sd-badge-pop .35s ease; }
+.sw-bell-item.is-unread button strong::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #b7627f; vertical-align: 1px; }
+@media (max-width: 520px) { .sd-banners { right: 8px; left: 8px; width: auto; } }
+@media (prefers-reduced-motion: reduce) {
+    .sd-banner, .sd-banner__icon, .sd-bell-count, .sd-nav__item img, .sd-nav__svg, .sd-topbar__bell svg { animation: none !important; transition: none !important; }
+}
+
+
+/* =========================================================
+   Shared controls: dropdowns, modals, drawers, menus
+   Pastel lilac set, same radius and motion everywhere.
+   ========================================================= */
+
+/* ---- Dropdowns (select) ---- */
+.sd-body select:not([multiple]):not([size]) {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 38px;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235a1d63' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    cursor: pointer;
+    text-overflow: ellipsis;
+    transition: border-color .15s, box-shadow .15s;
+}
+.sd-body select:not([multiple]):not([size]):hover { border-color: #b79ac2; }
+.sd-body select:not([multiple]):not([size]):focus-visible { outline: 2px solid #b79ac2; outline-offset: 1px; }
+.sd-body select:disabled { opacity: .6; cursor: not-allowed; }
+.sd-body select option { color: #2d2233; background: #fff; padding: 8px 12px; }
+
+/* Fully styled option list where the browser supports it (Chrome / Edge 135+). Others keep the native list. */
+@supports (appearance: base-select) {
+    .sd-body select:not([multiple]):not([size]),
+    .sd-body select:not([multiple]):not([size])::picker(select) { appearance: base-select; }
+    .sd-body select:not([multiple]):not([size])::picker-icon { display: none; }
+    .sd-body select:not([multiple]):not([size])::picker(select) {
+        margin-top: 4px;
+        padding: 6px;
+        border: 1px solid #e0d0e5;
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 16px 40px rgba(54, 9, 60, .16);
+        max-height: min(320px, 50vh);
+        font-family: 'Poppins', sans-serif;
+    }
+    .sd-body select:not([multiple]):not([size]) option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 36px;
+        padding: 8px 12px;
+        border-radius: 9px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background .12s;
+    }
+    .sd-body select:not([multiple]):not([size]) option:hover,
+    .sd-body select:not([multiple]):not([size]) option:focus-visible { background: #f8f4f9; }
+    .sd-body select:not([multiple]):not([size]) option:checked { background: #efe6f2; color: #5a1d63; font-weight: 500; }
+    .sd-body select:not([multiple]):not([size]) option::checkmark { order: 1; margin-left: auto; color: #5a1d63; }
+}
+
+/* ---- Modals and drawers ---- */
+body:has(dialog[open]) { overflow: hidden; }
+.sd-body :is(.ops-drawer, .ops-modal, .ops-cancel-dialog, .cmp-dialog, .wb-modal)::backdrop { background: rgba(45, 34, 51, .35); backdrop-filter: blur(2px); }
+.sd-body .ops-drawer { border-radius: 20px 0 0 20px; box-shadow: -12px 0 40px rgba(54, 9, 60, .14); overflow-y: auto; overscroll-behavior: contain; }
+.sd-body .ops-drawer[open] { animation: sd-drawer-in .28s cubic-bezier(.2, .9, .3, 1) both; }
+.sd-body :is(.ops-modal, .ops-cancel-dialog)[open] { animation: sd-modal-in .22s ease both; }
+.sd-body :is(.ops-modal, .ops-cancel-dialog) { border-radius: 18px; border: 0; box-shadow: 0 24px 60px rgba(54, 9, 60, .25); }
+.sd-body .ops-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px; padding: 12px 24px; border-bottom: 1px solid #ece4ef; }
+.sd-body .ops-drawer-head h2 { font-size: 16px; font-weight: 600; line-height: 1.35; }
+.sd-body .ops-drawer-head button,
+.sd-body .ops-modal [data-close-dialog] { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 10px; background: #efe6f2; color: #5a1d63; font-size: 20px; line-height: 1; cursor: pointer; transition: background .15s, transform .2s; }
+.sd-body .ops-drawer-head button:hover,
+.sd-body .ops-modal [data-close-dialog]:hover { background: #e0d0e5; transform: rotate(90deg); }
+.sd-body .ops-drawer-head button:focus-visible,
+.sd-body .ops-modal [data-close-dialog]:focus-visible { outline: 2px solid #b79ac2; outline-offset: 2px; }
+@keyframes sd-drawer-in { from { transform: translateX(32px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes sd-modal-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (max-width: 650px) { .sd-body .ops-drawer { border-radius: 0; } .sd-body .ops-drawer-head { padding: 12px 16px; } }
+
+/* ---- Menus (notifications, account, row actions) ---- */
+.sd-bell-menu, .sd-user-menu { border-color: #ece4ef; border-radius: 16px; transform-origin: top right; }
+.sd-bell-menu:not([hidden]), .sd-user-menu:not([hidden]) { animation: sd-menu-in .18s ease both; }
+.sd-bell-menu__head { position: sticky; top: 0; z-index: 1; background: #fff; padding: 12px 16px; }
+.sd-bell-menu__head strong { font-size: 14px; font-weight: 600; }
+.sd-user-menu { width: 220px; padding: 8px; }
+.sd-user-menu a, .sd-user-menu button { padding: 10px 12px; border-radius: 10px; font-size: 13px; transition: background .12s; }
+.sd-user-menu a:hover, .sd-user-menu button:hover, .sd-user-menu a:focus-visible, .sd-user-menu button:focus-visible { background: #f8f4f9; outline: none; }
+.sd-user-menu form button { color: #9a3a4d; }
+.sd-user-menu form button:hover, .sd-user-menu form button:focus-visible { background: #fbe2e7; }
+.sw-bell-item:last-child { border-bottom: 0; }
+.sw-bell-item button { cursor: pointer; transition: background .12s; }
+.sw-bell-item.is-unread button { background: #f8f4f9; }
+.sw-bell-item button:hover, .sw-bell-item button:focus-visible { background: #efe6f2; outline: none; }
+.sw-bell-empty { padding: 24px 16px; text-align: center; }
+.sd-body .ops-menu > div { border-color: #ece4ef; border-radius: 14px; padding: 8px; box-shadow: 0 16px 40px rgba(54, 9, 60, .16); animation: sd-menu-in .15s ease both; }
+.sd-body .ops-menu a { padding: 10px 12px; border-radius: 10px; font-size: 13px; }
+.sd-body .ops-menu a:hover { background: #f8f4f9; }
+@keyframes sd-menu-in { from { opacity: 0; transform: translateY(-6px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+    .sd-body .ops-drawer[open], .sd-body :is(.ops-modal, .ops-cancel-dialog)[open], .sd-bell-menu, .sd-user-menu, .sd-body .ops-menu > div { animation: none !important; }
+}
+
+
+/* Bell: same swing as the Admin side. Hover or focus rings it; a new notification rings it once. */
+@keyframes sd-bell-swing {
+    0%, 100% { transform: rotate(0); }
+    20% { transform: rotate(14deg); }
+    40% { transform: rotate(-12deg); }
+    60% { transform: rotate(8deg); }
+    80% { transform: rotate(-4deg); }
+}
+#sdBellBtn svg { transform-origin: 50% 10%; }
+#sdBellBtn.is-ringing svg { animation: sd-bell-swing .9s ease-in-out; }
+#sdBellBtn:hover svg, #sdBellBtn:focus-visible svg { animation: sd-bell-swing .7s ease-in-out; }
+@media (prefers-reduced-motion: reduce) { #sdBellBtn svg, #sdBellBtn:hover svg, #sdBellBtn.is-ringing svg { animation: none !important; } }

@@ -37,11 +37,12 @@ if (root) {
         if (!file) return showError('Attach a permit or license for these categories.');
         if (!ALLOWED.includes(file.type)) return showError('The permit must be a JPG, PNG or PDF file.');
         if (file.size > MAX_BYTES) return showError('The permit is larger than 5 MB. Choose a smaller file.');
-        if (!root.dataset.crEndpoint) return showError('Category requests are not available on the server yet. Please contact Vendo Support to add a category.');
+        if (!root.dataset.crEndpoint) return showError('Category requests are unavailable right now. Message Vendo Support to add a category.');
 
         saving = true;
         submit.disabled = true;
         submit.textContent = 'Submitting…';
+        submit.classList.add('is-loading');
         try {
             const response = await fetch(root.dataset.crEndpoint, {
                 method: 'POST',
@@ -53,17 +54,18 @@ if (root) {
                 },
             });
             const data = await response.json().catch(() => ({}));
-            if (response.ok) { window.location.reload(); return; }
-            if (response.status === 419) return showError('Your session expired. Reload the page and try again.');
-            if (response.status === 404 || response.status === 405) return showError('Category requests are not available on the server yet.');
+            if (response.ok) { sessionStorage.setItem('ac-flash', data.message || 'Category request sent for Admin review.'); sessionStorage.setItem('ac-tab', 'business'); location.hash = 'business'; window.location.reload(); return; }
+            if (response.status === 419) return showError('Your session expired. Reload the page, then submit again.');
+            if (response.status === 404 || response.status === 405) return showError('Category requests are unavailable right now. Message Vendo Support to add a category.');
             const first = data.errors ? Object.values(data.errors).flat()[0] : null;
-            showError(first || data.message || 'We could not submit your request. Please try again.');
+            showError(first || data.message || 'Your request did not send. Check the details and try again.');
         } catch {
-            showError('Network problem. Check your connection and try again.');
+            showError('Connection lost. Check your internet and submit again.');
         } finally {
             saving = false;
             submit.disabled = false;
-            submit.textContent = 'Submit for approval';
+            submit.textContent = 'Submit request';
+            submit.classList.remove('is-loading');
         }
     });
 }

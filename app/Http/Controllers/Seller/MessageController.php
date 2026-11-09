@@ -14,20 +14,52 @@ class MessageController extends Controller
 {
     public function index(Request $request)
     {
+        $tab = $this->tab($request);
         $conversation = Conversation::query()->where('user_id', $request->user()->id)
             ->whereNull('complaint_id')->latest('id')->first();
-        $conversation?->messages()->whereNull('read_at')
-            ->where('sender_id', '!=', $request->user()->id)->update(['read_at' => now()]);
-        $customerConversations = $this->customerConversations($request->user()->id);
+        if ($tab !== 'complaints') {
+            $conversation?->messages()->whereNull('read_at')
+                ->where('sender_id', '!=', $request->user()->id)->update(['read_at' => now()]);
+        }
 
-        return view('seller.messages.index', compact('conversation', 'customerConversations'));
+        return view('seller.messages.index', array_merge(
+            compact('conversation', 'tab'),
+            $this->sidebarData($request->user()->id),
+            ['activeCase' => 0]
+        ));
     }
 
     public function customerList(Request $request)
     {
-        return view('seller.messages.partials.customer-list', [
-            'customerConversations' => $this->customerConversations($request->user()->id),
-        ]);
+        return view('seller.messages.partials.customer-list', array_merge(
+            $this->sidebarData($request->user()->id),
+            ['tab' => $this->tab($request), 'activeCase' => (int) $request->query('case')]
+        ));
+    }
+
+    /** Everything the inbox list needs: customer chats and complaint case threads with unread counts. */
+    public function sidebarData(int $sellerId): array
+    {
+        $customerConversations = $this->customerConversations($sellerId);
+        $caseThreads = Conversation::query()->where('user_id', $sellerId)->whereNotNull('complaint_id')
+            ->with(['complaint:id,type,status,kind,order_id', 'complaint.order:id', 'latestMessage'])
+            ->withCount(['messages as unread_count' => fn ($query) => $query
+                ->where('sender_id', '!=', $sellerId)->whereNull('read_at')])
+            ->orderByDesc('last_message_at')->get()->filter(fn ($thread) => $thread->complaint)->values();
+
+        return [
+            'customerConversations' => $customerConversations,
+            'caseThreads' => $caseThreads,
+            'unread' => [
+                'direct' => (int) $customerConversations->sum('unread_count'),
+                'complaints' => (int) $caseThreads->sum('unread_count'),
+            ],
+        ];
+    }
+
+    private function tab(Request $request): string
+    {
+        return in_array($request->query('tab'), ['all', 'direct', 'complaints'], true) ? $request->query('tab') : 'all';
     }
 
     private function customerConversations(int $sellerId)

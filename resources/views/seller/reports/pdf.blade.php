@@ -1,7 +1,7 @@
 <!DOCTYPE html><html><head><meta charset="utf-8"><style>
 body{font-family:DejaVu Sans,sans-serif;color:#251b29;font-size:10px}h1{color:#43104a;font-size:20px;margin-bottom:5px}h2{font-size:12px;margin-top:22px}.muted{color:#666}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{padding:7px;border-bottom:1px solid #ddd;text-align:left}th{background:#f2eaf3}.summary td{width:50%}.right{text-align:right}
 </style></head><body>
-<h1>{{ $periodLabel }} Seller Report</h1>
+<h1>{{ $periodLabel }} seller report</h1>
 <p>{{ $seller->sellerDetail?->business_name ?? $seller->name }}<br><span class="muted">{{ $start->format('M j, Y g:i A') }} – {{ $end->format('M j, Y g:i A') }} (Asia/Manila)<br>Generated {{ $generatedAt->format('M j, Y g:i A') }}</span></p>
 <table class="summary"><tr><td>Gross product revenue</td><td class="right">PHP {{ number_format($stats['gross'], 2) }}</td></tr><tr><td>Delivered orders</td><td class="right">{{ number_format($stats['orders']) }}</td></tr><tr><td>Units sold</td><td class="right">{{ number_format($stats['units']) }}</td></tr><tr><td>Average order value</td><td class="right">{{ $stats['average'] === null ? '—' : 'PHP '.number_format($stats['average'], 2) }}</td></tr><tr><td>Shipping charged</td><td class="right">PHP {{ number_format($stats['shipping'], 2) }}</td></tr></table>
 <p>Other outcomes in this period: {{ $outcomes['cancelled'] }} cancelled · {{ $outcomes['delivery_failed'] }} failed delivery.</p>

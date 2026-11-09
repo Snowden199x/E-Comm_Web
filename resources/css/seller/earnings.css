@@ -1,0 +1,29 @@
+/* Seller · Earnings. Extends delivered-orders.css (shared pastel tokens and components). */
+.er-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.er-stats .do-stat__text small { color: var(--do-muted); font-size: 11px; }
+.er-ico--hourglass { animation: do-pop .55s .1s cubic-bezier(.3, 1.6, .5, 1) both; transform-origin: 50% 50%; }
+.do-stat:hover .er-ico--hourglass { animation: er-flip .7s ease; }
+@keyframes er-flip { to { transform: rotate(180deg); } }
+
+.er-how { margin-bottom: 16px; padding: 12px 16px; border: 1px solid var(--do-line); border-radius: 12px; background: var(--do-surface); font-size: 12px; }
+.er-how summary { display: flex; align-items: center; gap: 8px; color: var(--do-lilac-700); font-weight: 500; cursor: pointer; list-style: none; }
+.er-how summary::-webkit-details-marker { display: none; }
+.er-how__chevron { margin-left: auto; transition: transform .2s; }
+.er-how[open] .er-how__chevron { transform: rotate(180deg); }
+.er-how p { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--do-lilac-200); color: var(--do-muted); line-height: 1.6; }
+
+.do-alert--info { background: var(--do-sky-100); color: var(--do-sky-700); align-items: center; }
+
+.er-tabs { margin-bottom: 16px; }
+.er-count { min-width: 20px; padding: 0 6px; border-radius: 999px; background: rgba(90, 29, 99, .1); font-size: 11px; line-height: 18px; text-align: center; }
+.do-chip.is-active .er-count { background: rgba(255, 255, 255, .25); }
+
+.do-badge--butter { background: var(--do-butter-100); color: var(--do-butter-700); }
+.do-badge--lilac { background: var(--do-lilac-100); color: var(--do-lilac-700); }
+.er-row { transition: background .15s; }
+.er-row:hover { background: var(--do-lilac-50); }
+.er-net { color: var(--do-mint-700); font-size: 13px; }
+.er-page .do-table :is(th, td):last-child { text-align: left; }
+.er-row td:last-child small { margin-top: 4px; }
+
+@media (max-width: 800px) { .er-stats { grid-template-columns: 1fr; } }

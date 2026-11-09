@@ -2,10 +2,10 @@
     $stockLabels = \App\Models\Ecommerce\Product::STOCK_LABELS;
     $listing = ['for_review' => 'Pending review', 'warned' => 'Needs changes', 'rejected' => 'Rejected', 'draft' => 'Draft'];
     $statCards = [
-        'all' => ['Total Products', 'total-products-icon.svg'],
-        'in_stock' => ['In Stock', 'in-stock-icon.svg'],
-        'low_stock' => ['Low Stock', 'low-stock-icon.svg'],
-        'out_of_stock' => ['Out of Stock', 'out-of-stock-icon.svg'],
+        'all' => ['Total products', 'lilac', '<path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/>'],
+        'in_stock' => ['In stock', 'mint', '<circle cx="12" cy="12" r="9"/><path d="m8 12.500 3 3 5-6"/>'],
+        'low_stock' => ['Low stock', 'butter', '<path d="M12 4 2.500 20h19z"/><path d="M12 10v4.500M12 17.500v.01"/>'],
+        'out_of_stock' => ['Out of stock', 'rose', '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>'],
     ];
     $activeStat = $filters['stock_status'] ?? '';
 
@@ -23,19 +23,19 @@
     $voucherPage = \Illuminate\Support\Facades\Route::has('seller.vouchers.index');
 @endphp
 <x-seller.layout title="Products & Inventory">
-    @vite(['resources/css/seller/products.css', 'resources/css/seller/products-filters.css', 'resources/js/seller/products.js', 'resources/js/seller/products-filters.js'])
+    @vite(['resources/css/seller/products.css', 'resources/css/seller/products-filters.css', 'resources/css/seller/ops-theme.css', 'resources/css/seller/products-theme.css', 'resources/js/seller/products.js', 'resources/js/seller/products-filters.js'])
     <section class="pi-page">
         <header class="pi-head">
-            <div><h1>Products &amp; Inventory</h1><p>Manage your products, stock levels and categories.</p></div>
+            <div><h1>Products &amp; inventory</h1><p>Manage your products and stock levels.</p></div>
             <a class="pi-btn pi-btn--primary" href="{{ route('seller.products.create') }}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Add Product
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Add product
             </a>
         </header>
 
         <div class="pi-stats">
-            @foreach($statCards as $key => [$label, $icon])
+            @foreach($statCards as $key => [$label, $tone, $glyph])
                 <a class="pi-stat @if(($key === 'all' && $activeStat === '') || $key === $activeStat) is-active @endif" href="{{ route('seller.products.index', $key === 'all' ? [] : ['stock_status' => $key]) }}">
-                    <img src="{{ asset('assets/icons/seller/'.$icon) }}" alt="">
+                    <span class="pi-stat__icon omo-tone-{{ $tone }}"><svg class="omo-ico" viewBox="0 0 24 24" aria-hidden="true">{!! $glyph !!}</svg></span>
                     <div><span>{{ $label }}</span><strong>{{ number_format($counts[$key]) }}</strong></div>
                 </a>
             @endforeach
@@ -47,7 +47,7 @@
                 <label class="pi-search">
                     <span class="pi-sr">Search products</span>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                    <input class="pi-input" style="border-radius:999px" type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Search products or SKU…" maxlength="100">
+                    <input class="pi-input" style="border-radius:999px" type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Search by name or SKU" maxlength="100">
                 </label>
                 <input type="hidden" name="category" id="piCategoryValue" value="{{ $selId }}">
                 <noscript><button class="pi-btn" type="submit">Search</button></noscript>
@@ -72,7 +72,7 @@
                             <option value="">All subcategories</option>
                             @foreach($subCats as $sub)<option value="{{ $sub->id }}" data-parent="{{ $sub->parent_id }}" @selected($selSub?->id === $sub->id)>{{ $sub->name }}</option>@endforeach
                         </select>
-                        <small id="piSubHint">Pick a category first to see its subcategories.</small>
+                        <small id="piSubHint">Pick a category to see its subcategories.</small>
                     </label>
                     <label class="pi-ffield"><span>Stock status</span>
                         <select class="pi-input" name="stock_status" form="piFilters">
@@ -81,13 +81,13 @@
                         </select>
                     </label>
                     <footer class="pi-fpanel__foot">
-                        <a class="pi-link" href="{{ route('seller.products.index', array_filter(['search' => $filters['search'] ?? null])) }}">Reset</a>
+                        <a class="pi-link" href="{{ route('seller.products.index', array_filter(['search' => $filters['search'] ?? null])) }}">Reset filters</a>
                         <button type="submit" form="piFilters" class="pi-btn pi-btn--primary">Apply filters</button>
                     </footer>
                 </div>
             </details>
 
-            @if($hasFilters)<a class="pi-link" href="{{ route('seller.products.index') }}">Clear all</a>@endif
+            @if($hasFilters)<a class="pi-clear" href="{{ route('seller.products.index') }}">Clear filters</a>@endif
         </div>
 
         @if($hasFilters)
@@ -105,7 +105,7 @@
             <section class="pi-card pi-table-card" aria-label="Products">
                 <div class="pi-table-scroll">
                     <table class="pi-table">
-                        <thead><tr><th scope="col">Product</th><th scope="col">Category</th><th scope="col">Subcategory</th><th scope="col">Price</th><th scope="col">Stock</th><th scope="col">Stock status</th><th scope="col">Listing</th><th scope="col">Vouchers</th><th scope="col">Last updated</th><th scope="col"><span class="pi-sr">Actions</span></th></tr></thead>
+                        <thead><tr><th scope="col">Product</th><th scope="col">Category</th><th scope="col">Price</th><th scope="col">Stock</th><th scope="col">Listing</th><th scope="col">Vouchers</th><th scope="col">Updated</th><th scope="col"><span class="pi-sr">Actions</span></th></tr></thead>
                         <tbody>
                         @forelse($products as $product)
                             @php
@@ -119,11 +119,9 @@
                                         <span><strong>{{ $product->name }}</strong><small>{{ $product->status === 'draft' ? 'SKU assigned after submission' : 'SKU: '.$product->product_code }}</small></span>
                                     </button>
                                 </td>
-                                <td><span class="pi-pill" style="color: {{ $colors['border'] }}; border-color: {{ $colors['border'] }}; background: {{ $colors['bg'] }}">{{ $main?->name ?? 'Uncategorized' }}</span></td>
-                                <td>@if($cat?->parent)<span class="pi-subpill">{{ $cat->name }}</span>@else<span class="pi-dash">—</span>@endif</td>
+                                <td><span class="pi-cat">{{ $main?->name ?? 'Uncategorized' }}</span>@if($cat?->parent)<small class="pi-sub">{{ $cat->name }}</small>@endif</td>
                                 <td class="pi-nowrap pi-price">₱{{ number_format($product->price, 2) }}</td>
-                                <td>{{ number_format($product->stock) }}</td>
-                                <td><span class="pi-pill pi-pill--{{ $product->stock_status }}">{{ $stockLabels[$product->stock_status] }}</span></td>
+                                <td><span class="pi-pill pi-pill--{{ $product->stock_status }}">{{ $stockLabels[$product->stock_status] }}</span><small class="pi-units">{{ number_format($product->stock) }} {{ \Illuminate\Support\Str::plural('unit', $product->stock) }}</small></td>
                                 <td>@if(isset($listing[$product->status]))<span class="pi-review pi-review--{{ $product->status }}">{{ $listing[$product->status] }}</span>@else<span class="pi-live"><i aria-hidden="true"></i>Live</span>@endif</td>
                                 <td>
                                     @php $voucherCount = (int) ($product->vouchers_count ?? 0); @endphp
@@ -134,14 +132,15 @@
                                     @else<span class="pi-dash">—</span>@endif
                                 </td>
                                 <td class="pi-nowrap pi-updated">{{ $product->updated_at->format('M j, Y') }}<small>{{ $product->updated_at->diffForHumans() }}</small></td>
-                                <td>
+                                <td class="pi-act">
+                                    <a class="pi-btn pi-btn--sm pi-btn--soft" href="{{ route('seller.products.show', [$product, 'mode' => 'edit']) }}">Edit</a>
                                     <button type="button" class="pi-kebab" data-kebab="pi-menu-{{ $product->id }}" aria-label="Actions for {{ $product->name }}" aria-haspopup="true">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
                                     </button>
                                     <div class="pi-menu" id="pi-menu-{{ $product->id }}" role="menu">
                                         <button type="button" role="menuitem" data-product-modal="{{ route('seller.products.show', $product) }}">View details</button>
                                         <a role="menuitem" href="{{ route('seller.products.show', [$product, 'mode' => 'edit']) }}">Edit product</a>
-                                        <button type="button" role="menuitem" data-product-modal="{{ route('seller.products.show', [$product, 'mode' => 'restock']) }}" data-tab="restock" data-modal-title="Restock Product">Restock</button>
+                                        <button type="button" role="menuitem" data-product-modal="{{ route('seller.products.show', [$product, 'mode' => 'restock']) }}" data-tab="restock" data-modal-title="Restock product">Restock</button>
                                         @if($voucherPage)<a role="menuitem" href="{{ route('seller.vouchers.index', ['create' => 1, 'product' => $product->id]) }}">Add to a voucher</a>@endif
                                         <span class="pi-menu-sep" role="separator"></span>
                                         {{-- Backend pending: DELETE /seller/products/{product} (see handoff notes). --}}
@@ -153,10 +152,12 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="10" class="pi-empty">
-                                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg>
+                            <tr><td colspan="8" class="pi-empty">
+                                <span class="pi-empty__icon omo-tone-{{ $hasFilters ? 'lilac' : 'butter' }}"><svg class="omo-ico pi-float" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/>@if($hasFilters)<path d="m17 17 4 4"/>@endif</svg></span>
                                 <h3>{{ $hasFilters ? 'No products match your filters' : 'No products yet' }}</h3>
-                                <p>{{ $hasFilters ? 'Try a different search or clear the filters.' : 'Add your first product to start selling on Vendo.' }}</p>
+                                <p>{{ $hasFilters ? 'Change your search or clear the filters.' : 'Add your first product to start selling on Vendo.' }}</p>
+                                @if($hasFilters)<a class="pi-btn pi-btn--primary" href="{{ route('seller.products.index') }}">Clear filters</a>
+                                @else<a class="pi-btn pi-btn--primary" href="{{ route('seller.products.create') }}">Add product</a>@endif
                             </td></tr>
                         @endforelse
                         </tbody>
@@ -167,23 +168,23 @@
 
             <aside class="pi-side">
                 <section class="pi-card">
-                    <header class="pi-card-head"><h2>Low Stock Alert</h2><a class="pi-link" href="{{ route('seller.products.index', ['stock_status' => 'low_stock']) }}">View all</a></header>
+                    <header class="pi-card-head"><h2>Low stock</h2><a class="pi-link" href="{{ route('seller.products.index', ['stock_status' => 'low_stock']) }}">View all</a></header>
                     @forelse($lowStock as $product)
                         <div class="pi-alert-row" style="animation-delay: {{ $loop->index * 60 }}ms">
                             @include('seller.products.partials.thumb', ['product' => $product])
-                            <div class="pi-grow"><strong>{{ $product->name }}</strong><small>{{ $product->stock }} pcs</small></div>
-                            <button type="button" class="pi-link" data-product-modal="{{ route('seller.products.show', [$product, 'mode' => 'restock']) }}" data-tab="restock" data-modal-title="Restock Product">Restock</button>
+                            <div class="pi-grow"><strong>{{ $product->name }}</strong><small>{{ $product->stock }} {{ \Illuminate\Support\Str::plural('unit', $product->stock) }} left</small></div>
+                            <button type="button" class="pi-link" data-product-modal="{{ route('seller.products.show', [$product, 'mode' => 'restock']) }}" data-tab="restock" data-modal-title="Restock product">Restock</button>
                         </div>
                     @empty
-                        <p class="pi-muted">No low-stock products. Nice work!</p>
+                        <div class="pi-mini-empty"><span class="omo-tone-mint"><svg class="omo-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.500 3 3 5-6"/></svg></span><strong>Stock looks good</strong><small>Products running low show here.</small></div>
                     @endforelse
-                    <p class="pi-note">Low stock means 1–{{ \App\Models\Ecommerce\Product::LOW_STOCK_THRESHOLD }} units left.</p>
+                    <p class="pi-note">Low stock means 1–{{ \App\Models\Ecommerce\Product::LOW_STOCK_THRESHOLD }} units.</p>
                 </section>
             </aside>
         </div>
 
         <dialog id="piModal" class="pi-modal" aria-labelledby="piModalTitle">
-            <div class="pi-modal-bar"><h2 id="piModalTitle">Product Details</h2><button type="button" class="pi-x" data-close-modal aria-label="Close details">×</button></div>
+            <div class="pi-modal-bar"><h2 id="piModalTitle">Product details</h2><button type="button" class="pi-x" data-close-modal aria-label="Close details">×</button></div>
             <div class="pi-modal-body" id="piModalBody"></div>
             <div class="pi-modal-foot" id="piModalFoot" hidden></div>
         </dialog>
@@ -192,7 +193,7 @@
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6M10 11v6M14 11v6"/></svg>
             </div>
             <h2 id="piDeleteTitle">Delete this product?</h2>
-            <p id="piDeleteCopy"><strong data-delete-name></strong> will be removed from your products and from the Vendo marketplace. Vendo admin will be notified. Past orders keep their record.</p>
+            <p id="piDeleteCopy"><strong data-delete-name></strong> is removed from your products and the Vendo marketplace. Past orders keep their record.</p>
             <p class="pi-error" data-delete-error role="alert"></p>
             <div class="pi-confirm__actions">
                 <button type="button" class="pi-btn" data-delete-cancel>Keep product</button>

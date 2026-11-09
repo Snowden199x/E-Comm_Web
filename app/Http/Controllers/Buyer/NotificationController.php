@@ -39,6 +39,11 @@ class NotificationController extends Controller
         return response()->json([
             'unread_count' => $this->owned($request)->whereNull('read_at')->count(),
             'latest_id' => $notifications->first()?->id,
+            'latest' => $notifications->first() ? [
+                'title' => $notifications->first()->title,
+                'message' => \Illuminate\Support\Str::limit((string) $notifications->first()->message, 90),
+                'url' => route('buyer.notifications.index', ['show' => $notifications->first()->id], false),
+            ] : null,
             'html' => view('buyer.notifications.recent', compact('notifications'))->render(),
         ]);
     }

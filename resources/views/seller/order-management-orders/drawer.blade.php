@@ -22,7 +22,7 @@
 <div class="omo-drawer__inner">
     <div class="omo-drawer__head">
         <div>
-            <span class="omo-drawer__eyebrow">Order</span>
+            <span class="omo-drawer__eyebrow">Order details</span>
             <h2 class="omo-drawer__title">{{ $order->number }}</h2>
             <p class="omo-drawer__meta">Placed {{ $order->created_at->format('M j, Y · g:i A') }}</p>
         </div>
@@ -43,7 +43,7 @@
         @if($buyerNote !== '')
             <aside class="omo-note" aria-label="Message from the buyer">
                 <span class="omo-note__icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/></svg></span>
-                <div><strong>Message from {{ $order->buyer?->name ?? 'the buyer' }}</strong><p>{{ $buyerNote }}</p></div>
+                <div><strong>{{ $order->buyer?->name ?? 'The buyer' }} left a note</strong><p>{{ $buyerNote }}</p></div>
             </aside>
         @endif
 
@@ -138,26 +138,26 @@
     <form id="omoActionForm" class="omo-drawer__actions" data-url="{{ route('seller.orders.update', $order) }}" data-draft-key="seller-{{ auth()->id() }}-order-action-{{ $order->id }}-{{ $order->status }}" data-draft-ajax>
         <input type="hidden" name="expected_status" value="{{ $order->status }}">
                 @if($order->canPrintShippingLabel())
-                    <a class="omo-btn omo-btn--ghost" href="{{ route('seller.orders.waybill', $order) }}" data-waybill data-waybill-title="{{ $order->number }}">
+                    <a class="omo-btn omo-btn--soft" href="{{ route('seller.orders.waybill', $order) }}" data-waybill data-waybill-title="{{ $order->number }}">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg>
                         Print shipping label
                     </a>
                 @elseif(in_array($order->status, ['placed', 'confirmed', 'preparing', 'ready_for_pickup'], true))
-                    <button class="omo-btn omo-btn--ghost" type="button" disabled>Print shipping label</button>
-                    <p class="omo-hint">{{ $order->status === 'ready_for_pickup' ? 'Waiting for pickup logistics assignment. Existing ready orders may need routing.' : 'Available after the order is ready for pickup and its pickup logistics is assigned.' }}</p>
+                    <button class="omo-btn omo-btn--soft" type="button" disabled>Print shipping label</button>
+                    <p class="omo-hint">{{ $order->status === 'ready_for_pickup' ? 'Waiting for Logistics to assign pickup. The label unlocks after that.' : 'Unlocks after you mark the order ready and Logistics assigns pickup.' }}</p>
                 @endif
         @if($order->status === 'placed')
             <button class="omo-btn omo-btn--primary" name="action" value="accept">Accept order</button>
-            <button class="omo-btn omo-btn--ghost" type="button" data-omo-cancel-open="decline">Decline</button>
+            <button class="omo-btn omo-btn--danger-ghost" type="button" data-omo-cancel-open="decline">Decline order</button>
         @elseif($order->status === 'confirmed')
             <button class="omo-btn omo-btn--primary" name="action" value="prepare">Start preparing</button>
             <button class="omo-btn omo-btn--danger-ghost" type="button" data-omo-cancel-open="cancel">Cancel order</button>
         @elseif($order->status === 'preparing')
-            @if($order->pickup_request_status === 'declined')<p class="omo-hint omo-hint--warn" role="status">Pickup request returned by Logistics: {{ $order->pickup_decline_reason }}. Resolve this before marking ready again.</p>@endif
+            @if($order->pickup_request_status === 'declined')<p class="omo-hint omo-hint--warn" role="status">Logistics returned the pickup request: {{ $order->pickup_decline_reason }}. Fix this, then mark the order ready again.</p>@endif
             <button class="omo-btn omo-btn--primary" name="action" value="ready">Mark ready for pickup</button>
             <button class="omo-btn omo-btn--danger-ghost" type="button" data-omo-cancel-open="cancel">Cancel order</button>
         @elseif($order->status === 'ready_for_pickup')
-            <p class="omo-hint">Ready for pickup. Waiting for logistics to assign a rider and for the rider to scan the parcel at pickup.</p>
+            <p class="omo-hint">Waiting for Logistics to assign a rider. The rider scans the parcel at pickup.</p>
             <button class="omo-btn omo-btn--danger-ghost" type="button" data-omo-cancel-open="cancel">Cancel order</button>
         @else
             <p class="omo-hint">{{ $order->status_label }} · No seller action required.</p>
@@ -166,7 +166,7 @@
         <div data-omo-cancel-modal hidden class="omo-cancel-modal" role="dialog" aria-modal="true" aria-labelledby="omoCancelTitle" tabindex="-1">
             <div class="omo-cancel-modal__panel">
                 <h3 id="omoCancelTitle" class="omo-cancel-modal__title" data-omo-cancel-title>Cancel this order?</h3>
-                <p class="omo-cancel-modal__copy">This cancels the order before pickup and restores the reserved stock. The buyer will be notified.</p>
+                <p class="omo-cancel-modal__copy">The buyer is notified and the reserved stock goes back to your inventory.</p>
                 <label class="omo-cancel-modal__label">Reason
                     <select name="reason" data-omo-cancel-reason>
                         <option value="">Choose a reason</option>
@@ -175,11 +175,11 @@
                         @endforeach
                     </select>
                 </label>
-                <label data-omo-cancel-details-wrap hidden class="omo-cancel-modal__label">Tell us more
+                <label data-omo-cancel-details-wrap hidden class="omo-cancel-modal__label">Add details
                     <textarea name="reason_details" maxlength="450" rows="3" data-omo-cancel-details></textarea>
                 </label>
                 <div class="omo-cancel-modal__actions">
-                    <button type="button" class="omo-btn omo-btn--ghost" data-omo-cancel-close>Keep order</button>
+                    <button type="button" class="omo-btn omo-btn--soft" data-omo-cancel-close>Keep order</button>
                     <button type="submit" class="omo-btn omo-btn--danger" data-omo-confirm-cancel>Confirm cancellation</button>
                 </div>
             </div>

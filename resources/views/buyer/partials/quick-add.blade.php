@@ -85,29 +85,19 @@
 
                     <button type="submit" :disabled="!valid"
                         class="mt-6 flex h-10 w-full items-center justify-center rounded-lg bg-[#805487] text-[13px] font-medium text-white transition-all duration-300 ease-vendo hover:bg-[#6d4574] hover:shadow-[0_12px_20px_-12px_rgba(128,84,135,0.95)] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#cdbfd0] disabled:shadow-none">
-                        <span x-text="valid ? 'Add to Cart' : 'Select ' + ((p.colors.length && !color) ? 'a color' : 'a size')"></span>
+                        <span x-text="valid ? 'Add to cart' : 'Select ' + ((p.colors.length && !color) ? 'a color' : 'a size')"></span>
                     </button>
                 </form>
             </template>
         </div>
     </div>
 
-    <!-- Cart feedback (replaced in place after Add to Cart) -->
-    <div id="buyer-toast" aria-live="polite" class="pointer-events-none fixed inset-x-0 bottom-6 z-[70] flex justify-center px-4">
+    <!-- Cart feedback. After Add to cart this element is replaced by the server response; the message then opens as a banner. -->
+    <div id="buyer-toast" class="hidden" aria-hidden="true">
         @if (session('success') || $errors->any())
-            <div x-data="{ show: false }"
-                x-init="requestAnimationFrame(() => show = true); setTimeout(() => show = false, 3600)"
-                x-show="show"
-                x-transition:enter="transition duration-500 ease-vendo" x-transition:enter-start="translate-y-4 opacity-0"
-                x-transition:enter-end="translate-y-0 opacity-100"
-                x-transition:leave="transition duration-300 ease-vendo" x-transition:leave-start="translate-y-0 opacity-100"
-                x-transition:leave-end="translate-y-2 opacity-0"
-                class="pointer-events-auto flex items-center gap-3 rounded-xl px-4 py-3 text-[13px] text-white shadow-[0_18px_40px_-18px_rgba(43,23,48,0.6)] {{ $errors->any() ? 'bg-[#7a2b3a]' : 'bg-[#402143]' }}">
-                <span>{{ $errors->any() ? $errors->first() : session('success') }}</span>
-                @unless ($errors->any())
-                    <a href="{{ route('buyer.cart.index') }}" class="font-medium text-[#e8c874] underline-offset-2 hover:underline">View cart</a>
-                @endunless
-            </div>
+            <span x-data x-init="$store.banner.show(@js($errors->any()
+                ? ['type' => 'error', 'title' => 'Not added to cart', 'text' => (string) $errors->first()]
+                : ['type' => 'success', 'title' => 'Added to cart', 'action' => ['label' => 'View cart', 'href' => route('buyer.cart.index')], 'duration' => 4500]))"></span>
         @endif
     </div>
 </div>

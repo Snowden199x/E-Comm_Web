@@ -33,7 +33,9 @@ class ReportController extends Controller
 
     private function build(Request $request, bool $pdf = false): array
     {
-        $validated = $request->validate(['period' => ['nullable', Rule::in(self::PERIODS)]]);
+        $validated = $request->validate(['period' => ['nullable', Rule::in(self::PERIODS)]], [
+            'period.in' => 'Choose Today, This week, This month, or This year.',
+        ]);
         $period = $validated['period'] ?? 'today';
         $now = now('Asia/Manila');
         $start = match ($period) {
@@ -42,6 +44,19 @@ class ReportController extends Controller
             'year' => $now->copy()->startOfYear(),
             default => $now->copy()->startOfDay(),
         };
+
+        [$prevStart, $prevEnd] = match ($period) {
+            'week' => [$start->copy()->subWeek(), $now->copy()->subWeek()],
+            'month' => [$start->copy()->subMonthNoOverflow(), $now->copy()->subMonthNoOverflow()],
+            'year' => [$start->copy()->subYear(), $now->copy()->subYear()],
+            default => [$start->copy()->subDay(), $now->copy()->subDay()],
+        };
+        $prevQuery = Order::query()->where('seller_id', $request->user()->id)
+            ->whereIn('status', Order::SALES_STATUSES)
+            ->whereBetween('delivered_at', [$prevStart, $prevEnd]);
+        $prevGross = (float) (clone $prevQuery)->sum('total_amount');
+        $prevCount = (clone $prevQuery)->count();
+        $prevUnits = (int) OrderItem::query()->whereIn('order_id', (clone $prevQuery)->select('orders.id'))->sum('quantity');
 
         $ordersQuery = Order::query()->where('seller_id', $request->user()->id)
             ->whereIn('status', Order::SALES_STATUSES)
@@ -53,7 +68,7 @@ class ReportController extends Controller
         $shipping = (float) (clone $ordersQuery)->sum('shipping_fee');
         $topProducts = OrderItem::query()->select('product_id')
             ->selectRaw('SUM(quantity) AS units_sold, SUM(quantity * price) AS revenue')
-            ->whereIn('order_id', $orderIds)->with('product:id,name')
+            ->whereIn('order_id', $orderIds)->with('product.images')
             ->groupBy('product_id')->orderByDesc('units_sold')->limit(5)->get();
         $outcomes = [];
         foreach (['returned', 'cancelled', 'delivery_failed'] as $status) {
@@ -97,11 +112,28 @@ class ReportController extends Controller
         $orders = (clone $ordersQuery)->with('buyer:id,name')->orderByDesc('delivered_at');
         $orders = $pdf ? $orders->limit(100)->get() : $orders->paginate(10)->withQueryString();
 
+        // Percent change against the same stretch of the previous period. Null when there is nothing to compare.
+        $change = fn (float $now, float $before) => $before > 0 ? (int) round(($now - $before) / $before * 100) : null;
+        $average = $count ? $gross / $count : null;
+        $prevAverage = $prevCount ? $prevGross / $prevCount : null;
+
         return [
             'period' => $period,
             'periodLabel' => match ($period) {
-                'today' => 'Today', 'week' => 'This Week', 'month' => 'This Month', 'year' => 'This Year',
+                'today' => 'Today', 'week' => 'This week', 'month' => 'This month', 'year' => 'This year',
             },
+            'compareLabel' => match ($period) {
+                'today' => 'yesterday', 'week' => 'last week', 'month' => 'last month', 'year' => 'last year',
+            },
+            'nextPeriod' => match ($period) {
+                'today' => 'week', 'week' => 'month', 'month' => 'year', default => null,
+            },
+            'deltas' => [
+                'gross' => $change($gross, $prevGross),
+                'orders' => $change($count, $prevCount),
+                'units' => $change($units, $prevUnits),
+                'average' => $average !== null && $prevAverage !== null ? $change($average, $prevAverage) : null,
+            ],
             'start' => $start,
             'end' => $now,
             'generatedAt' => now('Asia/Manila'),

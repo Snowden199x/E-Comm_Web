@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Buyer;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Communication\Announcement;
+use App\Models\Ecommerce\CartItem;
 use App\Models\Ecommerce\Product;
 
 class DashboardController extends Controller
@@ -29,6 +30,8 @@ class DashboardController extends Controller
             ->take(18)
             ->get();
 
-        return view('buyer.dashboard', compact('categories', 'products', 'announcements'));
+        $cartTotal = (int) CartItem::query()->where('user_id', auth()->id())->sum('quantity');
+
+        return view('buyer.dashboard', compact('categories', 'products', 'announcements', 'cartTotal'));
     }
 }

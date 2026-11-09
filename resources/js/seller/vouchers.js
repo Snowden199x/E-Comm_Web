@@ -17,12 +17,15 @@ if (app) {
     let toastTimer;
 
     const money = n => '₱' + Number(n || 0).toLocaleString('en-PH', { maximumFractionDigits: 2 });
-    const say = message => { toast.textContent = message; toast.classList.add('is-show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('is-show'), 3600); };
+    const say = (message, type = 'success') => {
+        if (typeof window.sellerBanner === 'function') { window.sellerBanner({ type, message }); return; }
+        toast.textContent = message; toast.classList.add('is-show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('is-show'), 3600);
+    };
     const showError = (box, message) => { box.textContent = message; box.hidden = !message; };
     const field = name => form.elements[name];
 
     async function send(url, method, body) {
-        if (!url) throw Object.assign(new Error('Vouchers are not available on the server yet.'), { soft: true });
+        if (!url) throw Object.assign(new Error('Vouchers are unavailable right now. Reload the page and try again.'), { soft: true });
         const response = await fetch(url, {
             method,
             headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf() },
@@ -30,10 +33,10 @@ if (app) {
         });
         const data = await response.json().catch(() => ({}));
         if (response.ok) return data;
-        if (response.status === 419) throw new Error('Your session expired. Reload the page and try again.');
-        if (response.status === 404 || response.status === 405) throw new Error('Vouchers are not available on the server yet.');
+        if (response.status === 419) throw new Error('Your session expired. Reload the page, then try again.');
+        if (response.status === 404 || response.status === 405) throw new Error('Vouchers are unavailable right now. Reload the page and try again.');
         const first = data.errors ? Object.values(data.errors).flat()[0] : null;
-        throw new Error(first || data.message || 'Something went wrong. Please try again.');
+        throw new Error(first || data.message || 'Voucher did not save. Check your connection and try again.');
     }
 
     /* ---------- dialog ---------- */
@@ -92,7 +95,7 @@ if (app) {
 
         const copy = event.target.closest('[data-vc-copy]');
         if (copy) {
-            try { await navigator.clipboard.writeText(copy.dataset.vcCopy); say(`Code ${copy.dataset.vcCopy} copied`); } catch { say('Could not copy the code'); }
+            try { await navigator.clipboard.writeText(copy.dataset.vcCopy); say(`Code ${copy.dataset.vcCopy} copied.`); } catch { say('Code not copied. Select it and copy it by hand.', 'error'); }
             return;
         }
         if (event.target.closest('[data-vc-generate]')) {
@@ -102,12 +105,12 @@ if (app) {
         }
         const toggle = event.target.closest('[data-vc-toggle]');
         if (toggle) {
-            toggle.disabled = true;
+            toggle.disabled = true; toggle.classList.add('is-loading');
             try {
                 const data = await send(toggle.dataset.vcToggle, 'PATCH', { status: toggle.dataset.next });
                 sessionStorage.setItem('vcToast', data.message || (toggle.dataset.next === 'paused' ? 'Voucher paused.' : 'Voucher resumed.'));
                 location.reload();
-            } catch (error) { toggle.disabled = false; say(error.message); }
+            } catch (error) { toggle.disabled = false; say(error.message, 'error'); }
             return;
         }
         const del = event.target.closest('[data-vc-delete]');
@@ -166,15 +169,15 @@ if (app) {
     }
     function validate(d) {
         if (!d.name) return 'Give the voucher a name.';
-        if (!/^[A-Z0-9]{4,12}$/.test(d.code)) return 'The code must be 4–12 letters or numbers.';
-        if (!d.value || d.value <= 0) return 'Enter a discount value above zero.';
-        if (d.type === 'percent' && d.value > 90) return 'A percentage voucher can give at most 90% off.';
-        if (d.type === 'fixed' && d.min_spend > 0 && d.value > d.min_spend) return 'The discount cannot be bigger than the minimum spend.';
+        if (!/^[A-Z0-9]{4,12}$/.test(d.code)) return 'Code must be 4–12 letters or numbers. Use Generate to make one.';
+        if (!d.value || d.value <= 0) return 'Enter a discount above zero.';
+        if (d.type === 'percent' && d.value > 90) return 'Percentage vouchers give at most 90% off. Lower the discount.';
+        if (d.type === 'fixed' && d.min_spend > 0 && d.value > d.min_spend) return 'Discount is bigger than the minimum spend. Lower the discount or raise the minimum spend.';
         if (d.usage_limit !== null && d.usage_limit < 1) return 'Total uses must be at least 1.';
         if (d.per_buyer_limit < 1) return 'Uses per buyer must be at least 1.';
-        if (d.usage_limit !== null && d.per_buyer_limit > d.usage_limit) return 'Uses per buyer cannot exceed the total uses.';
-        if (d.starts_at && d.ends_at && d.ends_at <= d.starts_at) return 'The end time must be after the start time.';
-        if (d.ends_at && new Date(d.ends_at) <= new Date()) return 'The end time must be in the future.';
+        if (d.usage_limit !== null && d.per_buyer_limit > d.usage_limit) return 'Uses per buyer cannot exceed total uses. Lower it or raise total uses.';
+        if (d.starts_at && d.ends_at && d.ends_at <= d.starts_at) return 'End time is before the start time. Pick an end after the start.';
+        if (d.ends_at && new Date(d.ends_at) <= new Date()) return 'End time must be in the future. Pick a later date.';
         if (d.scope === 'products' && !d.product_ids.length) return 'Choose at least one product, or apply the voucher to all products.';
         if (d.scope === 'categories' && !d.category_ids.length) return 'Choose at least one category.';
         return '';
@@ -187,16 +190,31 @@ if (app) {
         const problem = validate(data);
         if (problem) return showError(errorBox, problem);
         showError(errorBox, '');
-        saving = true; submit.disabled = true; const label = submit.textContent; submit.textContent = 'Saving…';
+        saving = true; submit.disabled = true; const label = submit.textContent; submit.textContent = 'Saving…'; submit.classList.add('is-loading');
         try {
             const result = await send(editingUrl || app.dataset.storeUrl, editingUrl ? 'PUT' : 'POST', data);
             sessionStorage.setItem('vcToast', result.message || 'Voucher saved.');
             location.reload();
         } catch (error) {
             showError(errorBox, error.message);
-            saving = false; submit.disabled = false; submit.textContent = label;
+            saving = false; submit.disabled = false; submit.textContent = label; submit.classList.remove('is-loading');
         }
     });
+
+    // Loading state: swap the list for placeholder cards while the next view loads.
+    const list = $('.vc-list');
+    const showLoading = () => {
+        if (!list || list.classList.contains('is-loading')) return;
+        list.classList.add('is-loading');
+        list.setAttribute('aria-busy', 'true');
+        list.innerHTML = '<li class="vc-skel"><i></i><i></i><i></i></li>'.repeat(3);
+    };
+    app.addEventListener('click', event => {
+        const link = event.target.closest('.vc-tab, .vc-pager a, .vc-filter-note a, .vc-empty a');
+        if (link && !event.ctrlKey && !event.metaKey && !event.shiftKey) showLoading();
+    });
+    $('.vc-search')?.addEventListener('submit', showLoading);
+    window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 
     const flash = sessionStorage.getItem('vcToast');
     if (flash) { sessionStorage.removeItem('vcToast'); say(flash); }

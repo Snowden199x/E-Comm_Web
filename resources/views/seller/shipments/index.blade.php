@@ -4,13 +4,13 @@
 
     // "Returned" is intentionally not offered: the seller flow no longer surfaces returns (owner decision, 7 Oct 2026).
     $statCards = [
-        'all' => ['Total Shipments', 'total-shipments-icon.svg'],
-        'to_ship' => ['To Ship', 'to-ship-icon.svg'],
-        'in_transit' => ['In Transit', 'in-transit-icon.svg'],
-        'delivered' => ['Delivered', 'delivered-icon.svg'],
-        'cancelled' => ['Cancelled', 'cancelled-icon.svg'],
+        'all' => ['Total shipments', 'lilac', '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>'],
+        'to_ship' => ['To ship', 'butter', '<path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/>'],
+        'in_transit' => ['In transit', 'sky', '<path d="M12 21s7-5.600 7-11a7 7 0 10-14 0c0 5.400 7 11 7 11z"/><circle cx="12" cy="10" r="2.500"/>'],
+        'delivered' => ['Delivered', 'mint', '<circle cx="12" cy="12" r="9"/><path d="m8 12.500 3 3 5-6"/>'],
+        'cancelled' => ['Cancelled', 'rose', '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>'],
     ];
-    $tabs = ['all' => 'All', 'to_ship' => 'To Ship', 'in_transit' => 'In Transit', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled'];
+    $tabs = ['all' => 'All', 'to_ship' => 'To ship', 'in_transit' => 'In transit', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled'];
     $pillFor = ['to_ship' => 'pack', 'in_transit' => 'pending', 'delivered' => 'completed', 'cancelled' => 'cancelled'];
 
     $activeStatus = $filters['status'] ?? '';
@@ -31,34 +31,34 @@
     $urlWith = fn (array $extra) => route('seller.shipments.index', array_filter(array_merge(request()->except('page'), $extra), fn ($v) => $v !== null && $v !== ''));
 
     $emptyCopy = [
-        'to_ship' => ['Nothing to ship', 'Orders you accept wait here until a rider collects them.'],
-        'in_transit' => ['No parcels in transit', 'Parcels on their way to your buyers will be listed here.'],
-        'delivered' => ['No delivered shipments yet', 'Shipments appear here once a rider scans them as delivered.'],
-        'cancelled' => ['No cancelled shipments', 'Good news. Cancelled shipments would be listed here.'],
+        'to_ship' => ['Nothing to ship', 'Accepted orders wait here until a rider collects them.'],
+        'in_transit' => ['No parcels in transit', 'Parcels on their way to buyers show here.'],
+        'delivered' => ['No delivered shipments yet', 'Shipments show here after a rider marks them delivered.'],
+        'cancelled' => ['No cancelled shipments', 'Cancelled shipments show here.'],
     ];
     $onlyStatus = $activeStatus !== '' && ! $dateActive && empty($filters['search']) && empty($filters['courier']);
     [$emptyTitle, $emptyText] = ($hasFilters && ! $onlyStatus)
-        ? ['No shipments match your filters', 'Try a different search term or date range, or clear the filters to see every shipment.']
-        : ($emptyCopy[$activeStatus] ?? ['No shipments yet', 'Orders you accept will appear here so you can follow them to your buyer’s door.']);
+        ? ['No shipments match your filters', 'Change your search or dates, or clear the filters.']
+        : ($emptyCopy[$activeStatus] ?? ['No shipments yet', 'Accepted orders show here so you can follow them to the buyer.']);
     $perPageOptions = $perPageOptions ?? null; // supplied by the controller once per-page choice is supported
 @endphp
 <x-seller.layout title="Shipments">
-    @vite(['resources/css/seller/order-management-orders.css', 'resources/css/seller/operations.css', 'resources/css/seller/shipments.css', 'resources/js/seller/operations.js', 'resources/js/seller/shipments.js'])
+    @vite(['resources/css/seller/order-management-orders.css', 'resources/css/seller/operations.css', 'resources/css/seller/shipments.css', 'resources/css/seller/orders-theme.css', 'resources/css/seller/ops-theme.css', 'resources/css/seller/shipments-theme.css', 'resources/js/seller/operations.js', 'resources/js/seller/shipments.js'])
 
     <div class="omo-content sh-page">
         <section class="omo-head">
             <div>
                 <h1 class="omo-head__title">Shipments</h1>
-                <p class="omo-head__sub">Follow each accepted order from packing to your buyer’s door.</p>
+                <p class="omo-head__sub">Follow each accepted order from packing to delivery.</p>
             </div>
-            <span class="omo-live" title="This page refreshes automatically when a shipment changes"><i aria-hidden="true"></i><span>Live</span></span>
+            <span class="omo-live" title="This page updates on its own"><i aria-hidden="true"></i><span>Live</span></span>
         </section>
 
         <nav class="omo-stats sh-stats" aria-label="Shipment summary">
-            @foreach($statCards as $key => [$label, $icon])
+            @foreach($statCards as $key => [$label, $tone, $glyph])
                 @php $isActive = $key === 'all' ? $activeStatus === '' : $activeStatus === $key; @endphp
                 <a class="omo-stat @if($isActive) is-active @endif" style="--i: {{ $loop->index }}" href="{{ $urlWith(['status' => $key === 'all' ? null : $key]) }}" @if($isActive) aria-current="true" @endif>
-                    <span class="omo-stat__icon"><img src="{{ asset('assets/icons/seller/'.$icon) }}" alt=""></span>
+                    <span class="omo-stat__icon omo-tone-{{ $tone }}"><svg class="omo-ico" viewBox="0 0 24 24" aria-hidden="true">{!! $glyph !!}</svg></span>
                     <span class="omo-stat__text">
                         <span class="omo-stat__label">{{ $label }}</span>
                         <span class="omo-stat__value">{{ number_format($counts[$key]) }}</span>
@@ -86,7 +86,7 @@
                     <label class="sh-search">
                         <span class="omo-sr">Search shipments</span>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-                        <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" maxlength="100" placeholder="Search order ID, customer name, or tracking number" autocomplete="off" data-sh-search>
+                        <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" maxlength="100" placeholder="Search order no., customer, or tracking no." autocomplete="off" data-sh-search>
                     </label>
 
                     <label class="omo-filter-btn sh-select">
@@ -119,8 +119,8 @@
                                 <div><label for="shDateTo">To</label><input type="date" id="shDateTo" value="{{ $dateTo }}" data-sh-date-to></div>
                             </div>
                             <div class="omo-date-actions">
-                                <a class="omo-btn-clear sh-date-clear" href="{{ $urlWith(['date_from' => null, 'date_to' => null]) }}">Clear</a>
-                                <button type="button" class="omo-btn-apply" data-sh-date-apply>Apply</button>
+                                <a class="omo-btn-clear sh-date-clear" href="{{ $urlWith(['date_from' => null, 'date_to' => null]) }}">Clear dates</a>
+                                <button type="button" class="omo-btn-apply" data-sh-date-apply>Apply dates</button>
                             </div>
                         </div>
                     </details>
@@ -167,7 +167,7 @@
                             @if($group === 'delivered')
                                 <p class="sh-eta">Delivered on <strong>{{ \Illuminate\Support\Carbon::parse($order->delivered_at ?? $order->updated_at)->format('M j, Y · g:i A') }}</strong></p>
                             @elseif($group === 'cancelled')
-                                <p class="sh-eta">This shipment was cancelled</p>
+                                <p class="sh-eta">This shipment was cancelled.</p>
                             @else
                                 <p class="sh-eta">Estimated delivery
                                     <strong>{{ ($order->estimated_delivery_from && $order->estimated_delivery_to) ? ($order->estimated_delivery_from->isSameDay($order->estimated_delivery_to) ? $order->estimated_delivery_from->format('M j, Y') : $order->estimated_delivery_from->format('M j').' – '.$order->estimated_delivery_to->format('M j, Y')) : 'Not scheduled yet' }}</strong>
@@ -178,17 +178,17 @@
                                 Tracking number <code>{{ $trackingNo }}</code>
                                 <button type="button" class="sh-copy" data-sh-copy="{{ $trackingNo }}" aria-label="Copy tracking number {{ $trackingNo }}">Copy</button>
                             </p>
-                            @if($failed)<span class="sh-flag sh-flag--danger">Delivery attempt failed</span>@endif
+                            @if($failed)<span class="sh-flag sh-flag--danger">Delivery failed. Logistics will retry.</span>@endif
                             @if($needsRider)<span class="sh-flag">Waiting for a pickup rider</span>@endif
                         </div>
 
                         <div class="sh-card__end">
                             <strong class="sh-amount">₱{{ number_format($order->payable_total, 2) }}</strong>
-                            <p class="sh-pay">Payment: <b class="{{ $isCod ? 'sh-pay--cod' : 'sh-pay--paid' }}">{{ $mode }}</b></p>
-                            <small>{{ $isCod ? 'Payment upon delivery' : 'Paid online' }}</small>
+                            <p class="sh-pay">Payment <b class="{{ $isCod ? 'sh-pay--cod' : 'sh-pay--paid' }}">{{ $mode }}</b></p>
+                            <small>{{ $isCod ? 'Rider collects on delivery' : 'Paid online' }}</small>
                             @if($voucherCode)<span class="sh-voucher" title="Voucher used on this order">Voucher {{ $voucherCode }}</span>@endif
                             <span class="sh-actions">
-                                <a class="omo-view-btn" href="{{ route('seller.shipments.show', $order) }}" data-panel data-panel-title="Shipment Details" data-record-id="{{ $order->id }}" aria-label="View shipment {{ $order->number }}">View</a>
+                                <a class="omo-view-btn" href="{{ route('seller.shipments.show', $order) }}" data-panel data-panel-title="Shipment details" data-record-id="{{ $order->id }}" aria-label="View shipment {{ $order->number }}">View details<svg class="omo-ico omo-ico--nudge" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
                                 @if($order->canPrintShippingLabel())
                                     <a class="omo-view-btn sh-btn-ghost" href="{{ route('seller.orders.waybill', $order) }}" data-waybill data-waybill-title="{{ $order->number }}" aria-label="Print shipping label for {{ $order->number }}">Print label</a>
                                 @endif
@@ -197,15 +197,13 @@
                     </li>
                 @empty
                     <li class="sh-empty">
-                        <div class="omo-empty__art" aria-hidden="true">
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>
-                        </div>
+                        <div class="omo-empty__art omo-tone-{{ $hasFilters ? 'lilac' : 'butter' }}" aria-hidden="true"><svg class="omo-ico omo-ico--float" viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg></div>
                         <h3>{{ $emptyTitle }}</h3>
                         <p>{{ $emptyText }}</p>
                         @if($hasFilters)
                             <a class="omo-btn omo-btn--primary omo-empty__btn" href="{{ route('seller.shipments.index') }}">Clear filters</a>
                         @else
-                            <a class="omo-btn omo-btn--ghost omo-empty__btn" href="{{ route('seller.orders.index') }}">Go to Orders</a>
+                            <a class="omo-btn omo-btn--primary omo-empty__btn" href="{{ route('seller.orders.index') }}">View orders</a>
                         @endif
                     </li>
                 @endforelse
@@ -213,7 +211,7 @@
 
             @if($shipments->total() > 0)
                 <footer class="sh-board__foot">
-                    <span>Showing {{ $shipments->count() }} out of {{ number_format($shipments->total()) }} entries</span>
+                    <span>Showing {{ $shipments->count() }} of {{ number_format($shipments->total()) }} shipments</span>
                     <div class="sh-foot-right">
                         @if($shipments->hasPages())
                             <nav class="sh-pager" aria-label="Shipments pagination">

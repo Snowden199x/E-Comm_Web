@@ -50,7 +50,25 @@
 
 <x-buyer.layout :title="'Order ' . ($order->number ?? ('#' . $order->id)) . ' | Vendo'">
     <div class="vb-enter mx-auto max-w-[1100px] px-3 pb-14 pt-4 sm:px-4"
-        x-data="{ cancelOpen: @js($reopenCancelModal), reason: @js(old('reason', '')) }">
+        x-data="{
+            cancelOpen: @js($reopenCancelModal),
+            reason: @js(old('reason', '')),
+            details: @js(old('reason_details', '')),
+            pick: false,
+            reasons: @js(\App\Services\OrderCancellationService::BUYER_REASONS),
+            get ready() { return this.reason !== '' && (this.reason !== 'other' || this.details.trim().length >= 3); },
+            openCancel() { this.cancelOpen = true; this.$nextTick(() => this.$refs.reasonBtn?.focus()); },
+            closeCancel() { this.cancelOpen = false; this.pick = false; this.$nextTick(() => this.$refs.cancelBtn?.focus()); },
+            choose(key) {
+                this.reason = key; this.pick = false;
+                this.$nextTick(() => key === 'other' ? this.$refs.details?.focus() : this.$refs.confirm?.focus());
+            },
+            step(e, dir) {
+                const items = [...this.$refs.list.querySelectorAll('[role=option]')];
+                const i = items.indexOf(document.activeElement);
+                items[Math.min(items.length - 1, Math.max(0, i + dir))]?.focus();
+            },
+        }">
 
         <a href="{{ route('buyer.orders.index') }}" class="inline-flex items-center gap-1 text-[13px] font-medium text-[#805487] transition-colors duration-200 hover:text-[#402143]">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
@@ -63,8 +81,7 @@
                 <span class="rounded-full px-3 py-1 text-[12px] font-medium {{ $badge }}">{{ $label }}</span>
             </div>
             @if ($canBuyerCancel)
-                <button type="button" @click="cancelOpen = true"
-                    class="inline-flex h-9 items-center rounded-md border border-[#e3b5be] px-4 text-[13px] font-medium text-[#a32b43] transition-colors duration-200 hover:bg-[#fdf1f3]">Cancel order</button>
+                <button type="button" x-ref="cancelBtn" @click="openCancel()" class="vb-btn vb-btn--danger-soft">Cancel order</button>
             @endif
         </div>
         <p class="mt-1 text-[12px] text-[#7a6a7e]">Placed on {{ $order->created_at->format('M j, Y g:i A') }}</p>
@@ -72,7 +89,7 @@
         @if (session('success'))
             <p class="mt-3 rounded-md border border-[#c9e5d3] bg-[#eaf5ee] px-3 py-2.5 text-[13px] text-[#2e6b46]" role="status">{{ session('success') }}</p>
         @endif
-        @if ($errors->any())
+        @if ($errors->any() && ! $reopenCancelModal)
             <p class="mt-3 rounded-md border border-[#f0c9d0] bg-[#fdf1f3] px-3 py-2.5 text-[13px] text-[#a32b43]" role="alert">{{ $errors->first() }}</p>
         @endif
 
@@ -273,40 +290,94 @@
 
         <!-- Cancel dialog (only rendered while the order can still be cancelled) -->
         @if ($canBuyerCancel)
+          <template x-teleport="body">
             <div x-show="cancelOpen" x-cloak class="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4"
-                @keydown.escape.window="cancelOpen = false" x-effect="document.body.style.overflow = cancelOpen ? 'hidden' : ''">
-                <div x-show="cancelOpen" @click="cancelOpen = false"
+                @keydown.escape.window="if (cancelOpen && !pick) closeCancel()" x-effect="document.body.style.overflow = cancelOpen ? 'hidden' : ''">
+                <div x-show="cancelOpen" @click="closeCancel()"
                     x-transition:enter="transition-opacity duration-300 ease-vendo" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
                     x-transition:leave="transition-opacity duration-200 ease-vendo" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
                     class="absolute inset-0 bg-[#1b0b1e]/50"></div>
+
                 <section x-show="cancelOpen" role="dialog" aria-modal="true" aria-labelledby="buyer-cancel-title"
                     x-transition:enter="transition duration-300 ease-vendo" x-transition:enter-start="translate-y-6 opacity-0 sm:scale-95" x-transition:enter-end="translate-y-0 opacity-100 sm:scale-100"
                     x-transition:leave="transition duration-200 ease-vendo" x-transition:leave-start="translate-y-0 opacity-100 sm:scale-100" x-transition:leave-end="translate-y-6 opacity-0 sm:scale-95"
-                    class="relative w-full rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-md sm:rounded-2xl sm:p-6">
-                    <h2 id="buyer-cancel-title" class="text-[16px] font-semibold text-[#2b1730]">Cancel this order?</h2>
-                    <p class="mt-1 text-[13px] text-[#5b4a60]">You can cancel until the seller starts preparing your order. After that, it cannot be cancelled. Choose a reason to continue.</p>
-                    <form action="{{ route('buyer.orders.cancel', $order) }}" method="POST" class="mt-4 space-y-4">
+                    class="relative max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-[440px] sm:rounded-2xl sm:p-6">
+
+                    <button type="button" @click="closeCancel()" aria-label="Close"
+                        class="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full text-[#8a7a8e] transition-colors duration-200 hover:bg-[#f3e8f5] hover:text-[#402143]">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+                    </button>
+
+                    <div class="flex items-start gap-3 pr-8">
+                        <span class="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full bg-[#fdf1f3] text-[#a32b43]" aria-hidden="true">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 3 20h18zM12 10v4M12 17.5h.01" /></svg>
+                        </span>
+                        <div>
+                            <h2 id="buyer-cancel-title" class="text-[16px] font-semibold leading-6 text-[#2b1730]">Cancel this order?</h2>
+                            <p class="text-[12px] leading-5 text-[#7a6a7e]">Order {{ $order->number ?? ('#' . $order->id) }} · {{ $fmt($itemsTotal) }}. Stock goes back to the seller. You can't undo this.</p>
+                        </div>
+                    </div>
+
+                    <form action="{{ route('buyer.orders.cancel', $order) }}" method="POST" class="mt-5 space-y-4">
                         @csrf
                         @method('PATCH')
                         <input type="hidden" name="expected_status" value="{{ $order->status }}">
-                        <label class="block text-[13px] font-medium text-[#402143]">Reason
-                            <select name="reason" x-model="reason" required class="{{ $field }}">
-                                <option value="">Choose a reason</option>
-                                @foreach (\App\Services\OrderCancellationService::BUYER_REASONS as $key => $reasonLabel)
-                                    <option value="{{ $key }}">{{ $reasonLabel }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                        <label x-show="reason === 'other'" x-cloak class="block text-[13px] font-medium text-[#402143]">Tell us more
-                            <textarea name="reason_details" maxlength="450" rows="3" :required="reason === 'other'" class="{{ $field }}">{{ old('reason_details') }}</textarea>
-                        </label>
-                        <div class="flex justify-end gap-2.5">
-                            <button type="button" @click="cancelOpen = false" class="inline-flex h-10 items-center rounded-md border border-[#e5dce7] px-4 text-[13px] font-medium text-[#3d2a42] transition-colors duration-200 hover:bg-[#faf5fa]">Keep order</button>
-                            <button type="submit" class="inline-flex h-10 items-center rounded-md bg-[#a32b43] px-4 text-[13px] font-medium text-white transition-colors duration-200 hover:bg-[#8c2438]">Cancel order</button>
+                        <input type="hidden" name="reason" :value="reason">
+
+                        <!-- Reason dropdown: opens in the flow, so it is never clipped on a phone -->
+                        <div @keydown.escape="if (pick) { $event.stopPropagation(); pick = false; $refs.reasonBtn.focus() }">
+                            <label id="cancel-reason-label" class="block text-[13px] font-medium text-[#402143]">Reason</label>
+                            <button type="button" x-ref="reasonBtn" @click="pick = !pick"
+                                @keydown.arrow-down.prevent="pick = true; $nextTick(() => $refs.list.querySelector('[role=option]')?.focus())"
+                                :aria-expanded="pick" aria-haspopup="listbox" aria-labelledby="cancel-reason-label"
+                                :class="pick ? 'border-[#805487] shadow-[0_0_0_3px_rgba(128,84,135,0.2)]' : 'border-[#e5dce7] hover:border-[#cfb2d4]'"
+                                class="mt-1 flex h-11 w-full items-center justify-between gap-2 rounded-lg border bg-white px-3 text-left text-[13px] transition-all duration-200 ease-vendo">
+                                <span x-text="reason ? reasons[reason] : 'Choose a reason'" :class="reason ? 'text-[#2b1730]' : 'text-[#9a8a9d]'" class="truncate"></span>
+                                <svg class="h-4 w-4 flex-shrink-0 text-[#805487] transition-transform duration-300 ease-vendo" :class="pick ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                            </button>
+
+                            <ul x-ref="list" x-show="pick" x-cloak role="listbox" aria-labelledby="cancel-reason-label"
+                                x-transition:enter="transition duration-200 ease-vendo" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+                                @keydown.arrow-down.prevent="step($event, 1)" @keydown.arrow-up.prevent="step($event, -1)"
+                                class="mt-1.5 overflow-hidden rounded-lg border border-[#eee6ef] bg-white py-1 shadow-[0_12px_28px_-16px_rgba(43,23,48,0.45)]">
+                                <template x-for="(text, key) in reasons" :key="key">
+                                    <li>
+                                        <button type="button" role="option" @click="choose(key)" :aria-selected="reason === key"
+                                            :class="reason === key ? 'bg-[#f5ecf6] font-medium text-[#52245b]' : 'text-[#3d2a42] hover:bg-[#faf5fa] focus:bg-[#faf5fa]'"
+                                            class="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-[13px] outline-none transition-colors duration-150">
+                                            <span x-text="text"></span>
+                                            <svg x-show="reason === key" class="h-4 w-4 flex-shrink-0 text-[#805487]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
+                                        </button>
+                                    </li>
+                                </template>
+                            </ul>
+                            @if ($errors->has('reason'))
+                                <p x-show="!reason" class="mt-1.5 text-[12px] text-[#a32b43]" role="alert">Pick a reason to continue.</p>
+                            @endif
                         </div>
+
+                        <div x-show="reason === 'other'" x-cloak x-transition:enter="transition duration-200 ease-vendo" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
+                            <label for="cancel-details" class="flex items-baseline justify-between text-[13px] font-medium text-[#402143]">
+                                Tell us more
+                                <span class="text-[11px] font-normal text-[#9a8a9d]" x-text="details.length + '/450'">0/450</span>
+                            </label>
+                            <textarea id="cancel-details" x-ref="details" x-model="details" name="reason_details" maxlength="450" rows="3"
+                                :required="reason === 'other'" placeholder="What went wrong?"
+                                class="vb-field mt-1 block w-full resize-none px-3 py-2.5 leading-5"></textarea>
+                            @if ($errors->has('reason_details'))
+                                <p x-show="details.trim().length < 3" class="mt-1.5 text-[12px] text-[#a32b43]" role="alert">Add a short note (3 to 450 characters).</p>
+                            @endif
+                        </div>
+
+                        <div class="flex flex-col-reverse gap-2.5 pt-1 sm:flex-row sm:justify-end">
+                            <button type="button" @click="closeCancel()" class="vb-btn vb-btn--outline">Keep order</button>
+                            <button type="submit" x-ref="confirm" :disabled="!ready" class="vb-btn vb-btn--danger">Cancel order</button>
+                        </div>
+                        <p x-show="!ready" x-cloak class="-mt-2 text-center text-[12px] text-[#7a6a7e] sm:text-right" x-text="reason === 'other' ? 'Add a short note to continue.' : 'Pick a reason to continue.'"></p>
                     </form>
                 </section>
             </div>
+          </template>
         @endif
     </div>
     @include('shared.live-revision', ['endpoint' => route('buyer.live', 'orders'), 'mode' => 'reload'])

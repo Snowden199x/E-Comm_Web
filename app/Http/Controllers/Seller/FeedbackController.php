@@ -21,6 +21,15 @@ class FeedbackController extends Controller
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
             'order' => ['nullable', 'integer'],
+        ], [
+            'search.max' => 'Search is too long. Use 100 characters or fewer.',
+            'rating.integer' => 'Choose a rating from 1 to 5 stars.',
+            'rating.between' => 'Choose a rating from 1 to 5 stars.',
+            'reply.in' => 'Choose All, Awaiting reply, or Replied.',
+            'from.date' => 'Start date is not valid. Pick a date from the calendar.',
+            'to.date' => 'End date is not valid. Pick a date from the calendar.',
+            'to.after_or_equal' => 'End date is before the start date. Pick an end date on or after the start date.',
+            'order.integer' => 'Order filter is not valid. Clear filters and search by order number instead.',
         ]);
 
         $scope = $this->scopedReviews($request->user()->id, $filters, false);
@@ -38,13 +47,16 @@ class FeedbackController extends Controller
             $ratings[$rating] = ['count' => $count, 'percent' => $total ? round($count / $total * 100) : 0];
         }
 
-        $rows = $this->scopedReviews($request->user()->id, $filters, true)
-            ->with(['buyer:id,name', 'product:id,name', 'order:id', 'orderItem:id,product_id'])
-            ->latest('id')->paginate(8)->withQueryString();
-        $recent = $this->scopedReviews($request->user()->id, $filters, true)
-            ->with(['buyer:id,name', 'product:id,name'])->latest('id')->limit(4)->get();
+        $replyCounts = ['all' => $total, 'replied' => $answered, 'pending' => $total - $answered];
 
-        return view('seller.feedback.index', compact('stats', 'ratings', 'rows', 'recent', 'filters'));
+        $rows = $this->scopedReviews($request->user()->id, $filters, true)
+            ->with(['buyer:id,name', 'product.images', 'order:id', 'orderItem:id,product_id', 'reply', 'report'])
+            ->latest('id')->paginate(8)->withQueryString();
+        $needsReply = $this->scopedReviews($request->user()->id, $filters, false)->whereDoesntHave('reply')
+            ->with(['buyer:id,name', 'product.images'])->latest('id')->limit(4)->get();
+        $hasAny = ProductReview::query()->where('seller_id', $request->user()->id)->where('visibility', 'published')->exists();
+
+        return view('seller.feedback.index', compact('stats', 'ratings', 'rows', 'needsReply', 'filters', 'replyCounts', 'hasAny'));
     }
 
     public function show(Request $request, int $review)
@@ -58,11 +70,15 @@ class FeedbackController extends Controller
 
     public function reply(Request $request, int $review)
     {
-        $validated = $request->validate(['body' => ['required', 'string', 'min:2', 'max:2000']]);
+        $validated = $request->validate(['body' => ['required', 'string', 'min:2', 'max:2000']], [
+            'body.required' => 'Write a reply before sending.',
+            'body.min' => 'Reply is too short. Write at least 2 characters.',
+            'body.max' => 'Reply is too long. Keep it under 2,000 characters.',
+        ]);
         DB::transaction(function () use ($request, $review, $validated) {
             $record = ProductReview::query()->where('seller_id', $request->user()->id)->lockForUpdate()->findOrFail($review);
-            abort_unless($record->visibility === 'published', 409, 'This review is unavailable for replies.');
-            abort_if($record->reply()->exists(), 409, 'A reply has already been added.');
+            abort_unless($record->visibility === 'published', 409, 'This review cannot take replies right now. Refresh the page to see its status.');
+            abort_if($record->reply()->exists(), 409, 'A reply was already added. Refresh the page to see it.');
             ProductReviewReply::create(['product_review_id' => $record->id, 'seller_id' => $request->user()->id, 'body' => trim($validated['body'])]);
             Notification::create([
                 'user_id' => $record->buyer_id, 'type' => 'product_review_reply', 'title' => 'Seller replied to your review',
@@ -76,10 +92,14 @@ class FeedbackController extends Controller
 
     public function report(Request $request, int $review)
     {
-        $validated = $request->validate(['reason' => ['required', 'string', 'min:10', 'max:500']]);
+        $validated = $request->validate(['reason' => ['required', 'string', 'min:10', 'max:500']], [
+            'reason.required' => 'Tell us why you are reporting this review.',
+            'reason.min' => 'Reason is too short. Write at least 10 characters.',
+            'reason.max' => 'Reason is too long. Keep it under 500 characters.',
+        ]);
         DB::transaction(function () use ($request, $review, $validated) {
             $record = ProductReview::query()->where('seller_id', $request->user()->id)->lockForUpdate()->findOrFail($review);
-            abort_if($record->report()->exists(), 409, 'This review has already been reported.');
+            abort_if($record->report()->exists(), 409, 'This review was already reported. Refresh the page to see its status.');
             ProductReviewReport::create([
                 'product_review_id' => $record->id, 'seller_id' => $request->user()->id,
                 'reason' => trim($validated['reason']), 'status' => 'open',

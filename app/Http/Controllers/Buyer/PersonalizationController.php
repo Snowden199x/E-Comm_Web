@@ -20,6 +20,22 @@ class PersonalizationController extends Controller
         return response()->json(['items' => $personalization->savedItemsFor($request->user()->id)]);
     }
 
+    /**
+     * Favorites page. Products are rendered on the server with the shared product card, newest saved first.
+     * Search, sort and un-favoriting happen in the browser; the Alpine 'fav' store keeps the heart state in sync.
+     */
+    public function favorites(Request $request)
+    {
+        $buyerId = $this->buyerId($request);
+        $savedIds = BuyerSavedItem::query()->where('user_id', $buyerId)->latest()->pluck('product_id');
+        $found = Product::query()->availableToBuy()->withCardMetrics()
+            ->with(['images', 'seller.sellerDetail'])
+            ->whereIn('id', $savedIds)->get()->keyBy('id');
+        $products = $savedIds->map(fn ($id) => $found->get($id))->filter()->values()->take(60);
+
+        return view('buyer.favorites', compact('products'));
+    }
+
     public function save(Request $request, Product $product, BuyerPersonalizationService $personalization): JsonResponse
     {
         $buyerId = $this->buyerId($request);
@@ -31,7 +47,7 @@ class PersonalizationController extends Controller
             DB::table('users')->where('id', $buyerId)->lockForUpdate()->first();
             $this->pruneUnavailable($buyerId);
             $count = BuyerSavedItem::query()->where('user_id', $buyerId)->count();
-            abort_if($count >= 60 && ! BuyerSavedItem::query()->where('user_id', $buyerId)->where('product_id', $product->id)->exists(), 422, 'You can save up to 60 products.');
+            abort_if($count >= 60 && ! BuyerSavedItem::query()->where('user_id', $buyerId)->where('product_id', $product->id)->exists(), 422, 'Favorites are full (60 max). Remove one to add another.');
             BuyerSavedItem::query()->firstOrCreate(['user_id' => $buyerId, 'product_id' => $product->id]);
         });
 

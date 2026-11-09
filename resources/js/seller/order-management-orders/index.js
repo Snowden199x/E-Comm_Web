@@ -11,11 +11,11 @@
     const isOverlay = () => true; // the details drawer is a wide slide-over at every screen size (see orders-enhance.css)
 
     const STATUS_LABELS = {
-        all: 'All status', new: 'New', pack: 'To Pack', pickup: 'Ready for Pickup', pending: 'Pending Delivery',
-        completed: 'Delivered / Completed', cancelled: 'Cancelled',
+        all: 'All status', new: 'New', pack: 'To pack', pickup: 'Ready for pickup', pending: 'In delivery',
+        completed: 'Delivered', cancelled: 'Cancelled',
     };
     const ACTION_MESSAGES = {
-        accept: 'Order accepted.', decline: 'Order declined.', prepare: 'Order moved to packing.',
+        accept: 'Order accepted.', decline: 'Order declined.', prepare: 'Order is now being packed.',
         ready: 'Order marked ready for pickup.', cancel: 'Order cancelled.',
     };
 
@@ -58,7 +58,7 @@
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
-            throw new Error(Object.values(data.errors || {})[0]?.[0] || data.message || 'Could not load orders. Please try again.');
+            throw new Error(Object.values(data.errors || {})[0]?.[0] || data.message || 'Orders did not load. Check your connection, then refresh the page.');
         }
         return data;
     }
@@ -96,7 +96,7 @@
         });
         el('omoStatusLabel').textContent = STATUS_LABELS[state.status] || STATUS_LABELS.all;
 
-        el('omoResultCount').textContent = `Showing ${pagination.from || 0}–${pagination.to || 0} out of ${pagination.total} entries`;
+        el('omoResultCount').textContent = `Showing ${pagination.from || 0}–${pagination.to || 0} of ${pagination.total} orders`;
         el('omoTableFoot').hidden = pagination.total === 0;
         el('omoPrevPage').disabled = pagination.page <= 1;
         el('omoNextPage').disabled = pagination.page >= pagination.last;
@@ -266,12 +266,12 @@
         const body = Object.fromEntries(new FormData(form));
         body.action = action;
         if (['decline', 'cancel'].includes(action) && !body.reason?.trim()) {
-            showError('Choose a reason before continuing.', 'omoActionError');
+            showError('Choose a reason to continue.', 'omoActionError');
             form.querySelector('[data-omo-cancel-reason]').focus();
             return;
         }
         if (body.reason === 'other' && !body.reason_details?.trim()) {
-            showError('Add details for the selected reason.', 'omoActionError');
+            showError('Add a few details about the reason.', 'omoActionError');
             form.querySelector('[data-omo-cancel-details]').focus();
             return;
         }
@@ -313,13 +313,13 @@
     }
 
     function setDates(from, to, label) {
-        if (from && to && from > to) { showError('The end date must be on or after the start date.'); return; }
+        if (from && to && from > to) { showError('End date is before the start date. Pick an end date on or after the start date.'); return; }
         state.date_from = from;
         state.date_to = to;
         state.page = 1;
         el('omoDateFrom').value = from;
         el('omoDateTo').value = to;
-        el('omoDateLabel').textContent = label || (from || to ? `${from || 'Any'} – ${to || 'Any'}` : 'All Dates');
+        el('omoDateLabel').textContent = label || (from || to ? `${from || 'Any'} – ${to || 'Any'}` : 'All dates');
         closePanels();
         sync();
         load();
@@ -328,7 +328,7 @@
     function clearFilters() {
         state.status = 'all'; state.search = ''; state.page = 1;
         el('omoSearchInput').value = '';
-        setDates('', '', 'All Dates');
+        setDates('', '', 'All dates');
     }
 
     document.querySelectorAll('#omoTabs .omo-tab, .omo-status-option, [data-filter]').forEach(button => {
@@ -376,12 +376,12 @@
         const today = app.dataset.today;
         const date = new Date(`${today}T00:00:00`);
         if (button.dataset.preset === 'today') setDates(today, today, 'Today');
-        else if (button.dataset.preset === '7days') { date.setDate(date.getDate() - 6); setDates(iso(date), today, 'Last 7 Days'); }
-        else if (button.dataset.preset === 'month') { date.setDate(1); setDates(iso(date), today, 'This Month'); }
-        else setDates('', '', 'All Dates');
+        else if (button.dataset.preset === '7days') { date.setDate(date.getDate() - 6); setDates(iso(date), today, 'Last 7 days'); }
+        else if (button.dataset.preset === 'month') { date.setDate(1); setDates(iso(date), today, 'This month'); }
+        else setDates('', '', 'All dates');
     }));
     el('omoDateApply').addEventListener('click', () => setDates(el('omoDateFrom').value, el('omoDateTo').value));
-    el('omoDateClear').addEventListener('click', () => setDates('', '', 'All Dates'));
+    el('omoDateClear').addEventListener('click', () => setDates('', '', 'All dates'));
 
     el('omoPrevPage').addEventListener('click', () => { if (state.page > 1) { state.page--; load(); } });
     el('omoNextPage').addEventListener('click', () => { if (state.page < pagination.last) { state.page++; load(); } });

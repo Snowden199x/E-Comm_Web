@@ -42,7 +42,7 @@
     $tabUrl = fn ($key) => route('seller.vouchers.index', array_filter(array_merge(request()->except(['page', 'status']), ['status' => $key]), fn ($x) => $x !== null && $x !== ''));
 @endphp
 <x-seller.layout title="Vouchers">
-    @vite(['resources/css/seller/vouchers.css', 'resources/js/seller/vouchers.js'])
+    @vite(['resources/css/seller/vouchers.css', 'resources/css/seller/vouchers-theme.css', 'resources/js/seller/vouchers.js'])
 
     <section class="vc-page" id="vcApp"
              data-store-url="{{ $urlFor('seller.vouchers.store') }}"
@@ -51,13 +51,17 @@
         <header class="vc-head">
             <div>
                 <h1>Vouchers</h1>
-                <p>Give buyers a reason to check out. Create discount codes for your whole shop or for chosen products.</p>
+                <p>Create discount codes for your whole shop or chosen products.</p>
             </div>
             <button type="button" class="vc-btn vc-btn--primary" data-vc-create>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                 Create voucher
             </button>
         </header>
+
+        @if($errors->any())
+            <p class="vc-error" role="alert">{{ $errors->first() }}</p>
+        @endif
 
         <div class="vc-stats" role="group" aria-label="Voucher summary">
             <div class="vc-stat"><span class="vc-stat__icon vc-i--plum"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 002-2V6h14v1a2 2 0 002 2v6a2 2 0 00-2 2v1H5v-1a2 2 0 00-2-2z"/><path d="M12 7v10" stroke-dasharray="2 2"/></svg></span><span><small>Active vouchers</small><strong>{{ number_format($counts['active']) }}</strong></span></div>
@@ -114,12 +118,12 @@
                     ];
                 @endphp
                 <li class="vc-ticket vc-ticket--{{ $state }}" style="--i: {{ $loop->index }}">
-                    <div class="vc-stub" aria-hidden="true"><strong>{{ $big }}</strong><span>{{ $isPercent ? 'OFF' : 'OFF' }}</span>@if($isPercent && $v->max_discount)<small>up to {{ $money($v->max_discount) }}</small>@endif</div>
+                    <div class="vc-stub" aria-hidden="true"><strong>{{ $big }}</strong><span>OFF</span>@if($isPercent && $v->max_discount)<small>up to {{ $money($v->max_discount) }}</small>@endif</div>
                     <div class="vc-body">
                         <div class="vc-body__top">
                             <div>
                                 <h2>{{ $v->name }}</h2>
-                                <button type="button" class="vc-code" data-vc-copy="{{ $v->code }}" aria-label="Copy voucher code {{ $v->code }}"><code>{{ $v->code }}</code><span>Copy</span></button>
+                                <button type="button" class="vc-code" data-vc-copy="{{ $v->code }}" aria-label="Copy voucher code {{ $v->code }}"><code>{{ $v->code }}</code><span>Copy code</span></button>
                             </div>
                             <span class="vc-pill vc-pill--{{ $state }}">{{ $stateLabel[$state] }}</span>
                         </div>
@@ -147,15 +151,15 @@
                 <li class="vc-empty">
                     <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 002-2V6h14v1a2 2 0 002 2v6a2 2 0 00-2 2v1H5v-1a2 2 0 00-2-2z"/><path d="M12 7v10" stroke-dasharray="2 2"/></svg>
                     @if($filters['search'] || $activeTab !== '' || $filters['product'])
-                        <h3>No vouchers match</h3><p>Try another status or search, or clear the filters.</p>
+                        <h3>No vouchers match</h3><p>Change the status or search, or clear the filters.</p>
                         <a class="vc-btn" href="{{ route('seller.vouchers.index') }}">Clear filters</a>
                     @else
                         <h3>Create your first voucher</h3>
-                        <p>Buyers can apply your voucher code at checkout.</p>
+                        <p>Buyers enter your code at checkout.</p>
                         <ul class="vc-tips">
-                            <li><b>Pick a clear offer.</b> “₱50 off ₱500” beats a tiny percentage.</li>
-                            <li><b>Set a minimum spend</b> so the discount grows your basket size.</li>
-                            <li><b>Limit the total uses</b> to protect your margin.</li>
+                            <li><b>Keep the offer clear.</b> “₱50 off ₱500” works better than a tiny percentage.</li>
+                            <li><b>Set a minimum spend</b> to grow the order size.</li>
+                            <li><b>Limit total uses</b> to protect your margin.</li>
                         </ul>
                         <button type="button" class="vc-btn vc-btn--primary" data-vc-create>Create voucher</button>
                     @endif
@@ -165,7 +169,7 @@
 
         @if($vouchers->total() > 0)
             <footer class="vc-foot">
-                <span>Showing {{ $vouchers->count() }} out of {{ number_format($vouchers->total()) }} vouchers</span>
+                <span>Showing {{ $vouchers->count() }} of {{ number_format($vouchers->total()) }} vouchers</span>
                 @if($vouchers->hasPages())
                     <nav class="vc-pager" aria-label="Vouchers pagination">
                         @if($vouchers->onFirstPage())<span aria-disabled="true">‹</span>@else<a href="{{ $vouchers->previousPageUrl() }}" aria-label="Previous page">‹</a>@endif
@@ -190,10 +194,10 @@
                         <div class="vc-form__main">
                             <fieldset class="vc-fs">
                                 <legend>Basics</legend>
-                                <label class="vc-field">Voucher name<input name="name" maxlength="60" placeholder="e.g. Payday Sale" required><small>Only you see this name.</small></label>
+                                <label class="vc-field">Voucher name<input name="name" maxlength="60" placeholder="Payday sale" required><small>Only you see this name.</small></label>
                                 <label class="vc-field">Voucher code
                                     <span class="vc-inline"><input name="code" maxlength="12" placeholder="PAYDAY50" autocapitalize="characters" spellcheck="false" required><button type="button" class="vc-btn vc-btn--small" data-vc-generate>Generate</button></span>
-                                    <small>4–12 letters or numbers. Buyers type this at checkout.</small>
+                                    <small>4–12 letters or numbers. Buyers type it at checkout.</small>
                                 </label>
                             </fieldset>
 
@@ -249,7 +253,7 @@
                                 </div>
                             </fieldset>
 
-                            <label class="vc-switch"><input type="checkbox" name="paused" value="1"><span>Save as paused <small>It will not be usable until you resume it.</small></span></label>
+                            <label class="vc-switch"><input type="checkbox" name="paused" value="1"><span>Save as paused <small>Buyers cannot use it until you resume it.</small></span></label>
                         </div>
 
                         <aside class="vc-preview" aria-label="Voucher preview">
@@ -258,7 +262,7 @@
                                 <div class="vc-stub"><strong data-vc-pv-big>₱50</strong><span>OFF</span></div>
                                 <div class="vc-body"><h3 data-vc-pv-name>Voucher name</h3><code data-vc-pv-code>CODE</code><small data-vc-pv-min>No minimum spend</small><small data-vc-pv-valid>Valid now</small></div>
                             </div>
-                            <p class="vc-preview__note">The discount lowers the total the buyer pays for the eligible items.</p>
+                            <p class="vc-preview__note">The discount lowers what the buyer pays for eligible items.</p>
                         </aside>
                     </div>
                     <p class="vc-error" id="vcError" role="alert" hidden></p>
