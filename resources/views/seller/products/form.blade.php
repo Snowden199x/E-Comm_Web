@@ -42,24 +42,24 @@
         'variants' => $editing ? $product->variants->mapWithKeys(fn ($variant) => [$variant->label => ['price' => $variant->price, 'stock' => $variant->stock, 'sku' => $variant->sku, 'url' => $variant->image_path ? asset('storage/'.$variant->image_path) : '']])->all() : [],
         'videoUrl' => $editing && $product->video_path ? asset('storage/'.$product->video_path) : null,
     ];
-    $steps = ['basic' => 'Basic Information', 'category' => 'Category Details', 'variations' => 'Variations, Price & Stock', 'shipping' => 'Shipping', 'review' => 'Review & Submit'];
+    $steps = ['basic' => 'Basic information', 'category' => 'Category details', 'variations' => 'Variations, price & stock', 'shipping' => 'Shipping', 'review' => 'Review & submit'];
 @endphp
-<x-seller.layout :title="$editing ? 'Edit Product' : 'Add Product'">
-    @vite(['resources/css/seller/products.css', 'resources/js/seller/products.js'])
+<x-seller.layout :title="$editing ? 'Edit product' : 'Add product'">
+    @vite(['resources/css/seller/products.css', 'resources/css/seller/ops-theme.css', 'resources/css/seller/products-theme.css', 'resources/js/seller/products.js'])
     <section class="pi-page">
         <header class="pi-head">
             <div>
-                <h1>{{ $editing ? 'Edit Product' : 'Add Product' }}</h1>
-                <p>{{ $editing ? 'Changes to listing details and photos are sent to admin for review.' : 'New products are reviewed by Vendo admin before buyers can see them.' }}</p>
+                <h1>{{ $editing ? 'Edit product' : 'Add product' }}</h1>
+                <p>{{ $editing ? 'Changes to details and photos go to admin for review.' : 'Vendo admin reviews new products before buyers see them.' }}</p>
             </div>
-            <a class="pi-btn" href="{{ route('seller.products.index') }}">← Back to Products</a>
+            <a class="pi-btn" href="{{ route('seller.products.index') }}">← Back to products</a>
         </header>
 
         @if($editing && $product->has_variations)
-            <p class="pi-warn" role="status" style="margin:0 0 20px">Existing variant options and stock are locked to protect carts and orders. Edit prices here; use Restock to add stock.</p>
+            <p class="pi-warn" role="status" style="margin:0 0 20px">Variant options and stock are locked to protect carts and orders. Edit prices here. Use Restock to add stock.</p>
         @endif
         @if($categories->isEmpty())
-            <p class="pi-callout" role="alert">No selling categories are assigned to your account. Contact the administrator before adding a product.</p>
+            <p class="pi-callout" role="alert">No selling categories are approved for your shop yet. Request one in Account, then add a product.</p>
         @else
         <form id="piProductForm" method="POST" action="{{ $editing ? route('seller.products.update', $product) : route('seller.products.store') }}" novalidate
               data-mode="{{ $editing ? 'edit' : 'create' }}" data-redirect="{{ route('seller.products.index') }}"
@@ -77,11 +77,11 @@
 
                     {{-- 1. BASIC INFORMATION --}}
                     <section class="pi-card pi-section" id="sec-basic" data-section="basic">
-                        <div class="pi-sec-head"><span class="pi-sec-num">1</span><div><h2>Basic Information</h2><p>Tell buyers what you are selling.</p></div></div>
+                        <div class="pi-sec-head"><span class="pi-sec-num">1</span><div><h2>Basic information</h2><p>Tell buyers what you sell.</p></div></div>
                         <div class="pi-grid">
                             <div class="pi-field pi-span">
-                                <label class="pi-label" for="piName">Product Name<em>*</em></label>
-                                <input class="pi-input" id="piName" name="name" data-field="name" maxlength="255" value="{{ $product->name }}" placeholder="e.g. Wireless Bluetooth Headphones">
+                                <label class="pi-label" for="piName">Product name<em>*</em></label>
+                                <input class="pi-input" id="piName" name="name" data-field="name" maxlength="255" value="{{ $product->name }}" placeholder="Wireless Bluetooth headphones">
                                 <div class="pi-error" data-error-for="name"></div>
                             </div>
                             <div class="pi-field">
@@ -92,7 +92,7 @@
                                         <option value="{{ $category->id }}" data-key="{{ $categoryKeys[$category->id] }}" @selected($selectedParent === $category->id)>{{ $category->name }}</option>
                                     @endforeach
                                 </select>
-                                <div class="pi-help">Only categories approved for your store are listed.</div>
+                                <div class="pi-help">Only categories approved for your shop are listed.</div>
                                 <div class="pi-error" data-error-for="category_id"></div>
                             </div>
                             <div class="pi-field" id="piSubWrap">
@@ -116,13 +116,13 @@
                                 <div class="pi-error" data-error-for="condition"></div>
                             </div>
                             <div class="pi-field pi-span">
-                                <label class="pi-label" for="piDesc">Product Description<em>*</em> <span class="pi-count" id="piDescCount">0 / 5000</span></label>
+                                <label class="pi-label" for="piDesc">Product description<em>*</em> <span class="pi-count" id="piDescCount">0 / 5000</span></label>
                                 <textarea class="pi-input" id="piDesc" name="description" data-field="description" maxlength="5000" rows="6" placeholder="Describe the features, what is included, and anything buyers should know.">{{ $product->description }}</textarea>
                                 <div class="pi-error" data-error-for="description"></div>
                             </div>
 
                             <div class="pi-field pi-span">
-                                <span class="pi-label">Product Images<em>*</em> <span class="pi-count" id="piImgCount">0 / 6 photos</span></span>
+                                <span class="pi-label">Product photos<em>*</em> <span class="pi-count" id="piImgCount">0 / 6 photos</span></span>
                                 <div class="pi-drop" id="piDrop" data-field="images" tabindex="0" role="button" aria-label="Upload product photos">
                                     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
                                     <strong>Click to upload or drag photos here</strong>
@@ -135,7 +135,7 @@
                             </div>
 
                             <div class="pi-field pi-span">
-                                <span class="pi-label">Product Video <span class="pi-muted" style="font-weight:400">(optional)</span></span>
+                                <span class="pi-label">Product video <span class="pi-muted" style="font-weight:400">(optional)</span></span>
                                 <button type="button" class="pi-btn pi-btn--sm" onclick="document.getElementById('piVideoFile').click()">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg> Upload video
                                 </button>
@@ -155,19 +155,19 @@
 
                     {{-- 2. CATEGORY DETAILS --}}
                     <section class="pi-card pi-section" id="sec-category" data-section="category">
-                        <div class="pi-sec-head"><span class="pi-sec-num">2</span><div><h2>Category Details</h2><p>Details change based on the category you choose. Leave blank anything that does not apply.</p></div></div>
+                        <div class="pi-sec-head"><span class="pi-sec-num">2</span><div><h2>Category details</h2><p>Fields change with your category. Leave blank anything that does not apply.</p></div></div>
                         <div class="pi-placeholder" id="piCatEmpty">Choose a category in Basic Information to see the details buyers expect for it.</div>
                         <div class="pi-catfields" id="piCatFields" hidden></div>
 
                         <h3 class="pi-subtitle">Additional Specifications</h3>
-                        <p class="pi-help" style="margin:0 0 14px">Add anything not covered above, such as “Battery Capacity: 5000 mAh”.</p>
+                        <p class="pi-help" style="margin:0 0 14px">Add anything not covered above, like “Battery capacity: 5000 mAh”.</p>
                         <div class="pi-specs" id="piSpecs"></div>
-                        <button type="button" class="pi-btn pi-btn--sm" id="piAddSpec" style="margin-top:14px">+ Add Specification</button>
+                        <button type="button" class="pi-btn pi-btn--sm" id="piAddSpec" style="margin-top:14px">Add specification</button>
                     </section>
 
                     {{-- 3. VARIATIONS, PRICE & STOCK --}}
                     <section class="pi-card pi-section" id="sec-variations" data-section="variations">
-                        <div class="pi-sec-head"><span class="pi-sec-num">3</span><div><h2>Variations, Price &amp; Stock</h2><p>Stock is tracked separately for each variation.</p></div></div>
+                        <div class="pi-sec-head"><span class="pi-sec-num">3</span><div><h2>Variations, price &amp; stock</h2><p>Stock is tracked separately for each variation.</p></div></div>
                         <div class="pi-field">
                             <span class="pi-label">Does this product have variations?</span>
                             <div class="pi-seg" role="radiogroup" aria-label="Has variations">
@@ -183,7 +183,7 @@
                                 <div class="pi-error" data-error-for="price"></div>
                             </div>
                             <div class="pi-field">
-                                <label class="pi-label" for="piStock">Stock Quantity<em>*</em></label>
+                                <label class="pi-label" for="piStock">Stock quantity<em>*</em></label>
                                 @if($editing)
                                     <input class="pi-input" id="piStock" value="{{ $product->stock }}" readonly aria-readonly="true">
                                     <div class="pi-help">Use Restock to change stock so every change is recorded.</div>
@@ -206,7 +206,7 @@
                         <div id="piVarBox" class="pi-hidden">
                             <div class="pi-vars" id="piTypes"></div>
                             <div class="pi-hints" id="piVarHints"></div>
-                            <button type="button" class="pi-btn pi-btn--sm" id="piAddType" style="margin-top:14px">+ Add Another Variation</button>
+                            <button type="button" class="pi-btn pi-btn--sm" id="piAddType" style="margin-top:14px">Add another variation</button>
                             <div class="pi-error" data-error-for="type.0.options" style="margin-top:10px"></div>
                             <div class="pi-bulk" id="piBulk" hidden>
                                 <strong>Apply to all variants</strong>
@@ -227,22 +227,22 @@
 
                     {{-- 4. SHIPPING --}}
                     <section class="pi-card pi-section" id="sec-shipping" data-section="shipping">
-                        <div class="pi-sec-head"><span class="pi-sec-num">4</span><div><h2>Shipping Information</h2><p>Packed-parcel details, separate from the product’s own size.</p></div></div>
+                        <div class="pi-sec-head"><span class="pi-sec-num">4</span><div><h2>Shipping</h2><p>Packed-parcel details, separate from the product’s own size.</p></div></div>
                         <div class="pi-grid">
                             <div class="pi-field">
-                                <label class="pi-label" for="piWeight">Product / Package Weight<em>*</em></label>
+                                <label class="pi-label" for="piWeight">Package weight<em>*</em></label>
                                 <div class="pi-unit"><input class="pi-input" id="piWeight" name="weight_kg" data-field="weight_kg" type="number" min="0.001" step="0.001" value="{{ $kg }}" placeholder="0.00"><span>kg</span></div>
                                 <div class="pi-error" data-error-for="weight_kg"></div>
                             </div>
                             <div class="pi-field">
-                                <span class="pi-label">Fragile Item?</span>
+                                <span class="pi-label">Fragile item?</span>
                                 <div class="pi-seg" role="radiogroup" aria-label="Fragile item">
                                     <label><input type="radio" name="fragile" value="1" @checked($product->is_fragile)><span>Yes</span></label>
                                     <label><input type="radio" name="fragile" value="0" @checked(! $product->is_fragile)><span>No</span></label>
                                 </div>
                             </div>
                             <div class="pi-field pi-span">
-                                <span class="pi-label">Package Size<em>*</em></span>
+                                <span class="pi-label">Package size<em>*</em></span>
                                 <div class="pi-grid pi-grid--3">
                                     @foreach(['package_length' => 'Length', 'package_width' => 'Width', 'package_height' => 'Height'] as $name => $label)
                                         <div class="pi-field">
@@ -258,14 +258,14 @@
 
                     {{-- 5. REVIEW & SUBMIT --}}
                     <section class="pi-card pi-section" id="sec-review" data-section="review">
-                        <div class="pi-sec-head"><span class="pi-sec-num">5</span><div><h2>Review &amp; Submit</h2><p>Check everything before sending it to admin.</p></div></div>
+                        <div class="pi-sec-head"><span class="pi-sec-num">5</span><div><h2>Review &amp; submit</h2><p>Check everything before you send it to admin.</p></div></div>
                         <div class="pi-review-box" id="piReview"></div>
-                        <p class="pi-help" style="margin-top:16px">Saving as a draft keeps the product private to you. After you submit for review, it stays hidden from buyers until an admin approves it.</p>
+                        <p class="pi-help" style="margin-top:16px">A draft stays private. After you submit, buyers see the product once an admin approves it.</p>
                         <div class="pi-formerr" id="piFormError" role="alert"></div>
                         <div class="pi-actions" id="piActions">
                             <a class="pi-btn pi-btn--ghost" href="{{ route('seller.products.index') }}">Cancel</a>
-                            @if($backendReady)<button type="button" class="pi-btn" id="piDraft">Save as Draft</button>@endif
-                            <button type="button" class="pi-btn pi-btn--primary" id="piSubmit">{{ $editing ? 'Save & Submit for Review' : 'Submit for Review' }}</button>
+                            @if($backendReady)<button type="button" class="pi-btn" id="piDraft">Save as draft</button>@endif
+                            <button type="button" class="pi-btn pi-btn--primary" id="piSubmit">{{ $editing ? 'Save & submit for review' : 'Submit for review' }}</button>
                         </div>
                     </section>
                 </div>

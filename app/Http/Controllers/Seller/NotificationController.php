@@ -42,6 +42,12 @@ class NotificationController extends Controller
         return response()->json([
             'unread_count' => $unreadCount,
             'latest_id' => $notifications->first()?->id,
+            'latest' => $notifications->first() ? [
+                'id' => $notifications->first()->id,
+                'title' => $notifications->first()->title,
+                'message' => \Illuminate\Support\Str::limit((string) $notifications->first()->message, 110),
+                'open_url' => route('seller.notifications.open', $notifications->first()),
+            ] : null,
             'html' => view('seller.notifications.recent', compact('notifications'))->render(),
             'dashboard_html' => view('seller.notifications.dashboard', compact('notifications'))->render(),
         ]);

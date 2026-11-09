@@ -260,6 +260,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/products/{product}', [BuyerProductController::class, 'show'])->middleware('auth')->name('products.show');
     Route::get('/sellers', [BuyerSellerProfileController::class, 'index'])->middleware('auth')->name('sellers.index');
     Route::get('/sellers/{seller}', [BuyerSellerProfileController::class, 'show'])->middleware('auth')->whereNumber('seller')->name('sellers.show');
+    Route::get('/favorites', [\App\Http\Controllers\Buyer\PersonalizationController::class, 'favorites'])->name('favorites');
     Route::get('/saved-items', [\App\Http\Controllers\Buyer\PersonalizationController::class, 'savedItems'])->name('saved-items.index');
     Route::get('/case-messages/{complaint}', [\App\Http\Controllers\CaseMessageController::class, 'show'])->whereNumber('complaint')->name('case-messages.show');
     Route::post('/case-messages/{complaint}', [\App\Http\Controllers\CaseMessageController::class, 'store'])->middleware('throttle:20,1')->whereNumber('complaint')->name('case-messages.store');
@@ -351,6 +352,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::get('/completed-orders/{order}', [CompletedOrdersController::class, 'show'])->whereNumber('order')->name('completed-orders.show');
         Route::get('/earnings', [\App\Http\Controllers\Seller\EarningsController::class, 'index'])->name('earnings.index');
         Route::get('/complaints', [\App\Http\Controllers\Seller\ComplaintController::class, 'index'])->name('complaints.index');
+        Route::get('/complaints/{complaint}/evidence/{evidence}', [\App\Http\Controllers\Seller\ComplaintController::class, 'evidence'])->whereNumber(['complaint', 'evidence'])->name('complaints.evidence');
         Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('vouchers.index');
         Route::post('/vouchers', [SellerVoucherController::class, 'store'])->name('vouchers.store');
         Route::put('/vouchers/{voucher}', [SellerVoucherController::class, 'update'])->whereNumber('voucher')->name('vouchers.update');

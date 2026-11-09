@@ -37,3 +37,19 @@ if (pop) {
     document.addEventListener('click', event => { if (pop.open && !pop.contains(event.target)) pop.open = false; });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && pop.open) { pop.open = false; pop.querySelector('summary')?.focus(); } });
 }
+
+// Loading state: swap table rows for placeholders while the next view loads.
+const tbody = document.querySelector('.pi-table tbody');
+const showLoading = () => {
+    if (!tbody || tbody.dataset.loading) return;
+    tbody.dataset.loading = '1';
+    const columns = document.querySelectorAll('.pi-table thead th').length || 8;
+    tbody.innerHTML = `<tr class="pi-skel">${'<td><i></i></td>'.repeat(columns)}</tr>`.repeat(6);
+    tbody.closest('.pi-table-card')?.setAttribute('aria-busy', 'true');
+};
+form?.addEventListener('submit', showLoading);
+document.addEventListener('click', event => {
+    const link = event.target.closest('.pi-stat, .pi-chips a, .pi-pager a, .pi-clear, .pi-fpanel__foot a, .pi-empty a[href*="products"]:not([href*="create"])');
+    if (link && !event.ctrlKey && !event.metaKey && !event.shiftKey) showLoading();
+});
+window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });

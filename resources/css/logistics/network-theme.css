@@ -1,0 +1,121 @@
+/* =========================================================
+   Logistics · Company > Network Overview theme layer. Loaded last (@push('lg-head')).
+   Same pastel lilac system as the seller pages (seller/delivered-orders.css).
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32. Status colors: Active = mint, Setup = butter, Inactive = lilac.
+   Read-only page: no dialogs.
+   ========================================================= */
+.lgn {
+    --do-ink: #2d2233;
+    --do-muted: #7d7285;
+    --do-line: #ece4ef;
+    --do-surface: #fff;
+    --do-lilac-50: #f8f4f9;
+    --do-lilac-100: #efe6f2;
+    --do-lilac-200: #e0d0e5;
+    --do-lilac-500: #b79ac2;
+    --do-lilac-700: #5a1d63;
+    --do-mint-100: #dff3e6;
+    --do-mint-700: #2f6b45;
+    --do-butter-100: #fcf1cf;
+    --do-butter-700: #8a6417;
+    --do-sky-100: #e0ecfa;
+    --do-sky-700: #355f8f;
+    --do-rose-100: #fbe2e7;
+    --do-rose-700: #9a3a4d;
+    display: grid;
+    gap: 16px;
+    font: 13px/1.5 'Poppins', system-ui, sans-serif;
+    color: var(--do-ink);
+}
+.lgn [x-cloak] { display: none !important; }
+.lgn .lg-icon { flex: none; }
+.lgn .lgn-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.lgn .lgn-tone-lilac { background: var(--do-lilac-100); color: var(--do-lilac-700); }
+.lgn .lgn-tone-sky { background: var(--do-sky-100); color: var(--do-sky-700); }
+
+/* ---- Header ---- */
+.lgn .lgn-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 8px 0 8px; }
+.lgn .lgn-head h1 { font-size: 24px; font-weight: 600; letter-spacing: -.4px; line-height: 1.3; }
+.lgn .lgn-head p { margin-top: 4px; color: var(--do-muted); font-size: 13px; }
+
+/* ---- Buttons ---- */
+.lgn .lgn-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border: 1px solid transparent; border-radius: 10px; font: 500 13px/1 'Poppins', system-ui, sans-serif; text-decoration: none; white-space: nowrap; cursor: pointer; transition: background .15s, box-shadow .15s, transform .1s; }
+.lgn .lgn-btn:active { transform: scale(.97); }
+.lgn .lgn-btn:focus-visible, .lgn .lgn-chip:focus-visible, .lgn .lgn-card__title a:focus-visible { outline: 2px solid var(--do-lilac-500); outline-offset: 2px; }
+.lgn .lgn-btn--primary { background: var(--do-lilac-700); color: #fff; box-shadow: 0 2px 8px rgba(90, 29, 99, .18); }
+.lgn .lgn-btn--primary:hover { background: #6f2b79; }
+.lgn .lgn-btn--soft { background: var(--do-lilac-100); color: var(--do-lilac-700); }
+.lgn .lgn-btn--soft:hover { background: var(--do-lilac-200); }
+.lgn .lgn-btn--small { min-height: 32px; padding: 6px 12px; border-radius: 8px; font-size: 12px; }
+.lgn .lgn-nudge { transition: transform .15s; }
+.lgn .lgn-btn:hover .lgn-nudge { transform: translateX(3px); }
+.lgn .lgn-btn:hover .lg-icon:not(.lgn-nudge) { animation: lgn-hop .45s ease; }
+
+/* ---- Chips and search ---- */
+.lgn .lgn-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.lgn .lgn-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 6px 12px; border: 1px solid var(--do-lilac-200); border-radius: 999px; background: var(--do-lilac-50); color: var(--do-lilac-700); font: 500 12px/1 'Poppins', system-ui, sans-serif; cursor: pointer; transition: background .15s; }
+.lgn .lgn-chip:hover { background: var(--do-lilac-100); }
+.lgn .lgn-chip.is-active { background: var(--do-lilac-700); border-color: var(--do-lilac-700); color: #fff; }
+.lgn .lgn-chip__count { min-width: 20px; padding: 2px 6px; border-radius: 999px; background: rgba(90, 29, 99, .1); font-size: 11px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
+.lgn .lgn-chip.is-active .lgn-chip__count { background: rgba(255, 255, 255, .25); }
+.lgn .lgn-chip--clear { gap: 4px; border-color: transparent; background: var(--do-rose-100); color: var(--do-rose-700); }
+.lgn .lgn-chip--clear:hover { background: #f7d2da; }
+.lgn .lgn-chip--clear .lg-icon { width: 14px; height: 14px; }
+.lgn .lgn-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.lgn .lgn-search { position: relative; flex: 1; min-width: 240px; max-width: 420px; }
+.lgn .lgn-search .lg-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--do-muted); pointer-events: none; }
+.lgn .lgn-search input { width: 100%; min-height: 40px; padding: 8px 12px 8px 38px; border: 1px solid var(--do-lilac-200); border-radius: 10px; background: var(--do-surface); color: var(--do-ink); font: 13px 'Poppins', system-ui, sans-serif; }
+.lgn .lgn-search input:hover { border-color: var(--do-lilac-500); }
+.lgn .lgn-search input:focus-visible { outline: 2px solid var(--do-lilac-500); outline-offset: 1px; }
+.lgn .lgn-meta { color: var(--do-muted); font-size: 12px; }
+
+/* ---- Hub cards ---- */
+.lgn .lgn-list { display: grid; gap: 16px; }
+.lgn .lgn-card { display: grid; gap: 16px; min-width: 0; padding: 24px; background: var(--do-surface); border: 1px solid var(--do-line); border-radius: 14px; animation: lgn-rise .4s ease both; }
+.lgn .lgn-card__head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.lgn .lgn-card__title { flex: 1; min-width: 160px; }
+.lgn .lgn-card__title h2 { font-size: 15px; font-weight: 600; }
+.lgn .lgn-card__title a { color: var(--do-ink); text-decoration: none; }
+.lgn .lgn-card__title a:hover { color: var(--do-lilac-700); }
+.lgn .lgn-card__title p { margin-top: 2px; color: var(--do-muted); font-size: 12px; }
+.lgn .lgn-tile { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; flex: none; }
+.lgn .lgn-tile .lg-icon { animation: lgn-pop .55s .15s cubic-bezier(.3, 1.6, .5, 1) both; }
+.lgn .lgn-card:hover .lgn-tile .lg-icon { animation: lgn-hop .5s ease; }
+.lgn .lgn-tile--small { width: 32px; height: 32px; border-radius: 10px; }
+.lgn .lgn-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.lgn .lgn-pill--mint { background: var(--do-mint-100); color: var(--do-mint-700); }
+.lgn .lgn-pill--butter { background: var(--do-butter-100); color: var(--do-butter-700); }
+.lgn .lgn-pill--lilac { background: var(--do-lilac-100); color: var(--do-lilac-700); }
+
+/* ---- Stations ---- */
+.lgn .lgn-stations { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.lgn .lgn-station { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 12px; border: 1px solid var(--do-line); border-radius: 12px; background: var(--do-lilac-50); transition: border-color .15s; }
+.lgn .lgn-station:hover { border-color: var(--do-lilac-500); }
+.lgn .lgn-station[x-cloak] { display: none; }
+.lgn .lgn-station > div { flex: 1; min-width: 0; }
+.lgn .lgn-station strong { display: block; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.lgn .lgn-station small { display: block; color: var(--do-muted); font-size: 11px; }
+.lgn .lgn-muted { margin: 0; color: var(--do-muted); font-size: 12px; }
+
+/* ---- Empty states ---- */
+.lgn .lgn-empty { justify-items: center; gap: 8px; max-width: 420px; margin: 0 auto; padding: 48px 16px; text-align: center; border: 0; background: transparent; }
+.lgn .lgn-empty__icon { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 8px; border-radius: 16px; animation: lgn-float 3s ease-in-out infinite; }
+.lgn .lgn-empty strong { font-size: 15px; font-weight: 600; }
+.lgn .lgn-empty p { margin-bottom: 8px; color: var(--do-muted); font-size: 13px; line-height: 1.5; }
+
+@keyframes lgn-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes lgn-pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes lgn-hop { 40% { transform: translateY(-3px) scale(1.12); } 100% { transform: none; } }
+@keyframes lgn-float { 50% { transform: translateY(-4px); } }
+
+/* ---- Responsive ---- */
+@media (max-width: 720px) {
+    .lgn .lgn-head h1 { font-size: 20px; }
+    .lgn .lgn-search { max-width: none; flex-basis: 100%; }
+    .lgn .lgn-card { padding: 16px; }
+    .lgn .lgn-card__head { gap: 12px; }
+    .lgn .lgn-stations { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lgn *, .lgn *::before { animation: none !important; transition: none !important; }
+}

@@ -21,6 +21,9 @@ class EarningsController extends Controller
         $filters = $request->validate([
             'status' => ['nullable', 'in:pending,credited,earlier'],
             'page' => ['nullable', 'integer', 'min:1'],
+        ], [
+            'status.in' => 'That status is not available. Choose All, Pending, Credited, or Earlier.',
+            'page.min' => 'That page does not exist. Go back to the first page.',
         ]);
 
         $rows = Order::query()->where('seller_id', $request->user()->id)->whereIn('status', Order::SALES_STATUSES)
@@ -55,6 +58,12 @@ class EarningsController extends Controller
             'pendingCents' => $sum('pending', 'net_cents'), 'creditedCents' => $sum('credited', 'net_cents'),
             'commissionCents' => $sum('credited', 'commission_cents'),
             'earlierCount' => $rows->where('state', 'earlier')->count(),
+            'counts' => [
+                'all' => $rows->count(),
+                'pending' => $rows->where('state', 'pending')->count(),
+                'credited' => $rows->where('state', 'credited')->count(),
+                'earlier' => $rows->where('state', 'earlier')->count(),
+            ],
             'moneyStatuses' => Order::MONEY_STATUSES,
         ]);
     }

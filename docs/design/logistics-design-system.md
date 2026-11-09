@@ -75,3 +75,15 @@ Emoji icons, colour-only status, hover-only actions, truncated text with no full
 - **Station dashboard:** "Parcels on hand" counts parcels at the station only (awaiting sorting, ready for delivery, waiting for transfer). Parcels out for delivery are with riders and are shown separately. The "Today" card holds only daily counts.
 - **Task Assignment (station only):** one page for pickup and delivery tasks (tabs), select + bulk bar with the rider required. A rider who does not serve a selected barangay triggers a warning, not a block.
 - **All role pages still run on hard-coded preview data** (`routes/logistics_preview.php`). Interactions change page state only; nothing is saved.
+
+## Company portal pass (8 November 2026)
+
+Pages are being moved, one at a time, to the Admin look in [admin-design-system.md](admin-design-system.md). **Company Dashboard** is done. Until a page is done it keeps the older `lg-*` look.
+
+- **Look on a finished page:** Tailwind `vd-*` tokens, 1px borders, no shadows, plum primary button, bordered secondary button, bordered row button that fills plum on hover, `x-admin.status-pill` for statuses, `x-admin.flash` under the heading, Inter body text with Poppins headings.
+- **Loading:** skeleton only. The shell draws the boot and page-to-page skeletons (`x-logistics.skeleton`, shapes `dashboard|table|cards|split|form`, chosen by `$skeletonMap` in the shell). Buttons get a spinner from the Admin `button-loading.js`. Do not add spinners or "Loading..." text to a page.
+- **Empty states:** `x-logistics.empty` (same look as the Admin one). Say what is missing, then what fills it, then one action that starts with a verb. Use `filtered` while a search or filter is active.
+- **Copy:** sentence case, short, no "yet", "please" or "successfully". Errors say the fix.
+- **Colour:** one neutral chip colour for counts and icons. Red, amber and green only carry status.
+- **Resets:** `.lg-body` link colour and heading/paragraph margin resets are zero-specificity (`:where()`), so Tailwind colour and margin classes work on links, headings and paragraphs.
+- **Popups:** `x-logistics.dialog` (same look as `x-admin.dialog`, title and help line can follow Alpine state). Cancel on the left, the main action on the right; destructive actions use the danger pastel.

@@ -11,6 +11,32 @@ use Illuminate\Support\Facades\Hash;
 
 class AccountController extends Controller
 {
+    /** Validation messages that say how to fix the problem. */
+    private const MESSAGES = [
+        'name.required' => 'Enter your full name.',
+        'name.max' => 'Use 255 characters or fewer.',
+        'phone_number.max' => 'Use 20 characters or fewer, for example 09171234567.',
+        'province.required' => 'Enter your province.',
+        'municipality.required' => 'Enter your city or municipality.',
+        'barangay.required' => 'Enter your barangay.',
+        'street.required' => 'Enter your street so the rider can find you.',
+        'house_no.max' => 'Use 255 characters or fewer.',
+        'zip_code.max' => 'Use 20 characters or fewer.',
+        'latitude.numeric' => 'Move the pin on the map, then save again.',
+        'latitude.between' => 'Move the pin onto the map, then save again.',
+        'longitude.numeric' => 'Move the pin on the map, then save again.',
+        'longitude.between' => 'Move the pin onto the map, then save again.',
+        'longitude.required_with' => 'Move the pin on the map, then save again.',
+        'profile_picture.required' => 'Choose a photo to upload.',
+        'profile_picture.image' => 'Choose a JPG, PNG or WebP photo.',
+        'profile_picture.max' => 'Choose a photo under 2 MB.',
+        'banner.required' => 'Choose a banner to upload.',
+        'banner.image' => 'Choose a JPG, PNG or WebP image.',
+        'banner.max' => 'Choose a banner under 4 MB.',
+        'preferred_delivery_company_id.exists' => 'Pick a provider from the list.',
+        'preferred_delivery_company_id.integer' => 'Pick a provider from the list.',
+    ];
+
     public function index()
     {
         abort_unless(auth()->user()->role === 'buyer', 403);
@@ -58,7 +84,7 @@ class AccountController extends Controller
                 'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
             ];
         }
-        $request->validate($rules);
+        $request->validate($rules, self::MESSAGES);
 
         $address = $buyerDetail
             ? $addresses->resolve($request->only('province', 'municipality', 'barangay'))
@@ -98,12 +124,12 @@ class AccountController extends Controller
             $photos->replace($request->user(), $request->file('profile_picture'), 'profile-pictures/buyers');
         }
 
-        return back()->with('success', 'Profile updated.');
+        return back()->with('success', 'Profile saved');
     }
 
     public function uploadProfilePicture(Request $request, ProfilePhotoService $photos)
     {
-        $request->validate(['profile_picture' => 'required|image|max:2048']);
+        $request->validate(['profile_picture' => 'required|image|max:2048'], self::MESSAGES);
 
         $photos->replace($request->user(), $request->file('profile_picture'), 'profile-pictures/buyers');
 
@@ -112,7 +138,7 @@ class AccountController extends Controller
 
     public function uploadBanner(Request $request)
     {
-        $request->validate(['banner' => 'required|image|max:4096']);
+        $request->validate(['banner' => 'required|image|max:4096'], self::MESSAGES);
 
         $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
 
@@ -147,7 +173,7 @@ class AccountController extends Controller
     {
         $data = $request->validate([
             'preferred_delivery_company_id' => ['nullable', 'integer', 'exists:logistics_companies,id'],
-        ]);
+        ], self::MESSAGES);
 
         $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
         if ($buyerDetail) {
@@ -164,16 +190,16 @@ class AccountController extends Controller
         'current_password' => ['required'],
         'password' => ['required', 'min:8', 'confirmed'],
     ], [
-        'current_password.required' => 'Please enter your current password.',
-        'password.required' => 'Please enter a new password.',
-        'password.min' => 'The new password must be at least 8 characters.',
-        'password.confirmed' => 'The password confirmation does not match.',
+        'current_password.required' => 'Enter your current password.',
+        'password.required' => 'Enter a new password.',
+        'password.min' => 'Use at least 8 characters.',
+        'password.confirmed' => "Passwords don't match. Retype the new password.",
     ]);
 
     if (!Hash::check($request->current_password, auth()->user()->password)) {
         return back()
             ->withErrors([
-                'current_password' => 'The current password is incorrect.',
+                'current_password' => "That isn't your current password. Re-enter it and try again.",
             ])
             ->withInput();
     }
@@ -182,6 +208,6 @@ class AccountController extends Controller
         'password' => Hash::make($request->password),
     ]);
 
-    return back()->with('password_success', 'Password updated successfully!');
+    return back()->with('password_success', 'Password updated');
 }
 }

@@ -28,12 +28,12 @@
 
     // What the seller should know or do right now.
     $next = match (true) {
-        in_array($order->status, ['confirmed', 'preparing'], true) => ['info', 'Pack this order', 'Prepare the items, then mark the order ready for pickup from Orders so logistics can collect it.'],
-        $order->status === 'ready_for_pickup' && ! $order->courier_id => ['wait', 'Waiting for a pickup rider', 'Logistics will assign a rider shortly. The shipping label unlocks once a pickup hub is assigned.'],
-        $order->status === 'ready_for_pickup' => ['info', 'Hand the parcel to '.($rider?->name ?? 'the rider'), 'Print and attach the shipping label so the rider can scan it at pickup.'],
-        $order->status === 'delivery_failed' => ['danger', 'Delivery attempt failed', 'Logistics will reschedule the delivery and the buyer has been notified. Nothing is needed from you.'],
-        in_array($order->status, ['assigned_to_rider', 'out_for_delivery'], true) => ['info', 'On its way to the buyer', 'A rider is delivering this parcel. Nothing is needed from you.'],
-        $group === 'in_transit' => ['info', 'Moving through the Vendo network', 'Your parcel is travelling between hubs. We will update this page at each scan.'],
+        in_array($order->status, ['confirmed', 'preparing'], true) => ['info', 'Pack this order', 'Pack the items, then mark the order ready for pickup in Orders.'],
+        $order->status === 'ready_for_pickup' && ! $order->courier_id => ['wait', 'Waiting for a pickup rider', 'Logistics will assign a rider soon. The label unlocks after pickup is assigned.'],
+        $order->status === 'ready_for_pickup' => ['info', 'Hand the parcel to '.($rider?->name ?? 'the rider'), 'Print the label and attach it to the parcel for the rider to scan.'],
+        $order->status === 'delivery_failed' => ['danger', 'Delivery attempt failed', 'Logistics will retry and the buyer is notified. You do not need to do anything.'],
+        in_array($order->status, ['assigned_to_rider', 'out_for_delivery'], true) => ['info', 'On its way to the buyer', 'A rider is delivering this parcel. You do not need to do anything.'],
+        $group === 'in_transit' => ['info', 'Moving between hubs', 'This page updates at each scan.'],
         $group === 'delivered' => ['success', 'Delivered', $stageDates[5] ? 'Delivered on '.$stageDates[5]->format('M j, Y \a\t g:i A').'.' : 'This parcel reached the buyer.'],
         $group === 'cancelled' => ['danger', 'Order cancelled', $cancelNote ?: 'This order was cancelled before pickup.'],
         default => ['info', $order->status_label, ''],
@@ -59,10 +59,10 @@
         @if($order->canPrintShippingLabel())
             <a class="ops-button ops-button--primary" href="{{ route('seller.orders.waybill', $order) }}" data-waybill data-waybill-title="{{ $order->number }}">Print shipping label</a>
         @elseif($beforePickup)
-            <button class="ops-button" type="button" disabled title="Available after the order is ready for pickup and a pickup hub is assigned">Print shipping label</button>
+            <button class="ops-button" type="button" disabled title="Unlocks after you mark the order ready and pickup is assigned">Print shipping label</button>
         @endif
         @if($beforePickup)
-            <a class="ops-button" href="{{ route('seller.orders.index', ['order' => $order->id]) }}">Open in Orders</a>
+            <a class="ops-button" href="{{ route('seller.orders.index', ['order' => $order->id]) }}">View order</a>
             <button class="ops-button ops-button--danger" type="button" data-ops-modal-open="#ops-cancel-dialog-{{ $order->id }}">Cancel order</button>
         @endif
     </div>
@@ -76,7 +76,7 @@
             <input type="hidden" name="action" value="cancel">
             <input type="hidden" name="expected_status" value="{{ $order->status }}">
             <h3 id="ops-cancel-title-{{ $order->id }}">Cancel this order?</h3>
-            <p class="ops-muted">This cancels the order before pickup, restores reserved stock, and notifies the buyer and assigned rider.</p>
+            <p class="ops-muted">The buyer and rider are notified, and reserved stock goes back to your inventory.</p>
             <label>Reason
                 <select name="reason" required>
                     <option value="">Choose a reason</option>
@@ -85,7 +85,7 @@
                     @endforeach
                 </select>
             </label>
-            <label data-ops-cancel-details-wrap hidden>Tell us more
+            <label data-ops-cancel-details-wrap hidden>Add details
                 <textarea name="reason_details" maxlength="450" rows="3"></textarea>
             </label>
             <p class="ops-alert" data-form-error role="alert" hidden></p>
@@ -100,7 +100,7 @@
 {{-- ============ MESSAGE FROM BUYER ============ --}}
 @if($buyerNote !== '')
     <section class="ops-section sh-note">
-        <h3>Message from buyer</h3>
+        <h3>Note from the buyer</h3>
         <blockquote>{{ $buyerNote }}</blockquote>
     </section>
 @endif
@@ -132,7 +132,7 @@
                 @method('PATCH')
                 <input type="hidden" name="expected_status" value="{{ $order->status }}">
                 <input type="hidden" name="expected_revision" value="{{ $order->revision }}">
-                <p class="ops-caption">Record details supplied by your carrier. This does not change the assigned rider or shipping charge.</p>
+                <p class="ops-caption">Enter the details your carrier gave you. The assigned rider and shipping fee stay the same.</p>
                 <label>Carrier name<input name="carrier_name" maxlength="100" value="{{ $order->carrier_name }}"></label>
                 <label>Carrier tracking number<input name="carrier_tracking_number" maxlength="100" value="{{ $order->carrier_tracking_number }}"></label>
                 <div class="ops-form-grid">
@@ -190,7 +190,7 @@
     </dl>
     <p class="sh-payline">
         Payment: <b class="{{ $mode === 'COD' ? 'sh-pay--cod' : 'sh-pay--paid' }}">{{ $mode }}</b>
-        <span>{{ $mode === 'COD' ? 'The rider collects ₱'.number_format($order->payable_total, 2).' on delivery.' : 'Already paid online.' }}</span>
+        <span>{{ $mode === 'COD' ? 'The rider collects ₱'.number_format($order->payable_total, 2).' on delivery.' : 'Paid online.' }}</span>
     </p>
 </section>
 
@@ -204,6 +204,6 @@
             @if($event->note)<p>{{ $event->note }}</p>@endif
         </div>
     @empty
-        <p class="ops-muted">No status events recorded for this order yet.</p>
+        <p class="ops-muted">No status updates yet.</p>
     @endforelse
 </section>

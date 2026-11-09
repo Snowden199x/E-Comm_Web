@@ -17,7 +17,8 @@ const peso = n => '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFracti
 
 /* ------------------------------------------------------------------ toast */
 let toastTimer;
-function toast(message) {
+function toast(message, type = 'success') {
+    if (typeof window.sellerBanner === 'function') { window.sellerBanner({ type, message }); return; }
     const box = $('#piToast');
     if (!box) return;
     box.textContent = message;
@@ -48,18 +49,18 @@ async function postForm(url, body, onUploadProgress = null) {
                 try { data = JSON.parse(xhr.responseText); validJson = true; } catch { /* Non-JSON responses are reported clearly below. */ }
                 if (xhr.status >= 200 && xhr.status < 300 && validJson) return resolve(data);
                 if (xhr.status >= 200 && xhr.status < 300) {
-                    return reject(new Error('The upload reached the server, but it returned an unreadable response. Check the PHP request-size limits and try again.'));
+                    return reject(new Error('The server sent back an unreadable response. Try again, or remove some photos if the problem continues.'));
                 }
-                let message = data.message || 'Unable to save. Please try again.';
-                if (xhr.status === 419) message = 'Your session expired. Reload the page and sign in again.';
-                else if (xhr.status === 413) message = 'The upload is larger than the PHP or web server request limit. Check upload_max_filesize and post_max_size.';
-                else if (!Object.keys(data).length && xhr.status >= 500) message = 'The server could not process this upload. Check the local PHP upload limits and server error log.';
+                let message = data.message || 'Product did not save. Check your connection and try again.';
+                if (xhr.status === 419) message = 'Your session expired. Reload the page and sign in.';
+                else if (xhr.status === 413) message = 'The upload is too large. Remove a few photos or shorten the video, then try again.';
+                else if (!Object.keys(data).length && xhr.status >= 500) message = 'The server could not process this upload. Try again, or message Vendo Support if it keeps failing.';
                 const error = new Error(message);
                 error.errors = data.errors || null;
                 reject(error);
             });
-            xhr.addEventListener('error', () => reject(new Error('The upload connection failed. Check your connection and PHP upload limits, then try again.')));
-            xhr.addEventListener('abort', () => reject(new Error('The upload was interrupted. Please try again.')));
+            xhr.addEventListener('error', () => reject(new Error('Upload connection failed. Check your internet, then submit again.')));
+            xhr.addEventListener('abort', () => reject(new Error('Upload was interrupted. Submit again.')));
             xhr.send(body);
         });
     }
@@ -67,7 +68,7 @@ async function postForm(url, body, onUploadProgress = null) {
     const response = await fetch(url, { method: 'POST', body, headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf() } });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-        const err = new Error(response.status === 419 ? 'Your session expired. Reload the page and sign in again.' : (data.message || 'Unable to save. Please try again.'));
+        const err = new Error(response.status === 419 ? 'Your session expired. Reload the page and sign in.' : (data.message || 'Product did not save. Check your connection and try again.'));
         err.errors = data.errors || null;
         throw err;
     }
@@ -141,13 +142,13 @@ function initList() {
         const ctrl = (pending = new AbortController());
         selectedRow?.classList.remove('is-selected');
         if (!modal.open) { modal.showModal(); document.body.style.overflow = 'hidden'; }
-        title.textContent = heading || 'Product Details';
+        title.textContent = heading || 'Product details';
         body.setAttribute('aria-busy', 'true');
         body.replaceChildren(...[80, 100, 60, 90].map(w => el('div', { className: 'pi-skeleton', style: `width:${w}%` })));
         try {
             const res = await fetch(url, { headers: { Accept: 'text/html', 'X-Requested-With': 'XMLHttpRequest' }, signal: ctrl.signal });
             if (res.redirected) { location.assign(res.url); return; }
-            if (!res.ok) throw new Error(res.status === 404 ? 'This product is no longer available.' : 'Unable to open details. Please close and try again.');
+            if (!res.ok) throw new Error(res.status === 404 ? 'This product was removed. Close this panel and refresh the page.' : 'Details did not load. Close this panel and try again.');
             const html = await res.text();
             if (ctrl.signal.aborted) return;
             body.innerHTML = html;
@@ -266,9 +267,9 @@ function initList() {
                 const res = await fetch(delUrl, { method: 'DELETE', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf() } });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) {
-                    let message = data.message || 'Unable to delete this product. Please try again.';
-                    if (res.status === 404 || res.status === 405) message = 'Deleting products is not available on the server yet. The delete route still needs to be added.';
-                    if (res.status === 419) message = 'Your session expired. Reload the page and sign in again.';
+                    let message = data.message || 'Product was not deleted. Check your connection and try again.';
+                    if (res.status === 404 || res.status === 405) message = 'Deleting is unavailable right now. Try again later, or message Vendo Support.';
+                    if (res.status === 419) message = 'Your session expired. Reload the page and sign in.';
                     throw new Error(message);
                 }
                 try { sessionStorage.setItem('sellerOperationMessage', data.message || 'Product deleted.'); } catch { /* optional */ }
@@ -720,7 +721,7 @@ function initProductForm(form) {
         if (draft.removeVideo) { state.video = null; state.removeVideo = true; renderVideo(); }
         updateDescCount();
         productDraftDirty = true;
-        showRestoredDraftNotice(productDraftKey, 'Your unsaved product details were restored. Select any new photos, video, or variant images again before submitting.');
+        showRestoredDraftNotice(productDraftKey, 'Your unsaved details are back. Choose any new photos, video, or variant images again before you submit.');
     }
 
     /* ---------- validation ---------- */
@@ -731,7 +732,7 @@ function initProductForm(form) {
         if (forSubmit) {
             if (!catSelect.value) fail('category_id', 'basic', 'Choose a category.');
             else if (subsOf().length && !subSelect.value) fail('subcategory_id', 'basic', 'Choose a subcategory.');
-            if (!state.images.length) fail('images', 'basic', 'Add at least one product photo.');
+            if (!state.images.length) fail('images', 'basic', 'Add at least one product photo. Drop a JPG or PNG above.');
             if (!v('description')) fail('description', 'basic', 'Enter a product description.');
             if (!form.elements.condition.value) fail('condition', 'basic', 'Select the product condition.');
             (schema[catName()]?.fields || []).forEach(f => {
@@ -750,18 +751,18 @@ function initProductForm(form) {
                 if (!entries.length) fail('type.0.options', 'variations', 'Add variation options to create variants.');
                 if (entries.length > MAX_VARIANTS) fail('type.0.options', 'variations', `Too many combinations (max ${MAX_VARIANTS}). Remove some options.`);
                 entries.forEach(([l, x]) => {
-                    if (x.price === '' || +x.price <= 0) fail(`variant.${l}.price`, 'variations', 'Enter a valid price.');
-                    if (x.stock === '' || +x.stock < 0 || !Number.isInteger(+x.stock)) fail(`variant.${l}.stock`, 'variations', 'Enter a valid stock.');
+                    if (x.price === '' || +x.price <= 0) fail(`variant.${l}.price`, 'variations', 'Enter a price, like 499.00.');
+                    if (x.stock === '' || +x.stock < 0 || !Number.isInteger(+x.stock)) fail(`variant.${l}.stock`, 'variations', 'Enter a stock number, like 20.');
                 });
             } else {
                 const price = v('price'), stock = v('stock');
-                if (price === '' || isNaN(price) || +price <= 0) fail('price', 'variations', 'Enter a valid price greater than 0.');
-                if (!isEdit && (stock === '' || isNaN(stock) || +stock < 0 || !Number.isInteger(+stock))) fail('stock', 'variations', 'Enter a valid stock quantity (0 or more).');
+                if (price === '' || isNaN(price) || +price <= 0) fail('price', 'variations', 'Enter a price above 0, like 499.00.');
+                if (!isEdit && (stock === '' || isNaN(stock) || +stock < 0 || !Number.isInteger(+stock))) fail('stock', 'variations', 'Enter a stock quantity of 0 or more.');
             }
             const sellingPrice = state.hasVariations
                 ? Math.min(...Object.values(state.variants).map(x => +x.price || 0)) : +v('price');
             if (v('compare_at_price') && +v('compare_at_price') <= sellingPrice) {
-                fail('compare_at_price', 'variations', 'Original price must be higher than the selling price.');
+                fail('compare_at_price', 'variations', 'Original price must be higher than the selling price. Raise it or leave it empty.');
             }
             [['package_length', 'length'], ['package_width', 'width'], ['package_height', 'height']].forEach(([n, label]) => {
                 if (v(n) === '' || isNaN(v(n)) || +v(n) <= 0) fail(n, 'shipping', `Enter the package ${label} in cm.`);
@@ -770,11 +771,11 @@ function initProductForm(form) {
             if (w === '' || isNaN(w) || +w <= 0) fail('weight_kg', 'shipping', 'Enter the package weight in kg.');
             specRows().forEach(r => { if (r.name && !r.value) fail('spec', 'category', `Add a value for "${r.name}".`); if (!r.name && r.value) fail('spec', 'category', 'Add a name for each specification value.'); });
         }
-        ['price', 'stock'].forEach(n => { if (!state.hasVariations && v(n) !== '' && +v(n) < 0) fail(n, 'variations', 'Cannot be negative.'); });
+        ['price', 'stock'].forEach(n => { if (!state.hasVariations && v(n) !== '' && +v(n) < 0) fail(n, 'variations', 'Enter 0 or more.'); });
         ['package_length', 'package_width', 'package_height'].forEach(n => { if (v(n) !== '' && +v(n) <= 0) fail(n, 'shipping', 'Enter a number greater than 0.'); });
         (schema[catName()]?.fields || []).filter(f => f.type === 'date').forEach(f => {
             const val = form.elements[`attributes[${f.key}]`]?.value;
-            if (val && new Date(val) <= new Date(new Date().toDateString())) fail(`attr.${f.key}`, 'category', 'Expiration date must be in the future.');
+            if (val && new Date(val) <= new Date(new Date().toDateString())) fail(`attr.${f.key}`, 'category', 'Expiration date must be in the future. Pick a later date.');
         });
         return errors.size === 0;
     }
@@ -881,13 +882,13 @@ function initProductForm(form) {
         if (complete) {
             uploadBar.value = 100;
             uploadPercent.textContent = '100%';
-            uploadStatus.textContent = 'Upload finished. Waiting for Vendo to save the product…';
+            uploadStatus.textContent = 'Upload done. Saving your product…';
             return;
         }
         const percent = total > 0 ? Math.min(99, Math.floor((loaded / total) * 100)) : 0;
         uploadBar.value = percent;
         uploadPercent.textContent = `${percent}%`;
-        uploadStatus.textContent = 'Uploading selected files and product details…';
+        uploadStatus.textContent = 'Uploading your files and details…';
     }
     async function submit(action, button) {
         if (submitting) return;
@@ -912,7 +913,7 @@ function initProductForm(form) {
             try { sessionStorage.setItem('sellerOperationMessage', data.message || (action === 'draft' ? 'Draft saved.' : 'Product submitted for admin review.')); } catch { /* optional */ }
             location.assign(form.dataset.redirect);
         } catch (ex) {
-            if (hasFiles && uploadStatus) uploadStatus.textContent = 'Vendo did not save this upload. Review the error below, then try again.';
+            if (hasFiles && uploadStatus) uploadStatus.textContent = 'Product did not save. Fix the error below, then submit again.';
             // Server messages are shown beside the matching field when possible; the form is never cleared.
             const map = k => k.startsWith('attributes.') ? `attr.${k.slice(11)}` : k.startsWith('gallery_images') || k === 'main_image' ? 'images' : k;
             let general = ex.errors ? '' : ex.message;
@@ -925,7 +926,7 @@ function initProductForm(form) {
                 else general += msgs.join(' ') + ' ';
             });
             const b = $('#piFormError');
-            b.textContent = general.trim() || 'Please review the highlighted fields.'; b.classList.add('is-show');
+            b.textContent = general.trim() || 'Fix the highlighted fields, then submit again.'; b.classList.add('is-show');
             const videoError = ex.errors?.video && $('[data-error-for="video"]', form);
             (videoError || b).scrollIntoView({ behavior: 'smooth', block: 'center' });
             $$('#piActions button', form).forEach(x => { x.disabled = false; });

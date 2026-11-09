@@ -1,18 +1,18 @@
 @php
     $statCards = [
-        ['new', 'New Orders', 'new-orders-icon.png'],
-        ['pack', 'To Pack', 'to-pack-icon.png'],
-        ['pickup', 'Ready for Pickup', 'ready-for-pickup-icon.png'],
-        ['pending', 'Pending Deliveries', 'pending-deliveries-icon.png'],
+        ['new', 'New orders', 'lilac', '<path d="M12 5v14M5 12h14"/>'],
+        ['pack', 'To pack', 'butter', '<path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/>'],
+        ['pickup', 'Ready for pickup', 'mint', '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><path d="m6.500 11.500 1.800 1.800 3-3.200"/>'],
+        ['pending', 'In delivery', 'sky', '<path d="M12 21s7-5.600 7-11a7 7 0 10-14 0c0 5.400 7 11 7 11z"/><circle cx="12" cy="10" r="2.500"/>'],
     ];
     $tabs = [
-        ['all', 'All'], ['new', 'New'], ['pack', 'To Pack'], ['pickup', 'Ready for Pickup'], ['pending', 'Pending Delivery'],
-        ['completed', 'Delivered / Completed'], ['cancelled', 'Cancelled'],
+        ['all', 'All'], ['new', 'New'], ['pack', 'To pack'], ['pickup', 'Ready for pickup'], ['pending', 'In delivery'],
+        ['completed', 'Delivered'], ['cancelled', 'Cancelled'],
     ];
     $chevron = '<svg class="omo-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 @endphp
 <x-seller.layout title="Orders">
-    @vite(['resources/css/seller/order-management-orders.css', 'resources/css/seller/orders-enhance.css'])
+    @vite(['resources/css/seller/order-management-orders.css', 'resources/css/seller/orders-enhance.css', 'resources/css/seller/orders-theme.css'])
 
     <div class="omo-content" id="omoApp" data-endpoint="{{ route('seller.orders.index') }}" data-order-base="{{ url('/seller/orders') }}" data-today="{{ now()->toDateString() }}">
         <p id="omoError" role="alert" class="omo-error" hidden></p>
@@ -21,16 +21,16 @@
         <section class="omo-head">
             <div>
                 <h1 class="omo-head__title">Orders</h1>
-                <p class="omo-head__sub">Manage and process your customer orders.</p>
+                <p class="omo-head__sub">Accept, pack, and ship your customer orders.</p>
             </div>
-            <span class="omo-live" id="omoLive" title="This page refreshes automatically"><i aria-hidden="true"></i><span>Live</span> <small id="omoUpdated"></small></span>
+            <span class="omo-live" id="omoLive" title="This page updates on its own"><i aria-hidden="true"></i><span>Live</span> <small id="omoUpdated"></small></span>
         </section>
 
         {{-- ============ STAT CARDS (also quick filters) ============ --}}
         <section class="omo-stats" aria-label="Order summary">
-            @foreach($statCards as $index => [$key, $label, $icon])
+            @foreach($statCards as $index => [$key, $label, $tone, $glyph])
                 <button type="button" class="omo-stat" data-filter="{{ $key }}" style="--i: {{ $index }}" aria-pressed="false">
-                    <span class="omo-stat__icon"><img src="{{ asset('assets/icons/seller/'.$icon) }}" alt=""></span>
+                    <span class="omo-stat__icon omo-tone-{{ $tone }}"><svg class="omo-ico" viewBox="0 0 24 24" aria-hidden="true">{!! $glyph !!}</svg></span>
                     <span class="omo-stat__text">
                         <span class="omo-stat__label">{{ $label }}</span>
                         <span class="omo-stat__value" data-count="{{ $key }}">{{ number_format($counts[$key]) }}</span>
@@ -40,7 +40,7 @@
         </section>
 
         {{-- ============ TABS ============ --}}
-        <nav class="omo-tabs" id="omoTabs" aria-label="Order status filter">
+        <nav class="omo-tabs" id="omoTabs" aria-label="Filter by status">
             @foreach($tabs as [$key, $label])
                 <button type="button" class="omo-tab @if($key === 'all') is-active @endif" data-status="{{ $key }}">{{ $label }}@if($key !== 'all') <span class="omo-tab__badge" data-count="{{ $key }}">{{ number_format($counts[$key]) }}</span>@endif</button>
             @endforeach
@@ -51,7 +51,7 @@
             <label class="omo-search">
                 <span class="omo-sr">Search orders</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-                <input type="text" id="omoSearchInput" placeholder="Search order ID or customer..." autocomplete="off">
+                <input type="text" id="omoSearchInput" placeholder="Search order no. or customer" autocomplete="off">
                 <button type="button" class="omo-search__clear" id="omoSearchClear" aria-label="Clear search" hidden>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
                 </button>
@@ -60,22 +60,22 @@
             <div class="omo-filter" id="omoDateFilter">
                 <button type="button" class="omo-filter-btn" id="omoDateBtn" aria-haspopup="true" aria-expanded="false">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 3v3M16 3v3"/></svg>
-                    <span id="omoDateLabel">All Dates</span>
+                    <span id="omoDateLabel">All dates</span>
                 </button>
                 <div class="omo-filter-panel omo-date-panel" id="omoDatePanel">
                     <div class="omo-date-presets">
-                        <button type="button" class="omo-date-preset" data-preset="all">All Dates</button>
+                        <button type="button" class="omo-date-preset" data-preset="all">All dates</button>
                         <button type="button" class="omo-date-preset" data-preset="today">Today</button>
-                        <button type="button" class="omo-date-preset" data-preset="7days">Last 7 Days</button>
-                        <button type="button" class="omo-date-preset" data-preset="month">This Month</button>
+                        <button type="button" class="omo-date-preset" data-preset="7days">Last 7 days</button>
+                        <button type="button" class="omo-date-preset" data-preset="month">This month</button>
                     </div>
                     <div class="omo-date-range">
                         <div><label for="omoDateFrom">From</label><input type="date" id="omoDateFrom"></div>
                         <div><label for="omoDateTo">To</label><input type="date" id="omoDateTo"></div>
                     </div>
                     <div class="omo-date-actions">
-                        <button type="button" class="omo-btn-clear" id="omoDateClear">Clear</button>
-                        <button type="button" class="omo-btn-apply" id="omoDateApply">Apply</button>
+                        <button type="button" class="omo-btn-clear" id="omoDateClear">Clear dates</button>
+                        <button type="button" class="omo-btn-apply" id="omoDateApply">Apply dates</button>
                     </div>
                 </div>
             </div>
@@ -107,12 +107,12 @@
                         <table class="omo-table">
                             <thead>
                                 <tr>
-                                    <th scope="col">Order ID</th>
+                                    <th scope="col">Order</th>
                                     <th scope="col">Customer</th>
                                     <th scope="col">Items</th>
                                     <th scope="col">Total</th>
                                     <th scope="col">Status</th>
-                                    <th scope="col">Order Date</th>
+                                    <th scope="col">Ordered</th>
                                     <th scope="col"><span class="omo-sr">Action</span></th>
                                 </tr>
                             </thead>
@@ -121,7 +121,7 @@
                     </div>
 
                     <div class="omo-table-foot" id="omoTableFoot" @if($orders->total() === 0) hidden @endif>
-                        <span id="omoResultCount">Showing {{ $orders->firstItem() ?? 0 }}–{{ $orders->lastItem() ?? 0 }} out of {{ $orders->total() }} entries</span>
+                        <span id="omoResultCount">Showing {{ $orders->firstItem() ?? 0 }}–{{ $orders->lastItem() ?? 0 }} of {{ $orders->total() }} orders</span>
                         <div class="omo-pager" id="omoPager" aria-label="Orders pagination">
                             <button type="button" id="omoPrevPage" aria-label="Previous page">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>

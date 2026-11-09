@@ -127,6 +127,7 @@ class PortalController extends Controller
     public function createProvinceHub(Request $request, LocationCatalog $locations): JsonResponse
     {
         $company = $this->company($request);
+        $this->normalizeHubPhone($request);
         $data = $request->validate([
             'province' => ['required', 'string', 'max:120'],
             'name' => ['required', 'string', 'max:80'],
@@ -134,16 +135,16 @@ class PortalController extends Controller
             'manager' => ['required', 'string', 'max:80'],
             'email' => ['required', 'email', 'lowercase', 'max:120', Rule::unique('users', 'email')],
             'phone' => ['required', 'regex:/^09[0-9]{9}$/'],
-        ]);
+        ], $this->hubMessages());
         $provinceCode = $locations->provinceCodeForName($data['province']);
-        abort_unless($provinceCode, 422, 'Choose a valid province.');
+        abort_unless($provinceCode, 422, 'Choose a province from the list.');
         $province = $locations->all()[$provinceCode]['name'];
         $manager = $this->managerName($data['manager']);
         $hub = DB::transaction(function () use ($company, $data, $provinceCode, $province, $manager) {
             LogisticsCompany::query()->whereKey($company->id)->lockForUpdate()->firstOrFail();
             $exists = $company->provinceHubs()->where('province_code', $provinceCode)->where('is_active', true)->exists();
             if ($exists) {
-                throw ValidationException::withMessages(['province' => 'This company already has a Province Hub in that province.']);
+                throw ValidationException::withMessages(['province' => 'This province already has an active hub. Choose another province, or deactivate that hub first.']);
             }
             $user = User::create([
                 'name' => $manager['name'], 'first_name' => $manager['first_name'], 'last_name' => $manager['last_name'],
@@ -163,7 +164,7 @@ class PortalController extends Controller
             return $facility->load('staff.user');
         }, 3);
 
-        return response()->json(['hub' => $this->hubCard($hub), 'message' => 'Province Hub created. A password setup link was emailed to its manager. The link opens the Create New Password page.'], 201);
+        return response()->json(['hub' => $this->hubCard($hub), 'message' => 'Province Hub created. We emailed the manager a link to set a password.'], 201);
     }
 
     public function updateProvinceHub(Request $request, LogisticsFacility $hub): JsonResponse
@@ -173,7 +174,7 @@ class PortalController extends Controller
         $data = $request->validate(['is_active' => ['required', 'boolean']]);
         if ($data['is_active']) {
             abort_if($company->provinceHubs()->where('province_code', $hub->province_code)->where('is_active', true)->where('id', '!=', $hub->id)->exists(), 409,
-                'This company already has an active Province Hub in that province.');
+                'This province already has an active hub. Deactivate that hub first, then activate this one.');
         }
         if (! $data['is_active'] && $hub->is_active) {
             $this->ensureNoOpenWork($hub);
@@ -191,14 +192,15 @@ class PortalController extends Controller
         $company = $this->company($request);
         abort_unless((int) $hub->logistics_company_id === (int) $company->id && $hub->isProvinceHub(), 404);
         $managerUserId = $hub->staff()->value('user_id');
-        abort_if(! $managerUserId, 409, 'This Province Hub has no linked manager account to update.');
+        abort_if(! $managerUserId, 409, 'This hub has no manager account. Contact support to link one before editing.');
+        $this->normalizeHubPhone($request);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:80'],
             'address' => ['required', 'string', 'min:10', 'max:200'],
             'manager' => ['required', 'string', 'max:80'],
             'email' => ['required', 'email', 'lowercase', 'max:255', Rule::unique('users', 'email')->ignore($managerUserId)],
             'phone' => ['required', 'regex:/^09[0-9]{9}$/'],
-        ]);
+        ], $this->hubMessages());
         $manager = $this->managerName($data['manager']);
         $emailToken = null;
 
@@ -206,7 +208,7 @@ class PortalController extends Controller
             $lockedHub = LogisticsFacility::query()->whereKey($hub->id)->lockForUpdate()->firstOrFail();
             abort_unless((int) $lockedHub->logistics_company_id === (int) $company->id && $lockedHub->isProvinceHub(), 404);
             $staff = $lockedHub->staff()->with('user')->first();
-            abort_if(! $staff?->user, 409, 'This Province Hub has no linked manager account to update.');
+            abort_if(! $staff?->user, 409, 'This hub has no manager account. Contact support to link one before editing.');
             abort_unless((int) $staff->user_id === (int) $managerUserId, 409);
 
             $lockedHub->update(['name' => $data['name'], 'address' => $data['address']]);
@@ -219,7 +221,7 @@ class PortalController extends Controller
                 DB::table('logistics_email_changes')->where('expires_at', '<=', now())->delete();
                 if (DB::table('logistics_email_changes')->where('new_email', $data['email'])
                     ->where('user_id', '!=', $staff->user_id)->exists()) {
-                    throw ValidationException::withMessages(['email' => 'This email has another pending change request.']);
+                    throw ValidationException::withMessages(['email' => 'This email is waiting to be confirmed for another manager. Use a different email.']);
                 }
                 $emailToken = bin2hex(random_bytes(32));
                 DB::table('logistics_email_changes')->updateOrInsert(['user_id' => $staff->user_id], [
@@ -242,12 +244,12 @@ class PortalController extends Controller
                 Mail::raw('Confirm the new email address for your Vendo Province Hub manager account within 30 minutes: '.$link
                     .' If you did not expect this change, ignore this email.',
                     fn ($mail) => $mail->to($data['email'])->subject('Confirm Province Hub manager email'));
-                $message .= ' A confirmation link was sent to the new manager email. The new address will appear as pending until confirmed; opening the link will continue to password setup.';
+                $message .= ' We sent a confirmation link to the new email. It stays pending until the manager confirms it.';
             } catch (\Throwable $exception) {
                 report($exception);
                 DB::table('logistics_email_changes')->where('user_id', $hub->staff->user_id)
                     ->where('token_hash', hash('sha256', $emailToken))->delete();
-                $message .= ' The email confirmation could not be sent, so the manager email remains unchanged.';
+                $message .= ' We could not send the confirmation email, so the manager’s email did not change. Save again to retry.';
             }
         }
 
@@ -262,8 +264,8 @@ class PortalController extends Controller
         DB::transaction(function () use ($company, $hub) {
             $lockedHub = LogisticsFacility::query()->whereKey($hub->id)->lockForUpdate()->firstOrFail();
             abort_unless((int) $lockedHub->logistics_company_id === (int) $company->id && $lockedHub->isProvinceHub(), 404);
-            abort_if($lockedHub->children()->exists(), 409, 'Delete or move this Province Hub’s Station Hubs before deleting the Province Hub.');
-            abort_if($this->provinceHubHasHistory($lockedHub), 409, 'This Province Hub has parcel, trip, driver, vehicle, scan, settlement, or message history and cannot be deleted. Deactivate it instead.');
+            abort_if($lockedHub->children()->exists(), 409, 'This hub still has Station Hubs. Delete or move them first, then delete the hub.');
+            abort_if($this->provinceHubHasHistory($lockedHub), 409, 'This hub has parcel, trip, driver, vehicle, scan, settlement or message history, so it cannot be deleted. Deactivate it instead.');
 
             $staff = $lockedHub->staff()->with('user')->first();
             $manager = $staff?->user;
@@ -274,7 +276,7 @@ class PortalController extends Controller
             $lockedHub->delete();
         }, 3);
 
-        return response()->json(['id' => $hub->id, 'message' => 'Province Hub deleted. Its manager account was deactivated.']);
+        return response()->json(['id' => $hub->id, 'message' => 'Province Hub deleted. Its manager account is now deactivated.']);
     }
 
     public function companyHubShow(Request $request, LogisticsFacility $hub): View
@@ -296,11 +298,15 @@ class PortalController extends Controller
         return view('logistics.company.network', compact('hubs'));
     }
 
-    public function companyTracking(Request $request): View
+    public function companyTracking(Request $request): View|\Illuminate\Http\RedirectResponse
     {
+        if ($tooLong = $this->trackingSearchTooLong($request, 'lgp.company.tracking')) {
+            return $tooLong;
+        }
+
         $company = $this->company($request);
         $facilityIds = $company->facilities()->pluck('id');
-        $query = \App\Models\Ecommerce\Order::query()->with(['buyer', 'seller', 'items'])
+        $query = \App\Models\Ecommerce\Order::query()->with(['buyer', 'seller', 'items', 'statusEvents', 'facilityStops.facility'])
             ->where(function ($q) use ($facilityIds) {
                 $q->whereIn('origin_station_id', $facilityIds)->orWhereIn('destination_station_id', $facilityIds)
                     ->orWhereIn('origin_province_hub_id', $facilityIds)->orWhereIn('destination_province_hub_id', $facilityIds)
@@ -340,9 +346,13 @@ class PortalController extends Controller
         return view('logistics.company.handoffs', compact('company', 'handoffs', 'drivers', 'vehicles', 'manifests'));
     }
 
-    public function facilityTracking(Request $request): View
+    public function facilityTracking(Request $request): View|\Illuminate\Http\RedirectResponse
     {
         $facility = $this->facility($request);
+        if ($tooLong = $this->trackingSearchTooLong($request, $facility->isProvinceHub() ? 'lgp.province.tracking' : 'lgp.station.tracking')) {
+            return $tooLong;
+        }
+
         $companyIds = collect([$facility->id]);
         if ($facility->isProvinceHub()) {
             $companyIds = $companyIds->merge($facility->children()->where('kind', 'station_hub')->pluck('id'))->unique()->values();
@@ -359,6 +369,16 @@ class PortalController extends Controller
         }
 
         return $this->trackingView($query->latest()->get(), $facility->isProvinceHub() ? 'province' : 'station');
+    }
+
+    /** A search longer than 100 characters goes back to the clean page with a message that says how to fix it. */
+    private function trackingSearchTooLong(Request $request, string $routeName): ?\Illuminate\Http\RedirectResponse
+    {
+        if (mb_strlen(trim((string) $request->query('q', ''))) <= 100) {
+            return null;
+        }
+
+        return redirect()->route($routeName)->withErrors(['q' => 'The search is too long. Use a tracking number or order ID of 100 characters or fewer.']);
     }
 
     private function trackingView($orders, string $role): View
@@ -378,7 +398,7 @@ class PortalController extends Controller
                 'code' => $order->tracking_number ?? 'VN-'.str_pad((string) $order->id, 6, '0', STR_PAD_LEFT),
                 'order' => $order->number, 'route' => $order->route_type ?: 'local', 'from' => $stops[0] ?? $order->shipping_city ?? 'Origin',
                 'to' => $stops[count($stops) - 1] ?? $order->shipping_city ?? 'Destination', 'stops' => $stops ?: ['Awaiting facility route'],
-                'events' => $events->all(), 'flag' => $flag, 'reason' => $flag ? 'Delivery failed. Review the order and assign its next action.' : null,
+                'events' => $events->all(), 'flag' => $flag, 'reason' => $flag ? 'Delivery failed. The Station Hub must reassign the parcel or return it to the seller.' : null,
             ];
         })->values()->all();
 
@@ -386,9 +406,9 @@ class PortalController extends Controller
             'parcels' => $parcels,
             'routeLabels' => ['local' => 'Local delivery', 'intra_province' => 'Within province', 'inter_province' => 'Inter-province', 'manual_handoff' => 'Manual company handoff'],
             'role' => $role,
-            'intro' => 'Search parcels currently routed through your authorized Logistics scope.',
-            'delayedRule' => 'Delay flags are not shown because planned arrival times are not configured.',
-            'scopeNote' => 'Results are limited to facilities in your assignment.',
+            'intro' => 'Search parcels that pass through your facilities and follow each journey.',
+            'delayedRule' => 'Parcels are not flagged as delayed on this page. Check Active trips on the dashboard for late trips.',
+            'scopeNote' => 'You only see parcels that pass through your facilities.',
         ]);
     }
 
@@ -1214,6 +1234,37 @@ class PortalController extends Controller
                     ->whereColumn('next_stop.order_id', 'order_facility_stops.order_id')
                     ->whereColumn('next_stop.position', '>', 'order_facility_stops.position');
             })->count();
+    }
+
+    /** The form accepts "0917 123 4567" and "+63 917 123 4567"; the database keeps 09XXXXXXXXX. */
+    private function normalizeHubPhone(Request $request): void
+    {
+        $phone = preg_replace('/[\s-]/', '', (string) $request->input('phone'));
+        if (str_starts_with($phone, '+639')) {
+            $phone = '0'.substr($phone, 3);
+        }
+        $request->merge(['phone' => $phone]);
+    }
+
+    /** Validation messages for the Province Hub form: what is wrong, then how to fix it. */
+    private function hubMessages(): array
+    {
+        return [
+            'province.required' => 'Choose a province for this hub.',
+            'name.required' => 'Enter a hub name.',
+            'name.max' => 'The hub name is too long. Use 80 characters or fewer.',
+            'address.required' => 'Enter the hub address.',
+            'address.min' => 'Add the unit, street, barangay and city so drivers can find the hub.',
+            'address.max' => 'The address is too long. Use 200 characters or fewer.',
+            'manager.required' => 'Enter the manager’s full name.',
+            'manager.max' => 'The manager name is too long. Use 80 characters or fewer.',
+            'email.required' => 'Enter the manager’s email.',
+            'email.email' => 'Enter an email like name@company.com.',
+            'email.max' => 'The email is too long. Use a shorter address.',
+            'email.unique' => 'This email is already in use. Enter a different email.',
+            'phone.required' => 'Enter the manager’s mobile number.',
+            'phone.regex' => 'Enter a mobile number like 0917 123 4567.',
+        ];
     }
 
     private function ensureNoOpenWork(LogisticsFacility $facility): void

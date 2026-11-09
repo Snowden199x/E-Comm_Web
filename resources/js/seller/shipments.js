@@ -27,7 +27,7 @@ document.addEventListener('click', async event => {
             copy.textContent = 'Copied';
             copy.classList.add('is-copied');
         } catch {
-            copy.textContent = 'Copy failed';
+            copy.textContent = 'Not copied. Copy it by hand.';
         }
         setTimeout(() => { copy.textContent = original; copy.classList.remove('is-copied'); }, 1600);
         return;
@@ -50,7 +50,7 @@ document.addEventListener('click', async event => {
         const from = document.querySelector('[data-sh-date-from]').value;
         const to = document.querySelector('[data-sh-date-to]').value;
         if (from && to && from > to) {
-            document.querySelector('[data-sh-date-to]').setCustomValidity('End date must be on or after the start date.');
+            document.querySelector('[data-sh-date-to]').setCustomValidity('End date is before the start date. Pick an end date on or after the start date.');
             document.querySelector('[data-sh-date-to]').reportValidity();
             return;
         }

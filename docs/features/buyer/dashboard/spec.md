@@ -1,7 +1,7 @@
 # Buyer Dashboard and Storefront Shell
 
 **Status:** Dashboard data, parent-category browse, cart recommendations and variant commerce wired in code; owner verification pending
-**Reviewed:** 7 October 2026
+**Reviewed:** 8 November 2026
 
 ## Current behavior
 
@@ -24,6 +24,10 @@ The optional `compare_at_price` column exists, but the Seller form has no input 
 ## 7 October follow-up
 
 The refreshed Dashboard adds an announcement carousel, Saved for later row, quick links, benefits strip, and footer. Saved products now come from the signed-in Buyer's `buyer_saved_items` rows through the shared layout and Alpine store. Browser-local saved IDs are imported once after the new migration. The carousel and page motion follow account-stored appearance settings. Owner verification remains pending.
+
+## 8 November UI/UX pass
+
+The account and notification menus now sit above the category menu; moving up from the category strip closes it, and the account menu opens on hover. The header heart links to the Favorites page. Banner notifications (`buyer/partials/banner.blade.php`) replace the bottom toast for Add to cart, favorites and new notifications. Header icons animate on hover and on events. The hero uses one pastel color, the benefits strip is gone, and the shortcuts are Track orders, View cart and View favorites. Dashboard cards add to cart directly (`Add to cart`, or `Choose options` when a color, size or variant is needed). Category circles use `public/images/categories/*.jpg` with a tinted initial fallback. See the [progress log](../../../logs/PROGRESS-2026-11-08.md). Owner verification pending.
 
 ## Source evidence
 
