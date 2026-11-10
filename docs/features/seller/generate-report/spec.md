@@ -44,3 +44,7 @@ The report must not call gross revenue a payout or net earnings. Admin product c
 The seller sidebar links to the report route. Admin report routes and platform-wide calculations remain separate. The same definitions can later serve a mobile API.
 
 **Related:** [Delivered Orders](../completed-orders/spec.md) · [Seller domain](../../../domains/Seller.md) · [Commission and settlement](../../shared/commission-settlement/spec.md)
+
+## 9 November 2026 update
+
+The preview dialog is driven by `resources/js/seller/reports.js`: it shows a skeleton while the preview loads, keeps an inline retry if the request fails, and reports a failed PDF download instead of failing silently. An invalid `period` now returns a message that lists the four valid choices. Period boundaries and money definitions above are unchanged. See the [10 November progress log](../../../logs/PROGRESS-2026-11-10.md).

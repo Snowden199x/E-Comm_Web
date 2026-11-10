@@ -58,3 +58,7 @@ Load buyer, courier, items and product images, and status history for the seller
 4. Expose the same definitions to future reports or mobile API through shared query/service code to prevent metric drift.
 
 [Feedback backend plan](../review-management/spec.md) · [Seller domain](../../../domains/Seller.md) · [Order flow](../../../order-logistics-flow-decisions.md)
+
+## 9 November 2026 update
+
+The page offers quick date presets (7 days, 30 days, This month) that keep the other filters, reset the page and mark the active range; `hasAny` separates "no deliveries yet" from "no rows match these filters". Top products load product images. Filter validation messages name the field and the fix (search length, invalid or reversed dates, a courier or payment with no delivered orders, an out-of-range page). Totals and the read-only contract above are unchanged. See the [10 November progress log](../../../logs/PROGRESS-2026-11-10.md).
