@@ -41,6 +41,16 @@ return [
         ))),
     ],
 
+    'vendo' => [
+        // Where the buyer-facing landing sends someone who wants the Rider app.
+        // Keep the GitHub asset name stable: releases/latest/download/<asset> always
+        // serves the newest release, so the URL survives new builds.
+        'rider_app_url' => env(
+            'RIDER_APP_DOWNLOAD_URL',
+            'https://github.com/Snowden199x/E-Comm_Mobile/releases/latest/download/vendo-rider.apk',
+        ),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

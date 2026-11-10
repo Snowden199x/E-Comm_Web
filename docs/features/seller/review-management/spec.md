@@ -60,3 +60,7 @@ Seller reply creation validates ownership and publication state inside a transac
 3. Replace the seller dashboard's unavailable rating state using the same published-review query; share the query for future mobile API rather than duplicating the rules.
 
 [Functional requirements](functions.md) · [Buyer review plan](../../buyer/product-review-ratings/spec.md) · [Completed Orders](../completed-orders/spec.md) · [Seller domain](../../../domains/Seller.md)
+
+## 9 November 2026 update
+
+Recent Feedback is replaced by a **needs reply** list: the newest four published reviews without a reply, within the current filters. The page also shows reply counts (`all`, `replied`, `pending`) beside the reply filter, eager-loads product images, `reply` and `report`, and uses `hasAny` for a first-time empty state. Reply and report validation messages, the stale/duplicate 409 copy and the report error now say what to do next. Review eligibility, one-reply and one-report rules are unchanged. See the [10 November progress log](../../../logs/PROGRESS-2026-11-10.md).

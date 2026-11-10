@@ -70,6 +70,9 @@ export default defineConfig({
                 "resources/css/seller/vouchers-theme.css",
                 "resources/css/seller/products-theme.css",
                 "resources/js/seller/account.js",
+                // Scoped Tailwind build and its Alpine bootstrap for the Seller Account address map.
+                "resources/css/seller/map-tailwind.css",
+                "resources/js/seller/map-alpine.js",
                 "resources/js/seller/reports.js",
                 "resources/js/seller/feedback.js",
                 "resources/css/seller/category-requests.css",

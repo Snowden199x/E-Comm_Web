@@ -474,10 +474,11 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
         return view('logistics.auth.forgot-password');
     })->name('password.request');
 
-    // Temporary placeholder — individual riders will apply via the Vendo Rider mobile app,
-    // which isn't built yet. Swap this for a real app-store/landing redirect once it exists.
+    // Individual riders apply in the Vendo Rider Android app. The landing button and
+    // the printed QR both point here, so moving the app to Google Play later means
+    // changing config('services.vendo.rider_app_url') only.
     Route::get('/get-the-app', function () {
-        return view('coming-soon', ['title' => 'Vendo Rider App — Coming Soon']);
+        return redirect()->away(config('services.vendo.rider_app_url'));
     })->name('rider-app');
 });
 
