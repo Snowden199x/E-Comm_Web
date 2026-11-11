@@ -612,6 +612,24 @@
                         <p class="{{ $sub }}">Checkout preselects your provider when it serves the seller and your address. Otherwise it picks the lowest fee. You can change it on any order.</p>
                     </div>
 
+                    {{-- Saved addresses live on their own page; this card only summarizes them. --}}
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#f1e8f2] px-5 py-4">
+                        <div class="min-w-0">
+                            <p class="text-[13px] font-semibold text-[#2b1730]">Saved addresses</p>
+                            @if ($savedAddresses->isNotEmpty())
+                                @php $defaultAddress = $savedAddresses->firstWhere('is_default', true) ?? $savedAddresses->first(); @endphp
+                                <p class="mt-0.5 break-words text-[12px] leading-5 text-[#7a6a7e]">
+                                    {{ $savedAddresses->count() }} saved. Default: <span class="font-medium text-[#402143]">{{ $defaultAddress->label }}</span> — {{ $defaultAddress->fullLine() }}
+                                </p>
+                            @else
+                                <p class="mt-0.5 text-[12px] leading-5 text-[#7a6a7e]">Save the places you deliver to so checkout can reuse them.</p>
+                            @endif
+                        </div>
+                        <a href="{{ route('buyer.addresses.index') }}" class="vb-btn vb-btn--sm vb-btn--outline">
+                            {{ $savedAddresses->isEmpty() ? 'Add an address' : 'Manage addresses' }}
+                        </a>
+                    </div>
+
                     @if ($buyerDetail && $deliveryCompanies->isNotEmpty())
                         @php $selectedCompany = (string) old('preferred_delivery_company_id', $buyerDetail->preferred_delivery_company_id ?? ''); @endphp
                         <form action="{{ route('buyer.account.delivery-preference') }}" method="POST" class="p-5">

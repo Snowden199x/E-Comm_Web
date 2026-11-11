@@ -28,6 +28,8 @@ class RiderDeliveryRescheduleController extends Controller
 
             abort_unless($record->status === 'delivery_failed', 409,
                 'Only a parcel whose delivery window has closed can be rescheduled.');
+            abort_if((int) $record->delivery_attempts >= DeliveryCutoff::MAX_DELIVERY_ATTEMPTS, 409,
+                'This parcel already used its final delivery attempt and is cancelled.');
 
             $date = today()->addDay();
             $label = $date->format('j M Y');
@@ -50,7 +52,7 @@ class RiderDeliveryRescheduleController extends Controller
                 'type' => 'order_update',
                 'title' => 'Delivery rescheduled '.$record->number,
                 'message' => 'Your parcel was not delivered before the '.$cutoff->label()
-                    .' cutoff. The next delivery attempt is scheduled for '.$label.'.',
+                    .' cutoff. The final delivery attempt is scheduled for '.$label.'; if it also fails the order is cancelled automatically.',
                 'link' => route('buyer.orders.show', $record),
             ]);
             Notification::create([
@@ -58,7 +60,7 @@ class RiderDeliveryRescheduleController extends Controller
                 'type' => 'shipment_update',
                 'title' => 'Delivery rescheduled '.$record->number,
                 'message' => 'The rider did not finish this delivery before the '.$cutoff->label()
-                    .' window and rescheduled it for '.$label.'.',
+                    .' window and booked the final attempt for '.$label.'. A second failure cancels the order automatically.',
                 'link' => route('seller.orders.show', $record),
             ]);
             $hubUserId = $record->destinationLogisticsCenter?->user_id;
@@ -67,7 +69,7 @@ class RiderDeliveryRescheduleController extends Controller
                     'user_id' => $hubUserId,
                     'type' => 'shipment_update',
                     'title' => 'Delivery rescheduled '.$record->number,
-                    'message' => 'Rider '.$rider->name.' rescheduled this parcel for '.$label.'. It stays with the same rider for that day\'s run.',
+                    'message' => 'Rider '.$rider->name.' booked the final delivery attempt for '.$label.'. It stays with the same rider for that day\'s run.',
                     'link' => route('lgp.station.delivery-queue'),
                 ]);
             }

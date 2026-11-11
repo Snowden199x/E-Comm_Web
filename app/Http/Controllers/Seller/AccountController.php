@@ -62,6 +62,15 @@ class AccountController extends Controller
             'requested_at' => now(),
         ]);
 
+        // Admin operational inbox: opens User Management filtered to pending deletion requests.
+        \App\Models\Communication\Notification::create([
+            'user_id' => null,
+            'type' => 'account_deletion_request',
+            'title' => 'Account deletion request',
+            'message' => 'A seller asked to close their account.',
+            'link' => route('admin.user-management.index', ['deletion' => 1]),
+        ]);
+
         return back()->with('success', 'Your deletion request was sent to the admin team for review.');
     }
 

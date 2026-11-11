@@ -231,6 +231,34 @@
                     </form>
                 @endif
 
+                @php $returnRequest = $order->latestReturnRequest; @endphp
+                @if ($returnRequest)
+                    <section class="{{ $card }}">
+                        <h2 class="{{ $cardHead }}">Return request</h2>
+                        <div class="space-y-1.5 p-4 text-[13px] sm:p-5">
+                            <p class="font-semibold text-[#2b1730]">{{ $returnRequest->status_label }}</p>
+                            <p class="text-[#5b4a60]">Reason: {{ $returnRequest->reason_label }}</p>
+                            @if ($returnRequest->status === 'approved')
+                                <p class="text-[#2e6b46]">Refund {{ $fmt($returnRequest->refund_cents / 100) }} — the seller approved the return.</p>
+                            @elseif ($returnRequest->status === 'rejected')
+                                <p class="text-[#a32b43]">Seller's reason: {{ $returnRequest->decision_note }}</p>
+                            @else
+                                <p class="text-[#8a7a8e]">Sent {{ $returnRequest->created_at?->diffForHumans() }}. The seller will review it.</p>
+                            @endif
+                        </div>
+                    </section>
+                @elseif ($canRequestReturn)
+                    <section class="{{ $card }} p-4">
+                        <p class="text-[13px] text-[#5b4a60]">Something wrong with this order? You can ask the seller to take it back.</p>
+                        <p class="mt-1 text-[12px] text-[#8a7a8e]">Return window closes {{ $returnWindowClosesAt?->format('M j, Y') }}.</p>
+                        <a href="{{ route('buyer.orders.return.create', $order) }}" class="mt-3 inline-flex h-10 w-full items-center justify-center rounded-md border border-[#805487] text-[13px] font-medium text-[#52245b] transition-colors duration-200 hover:bg-[#f5ecf6]">Request a return</a>
+                    </section>
+                @elseif (in_array($order->status, ['delivered', 'completed'], true) && $returnWindowClosesAt)
+                    <section class="{{ $card }} p-4">
+                        <p class="text-[13px] text-[#5b4a60]">The 7-day return window for this order closed on {{ $returnWindowClosesAt->format('M j, Y') }}.</p>
+                    </section>
+                @endif
+
                 <section class="{{ $card }}">
                     <h2 class="{{ $cardHead }}">Order summary</h2>
                     <dl class="space-y-2.5 p-4 text-[13px] sm:p-5">

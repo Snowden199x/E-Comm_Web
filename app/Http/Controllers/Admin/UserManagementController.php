@@ -18,7 +18,8 @@ class UserManagementController extends Controller
     public function index(Request $request): View
     {
         $showRejected = $request->boolean('rejected');
-        $users = $this->filteredUsers($request, $showRejected);
+        $showDeletionRequests = $request->boolean('deletion');
+        $users = $this->filteredUsers($request, $showRejected, $showDeletionRequests);
 
         $managed = User::query()->where('status', 'approved');
         $stats = [
@@ -27,19 +28,24 @@ class UserManagementController extends Controller
             'buyers' => (clone $managed)->where('role', 'buyer')->count(),
             'logistics_centers' => (clone $managed)->where('role', 'logistics_center')->count(),
         ];
+        // Badge count for the "Deletion requests" filter; only approved Buyer/Seller rows can request.
+        $pendingDeletions = AccountDeletionRequest::query()->where('status', 'pending')
+            ->whereHas('user', fn ($query) => $query->where('status', 'approved')->whereIn('role', ['buyer', 'seller']))
+            ->count();
 
-        return view('admin.user-management.index', compact('users', 'stats', 'showRejected'));
+        return view('admin.user-management.index', compact('users', 'stats', 'showRejected', 'showDeletionRequests', 'pendingDeletions'));
     }
 
     public function table(Request $request): View
     {
         $showRejected = $request->boolean('rejected');
-        $users = $this->filteredUsers($request, $showRejected);
+        $showDeletionRequests = $request->boolean('deletion');
+        $users = $this->filteredUsers($request, $showRejected, $showDeletionRequests);
 
         return view('admin.user-management.partials.users-table', compact('users'));
     }
 
-    private function filteredUsers(Request $request, bool $showRejected)
+    private function filteredUsers(Request $request, bool $showRejected, bool $showDeletionRequests = false)
     {
         $query = User::whereIn('role', ['seller', 'buyer', 'logistics_center']);
 
@@ -63,6 +69,10 @@ class UserManagementController extends Controller
 
         if ($request->filled('date')) {
             $query->whereDate('created_at', $request->date);
+        }
+
+        if ($showDeletionRequests) {
+            $query->whereHas('pendingDeletionRequest');
         }
 
         return $query->with(['sellerDetail', 'buyerDetail', 'logisticsCenterDetail', 'categories', 'pendingDeletionRequest', 'latestDeletionRequest'])

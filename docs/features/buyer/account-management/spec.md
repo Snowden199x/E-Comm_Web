@@ -32,3 +32,7 @@ Photo and banner uploads open a crop dialog (drag to reposition, zoom 1x to 4x).
 ## 11 November 2026 account deletion request
 
 Settings → *Privacy and terms* now has a **Delete account** card. It opens a dialog with a required reason and an optional comment (max 500, required for *Other*) and posts to `buyer.account.deletion-request`. The request waits for Admin review; the account stays usable and the card shows the sent date until it is decided. See [account deletion request](../../shared/account-deletion-request/spec.md).
+
+## 11 November 2026: saved addresses
+
+Settings > *Delivery* now summarizes saved delivery addresses (count, default label and line) and links to **Saved addresses**, a page where the Buyer adds, edits, makes default, or deletes up to 10 addresses. The registered address in the *Profile* section is unchanged and is still what checkout falls back to. See [Buyer Address](../address-book/spec.md).

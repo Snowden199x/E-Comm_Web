@@ -64,8 +64,10 @@ class AccountController extends Controller
 
         $pendingDeletion = auth()->user()->pendingDeletionRequest;
         $deletionReasons = AccountDeletionRequest::REASONS;
+        $savedAddresses = \App\Models\BuyerAddress::query()->where('user_id', auth()->id())
+            ->orderByDesc('is_default')->oldest('id')->get();
 
-        return view('buyer.account', compact('buyerDetail', 'policies', 'deliveryCompanies', 'pendingDeletion', 'deletionReasons'));
+        return view('buyer.account', compact('buyerDetail', 'policies', 'deliveryCompanies', 'pendingDeletion', 'deletionReasons', 'savedAddresses'));
     }
 
     /** Buyer asks admin to close the account. The account stays usable until an admin approves. */
@@ -96,6 +98,15 @@ class AccountController extends Controller
             'comments' => $data['comments'] ?? null,
             'status' => 'pending',
             'requested_at' => now(),
+        ]);
+
+        // Admin operational inbox: opens User Management filtered to pending deletion requests.
+        \App\Models\Communication\Notification::create([
+            'user_id' => null,
+            'type' => 'account_deletion_request',
+            'title' => 'Account deletion request',
+            'message' => 'A buyer asked to close their account.',
+            'link' => route('admin.user-management.index', ['deletion' => 1]),
         ]);
 
         return back()->with('success', 'Your deletion request was sent to the admin team for review.');

@@ -26,7 +26,8 @@ class RiderEarningsController extends Controller
             ->join('order_shipping_settlements as settlement', 'settlement.id', '=', 'line.settlement_id')
             ->join('orders', 'orders.id', '=', 'settlement.order_id')
             ->where('line.rider_user_id', $userId)->where('settlement.status', 'accrued')
-            ->where('orders.status', 'delivered');
+            // Delivered or completed: the accrual must not disappear once the Buyer confirms receipt.
+            ->whereIn('orders.status', Order::SALES_STATUSES);
         $summary = (clone $base)->selectRaw('COALESCE(SUM(line.amount), 0) as accrued_total, COUNT(*) as hub_credits')->first();
         $rows = (clone $base)->leftJoin('logistics_facilities as facility', 'facility.id', '=', 'line.facility_id')
             ->orderByDesc('line.created_at')->limit(100)

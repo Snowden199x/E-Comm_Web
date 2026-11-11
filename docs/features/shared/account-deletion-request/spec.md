@@ -13,6 +13,8 @@ A Buyer or Seller can ask Vendo to close their account from their own profile. T
 
 The account stays fully usable while the request is pending. Nothing is deleted at request time.
 
+**Admin notification and filter.** Submitting a request also creates an Admin operational notification (`account_deletion_request`, “Account deletion request”) in the Admin bell and Notifications page; opening it lands on User Management filtered to accounts with a pending deletion request. The User Management filter toolbar has a **Deletion requests** pill with a live count badge, which lists only approved Buyer/Seller accounts waiting for a decision. The pill and the Rejected toggle are mutually exclusive, and both reset with *Clear filters*.
+
 **Reviewing (Admin).** Admin → User Management → open a Buyer or Seller profile. Under **Suspend** / **Deactivate** (or the Activate button) there is a new bar, **User request for deletion of account**. It shows a *Pending* pill when a request is waiting. Opening it:
 - with a request: reason chips, the comment (or “No comment added.”), requested date, and, after a decision, the reviewer, review time and Admin note;
 - without a request: an empty panel (“No deletion request”).
@@ -30,7 +32,8 @@ Both decisions run in a transaction with an `admin_action_logs` row (`deletion_a
 ## Gaps and acceptance direction
 
 - Approving closes access by deactivating the account; it does **not** hard-delete the row or anonymize personal data. Order history, reviews and messages still reference the user. A later retention/anonymization job would be needed for true erasure.
-- No email or Admin notification is sent when a request arrives; the Admin sees it only in User Management. No badge or filter exists on the list for pending deletions.
+- The Admin is notified in-app only; no email is sent. The badge counts pending requests, but the user list has no per-row “deletion requested” marker, so the pill (or the notification link) is how Admin finds them.
+- The Buyer/Seller who submitted a request is not told in-app when it is rejected; only the Admin note records the decision.
 - Only Buyer and Seller can request. Logistics centers, Riders and Drivers are out of scope.
 - A pending request does not block checkout, listing products, or suspensions and other Admin actions taken in the meantime.
 

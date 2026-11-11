@@ -11,6 +11,7 @@
         // One Status filter. "rejected" sends rejected=1; active / suspended / deactivated send account_status.
         $initialStatus = $showRejected ? 'rejected' : request()->string('account_status', 'all')->toString();
         $initialStatus = in_array($initialStatus, ['all', 'active', 'suspended', 'deactivated', 'rejected'], true) ? $initialStatus : 'all';
+        $initialDeletion = (bool) ($showDeletionRequests ?? false);
 
         $cards = [
             ['key' => 'all', 'label' => 'Total Users', 'value' => $stats['total_users'], 'icon' => 'users'],
@@ -30,6 +31,7 @@
         date: @js($initialDate),
         type: @js($initialType),
         status: @js($initialStatus),
+        deletion: @js($initialDeletion),
         page: {{ (int) $users->currentPage() }},
         loading: false,
         failed: false,
@@ -38,7 +40,7 @@
         pageUrl: @js(route('admin.user-management.index')),
 
         get filtered() {
-            return this.q.trim() !== '' || this.date !== '' || this.type !== 'all' || this.status !== 'all';
+            return this.q.trim() !== '' || this.date !== '' || this.type !== 'all' || this.status !== 'all' || this.deletion;
         },
 
         params() {
@@ -48,6 +50,7 @@
             if (this.type !== 'all') p.set('user_type', this.type);
             if (this.status === 'rejected') p.set('rejected', '1');
             else if (this.status !== 'all') p.set('account_status', this.status);
+            if (this.deletion) p.set('deletion', '1');
             if (this.page > 1) p.set('page', this.page);
             return p;
         },
@@ -67,6 +70,7 @@
             this.date = '';
             this.type = 'all';
             this.status = 'all';
+            this.deletion = false;
             this.apply();
         },
         onRegionClick(event) {
@@ -127,8 +131,13 @@
         {{-- Counts. Selecting a card also filters the table to that user type. --}}
         @include('admin.partials.filter-stat-cards', ['cards' => $cards])
 
-        {{-- Search, date, user type and rejected users --}}
-        @include('admin.partials.filter-toolbar', ['searchLabel' => 'Search users', 'rejectedToggle' => true])
+        {{-- Search, date, user type, rejected users and pending deletion requests --}}
+        @include('admin.partials.filter-toolbar', [
+            'searchLabel' => 'Search users',
+            'rejectedToggle' => true,
+            'deletionToggle' => true,
+            'pendingDeletionCount' => $pendingDeletions,
+        ])
 
         {{-- The table could not refresh --}}
         <div x-show="failed" x-cloak role="alert"
