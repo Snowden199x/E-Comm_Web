@@ -11,12 +11,14 @@ class CartItem extends Model
     public const MAX_LINES = 200;
 
     /**
-     * Buyer-facing cart counts stop at 200; anything above reads "200+" so the header badge
-     * and dashboard tile keep their width.
+     * Buyer-facing cart counts stop at "99+" even though a cart may hold 200 lines, so the
+     * header badge and dashboard tile keep their width.
      */
+    public const DISPLAY_CAP = 99;
+
     public static function displayCount(int $count): string
     {
-        return $count > self::MAX_LINES ? self::MAX_LINES.'+' : (string) $count;
+        return $count > self::DISPLAY_CAP ? self::DISPLAY_CAP.'+' : (string) $count;
     }
 
     protected $fillable = ['user_id', 'product_id', 'product_variant_id', 'quantity', 'color', 'size'];
