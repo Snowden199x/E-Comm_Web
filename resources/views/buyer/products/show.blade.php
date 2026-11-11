@@ -33,7 +33,7 @@
         ? $product->variants->map(fn ($variant) => [
             'id' => $variant->id,
             'label' => $variant->label,
-            'price' => (float) $variant->price,
+            'price' => $product->salePriceFor((float) $variant->price),
             'stock' => (int) $variant->stock,
             'options' => (object) (array) $variant->options,
         ])->values()
@@ -57,15 +57,18 @@
     $shippingFee = isset($shippingFee) ? (float) $shippingFee : 0.0;
     $shippingFeeText = '₱' . number_format($shippingFee, 2);
     $variantPrices = $variantData->pluck('price');
-    $startPrice = $variantPrices->isNotEmpty() ? $variantPrices->min() : (float) $product->price;
+    $startPrice = $variantPrices->isNotEmpty() ? $variantPrices->min() : (float) $product->effective_price;
     $basePriceText = ($variantPrices->isNotEmpty() && $variantPrices->min() != $variantPrices->max())
         ? $fmt($variantPrices->min()) . ' – ' . $fmt($variantPrices->max())
         : $fmt($startPrice);
 
-    // Strike-through price only for single-price products
-    $compareAt = ! $product->has_variations ? ($product->compare_at_price ?? null) : null;
-    $showCompare = $compareAt && $compareAt > $product->price;
-    $discount = $showCompare ? (int) round((1 - $product->price / $compareAt) * 100) : 0;
+    // Strike-through price: the original list price when a dated sale is live,
+    // otherwise the seller's compare-at price on single-price products.
+    $compareAt = $product->hasActiveSale()
+        ? (float) $product->price
+        : (! $product->has_variations ? ($product->compare_at_price ?? null) : null);
+    $showCompare = $compareAt && $compareAt > $startPrice;
+    $discount = $showCompare ? (int) round((1 - $startPrice / $compareAt) * 100) : 0;
 
     $firstPhoto = $photos->first();
     $favorite = [
@@ -301,6 +304,10 @@
                     <!-- Price -->
                     <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-[#f6f2f7] px-4 py-3">
                         <span class="text-[26px] font-semibold leading-none text-[#52245b] sm:text-[28px]" x-text="priceText">{{ $basePriceText }}</span>
+                        @if ($showCompare)
+                            <s class="text-[14px] text-[#8c7a8e]">{{ $fmt($compareAt) }}</s>
+                            <span class="rounded bg-[#fde9ee] px-1.5 py-0.5 text-[11px] font-semibold text-[#a32b43]">-{{ $discount }}%</span>
+                        @endif
                         @if ($showCompare)
                             <span class="text-[14px] text-[#9a8a9d] line-through">{{ $fmt($compareAt) }}</span>
                             <span class="rounded bg-[#e8c874] px-1.5 py-0.5 text-[11px] font-semibold text-[#402143]">&minus;{{ $discount }}%</span>

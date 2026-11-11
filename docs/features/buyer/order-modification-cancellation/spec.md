@@ -20,3 +20,7 @@ There is no return/refund flow, buyer order change request, or time-based cancel
 ## Related documentation
 
 See [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+
+## 11 November 2026: no cancellation once pickup is arranged
+
+Buyer cancellation remains limited to `placed` and `confirmed`. Once the seller marks the order ready (which now records a pickup schedule and notifies the hub), moves it into preparation, or a rider is assigned, the seller-side status is past the buyer window, so the buyer cannot cancel. The cancellation service re-checks the status under a row lock, so a stale page cannot cancel a parcel that has already moved on. Seller cancellation still stops at `ready_for_pickup`; it is blocked after pickup.

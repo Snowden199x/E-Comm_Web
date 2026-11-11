@@ -302,6 +302,8 @@ function initProductForm(form) {
     const limits = { maxImages: +form.dataset.maxImages || 6, maxMb: +form.dataset.maxMb || 2, totalMb: +form.dataset.totalMb || 10, videoMb: +form.dataset.videoMb || 10, videoSec: +form.dataset.videoSec || 60 };
     const isEdit = form.dataset.mode === 'edit';
     const MAX_VAR_TYPES = 3, MAX_OPTIONS = 20, MAX_VARIANTS = 100;
+    // Saved, submitted variants are locked. An unsent draft can still be rearranged.
+    const lockedVariations = isEdit && cfg.hasVariations && !cfg.isDraft;
     const productDraftKey = `vendo.product.${form.dataset.productDraftKey}`;
     // Remove the older generic snapshot; this form has its own draft handler.
     try { sessionStorage.removeItem(`vendo.form.${form.dataset.productDraftKey}`); } catch { /* storage is optional */ }
@@ -515,7 +517,7 @@ function initProductForm(form) {
     const labelOf = c => c.map(x => x.option).join(' / ');
 
     function addType(name = '') {
-        if (isEdit && cfg.hasVariations) return;
+        if (lockedVariations) return;
         if (state.types.length >= MAX_VAR_TYPES) return toast(`You can add up to ${MAX_VAR_TYPES} variations.`);
         if (name && state.types.some(t => t.name.toLowerCase() === name.toLowerCase())) return;
         const empty = state.types.find(t => !t.name && !t.options.length);
@@ -525,14 +527,14 @@ function initProductForm(form) {
     function renderTypes() {
         typesHost.replaceChildren(...state.types.map((t, ti) => {
             const card = el('div', { className: 'pi-var' });
-            card.append(el('div', { className: 'pi-var-head' }, el('span', { textContent: `Variation ${ti + 1}` }), ...((isEdit && cfg.hasVariations) ? [] : [el('button', { type: 'button', className: 'pi-btn pi-btn--sm pi-btn--ghost pi-btn--danger', textContent: 'Remove', onclick: () => { state.types.splice(ti, 1); renderTypes(); rebuildVariants(); } })])));
+            card.append(el('div', { className: 'pi-var-head' }, el('span', { textContent: `Variation ${ti + 1}` }), ...((lockedVariations) ? [] : [el('button', { type: 'button', className: 'pi-btn pi-btn--sm pi-btn--ghost pi-btn--danger', textContent: 'Remove', onclick: () => { state.types.splice(ti, 1); renderTypes(); rebuildVariants(); } })])));
             const name = el('input', { className: 'pi-input pi-var-name', placeholder: 'Variation name (e.g. Color, Size, Flavor)', maxLength: 30, value: t.name, ariaLabel: 'Variation name' });
             name.dataset.field = `type.${ti}.name`;
-            name.readOnly = isEdit && cfg.hasVariations;
+            name.readOnly = lockedVariations;
             name.addEventListener('input', () => { t.name = name.value; clearError(`type.${ti}.name`); debounceVariants(); });
             card.append(name, el('div', { className: 'pi-error', dataset: { errorFor: `type.${ti}.name` } }));
             const opts = el('div', { className: 'pi-opts' });
-            t.options.forEach((o, oi) => opts.append(el('span', { className: 'pi-tag' }, o, ...((isEdit && cfg.hasVariations) ? [] : [el('button', { type: 'button', ariaLabel: `Remove ${o}`, textContent: '×', onclick: () => { t.options.splice(oi, 1); renderTypes(); rebuildVariants(); } })]))));
+            t.options.forEach((o, oi) => opts.append(el('span', { className: 'pi-tag' }, o, ...((lockedVariations) ? [] : [el('button', { type: 'button', ariaLabel: `Remove ${o}`, textContent: '×', onclick: () => { t.options.splice(oi, 1); renderTypes(); rebuildVariants(); } })]))));
             card.append(opts);
             const add = el('div', { className: 'pi-inline' });
             const optInput = el('input', { className: 'pi-input', placeholder: 'Add an option (e.g. Black)', maxLength: 30, ariaLabel: 'New option' });
@@ -548,11 +550,11 @@ function initProductForm(form) {
             };
             optInput.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commit(); } });
             add.append(optInput, el('button', { type: 'button', className: 'pi-btn pi-btn--sm', textContent: '+ Add Option', onclick: commit }));
-            if (!(isEdit && cfg.hasVariations)) card.append(add);
+            if (!(lockedVariations)) card.append(add);
             card.append(el('div', { className: 'pi-error', dataset: { errorFor: `type.${ti}.options` } }));
             return card;
         }));
-        $('#piAddType').hidden = state.types.length >= MAX_VAR_TYPES || (isEdit && cfg.hasVariations);
+        $('#piAddType').hidden = state.types.length >= MAX_VAR_TYPES || (lockedVariations);
     }
     $('#piAddType').addEventListener('click', () => { addType(''); typesHost.lastElementChild?.querySelector('input')?.focus(); });
 
@@ -575,7 +577,7 @@ function initProductForm(form) {
             const num = (key, ph, step, min) => {
                 const input = el('input', { className: 'pi-input', type: 'number', min, step, placeholder: ph, value: v[key], ariaLabel: `${key} for ${label}` });
                 input.dataset.field = `variant.${label}.${key}`;
-                if (key === 'stock' && isEdit && cfg.hasVariations) input.readOnly = true;
+                if (key === 'stock' && lockedVariations) input.readOnly = true;
                 input.addEventListener('input', () => { v[key] = input.value; clearError(`variant.${label}.${key}`); updateTotals(); changed(); });
                 return el('td', {}, input, el('div', { className: 'pi-error', dataset: { errorFor: `variant.${label}.${key}` } }));
             };
@@ -584,7 +586,7 @@ function initProductForm(form) {
             priceCell.prepend(el('div', { className: 'pi-unit pi-unit--pre' }, el('span', { textContent: '₱' }), priceInput));
             const sku = el('input', { className: 'pi-input', placeholder: 'Assigned after submission', value: cfg.showGeneratedSku ? v.sku : '', ariaLabel: `SKU for ${label}`, readOnly: true });
             const pick = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', hidden: true });
-            const btn = el('button', { type: 'button', className: 'pi-vimg', ariaLabel: `Image for ${label}`, innerHTML: v.url ? `<img src="${v.url}" alt="">` : '+', disabled: isEdit && cfg.hasVariations, onclick: () => pick.click() });
+            const btn = el('button', { type: 'button', className: 'pi-vimg', ariaLabel: `Image for ${label}`, innerHTML: v.url ? `<img src="${v.url}" alt="">` : '+', disabled: lockedVariations, onclick: () => pick.click() });
             pick.addEventListener('change', () => {
                 const f = pick.files[0]; if (!f) return;
                 if (!IMG_OK.includes(f.type) || f.size > limits.maxMb * 1048576) return toast(`Variant image must be JPG, PNG or WebP up to ${limits.maxMb} MB.`);
@@ -606,7 +608,7 @@ function initProductForm(form) {
     }
     $('#piBulkApply').addEventListener('click', () => {
         const p = $('#piBulkPrice').value, s = $('#piBulkStock').value;
-        Object.values(state.variants).forEach(v => { if (p !== '') v.price = p; if (s !== '' && !(isEdit && cfg.hasVariations)) v.stock = s; });
+        Object.values(state.variants).forEach(v => { if (p !== '') v.price = p; if (s !== '' && !(lockedVariations)) v.stock = s; });
         renderVariantTable(Object.keys(state.variants).length); changed();
     });
     function setVariations(on) {
@@ -693,7 +695,7 @@ function initProductForm(form) {
 
         specsHost.replaceChildren();
         (draft.specs || []).forEach(s => addSpec(s.name, s.value));
-        if (!(isEdit && cfg.hasVariations)) {
+        if (!(lockedVariations)) {
             state.types = (draft.types || []).slice(0, MAX_VAR_TYPES).map(t => ({
                 name: String(t.name || '').slice(0, 30),
                 options: (Array.isArray(t.options) ? t.options : []).slice(0, MAX_OPTIONS),
@@ -708,7 +710,7 @@ function initProductForm(form) {
         Object.entries(draft.variants || {}).forEach(([label, values]) => {
             if (!state.variants[label]) return;
             state.variants[label].price = values.price ?? state.variants[label].price;
-            if (!(isEdit && cfg.hasVariations)) state.variants[label].stock = values.stock ?? state.variants[label].stock;
+            if (!(lockedVariations)) state.variants[label].stock = values.stock ?? state.variants[label].stock;
         });
         renderVariantTable(Object.keys(state.variants).length);
         $$('.pi-var input[aria-label="New option"]', typesHost).forEach((input, i) => { input.value = draft.optionInputs?.[i] || ''; });
@@ -851,21 +853,24 @@ function initProductForm(form) {
         if (state.removeVideo) body.set('remove_video', '1');
         if (isEdit && state.images[0]?.kind === 'existing') body.set('main_image_id', state.images[0].id);
         specRows().filter(r => r.name && r.value).forEach((r, i) => { body.set(`specs[${i}][name]`, r.name); body.set(`specs[${i}][value]`, r.value); });
-        const completeVariations = state.types.length > 0 && state.types.every(t => t.name.trim() && t.options.length)
-            && Object.values(state.variants).length > 0 && Object.values(state.variants).every(x => x.combo?.length === state.types.length
-                && x.price !== '' && +x.price > 0 && x.stock !== '' && Number.isInteger(+x.stock) && +x.stock >= 0);
-        const persistVariations = state.hasVariations && (action !== 'draft' || completeVariations);
+        // A draft keeps whatever variation setup exists, including rows without a price yet.
+        const persistVariations = state.hasVariations && state.types.length > 0;
         body.set('has_variations', persistVariations ? '1' : '0');
         if (persistVariations) {
-            state.types.forEach((t, i) => { body.set(`variation_types[${i}][name]`, t.name.trim()); t.options.forEach(o => body.append(`variation_types[${i}][options][]`, o)); });
+            state.types.forEach((t, i) => {
+                if (action === 'draft' && !t.name.trim() && !t.options.length) return;
+                body.set(`variation_types[${i}][name]`, t.name.trim());
+                t.options.forEach(o => body.append(`variation_types[${i}][options][]`, o));
+            });
             Object.entries(state.variants).forEach(([label, x], i) => {
                 body.set(`variants[${i}][label]`, label);
-                x.combo.forEach(c => body.set(`variants[${i}][options][${c.type}]`, c.option));
+                (x.combo || []).forEach(c => body.set(`variants[${i}][options][${c.type}]`, c.option));
                 body.set(`variants[${i}][price]`, x.price); body.set(`variants[${i}][stock]`, x.stock);
                 if (x.image) body.set(`variants[${i}][image]`, x.image);
             });
             const vs = Object.values(state.variants);
-            body.set('price', Math.min(...vs.map(x => +x.price || 0)).toFixed(2));
+            const prices = vs.map(x => +x.price).filter(p => p > 0);
+            if (prices.length) body.set('price', Math.min(...prices).toFixed(2));
             if (!isEdit) body.set('stock', vs.reduce((s, x) => s + (parseInt(x.stock) || 0), 0));
         }
         if (!body.get('brand')) body.set('brand', '');

@@ -5,7 +5,7 @@
 
 ## Current behavior
 
-Every Buyer page that uses `<x-buyer.layout>` shows a solid purple header (no gradient): Vendo logo, product search, Messages, Cart (with item-count badge), Notifications (existing bell and polling), and an account menu with My Orders, Account Management, and Logout. The Messages control uses the white-tinted `messages-icon.svg` asset for contrast on the purple header. There is no Buyer sidebar. A category strip under the header lists Home, All Categories, and every top-level category. Hovering (or tapping, on touch screens) opens a subcategory menu: top-level categories on one side and round tiles for their subcategories on the other, each linking to `buyer.products.index?category_id=`. Tile images are optional files under `public/images/buyer/subcategories/<category>/<subcategory>.png`; a missing file shows a colored letter tile. The layout reads categories directly from the `categories` table.
+Every Buyer page that uses `<x-buyer.layout>` shows a solid purple header (no gradient): Vendo logo, product search, Messages, Cart (with item-count badge capped at 99; more shows "99+"), Notifications (existing bell and polling), and an account menu with My Orders, Account Management, and Logout. The Messages control uses the white-tinted `messages-icon.svg` asset for contrast on the purple header. There is no Buyer sidebar. A category strip under the header lists Home, All Categories, and every top-level category. Hovering (or tapping, on touch screens) opens a subcategory menu: top-level categories on one side and round tiles for their subcategories on the other, each linking to `buyer.products.index?category_id=`. Tile images are optional files under `public/images/buyer/subcategories/<category>/<subcategory>.png`; a missing file shows a colored letter tile. The layout reads categories directly from the `categories` table.
 
 The header search box has a white field with no colored square behind the search icon. When the route `buyer.sellers.index` exists it also gets a Products/Shops selector (see [Seller shop](../seller-shop/spec.md)).
 
@@ -36,3 +36,7 @@ The account and notification menus now sit above the category menu; moving up fr
 ## Related documentation
 
 See [domain status](../../../domain-feature-status.md), the [Buyer domain page](../../../domains/Buyer.md), [Browse Shop](../browse-shop/spec.md), [Cart](../view-cart/spec.md), and [feature implementation guide](../../../feature-implementation-guide.md).
+
+## 11 November 2026: out-of-stock listings
+
+The buyer dashboard now filters with `Product::inStock()`, so a listing with zero stock (or no sellable variant) is not suggested there. The shop still lists it with the existing **Sold out** overlay so buyers can open it and read the details.

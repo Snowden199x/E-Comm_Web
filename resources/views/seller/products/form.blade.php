@@ -36,6 +36,7 @@
         'attributes' => $editing ? ($product->attributeValues->mapWithKeys(fn ($item) => [$item->key => count($item->value) === 1 ? $item->value[0] : $item->value])->all() ?: ($product->material ? ['material' => $product->material] : [])) : (object) [],
         'specs' => $editing && $product->specifications->isNotEmpty() ? $product->specifications->map(fn ($spec) => ['name' => $spec->name, 'value' => $spec->value])->all() : $legacySpecs,
         'hasVariations' => $editing && $product->has_variations,
+        'isDraft' => $editing && $product->status === 'draft',
         'showGeneratedSku' => $editing && $product->status !== 'draft',
         'productCode' => $editing && $product->status !== 'draft' ? $product->product_code : null,
         'variationTypes' => $editing ? $product->variationTypes->map(fn ($type) => ['name' => $type->name, 'options' => $type->options->pluck('value')->all()])->all() : [],
@@ -222,6 +223,36 @@
                             <div class="pi-unit pi-unit--pre"><span>₱</span><input class="pi-input" id="piComparePrice" name="compare_at_price" data-field="compare_at_price" type="number" min="0.01" max="99999999.99" step="0.01" value="{{ $product->compare_at_price }}" placeholder="0.00"></div>
                             <div class="pi-help">Shown crossed out on product cards when it is higher than the selling price.</div>
                             <div class="pi-error" data-error-for="compare_at_price"></div>
+                        </div>
+
+                        <div class="pi-card" style="margin-top:14px">
+                            <div class="pi-sec-head"><div><h3 style="margin:0">Sale (optional)</h3><p style="margin:4px 0 0">A dated discount on this listing. The buyer pays the sale price only inside the window.</p></div></div>
+                            <div class="pi-grid">
+                                <div class="pi-field">
+                                    <label class="pi-label" for="piSaleType">Discount type</label>
+                                    <select class="pi-input" id="piSaleType" name="sale_type">
+                                        <option value="">No sale</option>
+                                        <option value="percent" @selected($product->sale_type === 'percent')>Percentage off</option>
+                                        <option value="fixed" @selected($product->sale_type === 'fixed')>Fixed amount off (₱)</option>
+                                    </select>
+                                    <div class="pi-error" data-error-for="sale_type"></div>
+                                </div>
+                                <div class="pi-field">
+                                    <label class="pi-label" for="piSaleValue">Amount</label>
+                                    <input class="pi-input" id="piSaleValue" name="sale_value" type="number" min="0.01" max="99999999.99" step="0.01" value="{{ $product->sale_value }}" placeholder="e.g. 10 or 50.00">
+                                    <div class="pi-error" data-error-for="sale_value"></div>
+                                </div>
+                                <div class="pi-field">
+                                    <label class="pi-label" for="piSaleStart">Starts</label>
+                                    <input class="pi-input" id="piSaleStart" name="sale_starts_at" type="datetime-local" value="{{ $product->sale_starts_at?->format('Y-m-d\TH:i') }}">
+                                    <div class="pi-error" data-error-for="sale_starts_at"></div>
+                                </div>
+                                <div class="pi-field">
+                                    <label class="pi-label" for="piSaleEnd">Ends</label>
+                                    <input class="pi-input" id="piSaleEnd" name="sale_ends_at" type="datetime-local" value="{{ $product->sale_ends_at?->format('Y-m-d\TH:i') }}">
+                                    <div class="pi-error" data-error-for="sale_ends_at"></div>
+                                </div>
+                            </div>
                         </div>
                     </section>
 

@@ -52,6 +52,8 @@ class SupportTicketController extends Controller
             'subject' => ['required', 'string', 'min:3', 'max:140'],
             'message' => ['required', 'string', 'min:10', 'max:5000'],
             'order_id' => ['nullable', 'integer', 'exists:orders,id'],
+            'attachments' => ['nullable', 'array', 'max:2'],
+            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ], [
             'subject.required' => 'Add a short subject so Vendo knows what this is about.',
             'subject.min' => 'Use at least 3 characters for the subject.',
@@ -60,7 +62,7 @@ class SupportTicketController extends Controller
             'category.in' => 'Choose a valid topic.',
         ]);
 
-        $ticket = $support->create($request->user(), $data);
+        $ticket = $support->create($request->user(), $data, $request->file('attachments', []));
 
         return redirect()->route('buyer.support.show', $ticket)
             ->with('success', 'Your support request was sent. Vendo replies in this thread.');
@@ -73,7 +75,7 @@ class SupportTicketController extends Controller
 
         $record = SupportTicket::query()
             ->where('user_id', $buyer->id)
-            ->with(['messages.sender:id,name', 'order:id,order_number'])
+            ->with(['messages.sender:id,name', 'messages.attachments', 'order:id,order_number'])
             ->findOrFail($ticket);
 
         return view('buyer.support.show', ['ticket' => $record]);
@@ -86,10 +88,12 @@ class SupportTicketController extends Controller
 
         $data = $request->validate([
             'body' => ['required', 'string', 'min:2', 'max:5000'],
+            'attachments' => ['nullable', 'array', 'max:2'],
+            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ], ['body.required' => 'Write a message before sending.']);
 
         $record = SupportTicket::query()->where('user_id', $buyer->id)->findOrFail($ticket);
-        $support->replyByBuyer($buyer, $record, $data['body']);
+        $support->replyByBuyer($buyer, $record, $data['body'], $request->file('attachments', []));
 
         return redirect()->route('buyer.support.show', $record)->with('success', 'Reply sent to Vendo.');
     }

@@ -162,7 +162,7 @@
                     <span class="{{ $chipClass }}"><span class="vb-icon vb-ico vb-ico--cart h-5 w-5" style="--icon: url('{{ asset('assets/icons/buyer/cart-icon.svg') }}')"></span></span>
                     <span class="min-w-0">
                         <span class="block truncate text-[14px] font-semibold text-[#2b1730]">View cart</span>
-                        <span class="block truncate text-[12px] text-[#7a6a7e]">{{ $cartTotal > 0 ? $cartTotal.' '.Str::plural('item', $cartTotal).' ready to order' : 'Your cart is empty' }}</span>
+                        <span class="block truncate text-[12px] text-[#7a6a7e]">{{ $cartTotal > 0 ? \App\Models\Ecommerce\CartItem::displayCount($cartTotal).' '.Str::plural('item', $cartTotal).' ready to order' : 'Your cart is empty' }}</span>
                     </span>
                     {!! $arrow !!}
                 </a>

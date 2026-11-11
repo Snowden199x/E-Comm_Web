@@ -1,13 +1,16 @@
 {{--
     Buyer product list (all products, a category, or search results).
     Uses the shared product card, so Add to Cart and the quick-select sheet work here too.
-    The shop cross-links appear only once the route buyer.sellers.index exists.
+    Filters (brand, price, stock, sort) stay in the URL so a shared link keeps the same results.
 --}}
 @php
-    $search = trim((string) request('search'));
-    $activeCategory = request()->filled('category_id') ? \App\Models\Category::query()->find(request()->integer('category_id')) : null;
+    $search = $filters['search'] ?? trim((string) request('search'));
+    $activeCategory = $filters['categoryId'] ? \App\Models\Category::query()->find($filters['categoryId']) : null;
     $shopSearchUrl = \Illuminate\Support\Facades\Route::has('buyer.sellers.index') ? route('buyer.sellers.index') : null;
     $heading = $search !== '' ? 'Results for “' . $search . '”' : ($activeCategory?->name ?? 'All products');
+    $filtered = $search !== '' || $activeCategory || ($filters['brand'] ?? '') !== ''
+        || ($filters['minPrice'] ?? null) !== null || ($filters['maxPrice'] ?? null) !== null || ($filters['inStock'] ?? false);
+    $fieldClass = 'h-9 w-full rounded-md border border-[#e5dce7] bg-white px-2.5 text-[12px] text-[#3d2a42] focus:border-[#805487] focus:outline-none';
 @endphp
 
 <x-buyer.layout :title="$heading . ' | Vendo'">
@@ -23,7 +26,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2 text-[12px]">
-                @if ($search !== '' || $activeCategory)
+                @if ($filtered)
                     <a href="{{ route('buyer.products.index') }}"
                         class="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#e5dce7] bg-white px-3 font-medium text-[#3d2a42] transition-colors duration-200 hover:border-[#c9a9ce] hover:bg-[#faf5fa]">
                         <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
@@ -39,13 +42,70 @@
             </div>
         </div>
 
+        <form method="GET" action="{{ route('buyer.products.index') }}" role="search"
+              class="mt-3 rounded-lg border border-[#eee6ef] bg-white p-3">
+            @if ($activeCategory)
+                <input type="hidden" name="category_id" value="{{ $activeCategory->id }}">
+            @endif
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                <label class="col-span-2 block sm:col-span-1 lg:col-span-2">
+                    <span class="mb-1 block text-[11px] font-medium text-[#6f5f73]">Search</span>
+                    <input type="search" name="search" value="{{ $search }}" maxlength="80" placeholder="Product or brand"
+                        class="{{ $fieldClass }}">
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[11px] font-medium text-[#6f5f73]">Brand</span>
+                    <select name="brand" class="{{ $fieldClass }}">
+                        <option value="">All brands</option>
+                        @foreach ($brands as $option)
+                            <option value="{{ $option }}" @selected(($filters['brand'] ?? '') === $option)>{{ $option }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[11px] font-medium text-[#6f5f73]">Lowest price</span>
+                    <input type="number" name="min_price" min="0" step="0.01" inputmode="decimal"
+                        value="{{ $filters['minPrice'] !== null ? rtrim(rtrim(number_format($filters['minPrice'], 2, '.', ''), '0'), '.') : '' }}"
+                        placeholder="₱0" class="{{ $fieldClass }}">
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[11px] font-medium text-[#6f5f73]">Highest price</span>
+                    <input type="number" name="max_price" min="0" step="0.01" inputmode="decimal"
+                        value="{{ $filters['maxPrice'] !== null ? rtrim(rtrim(number_format($filters['maxPrice'], 2, '.', ''), '0'), '.') : '' }}"
+                        placeholder="Any" class="{{ $fieldClass }}">
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-[11px] font-medium text-[#6f5f73]">Sort by</span>
+                    <select name="sort" class="{{ $fieldClass }}">
+                        <option value="relevance" @selected(($filters['effectiveSort'] ?? '') === 'relevance')>Best match</option>
+                        <option value="newest" @selected(($filters['effectiveSort'] ?? '') === 'newest')>Newest</option>
+                        <option value="price_low" @selected(($filters['sort'] ?? '') === 'price_low')>Price: low to high</option>
+                        <option value="price_high" @selected(($filters['sort'] ?? '') === 'price_high')>Price: high to low</option>
+                    </select>
+                </label>
+                <label class="col-span-2 flex items-center gap-2 self-end sm:col-span-1">
+                    <input type="checkbox" name="in_stock" value="1" @checked($filters['inStock'] ?? false)
+                        class="h-4 w-4 rounded border-[#c9a9ce] text-[#52245b]">
+                    <span class="text-[12px] text-[#5b4a60]">In stock only</span>
+                </label>
+                <div class="col-span-2 flex items-end gap-2 sm:col-span-1 lg:col-span-6">
+                    <button type="submit"
+                        class="inline-flex h-9 items-center rounded-md bg-[#402143] px-4 text-[12px] font-medium text-white transition-colors duration-200 hover:bg-[#52245b]">Apply filters</button>
+                    @if ($filtered)
+                        <a href="{{ route('buyer.products.index', $activeCategory ? ['category_id' => $activeCategory->id] : []) }}"
+                            class="inline-flex h-9 items-center rounded-md border border-[#e5dce7] px-3 text-[12px] font-medium text-[#3d2a42] transition-colors duration-200 hover:bg-[#faf5fa]">Reset</a>
+                    @endif
+                </div>
+            </div>
+        </form>
+
         @if ($products->isEmpty())
             <div class="mt-4 rounded-lg border border-[#eee6ef] bg-white">
-                @if ($search !== '')
-                    <x-buyer.empty-state icon="search" title="No products found for “{{ $search }}”"
-                        text="Check the spelling, or try a shorter or more general word.">
+                @if ($search !== '' || $filtered)
+                    <x-buyer.empty-state icon="search" title="No products match these filters"
+                        text="Check the spelling, raise the price range, or remove the brand or stock filter.">
                         <a href="{{ route('buyer.products.index') }}" class="inline-flex h-10 items-center rounded-md bg-[#402143] px-5 text-[13px] font-medium text-white transition-colors duration-200 hover:bg-[#52245b]">Browse all products</a>
-                        @if ($shopSearchUrl)
+                        @if ($shopSearchUrl && $search !== '')
                             <a href="{{ $shopSearchUrl }}?search={{ urlencode($search) }}" class="inline-flex h-10 items-center rounded-md border border-[#805487] px-5 text-[13px] font-medium text-[#52245b] transition-colors duration-200 hover:bg-[#f5ecf6]">Search shops instead</a>
                         @endif
                     </x-buyer.empty-state>

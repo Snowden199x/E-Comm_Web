@@ -61,9 +61,11 @@ class Order extends Model
         return $this->hasOne(\App\Models\Profiles\OrderDeliveryProof::class);
     }
 
-    protected $casts = ['shipping_fee' => 'decimal:2', 'voucher_discount' => 'decimal:2', 'shipping_route_snapshot' => 'array', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date',
+    protected $casts = ['shipping_fee' => 'decimal:2', 'voucher_discount' => 'decimal:2', 'voucher_codes' => 'array', 'shipping_route_snapshot' => 'array', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date',
         'delivered_at' => 'datetime', 'pickup_verified_at' => 'datetime',
         'delivery_scheduled_for' => 'date', 'delivery_failed_at' => 'datetime', 'delivery_attempts' => 'integer',
+        'pickup_scheduled_at' => 'datetime', 'pickup_reschedule_count' => 'integer', 'pickup_attempts' => 'integer',
+        'pickup_reported_at' => 'datetime',
         'return_window_until' => 'datetime', 'delivery_extra_attempts' => 'integer', 'limit_override_at' => 'datetime',
         'cod_amount' => 'decimal:2', 'rider_pay_rate' => 'decimal:2',
         'vendo_delivery_commission_rate' => 'decimal:2', 'seller_commission_rate' => 'decimal:2'];
@@ -83,6 +85,25 @@ class Order extends Model
         'discrepancy' => 'Cash discrepancy',
         'void' => 'No cash collected',
     ];
+
+    /** A seller may move the pickup schedule at most this many times. */
+    public const PICKUP_RESCHEDULE_LIMIT = 3;
+
+    public function pickupReschedulesLeft(): int
+    {
+        return max(0, self::PICKUP_RESCHEDULE_LIMIT - (int) $this->pickup_reschedule_count);
+    }
+
+    public function canSellerReschedulePickup(): bool
+    {
+        return $this->status === 'ready_for_pickup'
+            && (int) $this->pickup_reschedule_count < self::PICKUP_RESCHEDULE_LIMIT;
+    }
+
+    public function canSellerReportPickup(): bool
+    {
+        return $this->status === 'ready_for_pickup' && (int) $this->pickup_attempts > 0;
+    }
 
     public function codCollection()
     {
@@ -281,7 +302,7 @@ class Order extends Model
         'buyer_id',
         'seller_id',
         'buyer_note',
-        'voucher_discount', 'voucher_code',
+        'voucher_discount', 'voucher_code', 'voucher_codes',
         'courier_id',
         'total_amount',
         'status',

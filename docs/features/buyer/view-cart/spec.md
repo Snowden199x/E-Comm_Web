@@ -22,3 +22,7 @@ The "You May Also Like" section now receives up to six active approved products 
 ## Related documentation
 
 See [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+
+## 11 November 2026: 200-product cart limit
+
+A cart holds at most **200 distinct product/variant lines** (`CartItem::MAX_LINES`). Adding a new line when the cart is full is rejected on the web cart and on `POST /api/v1/buyer/cart` with a message naming the limit; changing the quantity of a line already in the cart still works. The header badge and dashboard tile show `200+` above the limit instead of `99+`.

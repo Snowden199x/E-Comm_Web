@@ -23,8 +23,10 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
+        // Zero-stock listings stay in the shop (marked sold out) but leave the dashboard.
         $products = Product::with(['images', 'seller.sellerDetail'])
             ->availableToBuy()
+            ->inStock()
             ->withCardMetrics()
             ->latest()
             ->take(18)

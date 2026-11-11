@@ -77,6 +77,14 @@ class CartController extends Controller
             return back()->withErrors(['quantity' => 'Only '.$availableStock.' left in stock. Lower the quantity and try again.']);
         }
 
+        $alreadyInCart = CartItem::where('user_id', auth()->id())
+            ->where('product_id', $product->id)
+            ->where('product_variant_id', $variant?->id)
+            ->exists();
+        if (! $alreadyInCart && CartItem::where('user_id', auth()->id())->count() >= CartItem::MAX_LINES) {
+            return back()->withErrors(['quantity' => 'Your cart is full. A cart can hold up to '.CartItem::MAX_LINES.' different products.']);
+        }
+
         CartItem::create([
             'user_id' => auth()->id(),
             'product_id' => $request->product_id,

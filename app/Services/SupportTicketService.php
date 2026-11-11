@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  */
 class SupportTicketService
 {
-    public function create(User $buyer, array $data): SupportTicket
+    public function create(User $buyer, array $data, array $files = []): SupportTicket
     {
         abort_unless($buyer->role === 'buyer', 403);
         $category = (string) ($data['category'] ?? 'other');
@@ -28,7 +28,7 @@ class SupportTicketService
 
         $orderId = isset($data['order_id']) && $data['order_id'] !== '' ? (int) $data['order_id'] : null;
 
-        return DB::transaction(function () use ($buyer, $category, $subject, $body, $orderId) {
+        return DB::transaction(function () use ($buyer, $category, $subject, $body, $orderId, $files) {
             if ($orderId !== null) {
                 abort_unless(
                     Order::query()->whereKey($orderId)->where('buyer_id', $buyer->id)->exists(),
@@ -46,11 +46,12 @@ class SupportTicketService
                 'last_reply_at' => now(),
             ]);
 
-            $ticket->messages()->create([
+            $message = $ticket->messages()->create([
                 'sender_id' => $buyer->id,
                 'body' => $body,
                 'is_staff' => false,
             ]);
+            $this->storeAttachments($ticket, $message, $files);
 
             Notification::create([
                 'user_id' => null,
@@ -64,19 +65,20 @@ class SupportTicketService
         }, 3);
     }
 
-    public function replyByBuyer(User $buyer, SupportTicket $ticket, string $body): SupportTicketMessage
+    public function replyByBuyer(User $buyer, SupportTicket $ticket, string $body, array $files = []): SupportTicketMessage
     {
         abort_unless((int) $ticket->user_id === (int) $buyer->id, 403);
         $body = trim($body);
         abort_if($body === '', 422, 'Write a message before sending.');
         abort_if($ticket->status === SupportTicket::STATUS_RESOLVED, 409, 'This request is resolved. Open a new one if you still need help.');
 
-        return DB::transaction(function () use ($buyer, $ticket, $body) {
+        return DB::transaction(function () use ($buyer, $ticket, $body, $files) {
             $message = $ticket->messages()->create([
                 'sender_id' => $buyer->id,
                 'body' => $body,
                 'is_staff' => false,
             ]);
+            $this->storeAttachments($ticket, $message, $files);
 
             $ticket->update(['last_reply_at' => now()]);
 
@@ -92,17 +94,18 @@ class SupportTicketService
         }, 3);
     }
 
-    public function replyByAdmin(User $admin, SupportTicket $ticket, string $body): SupportTicketMessage
+    public function replyByAdmin(User $admin, SupportTicket $ticket, string $body, array $files = []): SupportTicketMessage
     {
         $body = trim($body);
         abort_if($body === '', 422, 'Write a reply before sending.');
 
-        return DB::transaction(function () use ($admin, $ticket, $body) {
+        return DB::transaction(function () use ($admin, $ticket, $body, $files) {
             $message = $ticket->messages()->create([
                 'sender_id' => $admin->id,
                 'body' => $body,
                 'is_staff' => true,
             ]);
+            $this->storeAttachments($ticket, $message, $files);
 
             $ticket->update([
                 'last_reply_at' => now(),
@@ -121,6 +124,23 @@ class SupportTicketService
 
             return $message;
         }, 3);
+    }
+
+    /** Files go to the private disk; the Buyer and Vendo read them through an authorized download route. */
+    private function storeAttachments(SupportTicket $ticket, SupportTicketMessage $message, array $files): void
+    {
+        foreach (array_filter($files) as $file) {
+            $path = $file->store('support/'.$ticket->id, 'local');
+            if (! $path) {
+                continue;
+            }
+            $message->attachments()->create([
+                'path' => $path,
+                'original_name' => mb_substr($file->getClientOriginalName(), 0, 255),
+                'mime' => (string) ($file->getMimeType() ?: 'application/octet-stream'),
+                'size' => (int) $file->getSize(),
+            ]);
+        }
     }
 
     public function setStatus(SupportTicket $ticket, string $status): SupportTicket

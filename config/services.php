@@ -51,6 +51,13 @@ return [
         ),
     ],
 
+    'firebase' => [
+        // Service account JSON from the Firebase console (Project settings › Service accounts).
+        // Without it, push is disabled and the Rider app keeps its polling fallback.
+        'credentials' => env('FIREBASE_CREDENTIALS'),
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

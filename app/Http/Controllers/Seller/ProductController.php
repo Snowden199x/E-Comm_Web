@@ -12,6 +12,7 @@ use App\Models\Ecommerce\Product;
 use App\Models\Ecommerce\SellerVoucher;
 use App\Models\User;
 use App\Services\InventoryService;
+use App\Support\VideoDuration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -118,6 +119,10 @@ class ProductController extends Controller
             'price' => [$draft || $request->boolean('has_variations') ? 'nullable' : 'required', 'numeric', 'min:0.01', 'max:99999999.99', 'decimal:0,2'],
             'sku' => 'prohibited',
             'compare_at_price' => 'nullable|numeric|min:0.01|max:99999999.99|decimal:0,2',
+            'sale_type' => 'nullable|in:percent,fixed',
+            'sale_value' => 'nullable|numeric|min:0.01|max:99999999.99|decimal:0,2',
+            'sale_starts_at' => 'nullable|date',
+            'sale_ends_at' => 'nullable|date|after:sale_starts_at',
             'category_id' => [$draft ? 'nullable' : 'required', 'integer', Rule::in($allowed->pluck('id')->all())],
             'brand' => 'nullable|string|max:255', 'no_brand' => 'nullable|boolean',
             'condition' => [$draft ? 'nullable' : 'required', Rule::in(['new', 'used'])],
@@ -139,19 +144,36 @@ class ProductController extends Controller
             'specs' => 'nullable|array|max:30',
             'specs.*.name' => 'required_with:specs.*.value|string|max:60',
             'specs.*.value' => 'required_with:specs.*.name|string|max:255',
+            // A draft keeps the Seller's unfinished variation setup, so only a submission enforces complete rows.
             'variation_types' => 'nullable|array|max:3',
-            'variation_types.*.name' => 'required|string|max:30',
-            'variation_types.*.options' => 'required|array|min:1|max:20',
-            'variation_types.*.options.*' => 'required|string|max:30',
+            'variation_types.*.name' => ($draft ? 'nullable' : 'required').'|string|max:30',
+            'variation_types.*.options' => [$draft ? 'nullable' : 'required', 'array', $draft ? 'max:20' : 'min:1'],
+            'variation_types.*.options.*' => ($draft ? 'nullable' : 'required').'|string|max:30',
             'variants' => 'nullable|array|max:100',
-            'variants.*.label' => 'required|string|max:255',
-            'variants.*.price' => 'required|numeric|min:0.01|max:99999999.99|decimal:0,2',
-            'variants.*.stock' => 'required|integer|min:0|max:1000000',
+            'variants.*.label' => ($draft ? 'nullable' : 'required').'|string|max:255',
+            'variants.*.price' => [$draft ? 'nullable' : 'required', 'numeric', 'min:0.01', 'max:99999999.99', 'decimal:0,2'],
+            'variants.*.stock' => [$draft ? 'nullable' : 'required', 'integer', 'min:0', 'max:1000000'],
             'variants.*.sku' => 'prohibited',
-            'variants.*.options' => 'required|array',
+            'variants.*.options' => [$draft ? 'nullable' : 'required', 'array'],
             'variants.*.image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'expected_revision' => $creating ? 'nullable' : 'required|string',
         ]);
+
+        if (($data['sale_type'] ?? null) === 'percent' && (float) ($data['sale_value'] ?? 0) > 100) {
+            throw ValidationException::withMessages(['sale_value' => 'A percentage sale must be 100% or less.']);
+        }
+        if (($data['sale_type'] ?? null) === null) {
+            $data['sale_value'] = null;
+            $data['sale_starts_at'] = null;
+            $data['sale_ends_at'] = null;
+        }
+
+        if ($request->hasFile('video')) {
+            $seconds = VideoDuration::seconds($request->file('video')->getRealPath());
+            if ($seconds !== null && $seconds > 60.5) {
+                throw ValidationException::withMessages(['video' => 'Keep the product video to 60 seconds or less.']);
+            }
+        }
 
         $uploads = array_filter([$request->file('main_image'), ...($request->file('gallery_images') ?? [])]);
         if (array_sum(array_map(fn ($file) => $file->getSize(), $uploads)) > self::MAX_UPLOAD_BYTES) {
@@ -200,8 +222,7 @@ class ProductController extends Controller
         }
         $data['attributes'] = $attributes;
         $this->validateVariants($data, $draft);
-        $listingPrice = ! empty($data['has_variations']) && ! empty($data['variants'])
-            ? min(array_column($data['variants'], 'price')) : ($data['price'] ?? null);
+        $listingPrice = $this->listingPrice($data) ?: null;
         if (! $draft && isset($data['compare_at_price']) && $listingPrice !== null
             && (float) $data['compare_at_price'] <= (float) $listingPrice) {
             throw ValidationException::withMessages(['compare_at_price' => 'The original price must be higher than the selling price.']);
@@ -217,8 +238,8 @@ class ProductController extends Controller
             $data['variants'] = [];
             return;
         }
-        if ($draft && (empty($data['variation_types']) || empty($data['variants']))) {
-            $data['has_variations'] = false;
+        if ($draft) {
+            $this->normaliseDraftVariants($data);
             return;
         }
         $types = $data['variation_types'] ?? [];
@@ -258,6 +279,67 @@ class ProductController extends Controller
             }
             $seen[$key] = true;
         }
+    }
+
+    /**
+     * A draft keeps whatever variation setup the Seller has so far: named types with the options
+     * entered, and the generated rows even when a price or stock is still blank. Completeness is
+     * enforced only when the listing is submitted.
+     */
+    private function normaliseDraftVariants(array &$data): void
+    {
+        $types = [];
+        foreach (array_slice($data['variation_types'] ?? [], 0, 3) as $type) {
+            $name = trim((string) ($type['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $options = [];
+            foreach (array_slice((array) ($type['options'] ?? []), 0, 20) as $option) {
+                $option = trim((string) $option);
+                if ($option !== '' && ! in_array(mb_strtolower($option), array_map('mb_strtolower', $options), true)) {
+                    $options[] = $option;
+                }
+            }
+            $duplicate = collect($types)->contains(fn ($saved) => mb_strtolower($saved['name']) === mb_strtolower($name));
+            if ($duplicate) {
+                throw ValidationException::withMessages(['variation_types' => 'Variation names must be unique.']);
+            }
+            $types[] = ['name' => $name, 'options' => $options];
+        }
+
+        $variants = [];
+        foreach (array_slice($data['variants'] ?? [], 0, 100) as $variant) {
+            $label = trim((string) ($variant['label'] ?? ''));
+            $options = is_array($variant['options'] ?? null) ? $variant['options'] : [];
+            if ($label === '' && $options === []) {
+                continue;
+            }
+            $variants[] = [
+                'label' => $label !== '' ? $label : implode(' / ', array_map('strval', $options)),
+                'options' => $options,
+                'price' => isset($variant['price']) && $variant['price'] !== '' ? $variant['price'] : null,
+                'stock' => isset($variant['stock']) && $variant['stock'] !== '' ? (int) $variant['stock'] : 0,
+            ];
+        }
+
+        $data['variation_types'] = $types;
+        $data['variants'] = $variants;
+        // Types alone are kept so the Seller can continue adding options on the next visit.
+        $data['has_variations'] = $types !== [];
+    }
+
+    /** Lowest variant price, or the simple price, so a draft can still hold zero-priced rows. */
+    private function listingPrice(array $data): float
+    {
+        if (! empty($data['has_variations']) && ! empty($data['variants'])) {
+            $prices = array_filter(array_column($data['variants'], 'price'), fn ($price) => $price !== null && $price !== '');
+            if ($prices !== []) {
+                return (float) min($prices);
+            }
+        }
+
+        return (float) ($data['price'] ?? 0);
     }
 
     private function storeUploads(Request $request): array
@@ -347,12 +429,14 @@ class ProductController extends Controller
         }
         foreach ($data['variants'] ?? [] as $position => $variant) {
             $sku = $product->product_code.'-'.str_pad((string) ($position + 1), 2, '0', STR_PAD_LEFT);
+            $price = $variant['price'] ?? null;
             $record = $product->variants()->create([
-                'label' => $variant['label'], 'sku' => $sku, 'price' => $variant['price'],
-                'stock' => 0, 'options' => $variant['options'], 'sort_order' => $position,
+                'label' => $variant['label'] ?: 'Variant '.($position + 1), 'sku' => $sku,
+                'price' => $price !== null && $price !== '' ? $price : null,
+                'stock' => 0, 'options' => $variant['options'] ?? [], 'sort_order' => $position,
                 'image_path' => $paths['variants'][$position] ?? null,
             ]);
-            if ($variant['stock'] > 0) {
+            if ((int) ($variant['stock'] ?? 0) > 0) {
                 app(InventoryService::class)->changeLocked($product, (int) $variant['stock'], 'initial', $actorId,
                     reason: 'Opening variant stock', variant: $record);
             }
@@ -374,8 +458,12 @@ class ProductController extends Controller
                     'name' => $data['name'], 'description' => $data['description'] ?? null,
                     'category_id' => $data['category_id'] ?? null, 'brand' => $data['brand'] ?? null,
                     'condition' => $data['condition'] ?? null,
-                    'price' => $hasVariations ? min(array_column($data['variants'], 'price')) : ($data['price'] ?? 0),
+                    'price' => $this->listingPrice($data),
                     'compare_at_price' => $data['compare_at_price'] ?? null,
+                    'sale_type' => $data['sale_type'] ?? null,
+                    'sale_value' => $data['sale_value'] ?? null,
+                    'sale_starts_at' => $data['sale_starts_at'] ?? null,
+                    'sale_ends_at' => $data['sale_ends_at'] ?? null,
                     'stock' => 0, 'status' => $data['action'] === 'draft' ? 'draft' : 'for_review',
                     'weight_kg' => $data['weight_kg'] ?? null,
                     'weight' => isset($data['weight_kg']) ? $data['weight_kg'].' kg' : null,
@@ -433,7 +521,18 @@ class ProductController extends Controller
                     throw ValidationException::withMessages(['main_image_id' => 'Choose a photo that remains on this product.']);
                 }
                 $oldVariants = $record->variants()->orderBy('sort_order')->get();
-                if ($oldVariants->isNotEmpty()) {
+                $rebuildDraftVariants = $record->status === 'draft'
+                    && ! $record->orderItems()->exists()
+                    && $oldVariants->sum('stock') === 0;
+                if ($oldVariants->isNotEmpty() && $rebuildDraftVariants) {
+                    // A draft has no orders and no stock yet, so its unfinished rows can be replaced outright.
+                    $record->variationTypes()->delete();
+                    $record->variants()->delete();
+                    $record->has_variations = ! empty($data['has_variations']);
+                    if ($record->has_variations) {
+                        $this->saveNewVariants($record, $data, $paths, $request->user()->id);
+                    }
+                } elseif ($oldVariants->isNotEmpty()) {
                     abort_unless(empty($paths['variants']), 422, 'Existing variant images cannot be replaced here.');
                     abort_unless(! empty($data['has_variations']) && count($data['variants'] ?? []) === $oldVariants->count(),
                         422, 'Existing variant combinations cannot be removed.');
@@ -448,6 +547,8 @@ class ProductController extends Controller
                 } elseif (! empty($data['has_variations'])) {
                     abort_unless($record->stock === 0 && ! $record->orderItems()->exists(), 422,
                         'A simple product can be converted to variants only before it has stock or orders.');
+                    // Types saved on an earlier draft have no variants yet, so they can be rebuilt.
+                    $record->variationTypes()->delete();
                     $record->has_variations = true;
                     $this->saveNewVariants($record, $data, $paths, $request->user()->id);
                 }
@@ -455,8 +556,12 @@ class ProductController extends Controller
                     'name' => $data['name'], 'description' => $data['description'] ?? null,
                     'category_id' => $data['category_id'] ?? null, 'brand' => $data['brand'] ?? null,
                     'condition' => $data['condition'] ?? null,
-                    'price' => ! empty($data['has_variations']) ? min(array_column($data['variants'], 'price')) : ($data['price'] ?? 0),
+                    'price' => $this->listingPrice($data),
                     'compare_at_price' => $data['compare_at_price'] ?? null,
+                    'sale_type' => $data['sale_type'] ?? null,
+                    'sale_value' => $data['sale_value'] ?? null,
+                    'sale_starts_at' => $data['sale_starts_at'] ?? null,
+                    'sale_ends_at' => $data['sale_ends_at'] ?? null,
                     'weight_kg' => $data['weight_kg'] ?? null,
                     'weight' => isset($data['weight_kg']) ? $data['weight_kg'].' kg' : null,
                     'material' => is_string($data['attributes']['material'] ?? null) ? $data['attributes']['material'] : null,

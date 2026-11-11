@@ -9,6 +9,9 @@ use Illuminate\Validation\ValidationException;
 
 class SellerVoucherService
 {
+    /** Maximum vouchers a single Seller order may use. */
+    public const MAX_STACK = 2;
+
     /** Returns active, unexpired vouchers matching one seller's selected checkout lines, including unavailable reasons. */
     public function checkoutOptions(int $sellerId, Collection $items, Collection $products, Collection $variants, int $buyerId): array
     {
@@ -57,6 +60,7 @@ class SellerVoucherService
             return [
                 'name' => $voucher->name,
                 'code' => $voucher->code,
+                'scope' => $voucher->scope,
                 'scope_label' => $scopeLabel,
                 'eligible' => $reason === null,
                 'reason' => $reason,
@@ -74,8 +78,72 @@ class SellerVoucherService
         })->filter()->values()->all();
     }
 
-    /** Returns the discount in centavos for one seller's selected cart lines. */
+    /** Returns the discount in centavos for one voucher on one seller's selected cart lines. */
     public function discountCents(SellerVoucher $voucher, Collection $items, Collection $products, Collection $variants, int $buyerId): int
+    {
+        return $this->stackedDiscountCents([$voucher], $items, $products, $variants, $buyerId)['total'];
+    }
+
+    /**
+     * Discount for up to two vouchers on one Seller order.
+     *
+     * Rule: a shop-wide voucher and one product/category voucher may stack. Two shop-wide
+     * vouchers, or two item vouchers, cannot. The shop-wide voucher is applied first; the
+     * second voucher's percentage is computed on what is left, and the total never exceeds
+     * the selected items' value.
+     *
+     * @return array{lines: array<string,int>, total:int}
+     */
+    public function stackedDiscountCents(array $vouchers, Collection $items, Collection $products, Collection $variants, int $buyerId): array
+    {
+        $vouchers = array_values($vouchers);
+        if ($vouchers === [] || count($vouchers) > self::MAX_STACK) {
+            throw ValidationException::withMessages(['voucher_codes' => 'Use one or two shop vouchers for this order.']);
+        }
+
+        $sellerId = $vouchers[0]->seller_id;
+        $scopes = [];
+        foreach ($vouchers as $voucher) {
+            if ($voucher->seller_id !== $sellerId) {
+                throw ValidationException::withMessages(['voucher_codes' => 'Shop vouchers from different shops cannot be combined.']);
+            }
+            $scope = $voucher->scope === 'all' ? 'all' : 'item';
+            if (in_array($scope, $scopes, true)) {
+                throw ValidationException::withMessages(['voucher_codes' => $scope === 'all'
+                    ? 'Only one shop-wide voucher can be used on a shop order.'
+                    : 'Only one product or category voucher can be used on a shop order.']);
+            }
+            $scopes[] = $scope;
+        }
+
+        // Shop-wide first so the item voucher is calculated on the remaining amount.
+        usort($vouchers, fn ($a, $b) => ($a->scope === 'all' ? 0 : 1) <=> ($b->scope === 'all' ? 0 : 1));
+
+        $orderCents = 0;
+        foreach ($items as $item) {
+            $product = $products->get($item->product_id);
+            $variant = $item->product_variant_id ? $variants->get($item->product_variant_id) : null;
+            $price = $variant?->price ?? $product?->price;
+            if ($price !== null && $product?->seller_id === $sellerId) {
+                $orderCents += (int) round((float) $price * 100) * $item->quantity;
+            }
+        }
+
+        $lines = [];
+        $applied = 0;
+        foreach ($vouchers as $voucher) {
+            $eligible = $this->eligibleCents($voucher, $items, $products, $variants, $buyerId);
+            $base = max(0, $eligible - min($eligible, $applied));
+            $discount = $this->discountFor($voucher, $base);
+            $lines[$voucher->code] = $discount;
+            $applied += $discount;
+        }
+
+        return ['lines' => $lines, 'total' => min($applied, $orderCents)];
+    }
+
+    /** Eligible item value for one voucher, after checking it can still be used. */
+    private function eligibleCents(SellerVoucher $voucher, Collection $items, Collection $products, Collection $variants, int $buyerId): int
     {
         if ($voucher->deleted_at || $voucher->status !== 'active'
             || ($voucher->starts_at && $voucher->starts_at->isFuture())
@@ -111,6 +179,16 @@ class SellerVoucherService
             throw ValidationException::withMessages(['voucher_codes' => 'Your eligible items do not meet this voucher’s minimum spend.']);
         }
 
+        return $eligibleCents;
+    }
+
+    /** Percent/fixed discount for a given eligible amount, capped at that amount. */
+    private function discountFor(SellerVoucher $voucher, int $eligibleCents): int
+    {
+        if ($eligibleCents <= 0) {
+            return 0;
+        }
+
         $discount = $voucher->type === 'percent'
             ? intdiv($eligibleCents * (int) round((float) $voucher->value * 100) + 5000, 10000)
             : (int) round((float) $voucher->value * 100);
@@ -130,13 +208,20 @@ class SellerVoucherService
         $voucher->increment('used_count');
     }
 
+    /** Releases every voucher redeemed on an order that was cancelled before pickup. */
     public function voidForOrderLocked(int $orderId): void
     {
-        $redemption = SellerVoucherRedemption::query()->where('order_id', $orderId)->lockForUpdate()->first();
-        if (! $redemption || $redemption->voided_at) return;
+        $redemptions = SellerVoucherRedemption::query()->where('order_id', $orderId)
+            ->whereNull('voided_at')->lockForUpdate()->get();
 
-        $voucher = SellerVoucher::query()->whereKey($redemption->voucher_id)->lockForUpdate()->firstOrFail();
-        $redemption->update(['voided_at' => now()]);
-        $voucher->decrement('used_count');
+        foreach ($redemptions as $redemption) {
+            $voucher = SellerVoucher::query()->whereKey($redemption->voucher_id)->lockForUpdate()->first();
+            if (! $voucher) {
+                $redemption->update(['voided_at' => now()]);
+                continue;
+            }
+            $redemption->update(['voided_at' => now()]);
+            $voucher->decrement('used_count');
+        }
     }
 }

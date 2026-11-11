@@ -97,6 +97,45 @@
     </dialog>
 @endif
 
+@if($order->canSellerReschedulePickup() || $order->canSellerReportPickup())
+    <section class="ops-section">
+        <h3>Pickup schedule</h3>
+        @if($order->pickup_attempts > 0)
+            <p class="ops-muted">{{ $order->pickup_attempts }} pickup assignment(s) expired before a rider scan.</p>
+        @endif
+        @if($order->canSellerReschedulePickup())
+            <details class="ops-action-details">
+                <summary>Move pickup ({{ $order->pickupReschedulesLeft() }} left)</summary>
+                <form method="POST" action="{{ route('seller.orders.pickup-reschedule', $order) }}" data-operation class="ops-form" data-draft-ajax>
+                    @csrf
+                    @method('PATCH')
+                    <label>New pickup date and time
+                        <input type="datetime-local" name="pickup_scheduled_at" required
+                            value="{{ ($order->pickup_scheduled_at ?? now()->addDay()->setTime(9, 0))->format('Y-m-d\TH:i') }}">
+                    </label>
+                    <p class="ops-caption">You can move a pickup up to {{ \App\Models\Ecommerce\Order::PICKUP_RESCHEDULE_LIMIT }} times per order, and only before the rider scans the parcel.</p>
+                    <p class="ops-alert" data-form-error role="alert" hidden></p>
+                    <button class="ops-button ops-button--primary">Save new pickup time</button>
+                </form>
+            </details>
+        @endif
+        @if($order->canSellerReportPickup())
+            <details class="ops-action-details">
+                <summary>Report a pickup problem to logistics</summary>
+                <form method="POST" action="{{ route('seller.orders.pickup-report', $order) }}" data-operation class="ops-form" data-draft-ajax>
+                    @csrf
+                    <label>What happened?
+                        <textarea name="details" rows="3" minlength="10" maxlength="600" required placeholder="e.g. The assigned rider did not arrive during the pickup window."></textarea>
+                    </label>
+                    <p class="ops-caption">The pickup hub is notified and reviews the open assignment. Report once per pickup.</p>
+                    <p class="ops-alert" data-form-error role="alert" hidden></p>
+                    <button class="ops-button ops-button--danger">Send report to logistics</button>
+                </form>
+            </details>
+        @endif
+    </section>
+@endif
+
 {{-- ============ MESSAGE FROM BUYER ============ --}}
 @if($buyerNote !== '')
     <section class="ops-section sh-note">
@@ -114,6 +153,7 @@
         <div><span>Destination</span><strong>{{ $destination?->business_name ?? ($order->shipping_city ?: 'Pending') }}</strong><small>{{ $destination ? implode(', ', array_filter([$destination->municipality, $destination->province])) : ($order->shipping_province ?: 'Hub assignment pending') }}</small></div>
     </div>
     <dl class="ops-info">
+        <div><dt>Pickup schedule</dt><dd>{{ $order->pickup_scheduled_at?->format('M j, Y · g:i A') ?? 'Not scheduled' }}@if($order->pickup_reschedule_count > 0)<small> · moved {{ $order->pickup_reschedule_count }} of {{ \App\Models\Ecommerce\Order::PICKUP_RESCHEDULE_LIMIT }} times</small>@endif</dd></div>
         <div><dt>Pickup rider</dt><dd>{{ $rider?->name ?? 'Awaiting assignment' }}</dd></div>
         <div><dt>Delivery rider</dt><dd>{{ $order->deliveryCourier?->name ?? 'Awaiting assignment' }}</dd></div>
         <div><dt>Carrier</dt><dd>{{ $order->carrier_name ?: 'Not recorded' }}</dd></div>

@@ -40,6 +40,19 @@
                                 {{ $message->sender_label }} · {{ $message->created_at?->format('M j, g:i A') }}
                             </p>
                             <div class="whitespace-pre-line">{{ $message->body }}</div>
+                            @if ($message->attachments->isNotEmpty())
+                                <ul class="mt-1 space-y-1 text-[12px]">
+                                    @foreach ($message->attachments as $attachment)
+                                        <li>
+                                            <a href="{{ route('admin.support-tickets.attachments.show', $attachment) }}"
+                                                class="underline underline-offset-2 {{ $message->is_staff ? 'text-white' : 'text-vd-plum' }}">
+                                                {{ $attachment->original_name }}
+                                                <span class="opacity-75">({{ $attachment->sizeLabel() }})</span>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
                         </div>
                     </div>
                 @endforeach
@@ -49,13 +62,21 @@
         @if ($ticket->status !== 'resolved')
             <section class="mb-4 rounded-xl border border-vd-line bg-white p-4" aria-label="Reply to the buyer">
                 <h2 class="mb-2 text-[14px] font-semibold text-vd-ink">Reply to the buyer</h2>
-                <form action="{{ route('admin.support-tickets.reply', $ticket) }}" method="POST" class="space-y-2">
+                <form action="{{ route('admin.support-tickets.reply', $ticket) }}" method="POST" enctype="multipart/form-data" class="space-y-2">
                     @csrf
                     <label for="body" class="sr-only">Message</label>
                     <textarea id="body" name="body" rows="4" required maxlength="5000"
                         class="block w-full rounded-lg border border-vd-line-strong px-3 py-2 text-[13px] text-vd-ink"
                         placeholder="Explain the next step or ask for the details you need.">{{ old('body') }}</textarea>
                     @error('body')<p class="text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
+                    <div>
+                        <label for="attachments" class="mb-1 block text-[12px] font-medium text-vd-ink">Attach a photo or PDF <span class="font-normal text-vd-muted">(optional, up to 2 files, 5 MB each)</span></label>
+                        <input id="attachments" type="file" name="attachments[]" multiple accept="image/jpeg,image/png,image/webp,application/pdf"
+                            class="block w-full rounded-lg border border-vd-line-strong px-3 py-2 text-[12px] text-vd-ink">
+                        @foreach ($errors->get('attachments.*') as $messages)
+                            @foreach ($messages as $errorText)<p class="text-[12px] text-[#a32b43]">{{ $errorText }}</p>@endforeach
+                        @endforeach
+                    </div>
                     <button type="submit" class="{{ $btn }}">Send reply</button>
                 </form>
             </section>

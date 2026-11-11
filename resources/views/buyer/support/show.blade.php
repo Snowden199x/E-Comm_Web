@@ -46,6 +46,19 @@
                                 {{ $message->sender_label }} · {{ $message->created_at?->format('M j, g:i A') }}
                             </p>
                             <div class="whitespace-pre-line">{{ $message->body }}</div>
+                            @if ($message->attachments->isNotEmpty())
+                                <ul class="mt-1.5 space-y-1 text-[12px]">
+                                    @foreach ($message->attachments as $attachment)
+                                        <li>
+                                            <a href="{{ route('buyer.support.attachments.show', $attachment) }}"
+                                                class="inline-flex items-center gap-1 underline underline-offset-2 {{ $message->is_staff ? 'text-[#52245b]' : 'text-white' }}">
+                                                {{ $attachment->original_name }}
+                                                <span class="opacity-75">({{ $attachment->sizeLabel() }})</span>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
                         </div>
                     </div>
                 @endforeach
@@ -55,11 +68,17 @@
         @if ($ticket->status !== 'resolved')
             <section class="{{ $card }} vb-reveal mb-3 p-4" aria-label="Add a reply">
                 <h2 class="text-[14px] font-semibold text-[#2b1730]">Add to this request</h2>
-                <form action="{{ route('buyer.support.reply', $ticket) }}" method="POST" class="mt-2">
+                <form action="{{ route('buyer.support.reply', $ticket) }}" method="POST" enctype="multipart/form-data" class="mt-2">
                     @csrf
                     <label for="body" class="sr-only">Message</label>
                     <textarea id="body" name="body" rows="4" required maxlength="5000" class="{{ $field }}" placeholder="Add the missing detail or answer Vendo's question.">{{ old('body') }}</textarea>
                     @error('body')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
+                    <label for="attachments" class="mt-2 block text-[12px] font-medium text-[#5b4a60]">Attach a photo or PDF <span class="font-normal text-[#9a8a9d]">(optional, up to 2 files, 5 MB each)</span></label>
+                    <input id="attachments" type="file" name="attachments[]" multiple accept="image/jpeg,image/png,image/webp,application/pdf"
+                        class="mt-1 block w-full rounded-md border border-[#e5dce7] bg-white px-3 py-2 text-[12px] text-[#3d2a42] focus:border-[#805487] focus:outline-none">
+                    @foreach ($errors->get('attachments.*') as $messages)
+                        @foreach ($messages as $errorText)<p class="mt-1 text-[12px] text-[#a32b43]">{{ $errorText }}</p>@endforeach
+                    @endforeach
                     <div class="mt-2 flex flex-wrap items-center gap-2">
                         <button type="submit" class="inline-flex h-10 items-center justify-center rounded-md bg-[#402143] px-5 text-[13px] font-medium text-white transition-all duration-300 ease-vendo hover:bg-[#52245b] active:scale-[0.97]">Send reply</button>
                     </div>

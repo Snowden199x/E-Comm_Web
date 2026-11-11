@@ -67,6 +67,14 @@ class OrderScanWorkflow
                 return $this->response($order, $center, $existing, true);
             }
 
+            // A second scan of work that is already recorded gets an explicit
+            // "already scanned" answer instead of a generic stage mismatch.
+            $already = $order->scanEvents()->where('scan_type', $data['scan_type'])->latest('id')->first();
+            if ($already) {
+                abort(409, 'Already scanned: this parcel was recorded as "'.$already->scan_type.'" on '
+                    .$already->created_at?->format('M j, Y g:i A').'. Do not scan it again.');
+            }
+
             // The delivery window is a hard stop: no dispatch or handover after
             // the cutoff, and a rescheduled parcel cannot go out before its day.
             if (in_array($data['scan_type'], ['out_for_delivery', 'delivered'], true)

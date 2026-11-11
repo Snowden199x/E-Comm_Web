@@ -71,6 +71,9 @@ class StationPickupExpiry
 
             if ($released) {
                 $order->courier_id = null;
+                // Every expired assignment is a failed pickup attempt; the seller
+                // can then reschedule or report the problem to the hub.
+                $order->pickup_attempts = (int) $order->pickup_attempts + 1;
                 $order->save();
             }
 
@@ -88,6 +91,14 @@ class StationPickupExpiry
                     'title' => 'Pickup assignment expired '.$order->number,
                     'message' => 'Your station hub assigned this parcel for pickup and no scan arrived within '
                         .self::MINUTES.' minutes, so the assignment was released. Another Rider can take it now.',
+                ]);
+                Notification::create([
+                    'user_id' => $order->seller_id,
+                    'type' => 'pickup_delayed',
+                    'title' => 'Pickup delayed '.$order->number,
+                    'message' => 'The assigned rider did not collect this parcel within the pickup window. '
+                        .'You can move the pickup slot (up to '.Order::PICKUP_RESCHEDULE_LIMIT.' times) or report the problem to logistics.',
+                    'link' => route('seller.shipments.show', $order),
                 ]);
                 if ($task->assigned_by) {
                     Notification::create([

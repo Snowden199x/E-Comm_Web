@@ -122,6 +122,17 @@ class StationOperationsController extends Controller
                     'This parcel is no longer ready for pickup at your station.');
                 $order->pickup_request_status = 'verified';
                 $order->pickup_verified_at ??= now();
+                if ($order->pickup_scheduled_at) {
+                    $conflict = Order::query()
+                        ->where('courier_id', $rider->user_id)
+                        ->whereKeyNot($order->id)
+                        ->whereIn('status', ['ready_for_pickup', 'picked_up'])
+                        ->where('pickup_scheduled_at', $order->pickup_scheduled_at)
+                        ->exists();
+                    abort_if($conflict, 409,
+                        'This Rider already has a pickup scheduled at '
+                        .$order->pickup_scheduled_at->format('M j, Y g:i A').'. Choose another Rider or time.');
+                }
                 $order->courier_id = $rider->user_id;
             } else {
                 $stop = OrderFacilityStop::query()->where('order_id', $order->id)

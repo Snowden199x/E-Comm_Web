@@ -160,6 +160,10 @@
             <button class="omo-btn omo-btn--danger-ghost" type="button" data-omo-cancel-open="cancel">Cancel order</button>
         @elseif($order->status === 'preparing')
             @if($order->pickup_request_status === 'declined')<p class="omo-hint omo-hint--warn" role="status">Logistics returned the pickup request: {{ $order->pickup_decline_reason }}. Fix this, then mark the order ready again.</p>@endif
+            <label class="omo-hint" style="display:grid;gap:4px;">Pickup date and time
+                <input type="datetime-local" name="pickup_scheduled_at"
+                    value="{{ $order->pickup_scheduled_at?->format('Y-m-d\TH:i') ?? now()->addDay()->setTime(9, 0)->format('Y-m-d\TH:i') }}">
+            </label>
             <button class="omo-btn omo-btn--primary" name="action" value="ready">Mark ready for pickup</button>
             <button class="omo-btn omo-btn--danger-ghost" type="button" data-omo-cancel-open="cancel">Cancel order</button>
         @elseif($order->status === 'ready_for_pickup')
