@@ -18,10 +18,13 @@
     $aliases = ['settings' => 'preferences', 'policies' => 'privacy'];
     $requested = $aliases[request('tab', 'profile')] ?? request('tab', 'profile');
     $tab = in_array($requested, ['profile', 'security', 'preferences', 'delivery', 'notifications', 'saved', 'privacy'], true) ? $requested : 'profile';
+    $deletionFailed = $errors->has('reasons') || $errors->has('reasons.0') || $errors->has('comments');
     if ($errors->has('current_password') || $errors->has('password') || session('password_success')) {
         $tab = 'security';
     } elseif ($errors->has('preferred_delivery_company_id')) {
         $tab = 'delivery';
+    } elseif ($deletionFailed) {
+        $tab = 'privacy';
     } elseif ($errors->any()) {
         $tab = 'profile';
     }
@@ -66,6 +69,7 @@
     <div class="mx-auto max-w-[1040px] px-3 pb-8 pt-4 sm:px-4"
         x-data="{
             tab: @js($tab),
+            delOpen: @js($deletionFailed),
             prefs: window.vendoPrefs.get(),
             confirmReset: false,
             go(t) {
@@ -741,8 +745,75 @@
                     </div>
 
                     <x-account-policies :policies="$policies" />
+
+                    {{-- Account deletion: the buyer picks a reason and the admin decides. --}}
+                    <div class="{{ $card }} mt-4 border-[#f0d3d9] p-5">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="max-w-[520px]">
+                                <h2 class="{{ $title }}">Delete account</h2>
+                                <p class="{{ $sub }}">Close your Vendo account. The admin team reviews every request before anything changes.</p>
+                            </div>
+                            <button type="button" @click="delOpen = true" @disabled($pendingDeletion)
+                                class="vb-btn vb-btn--sm vb-btn--danger-soft disabled:cursor-not-allowed disabled:opacity-60">
+                                Request deletion
+                            </button>
+                        </div>
+                        @if ($pendingDeletion)
+                            <p class="mt-3 rounded-lg border border-[#f0d3d9] bg-[#fff7f8] px-3 py-2 text-[12px] leading-5 text-[#8a2b3c]" role="status">
+                                Request sent {{ $pendingDeletion->requested_at?->format('M j, Y') }}. Waiting for admin review — you can keep using your account until then.
+                            </p>
+                        @endif
+                    </div>
                 </section>
             </div>
         </div>
+
+        {{-- Delete-account dialog, teleported so it dims the whole screen. --}}
+        <template x-teleport="body">
+            <div x-show="delOpen" x-cloak class="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4"
+                @keydown.escape.window="delOpen = false" x-effect="document.body.style.overflow = delOpen ? 'hidden' : ''">
+                <div x-show="delOpen" @click="delOpen = false"
+                    x-transition:enter="transition-opacity duration-300 ease-vendo" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                    x-transition:leave="transition-opacity duration-200 ease-vendo" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                    class="absolute inset-0 bg-[#1b0b1e]/50"></div>
+
+                <section x-show="delOpen" role="dialog" aria-modal="true" aria-labelledby="del-account-title"
+                    x-transition:enter="transition duration-300 ease-vendo" x-transition:enter-start="translate-y-6 opacity-0 sm:scale-95" x-transition:enter-end="translate-y-0 opacity-100 sm:scale-100"
+                    x-transition:leave="transition duration-200 ease-vendo" x-transition:leave-start="translate-y-0 opacity-100 sm:scale-100" x-transition:leave-end="translate-y-6 opacity-0 sm:scale-95"
+                    class="relative max-h-[94dvh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:w-auto sm:min-w-[420px] sm:max-w-[560px] sm:rounded-2xl sm:p-6">
+
+                    <h2 id="del-account-title" class="text-[16px] font-semibold leading-6 text-[#2b1730]">Delete your account</h2>
+                    <p class="mt-0.5 text-[12px] leading-5 text-[#7a6a7e]">Tell us why. The Vendo admin team reviews your request and decides. You can keep using your account while it waits.</p>
+
+                    <form method="POST" action="{{ route('buyer.account.deletion-request') }}" class="mt-4 space-y-4">
+                        @csrf
+                        <fieldset>
+                            <legend class="text-[12px] font-medium text-[#5b4a60]">Why do you want to delete your account?</legend>
+                            <div class="mt-2 space-y-1.5">
+                                @foreach ($deletionReasons as $reason)
+                                    <label class="flex cursor-pointer items-start gap-2.5 rounded-lg border border-[#eee6ef] px-3 py-2 text-[13px] text-[#3d2a42] transition-colors duration-200 hover:bg-[#faf5fb]">
+                                        <input type="radio" name="reasons[]" value="{{ $reason }}" @checked(old('reasons.0') === $reason) required class="mt-0.5 accent-[#805487]">
+                                        <span>{{ $reason }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            @error('reasons')<p class="mt-1 text-[12px] text-[#a3283f]">{{ $message }}</p>@enderror
+                            @error('reasons.0')<p class="mt-1 text-[12px] text-[#a3283f]">{{ $message }}</p>@enderror
+                        </fieldset>
+
+                        <label class="block">
+                            <span class="{{ $label }}">Anything else for the admin? <em class="font-normal text-[#7a6a7e]">(optional)</em></span>
+                            <textarea name="comments" rows="4" maxlength="500" class="vb-field w-full px-3 py-2" placeholder="Add a comment for the admin team">{{ old('comments') }}</textarea>
+                            @error('comments')<p class="mt-1 text-[12px] text-[#a3283f]">{{ $message }}</p>@enderror
+                        </label>
+
+                        <div class="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
+                            <button type="button" @click="delOpen = false" class="vb-btn vb-btn--outline">Keep my account</button>
+                            <button type="submit" class="vb-btn vb-btn--danger">Submit request</button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+        </template>
     </div>
 </x-buyer.layout>

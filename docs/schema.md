@@ -8,6 +8,7 @@ This overview is derived from Eloquent models and migrations, not a replacement 
 - `buyer_details`, `seller_details`, `courier_details`, `logistics_centers`: one-to-one role profile records. Courier detail optionally belongs to a logistics center.
 - `buyer_saved_items` stores unique Buyer/product pairs; `buyer_settings` stores one row per Buyer for text size, reduced motion, and notification sound. Both are added by `2026_10_07_100000_create_buyer_saved_items_and_settings.php` and require owner migration.
 - `categories` is hierarchical through nullable `parent_id`; `seller_categories` links sellers to selected categories.
+- `account_deletion_requests` stores Buyer/Seller requests to close their account: JSON `reasons`, optional `comments`, `status` (`pending`/`approved`/`rejected`), `requested_at`, the reviewing Admin (`reviewed_by`), `reviewed_at` and `admin_notes`. Migration `2026_11_11_100000_create_account_deletion_requests_table.php` adds it. Approving deactivates the user (records are kept); nothing is hard-deleted.
 - `otp_verifications` stores buyer registration OTP records. Seller and logistics-center OTP verification currently uses cache keys instead.
 
 ## Logistics province network and facilities

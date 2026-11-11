@@ -200,8 +200,60 @@
                     </button>
                 </form>
             </section>
+
+            {{-- Account deletion: seller picks a reason and the admin decides. --}}
+            <section class="do-card ac-section ac-delete">
+                <header class="do-card__head">
+                    <h2>Delete account</h2>
+                    <p>Close your seller account. The Vendo admin team reviews every request before anything changes.</p>
+                </header>
+                @if ($pendingDeletion)
+                    <p class="ac-delete__note" role="status">
+                        Request sent {{ $pendingDeletion->requested_at?->format('M j, Y') }}. Waiting for admin review — your shop stays open until then.
+                    </p>
+                @endif
+                <button type="button" class="do-btn do-btn--danger" data-del-open @disabled($pendingDeletion)>
+                    <svg class="do-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+                    Request account deletion
+                </button>
+            </section>
         </div>
     </section>
+
+    {{-- Delete-account dialog --}}
+    <dialog class="ac-del" id="acDelete" aria-labelledby="acDeleteTitle" @if($errors->has('reasons') || $errors->has('reasons.0') || $errors->has('comments')) data-open="1" @endif>
+        <header class="ac-del__head">
+            <h2 id="acDeleteTitle">Request account deletion</h2>
+            <button type="button" class="cr-x" data-del-close aria-label="Close">×</button>
+        </header>
+        <form class="ac-del__body" method="POST" action="{{ route('seller.account.deletion-request') }}">
+            @csrf
+            <p class="ac-del__text">Tell us why you want to delete your account. The Vendo admin team reviews your request and decides. Your shop stays open while it waits.</p>
+
+            <fieldset class="ac-del__group">
+                <legend>Why do you want to delete your account?</legend>
+                @foreach ($deletionReasons as $reason)
+                    <label class="ac-del__check">
+                        <input type="radio" name="reasons[]" value="{{ $reason }}" @checked(old('reasons.0') === $reason) required>
+                        <span>{{ $reason }}</span>
+                    </label>
+                @endforeach
+                @error('reasons')<small class="ac-err">{{ $message }}</small>@enderror
+                @error('reasons.0')<small class="ac-err">{{ $message }}</small>@enderror
+            </fieldset>
+
+            <label class="ac-field">Anything else for the admin? <em>(optional)</em>
+                <textarea name="comments" rows="4" maxlength="500" placeholder="Add a comment for the admin team">{{ old('comments') }}</textarea>
+                @error('comments')<small class="ac-err">{{ $message }}</small>@enderror
+            </label>
+
+            <footer class="ac-del__foot">
+                <button type="button" class="do-btn do-btn--soft" data-del-close>Keep my account</button>
+                <span class="ac-del__spacer"></span>
+                <button type="submit" class="do-btn do-btn--danger">Submit request</button>
+            </footer>
+        </form>
+    </dialog>
     {{-- Crop and reposition editor for the profile photo and banner --}}
     <dialog class="ac-crop" id="acCrop" aria-labelledby="acCropTitle">
         <header class="ac-crop__head">

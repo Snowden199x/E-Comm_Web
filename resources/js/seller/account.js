@@ -336,5 +336,15 @@ if (page) {
         const button = event.submitter || form.querySelector('[data-ac-submit]');
         if (button) setTimeout(() => { button.classList.add('is-loading'); button.disabled = true; }, 0);
     }));
+    // ---- Delete-account request dialog ----
+    const deleteDialog = document.getElementById('acDelete');
+    if (deleteDialog) {
+        const openDelete = () => { if (!deleteDialog.open) deleteDialog.showModal(); };
+        page.querySelectorAll('[data-del-open]').forEach(button => button.addEventListener('click', openDelete));
+        deleteDialog.querySelectorAll('[data-del-close]').forEach(button => button.addEventListener('click', () => deleteDialog.close()));
+        deleteDialog.addEventListener('click', event => { if (event.target === deleteDialog) deleteDialog.close(); });
+        if (deleteDialog.dataset.open === '1') openDelete();
+    }
+
     window.addEventListener('pageshow', event => { if (event.persisted) window.location.reload(); });
 }
