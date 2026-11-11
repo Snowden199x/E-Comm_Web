@@ -43,3 +43,7 @@ See [Registration Review](../manage-account-registration/spec.md), [Admin docume
 ## 11 November 2026: account deletion requests
 
 Under the Suspend/Deactivate (or Activate) actions in a Buyer or Seller profile there is now a **User request for deletion of account** bar, showing a *Pending* pill while a request waits. It opens a panel with the submitted reasons, comment and requested date — or an empty state when the user has not asked. While pending, Admin can **Approve deletion**, which marks the request approved and deactivates the account (records are kept), or **Reject request** with an optional note up to 500 characters. Both write `admin_action_logs` (`deletion_approved`, `deletion_rejected`) and show the shared confirmation banner. The table and count cards are unchanged; there is no pending-deletion filter or badge on the list. See [account deletion request](../../shared/account-deletion-request/spec.md).
+
+## 11 November 2026: deletion request notification, filter and badge
+
+A new Buyer or Seller deletion request also creates an Admin operational notification ("Account deletion request") that links to User Management filtered to those accounts. The filter toolbar gained a **Deletion requests** pill with a count badge; it lists only approved Buyer/Seller accounts whose owner has a `pending` request, and turns off the Rejected toggle when used. The profile-modal bar from the earlier entry is unchanged. See [account deletion request](../../shared/account-deletion-request/spec.md).

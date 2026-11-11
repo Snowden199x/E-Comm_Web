@@ -33,3 +33,7 @@ Payment gateway, taxes/fees, checkout idempotency key, and retry semantics remai
 See [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
 
 COD notice (28 October 2026): the checkout payment method card shows the live amount to pay in cash (items minus voucher plus delivery fee) and the order page shows a "have ₱X ready" line until delivery, using the order's saved `cod_amount`. New orders also save `cod_amount`, `money_status` and rate snapshots; see the [COD cash and delivery fee design](../../../design/cod-cash-and-delivery-fee-distribution.md).
+
+## 11 November 2026: saved addresses
+
+The Delivery address section now lists the Buyer's saved addresses first (default preselected), then the registered address as a fallback. Choosing a saved address posts `shipping_address_id` in addition to the existing `shipping_*` fields; the server loads the row by the signed-in Buyer and rebuilds the address line, PSGC province/city codes and pin from it, so posted text and codes are not trusted. A saved address that no longer resolves in PSGC is rejected with a message asking the Buyer to update it in Account. Addresses typed in the **Add new address** dialog still apply to that order only and remain in the browser tab for two hours. See [Buyer Address](../address-book/spec.md).

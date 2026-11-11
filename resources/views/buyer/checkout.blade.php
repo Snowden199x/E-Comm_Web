@@ -2,8 +2,9 @@
     Buyer checkout.
     Posts exactly what CheckoutController@store already validates:
       items[], checkout_revision, shipping_address, shipping_province_code, shipping_city_code, payment_mode=cod.
-    The address chosen on this page fills the three shipping_* fields. There is no saved address book on the
-    server yet, so extra addresses a buyer adds live in this browser tab (sessionStorage) until they place the order.
+    The address chosen on this page fills the three shipping_* fields. Saved addresses (Buyer > Account > Delivery)
+    arrive as "book-<id>" and post shipping_address_id, so the server rebuilds the shipping fields from
+    the Buyer's own row. An address typed here for one order lives in this browser tab (sessionStorage).
 
     Message for the seller: one optional note per shop (posted as seller_notes[<seller id>]).
     Checkout stores each note on that shop's order.
@@ -26,11 +27,40 @@
     $registeredCity = ($defaultProvinceCode && $defaultCityCode) ? $cityName($defaultProvinceCode, $defaultCityCode) : null;
     $registeredUsable = filled($defaultAddress) && $registeredProvince && $registeredCity;
 
-    $addresses = [[
+    // Saved addresses come first so their labels are easy to scan; the registered
+    // address stays available as a fallback.
+    $addresses = [];
+    foreach ($savedAddresses ?? [] as $saved) {
+        $savedModel = $saved['address'];
+        $savedCodes = $saved['codes'];
+        $savedLine = $savedModel->fullLine();
+        $addresses[] = [
+            'id' => 'book-' . $savedModel->id,
+            'addressId' => $savedModel->id,
+            'label' => $savedModel->label,
+            'registered' => false,
+            'custom' => false,
+            'saved' => true,
+            'default' => (bool) $savedModel->is_default,
+            'usable' => (bool) ($savedCodes && filled($savedLine)),
+            'line' => (string) $savedLine,
+            'provinceCode' => $savedCodes ? (string) $savedCodes[0] : '',
+            'cityCode' => $savedCodes ? (string) $savedCodes[1] : '',
+            'province' => $savedCodes ? $provinceName((string) $savedCodes[0]) : null,
+            'city' => $savedCodes ? $cityName((string) $savedCodes[0], (string) $savedCodes[1]) : null,
+            'latitude' => $savedModel->latitude,
+            'longitude' => $savedModel->longitude,
+        ];
+    }
+
+    $addresses[] = [
         'id' => 'registered',
+        'addressId' => null,
         'label' => 'Registered address',
         'registered' => true,
         'custom' => false,
+        'saved' => false,
+        'default' => ! collect($savedAddresses ?? [])->contains(fn ($saved) => $saved['address']->is_default),
         'usable' => (bool) $registeredUsable,
         'line' => (string) $defaultAddress,
         'provinceCode' => (string) $defaultProvinceCode,
@@ -39,24 +69,42 @@
         'city' => $registeredCity,
         'latitude' => $buyerDetail?->latitude,
         'longitude' => $buyerDetail?->longitude,
-    ]];
-    $selectedId = $registeredUsable ? 'registered' : null;
+    ];
+
+    $selectedId = null;
+    foreach ($addresses as $address) {
+        if ($address['usable'] && $address['default']) {
+            $selectedId = $address['id'];
+            break;
+        }
+    }
+    if ($selectedId === null) {
+        $firstUsable = collect($addresses)->first(fn ($address) => $address['usable']);
+        $selectedId = $firstUsable['id'] ?? null;
+    }
     $restoreSaved = true;
 
     // After a failed submit, keep the address the buyer had picked
     $oldLine = trim((string) old('shipping_address'));
     $oldProvince = (string) old('shipping_province_code');
     $oldCity = (string) old('shipping_city_code');
-    $sameAsRegistered = $registeredUsable && $oldLine === trim((string) $defaultAddress)
-        && $oldProvince === (string) $defaultProvinceCode && $oldCity === (string) $defaultCityCode;
-    if ($oldLine !== '' && $oldProvince !== '' && $oldCity !== '' && ! $sameAsRegistered && $provinceName($oldProvince) && $cityName($oldProvince, $oldCity)) {
-        $addresses[] = [
-            'id' => 'previous', 'label' => 'Address you entered', 'registered' => false, 'custom' => false, 'usable' => true,
-            'line' => $oldLine, 'provinceCode' => $oldProvince, 'cityCode' => $oldCity,
-            'province' => $provinceName($oldProvince), 'city' => $cityName($oldProvince, $oldCity),
-        ];
-        $selectedId = 'previous';
-        $restoreSaved = false;
+    if ($oldLine !== '' && $oldProvince !== '' && $oldCity !== '') {
+        $matched = collect($addresses)->first(fn ($address) => $address['usable']
+            && trim((string) $address['line']) === $oldLine
+            && (string) $address['provinceCode'] === $oldProvince
+            && (string) $address['cityCode'] === $oldCity);
+        if ($matched) {
+            $selectedId = $matched['id'];
+        } elseif ($provinceName($oldProvince) && $cityName($oldProvince, $oldCity)) {
+            $addresses[] = [
+                'id' => 'previous', 'addressId' => null, 'label' => 'Address you entered', 'registered' => false,
+                'custom' => false, 'saved' => false, 'default' => false, 'usable' => true,
+                'line' => $oldLine, 'provinceCode' => $oldProvince, 'cityCode' => $oldCity,
+                'province' => $provinceName($oldProvince), 'city' => $cityName($oldProvince, $oldCity),
+            ];
+            $selectedId = 'previous';
+            $restoreSaved = false;
+        }
     }
 
     $checkoutConfig = [
@@ -84,6 +132,7 @@
         @foreach ($cartItems as $item)<input type="hidden" name="items[]" value="{{ $item->id }}">@endforeach
         <input type="hidden" name="checkout_revision" value="{{ $checkoutRevision }}">
         <input type="hidden" name="payment_mode" value="cod">
+        <input type="hidden" name="shipping_address_id" :value="current?.addressId ?? ''">
         <input type="hidden" name="shipping_address" :value="current ? current.line : ''">
         <input type="hidden" name="shipping_province_code" :value="current ? current.provinceCode : ''">
         <input type="hidden" name="shipping_city_code" :value="current ? current.cityCode : ''">
@@ -118,11 +167,14 @@
                             <h2 id="address-heading" class="text-[15px] font-semibold text-[#402143]">Delivery address</h2>
                             <p class="text-[12px] text-[#7a6a7e]">Choose where this order should be delivered.</p>
                         </div>
-                        <button type="button" @click="openModal()"
-                            class="inline-flex h-9 items-center gap-1.5 rounded-md border border-[#805487] bg-white px-3.5 text-[13px] font-medium text-[#52245b] transition-colors duration-200 ease-vendo hover:bg-[#f5ecf6] active:scale-[0.98]">
-                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-                            Add new address
-                        </button>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <a href="{{ route('buyer.addresses.index') }}" class="inline-flex h-9 items-center text-[12px] font-medium text-[#52245b] underline underline-offset-2 hover:text-[#402143]">Manage saved addresses</a>
+                            <button type="button" @click="openModal()"
+                                class="inline-flex h-9 items-center gap-1.5 rounded-md border border-[#805487] bg-white px-3.5 text-[13px] font-medium text-[#52245b] transition-colors duration-200 ease-vendo hover:bg-[#f5ecf6] active:scale-[0.98]">
+                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                                Add new address
+                            </button>
+                        </div>
                     </div>
 
                     <div class="space-y-3 p-4 sm:p-5" role="radiogroup" aria-labelledby="address-heading">
@@ -142,7 +194,7 @@
                                         <span class="min-w-0 text-[13px]">
                                             <span class="flex flex-wrap items-center gap-2">
                                                 <span class="font-semibold text-[#2b1730]" x-text="a.label"></span>
-                                                <span x-show="a.registered" class="rounded bg-[#e8c874] px-1.5 py-0.5 text-[11px] font-semibold text-[#402143]">Default</span>
+                                                <span x-show="a.default" class="rounded bg-[#e8c874] px-1.5 py-0.5 text-[11px] font-semibold text-[#402143]">Default</span>
                                             </span>
                                             <template x-if="a.registered">
                                                 <span class="mt-0.5 block text-[#5b4a60]">{{ $buyer->name }}@if (filled($buyer->phone_number)), {{ $buyer->phone_number }}@endif</span>
@@ -171,7 +223,7 @@
                         </template>
 
                         <p x-show="!current" x-cloak class="rounded-md bg-[#fdf1f3] px-3 py-2 text-[12px] text-[#a32b43]" role="alert">Add a delivery address to place your order.</p>
-                        @foreach (['shipping_address', 'shipping_province_code', 'shipping_city_code', 'shipping_latitude', 'shipping_longitude'] as $field)
+                        @foreach (['shipping_address_id', 'shipping_address', 'shipping_province_code', 'shipping_city_code', 'shipping_latitude', 'shipping_longitude'] as $field)
                             @error($field)<p class="rounded-md bg-[#fdf1f3] px-3 py-2 text-[12px] text-[#a32b43]" role="alert">{{ $message }}</p>@enderror
                         @endforeach
                         <p class="text-[11px] text-[#7a6a7e]">A delivery pin helps the assigned Rider find the destination. It is shared with Vendo and the Rider assigned to this order.</p>
@@ -403,7 +455,7 @@
                 </button>
 
                 <h2 id="address-dialog-title" class="pr-8 text-[16px] font-semibold text-[#2b1730]">Add a delivery address</h2>
-                <p class="mt-1 text-[12px] text-[#7a6a7e]">This address is used for this checkout. Your registered address stays on your account.</p>
+                <p class="mt-1 text-[12px] text-[#7a6a7e]">This address is used for this checkout only. To reuse it next time, save it in <a href="{{ route('buyer.addresses.index') }}" class="underline underline-offset-2">Saved addresses</a>.</p>
 
                 <div class="mt-4 space-y-3.5" x-on:maps-address.window="applyMapAddress($event)">
                     <div>

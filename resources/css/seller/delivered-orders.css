@@ -86,6 +86,7 @@
 .do-alert p + p { margin-top: 4px; }
 .do-alert > div { flex: 1; }
 .do-alert--error { background: var(--do-rose-100); color: var(--do-rose-700); }
+.do-alert--success { background: #eaf5ee; color: #2e6b46; }
 
 /* ---- Filters ---- */
 .do-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }

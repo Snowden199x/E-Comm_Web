@@ -24,6 +24,7 @@ use App\Http\Controllers\VerificationDocumentController;
 use App\Http\Controllers\MarketplaceMessageController;
 use App\Http\Controllers\UserReportController;
 use App\Http\Controllers\Buyer\AccountController as BuyerAccountController;
+use App\Http\Controllers\Buyer\AddressBookController as BuyerAddressBookController;
 use App\Http\Controllers\Buyer\AuthenticatedSessionController as BuyerAuthenticatedSessionController;
 use App\Http\Controllers\Buyer\CartController as BuyerCartController;
 use App\Http\Controllers\Buyer\CategoryController as BuyerCategoryController;
@@ -46,6 +47,7 @@ use App\Http\Controllers\Seller\DashboardController as SellerDashboardController
 use App\Http\Controllers\Seller\CompletedOrdersController;
 use App\Http\Controllers\Seller\FeedbackController as SellerFeedbackController;
 use App\Http\Controllers\Seller\OrderController;
+use App\Http\Controllers\Seller\ReturnRequestController as SellerReturnRequestController;
 use App\Http\Controllers\Seller\ProductController;
 use App\Http\Controllers\Seller\RegisteredUserController as SellerRegisteredUserController;
 use App\Http\Controllers\Seller\ShipmentController;
@@ -285,6 +287,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/orders', [BuyerOrderController::class, 'index'])->middleware('auth')->name('orders.index');
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->middleware('auth')->name('orders.show');
     Route::patch('/orders/{order}/cancel', [BuyerOrderController::class, 'cancel'])->middleware('auth')->whereNumber('order')->name('orders.cancel');
+    Route::get('/orders/{order}/return', [BuyerOrderController::class, 'returnForm'])->middleware('auth')->whereNumber('order')->name('orders.return.create');
+    Route::post('/orders/{order}/return', [BuyerOrderController::class, 'requestReturn'])->middleware(['auth', 'throttle:10,1'])->whereNumber('order')->name('orders.return.store');
     Route::get('/messages/orders/{order}', [MarketplaceMessageController::class, 'buyerShow'])->middleware('auth')->whereNumber('order')->name('marketplace-messages.show');
     Route::post('/messages/orders/{order}', [MarketplaceMessageController::class, 'buyerStore'])->middleware(['auth', 'throttle:20,1'])->whereNumber('order')->name('marketplace-messages.store');
     Route::get('/messages/orders/{order}/fetch', [MarketplaceMessageController::class, 'buyerFetch'])->middleware('auth')->whereNumber('order')->name('marketplace-messages.fetch');
@@ -303,6 +307,11 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::put('/account', [BuyerAccountController::class, 'update'])->middleware('auth')->name('account.update');
     Route::put('/account/password', [BuyerAccountController::class, 'updatePassword'])->middleware('auth')->name('account.password');
     Route::post('/account/deletion-request', [BuyerAccountController::class, 'requestDeletion'])->middleware(['auth', 'throttle:5,1'])->name('account.deletion-request');
+    Route::get('/addresses', [BuyerAddressBookController::class, 'index'])->name('addresses.index');
+    Route::post('/addresses', [BuyerAddressBookController::class, 'store'])->middleware('throttle:10,1')->name('addresses.store');
+    Route::put('/addresses/{address}', [BuyerAddressBookController::class, 'update'])->whereNumber('address')->name('addresses.update');
+    Route::delete('/addresses/{address}', [BuyerAddressBookController::class, 'destroy'])->whereNumber('address')->name('addresses.destroy');
+    Route::post('/addresses/{address}/default', [BuyerAddressBookController::class, 'makeDefault'])->whereNumber('address')->name('addresses.default');
     Route::put('/account/delivery-preference', [BuyerAccountController::class, 'updateDeliveryPreference'])->middleware('auth')->name('account.delivery-preference');
     Route::post('/account/profile-picture', [BuyerAccountController::class, 'uploadProfilePicture'])->middleware('auth')->name('account.profile-picture.upload');
     Route::delete('/account/profile-picture', [BuyerAccountController::class, 'removeProfilePicture'])->middleware('auth')->name('account.profile-picture.remove');
@@ -353,6 +362,9 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::patch('/orders/{order}', [OrderController::class, 'update'])->whereNumber('order')->name('orders.update');
         Route::get('/completed-orders', [CompletedOrdersController::class, 'index'])->name('completed-orders.index');
         Route::get('/completed-orders/{order}', [CompletedOrdersController::class, 'show'])->whereNumber('order')->name('completed-orders.show');
+        Route::get('/returns', [SellerReturnRequestController::class, 'index'])->name('returns.index');
+        Route::patch('/returns/{returnRequest}/approve', [SellerReturnRequestController::class, 'approve'])->whereNumber('returnRequest')->name('returns.approve');
+        Route::patch('/returns/{returnRequest}/reject', [SellerReturnRequestController::class, 'reject'])->whereNumber('returnRequest')->name('returns.reject');
         Route::get('/earnings', [\App\Http\Controllers\Seller\EarningsController::class, 'index'])->name('earnings.index');
         Route::get('/complaints', [\App\Http\Controllers\Seller\ComplaintController::class, 'index'])->name('complaints.index');
         Route::get('/complaints/{complaint}/evidence/{evidence}', [\App\Http\Controllers\Seller\ComplaintController::class, 'evidence'])->whereNumber(['complaint', 'evidence'])->name('complaints.evidence');

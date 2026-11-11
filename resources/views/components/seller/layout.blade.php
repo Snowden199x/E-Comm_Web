@@ -47,13 +47,13 @@
                 <span>Dashboard</span>
             </a>
 
-            <button type="button" class="sd-nav__item sd-nav__toggle @if(request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.feedback.*')) is-active @endif" id="orderMenuToggle" aria-expanded="{{ request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.feedback.*') ? 'true' : 'false' }}" aria-controls="orderSubmenu" title="Order Management">
+            <button type="button" class="sd-nav__item sd-nav__toggle @if(request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.returns.*', 'seller.feedback.*')) is-active @endif" id="orderMenuToggle" aria-expanded="{{ request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.returns.*', 'seller.feedback.*') ? 'true' : 'false' }}" aria-controls="orderSubmenu" title="Order Management">
                 <img src="{{ $icon('Ordermanagement-icon.png') }}" alt="">
                 <span>Order Management</span>
                 <svg class="sd-nav__chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
             </button>
 
-            <div class="sd-submenu @if(!request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.feedback.*')) is-closed @endif" id="orderSubmenu">
+            <div class="sd-submenu @if(!request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.returns.*', 'seller.feedback.*')) is-closed @endif" id="orderSubmenu">
                 <a href="{{ route('seller.orders.index') }}" class="sd-nav__item sd-nav__item--sub @if(request()->routeIs('seller.orders.index')) is-active @endif" @if(request()->routeIs('seller.orders.index')) aria-current="page" @endif title="Orders">
                     <img src="{{ $icon('orders-icon.png') }}" alt="">
                     <span>Orders</span>
@@ -69,6 +69,10 @@
                 <a href="{{ route('seller.completed-orders.index') }}" class="sd-nav__item sd-nav__item--sub @if(request()->routeIs('seller.completed-orders.*')) is-active @endif" @if(request()->routeIs('seller.completed-orders.*')) aria-current="page" @endif title="Delivered Orders">
                     <img src="{{ $icon('completed-orders-icon.png') }}" alt="">
                     <span>Delivered Orders</span>
+                </a>
+                <a href="{{ route('seller.returns.index') }}" class="sd-nav__item sd-nav__item--sub @if(request()->routeIs('seller.returns.*')) is-active @endif" @if(request()->routeIs('seller.returns.*')) aria-current="page" @endif title="Returns">
+                    <svg class="sd-nav__svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12H9"/></svg>
+                    <span>Returns</span>
                 </a>
                 <a href="{{ route('seller.earnings.index') }}" class="sd-nav__item sd-nav__item--sub @if(request()->routeIs('seller.earnings.*')) is-active @endif" @if(request()->routeIs('seller.earnings.*')) aria-current="page" @endif title="Earnings">
                     <img src="{{ $icon('earnings-icon.svg') }}" alt="">

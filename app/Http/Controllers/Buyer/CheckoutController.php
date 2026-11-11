@@ -52,19 +52,48 @@ class CheckoutController extends Controller
             ? ($locations->codesForNames($buyerDetail->province, $buyerDetail->municipality) ?? [null, null])
             : [null, null];
 
+        // Saved addresses carry their own PSGC codes; an address outside the catalog is listed but unusable.
+        $savedAddresses = \App\Models\BuyerAddress::query()->where('user_id', auth()->id())
+            ->orderByDesc('is_default')->oldest('id')->get()
+            ->map(fn ($address) => [
+                'address' => $address,
+                'codes' => $locations->codesForNames($address->province, $address->municipality),
+            ]);
+
         $sellerNotesEnabled = true;
 
-        return view('buyer.checkout', compact('cartItems', 'buyerDetail', 'defaultAddress', 'checkoutRevision', 'locationOptions', 'defaultProvinceCode', 'defaultCityCode', 'sellerNotesEnabled', 'voucherOptions'));
+        return view('buyer.checkout', compact('cartItems', 'buyerDetail', 'defaultAddress', 'savedAddresses', 'checkoutRevision', 'locationOptions', 'defaultProvinceCode', 'defaultCityCode', 'sellerNotesEnabled', 'voucherOptions'));
     }
 
     public function store(Request $request, LocationCatalog $locations, BuyerCheckoutService $checkout)
     {
-        $data = $request->validate(['shipping_address' => 'required|string|max:1800', 'shipping_province_code' => 'required|string|size:9', 'shipping_city_code' => 'required|string|size:9', 'payment_mode' => 'required|in:cod', 'checkout_revision' => ['required', 'regex:/^[a-f0-9]{64}$/'], 'items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct'], 'shipping_quotes' => ['required', 'array'], 'shipping_quotes.*' => ['required', 'numeric', 'min:45'], 'logistics_company_ids' => ['required', 'array'], 'logistics_company_ids.*' => ['required', 'integer', 'exists:logistics_companies,id'], 'seller_notes' => ['sometimes', 'array'], 'seller_notes.*' => ['nullable', 'string', 'max:300'], 'voucher_codes' => ['sometimes', 'array'], 'voucher_codes.*' => ['nullable', 'string', 'regex:/^[A-Z0-9]{4,12}$/']]);
+        $data = $request->validate(['shipping_address_id' => 'nullable|integer', 'shipping_address' => 'required|string|max:1800', 'shipping_province_code' => 'required|string|size:9', 'shipping_city_code' => 'required|string|size:9', 'payment_mode' => 'required|in:cod', 'checkout_revision' => ['required', 'regex:/^[a-f0-9]{64}$/'], 'items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct'], 'shipping_quotes' => ['required', 'array'], 'shipping_quotes.*' => ['required', 'numeric', 'min:45'], 'logistics_company_ids' => ['required', 'array'], 'logistics_company_ids.*' => ['required', 'integer', 'exists:logistics_companies,id'], 'seller_notes' => ['sometimes', 'array'], 'seller_notes.*' => ['nullable', 'string', 'max:300'], 'voucher_codes' => ['sometimes', 'array'], 'voucher_codes.*' => ['nullable', 'string', 'regex:/^[A-Z0-9]{4,12}$/']]);
         $coordinates = $request->validate([
             'shipping_latitude' => ['nullable', 'required_with:shipping_longitude', 'numeric', 'between:-90,90'],
             'shipping_longitude' => ['nullable', 'required_with:shipping_latitude', 'numeric', 'between:-180,180'],
         ]);
         $data = array_merge($data, $coordinates);
+
+        // A saved address is authoritative: rebuild the shipping fields from the Buyer's
+        // own row instead of trusting the posted text and locality codes.
+        if (! empty($data['shipping_address_id'])) {
+            $saved = \App\Models\BuyerAddress::query()
+                ->where('user_id', $request->user()->id)
+                ->find($data['shipping_address_id']);
+            if (! $saved) {
+                throw ValidationException::withMessages(['shipping_address_id' => 'Pick one of your saved addresses, or enter a new one.']);
+            }
+            $codes = $locations->codesForNames($saved->province, $saved->municipality);
+            if (! $codes) {
+                throw ValidationException::withMessages(['shipping_address_id' => 'This saved address is outside our delivery area. Update it in Account.']);
+            }
+            $data['shipping_address'] = $saved->fullLine();
+            $data['shipping_province_code'] = (string) $codes[0];
+            $data['shipping_city_code'] = (string) $codes[1];
+            $data['shipping_latitude'] = $saved->latitude;
+            $data['shipping_longitude'] = $saved->longitude;
+        }
+
         $location = $locations->address($data['shipping_province_code'], $data['shipping_city_code']);
         if (! $location) {
             throw ValidationException::withMessages(['shipping_city_code' => 'Select a city or municipality within the chosen province.']);
