@@ -13,13 +13,15 @@ The sweep is lazy: the Rider assignment API and the Station Hub operations lists
 
 ## Two attempts, then automatic cancellation
 
-`orders.delivery_attempts` counts closed attempts; `DeliveryCutoff::MAX_DELIVERY_ATTEMPTS` is **2**.
+`orders.delivery_attempts` counts closed attempts; `DeliveryCutoff::MAX_DELIVERY_ATTEMPTS` is **2**. An Admin can raise the limit with `orders.delivery_extra_attempts` (up to 3 extra) from [Limits & Overrides](../../admin/limit-overrides/spec.md); the effective maximum is `2 + delivery_extra_attempts` everywhere below, including the Rider reschedule guard.
 
 - **First failure** (`delivery_attempts` becomes 1): the order is `delivery_failed` as above, and the status note says the parcel returns to the destination Station Hub for one final attempt the next day. The Buyer gets an `order_update` explaining the failed attempt, the return to the hub, and that one more failure cancels the order; the Rider and hub notices say the same.
 - **Second failure** (an order still `out_for_delivery` at a cutoff with `delivery_attempts = 1`): the sweep calls `cancelUndelivered()`. In the same transaction and row lock it returns every item quantity to stock (`inventory_movements` type `cancellation`, reason `Cancelled automatically after 2 failed delivery attempts`), sets the order to `cancelled`, voids the Seller voucher, writes an `order_status_events` note naming the holding hub, and notifies the Buyer (`order_update`), Seller (`order_update`, stock restored), assigned Rider (`shipment_cancelled`) and destination hub (`shipment_update`).
 - **No delivery on the next day**: the same sweep cancels a parcel that is still `delivery_failed` with `delivery_failed_at` before today, and also one that was rescheduled to an earlier day (`assigned_to_rider` with `delivery_scheduled_for` before today and at least one attempt used). A parcel rescheduled for today is untouched, so it cannot sit failed or half-scheduled forever.
 
 A cancelled parcel is terminal: the Buyer sees the normal cancelled order, the Seller earnings page drops it (it is outside `Order::SALES_STATUSES`), and no COD cash was ever collected.
+
+After a failed attempt the Rider app also scans the parcel back at the Station Hub (`POST /api/v1/rider/deliveries/{order}/return-scan`), which records `order_scan_events` with `scan_type = returned_to_station`; see the [scan API spec](../../courier/scan-api/spec.md). The order stays `delivery_failed` so the final attempt can still be booked.
 
 ## Reschedule
 

@@ -3,7 +3,7 @@
 **Status:** Logistics web hierarchy and operational workflows implemented in code; owner migrations and runtime verification pending; mobile Rider/Driver integration remains partial
 **Decision recorded:** 23 October 2026
 
-**Current decision note (23 October 2026):** The owner approved the pulled Company / Province Hub / Station Hub structure. Multiple companies may operate in the same province; each company can have one active Province Hub per province and one active Station Hub per municipality under that Province Hub. This supersedes the prior one-network-account-per-province rule. See the [pull review](../../design/2026-10-23-logistics-pull-review.md) and [implementation spec](../../design/logistics-hub-restructure-backend-spec.md).
+**Current decision note (23 October 2026):** The owner approved the pulled Company / Province Hub / Station Hub structure. Multiple companies may operate in the same province; each company can have one active Province Hub per province and one active Station Hub per municipality under that Province Hub. This supersedes the prior one-network-account-per-province rule. See the [pull review](../../../design/2026-10-23-logistics-pull-review.md) and [implementation spec](../../../design/logistics-hub-restructure-backend-spec.md).
 
 ## Agreed direction
 

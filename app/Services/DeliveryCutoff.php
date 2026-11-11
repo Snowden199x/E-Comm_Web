@@ -155,8 +155,10 @@ class DeliveryCutoff
                 return false;
             }
 
+            // An Admin override can grant extra attempts on top of the default two.
+            $maxAttempts = self::MAX_DELIVERY_ATTEMPTS + (int) $order->delivery_extra_attempts;
             $attempts = (int) $order->delivery_attempts + 1;
-            if ($attempts >= self::MAX_DELIVERY_ATTEMPTS) {
+            if ($attempts >= $maxAttempts) {
                 $this->cancelUndelivered($order, $attempts);
 
                 return true;
@@ -178,7 +180,7 @@ class DeliveryCutoff
                 'user_id' => null,
                 'from_status' => 'out_for_delivery',
                 'to_status' => 'delivery_failed',
-                'note' => 'Delivery attempt '.$attempts.' of '.self::MAX_DELIVERY_ATTEMPTS.' failed before the '.$this->label()
+                'note' => 'Delivery attempt '.$attempts.' of '.$maxAttempts.' failed before the '.$this->label()
                     .' window closed. The parcel returns to '.$stationLabel.'. One final attempt can be booked for the next day.',
             ]);
 
@@ -187,7 +189,7 @@ class DeliveryCutoff
                     'user_id' => $order->delivery_courier_id,
                     'type' => 'delivery_window_closed',
                     'title' => 'Delivery window closed '.$order->number,
-                    'message' => 'Attempt '.$attempts.' of '.self::MAX_DELIVERY_ATTEMPTS.' failed. The parcel is back at '
+                    'message' => 'Attempt '.$attempts.' of '.$maxAttempts.' failed. The parcel is back at '
                         .$stationLabel.'. Reschedule the final attempt for tomorrow — if it fails again the order is cancelled automatically.',
                 ]);
             }
@@ -195,8 +197,7 @@ class DeliveryCutoff
             Notification::create([
                 'user_id' => $order->buyer_id,
                 'type' => 'order_update',
-                'title' => 'Delivery attempt failed '.$order->number,
-                'message' => 'We could not deliver your parcel today. It returns to '.$stationLabel
+                'title' => 'Delivery attempt failed '.$order->number,                    'message' => 'We could not deliver your parcel today. It returns to '.$stationLabel
                     .' for one final attempt tomorrow. If that attempt also fails, the order is cancelled automatically.',
                 'link' => route('buyer.orders.show', $order),
             ]);
@@ -207,7 +208,7 @@ class DeliveryCutoff
                     'user_id' => $hubUserId,
                     'type' => 'shipment_update',
                     'title' => 'Delivery failed '.$order->number,
-                    'message' => 'Attempt '.$attempts.' of '.self::MAX_DELIVERY_ATTEMPTS.' failed and the parcel is back. Schedule the final attempt for tomorrow; a second failure cancels the order automatically.',
+                    'message' => 'Attempt '.$attempts.' of '.$maxAttempts.' failed and the parcel is back. Schedule the final attempt for tomorrow; a second failure cancels the order automatically.',
                     'link' => route('lgp.station.delivery-queue'),
                 ]);
             }

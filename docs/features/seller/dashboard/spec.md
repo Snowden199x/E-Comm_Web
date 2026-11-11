@@ -30,4 +30,4 @@ Rating requires reviews; products and stock updates are not yet managed through 
 
 ## Related documentation
 
-See [backend needs](../backend-needs.md), [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+See [future plan](../../../future-plan.md), [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).

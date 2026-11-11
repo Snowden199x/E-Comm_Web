@@ -66,7 +66,7 @@ Seller Shipments routes serve live lists, details, persisted tracking metadata a
 
 - [Seller domain](../../../domains/Seller.md)
 - [Seller order management](../order-management/spec.md)
-- [Shipment fulfillment](../../shared/shipment-fulfillment/spec.md)
+- [Shipment fulfillment (this spec)](spec.md)
 - [ERP order and logistics flow](../../../order-logistics-flow-decisions.md)
 
 Source: `routes/web.php`, `app/Http/Controllers/Seller/OrderController.php`, `app/Models/Ecommerce/Order.php`, and `app/Http/Controllers/Buyer/CheckoutController.php`.

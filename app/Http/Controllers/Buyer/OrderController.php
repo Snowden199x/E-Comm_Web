@@ -7,6 +7,7 @@ use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
 use App\Models\Ecommerce\OrderItem;
 use App\Models\Ecommerce\OrderReturnRequest;
+use App\Services\DeliveryCutoff;
 use App\Services\OrderCancellationService;
 use App\Services\OrderReturnService;
 use Illuminate\Http\Request;
@@ -32,8 +33,12 @@ class OrderController extends Controller
         $order->load('items.product.images', 'items.review.reply', 'seller.sellerDetail', 'statusEvents', 'latestReturnRequest');
         $canRequestReturn = $returns->canRequest($order);
         $returnWindowClosesAt = $returns->windowClosesAt($order);
+        $returnDaysLeft = $returns->daysLeft($order);
+        $maxDeliveryAttempts = DeliveryCutoff::MAX_DELIVERY_ATTEMPTS + (int) $order->delivery_extra_attempts;
 
-        return view('buyer.orders.show', compact('order', 'canRequestReturn', 'returnWindowClosesAt'));
+        return view('buyer.orders.show', compact(
+            'order', 'canRequestReturn', 'returnWindowClosesAt', 'returnDaysLeft', 'maxDeliveryAttempts',
+        ));
     }
 
     public function cancel(Request $request, int $order, OrderCancellationService $cancellations)
@@ -56,12 +61,12 @@ class OrderController extends Controller
     }
 
     /** Return request form for a delivered or received order. */
-    public function returnForm(Request $request, int $order)
+    public function returnForm(Request $request, int $order, OrderReturnService $returns)
     {
         $record = Order::query()->where('buyer_id', $request->user()->id)
             ->with('latestReturnRequest')->findOrFail($order);
         abort_unless(in_array($record->status, OrderReturnService::RETURNABLE_STATUSES, true), 409, 'Only delivered orders can be returned.');
-        abort_unless(app(OrderReturnService::class)->canRequest($record), 409, 'The 7-day return window for this order has closed.');
+        abort_unless($returns->canRequest($record), 409, 'The 7-day return window for this order has closed.');
         abort_if(
             $record->returnRequests()->where('status', OrderReturnRequest::STATUS_PENDING)->exists(),
             409,
@@ -71,7 +76,8 @@ class OrderController extends Controller
         return view('buyer.orders.return', [
             'order' => $record,
             'reasons' => OrderReturnRequest::REASONS,
-            'windowClosesAt' => app(OrderReturnService::class)->windowClosesAt($record),
+            'windowClosesAt' => $returns->windowClosesAt($record),
+            'daysLeft' => $returns->daysLeft($record),
         ]);
     }
 

@@ -33,4 +33,4 @@ Both use the Buyer session and the same shop visibility rule as the shop profile
 
 ## Related documentation
 
-See [Product detail](../product-detail/spec.md), [Product search](../search/spec.md), [Browse Shop](../browse-shop/spec.md), the [7 October frontend pull review](../../../design/2026-10-07-pulled-frontend-review.md), and [domain status](../../../domain-feature-status.md).
+See [Product search](../search/spec.md), [Browse Shop](../browse-shop/spec.md) for the product detail page, the [7 October frontend pull review](../../../design/2026-10-07-pulled-frontend-review.md), and [domain status](../../../domain-feature-status.md).

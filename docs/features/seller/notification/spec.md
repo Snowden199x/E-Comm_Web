@@ -41,7 +41,7 @@ The notification destination resolves owned order detail URLs through the full O
 
 The dashboard's recent list and the header badge should use the same notification source so their counts agree. Future mobile clients can consume the same recipient-scoped event records without changing the event definitions.
 
-**Related:** [Order notifications](../order-notification/spec.md) · [Seller Messages](../chat-messaging/spec.md) · [Seller domain](../../../domains/Seller.md)
+**Related:** [Seller Messages](../chat-messaging/spec.md) · [Seller domain](../../../domains/Seller.md)
 ## 25 September 2026 update
 
 The dashboard notification panel and header bell reveal roughly three recent items before scrolling. Both expose View all; the Inventory Alerts panel opens the low-stock inventory filter. The seller bell and dashboard card refresh every three seconds. The bell plays a short tone for newly observed notifications and notification controls, subject to browser audio permission after interaction.

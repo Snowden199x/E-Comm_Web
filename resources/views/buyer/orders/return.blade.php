@@ -15,7 +15,7 @@
             <p class="mt-1 text-[13px] text-[#5b4a60]">The seller reviews every return request. If they approve, the refund is
                 <strong>{{ $fmt($order->payable_total) }}</strong> — the amount you paid on delivery.</p>
             @if ($windowClosesAt)
-                <p class="mt-1 text-[12px] text-[#8a7a8e]">Return requests close on {{ $windowClosesAt->format('M j, Y') }} (7 days after delivery).</p>
+                <p class="mt-1 text-[12px] text-[#8a7a8e]">Return requests close on {{ $windowClosesAt->format('M j, Y') }}@if ($daysLeft !== null) · {{ $daysLeft === 0 ? 'last day' : $daysLeft.' day'.($daysLeft === 1 ? '' : 's').' left' }}@endif.</p>
             @endif
         </header>
 

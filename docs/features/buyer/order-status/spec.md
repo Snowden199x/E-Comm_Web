@@ -11,7 +11,7 @@ Each accepted SH scanner report appears as a Buyer-owned order timeline note and
 
 ## Gaps and acceptance direction
 
-The 6 October pages read items, products, variants, and the shop name lazily; eager loading is listed in [backend needs](../../../backend-needs.md), item 6. The tabs and list are not paginated.
+The 6 October pages read items, products, variants, and the shop name lazily; the eager-loading item is in the [7 October frontend pull review](../../../design/2026-10-07-pulled-frontend-review.md). The tabs and list are not paginated.
 
 Buyer and Seller may cancel orders before pickup with a recorded reason; cancellation restores reserved stock. Independent delivery proof, failed delivery handling and return/refund handling still need implementation.
 
