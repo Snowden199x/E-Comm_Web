@@ -49,13 +49,22 @@ class OrderController extends Controller
             'reason_details' => ['required_if:reason,other', 'nullable', 'string', 'max:450'],
         ]);
 
-        $cancellations->cancelForBuyer(
-            $request->user(),
-            $order,
-            $data['expected_status'],
-            $data['reason'],
-            $data['reason_details'] ?? null,
-        );
+        try {
+            $cancellations->cancelForBuyer(
+                $request->user(),
+                $order,
+                $data['expected_status'],
+                $data['reason'],
+                $data['reason_details'] ?? null,
+            );
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            if ($e->getStatusCode() === 409) {
+                return redirect()->route('buyer.orders.show', $order)
+                    ->with('error', $e->getMessage().' The page now shows the latest status.');
+            }
+
+            throw $e;
+        }
 
         return redirect()->route('buyer.orders.show', $order)->with('success', 'Your order has been cancelled. Reserved stock has been restored.');
     }

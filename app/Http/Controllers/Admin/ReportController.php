@@ -155,12 +155,36 @@ class ReportController extends Controller
 
         private function salesSummary(\Illuminate\Database\Eloquent\Builder $ordersQuery): array
     {
-        return [
+        return array_merge([
             'gross_sales' => (clone $ordersQuery)->where('status', '!=', 'cancelled')->sum('total_amount'),
             'total_orders' => (clone $ordersQuery)->count(),
             'average_order_value' => (clone $ordersQuery)->where('status', '!=', 'cancelled')->avg('total_amount') ?? 0,
             'completed_orders' => (clone $ordersQuery)->whereIn('status', ['delivered', 'completed'])->count(),
             'return_refund' => (clone $ordersQuery)->where('status', 'returned')->count(),
+        ], $this->deliveryMetrics($ordersQuery));
+    }
+
+    /**
+     * How long delivered parcels took, from the order being placed to the delivered scan. This is a
+     * measurement, not an SLA target: the report shows the average plus the same-day and over-3-day
+     * counts so the owner can decide a target later.
+     */
+    private function deliveryMetrics(\Illuminate\Database\Eloquent\Builder $ordersQuery): array
+    {
+        $rows = (clone $ordersQuery)
+            ->whereIn('status', ['delivered', 'completed'])
+            ->whereNotNull('delivered_at')
+            ->get(['created_at', 'delivered_at']);
+
+        $minutes = $rows
+            ->filter(fn ($order) => $order->created_at && $order->delivered_at)
+            ->map(fn ($order) => abs($order->created_at->diffInMinutes($order->delivered_at)));
+
+        return [
+            'avg_delivery_days' => $minutes->isEmpty() ? null : round($minutes->avg() / 1440, 1),
+            'delivery_same_day' => $minutes->filter(fn ($value) => $value <= 1440)->count(),
+            'delivery_over_three_days' => $minutes->filter(fn ($value) => $value > 4320)->count(),
+            'delivery_measured' => $minutes->count(),
         ];
     }
 

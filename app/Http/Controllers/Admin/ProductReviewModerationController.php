@@ -76,12 +76,18 @@ class ProductReviewModerationController extends Controller
         ]);
 
         DB::transaction(function () use ($report, $validated) {
-            $record = ProductReviewReport::query()->lockForUpdate()->findOrFail($report);
+            $record = ProductReviewReport::query()->with('review.buyer')->lockForUpdate()->findOrFail($report);
             abort_unless($record->status === 'open', 409, 'This report has already been resolved.');
             $record->update([
                 'status' => $validated['status'], 'resolution_note' => trim($validated['resolution_note']),
                 'resolved_by' => Auth::guard('admin')->id(), 'resolved_at' => now(),
             ]);
+
+            \App\Models\AdminActionLog::record(
+                $record->review?->buyer,
+                'review_report_'.$validated['status'],
+                'Review report #'.$record->id.': '.trim($validated['resolution_note']),
+            );
         });
 
         return back()->with('success', 'Report decision saved.');

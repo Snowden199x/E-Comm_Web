@@ -28,6 +28,19 @@
         <p class="text-xs text-gray-500">Return/Refund</p>
         <p class="text-lg font-bold text-gray-900">{{ number_format($salesSummary['return_refund']) }}</p>
     </div>
+    <div class="bg-gray-50 rounded-xl p-4 sm:col-span-3">
+        <p class="text-xs text-gray-500">Average delivery time</p>
+        <p class="text-lg font-bold text-gray-900">
+            {{ $salesSummary['avg_delivery_days'] !== null ? $salesSummary['avg_delivery_days'] . ' days' : 'No delivered orders' }}
+        </p>
+        @if ($salesSummary['delivery_measured'] > 0)
+            <p class="text-xs text-gray-500">
+                {{ number_format($salesSummary['delivery_same_day']) }} same day ·
+                {{ number_format($salesSummary['delivery_over_three_days']) }} over 3 days ·
+                {{ number_format($salesSummary['delivery_measured']) }} delivered parcels measured
+            </p>
+        @endif
+    </div>
 </div>
 
 <h3 class="font-bold text-gray-900 mb-3">{{ $breakdownTitle }}</h3>

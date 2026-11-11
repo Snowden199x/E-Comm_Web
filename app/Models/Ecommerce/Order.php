@@ -98,6 +98,7 @@ class Order extends Model
     {
         static::creating(function (Order $order) {
             $order->tracking_number ??= 'VND-'.Str::ulid();
+            $order->order_number ??= OrderSequence::next();
         });
 
         static::saving(function (Order $order) {
@@ -208,12 +209,13 @@ class Order extends Model
 
     public const SALES_STATUSES = ['delivered', 'completed'];
 
+    /** The Seller-visible order number (`ORD-2026-0001`), with the legacy VN- id for unnumbered rows. */
     public function getNumberAttribute(): string
     {
-        return self::numberFor((int) $this->id);
+        return $this->order_number ?: self::numberFor((int) $this->id);
     }
 
-    /** `number` is computed from the id and is not a database column, so it can never appear in a SQL select. */
+    /** Legacy `VN-` reference. Kept for rows created before order numbers and for old links. */
     public static function numberFor(int $id): string
     {
         return 'VN-'.str_pad((string) $id, 6, '0', STR_PAD_LEFT);

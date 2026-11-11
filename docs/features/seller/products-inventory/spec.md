@@ -6,12 +6,12 @@
 ## Routes and UI
 
 - `GET /seller/products`: search name/SKU, category and stock-status filters (selects apply instantly, search after a short pause), ten-row pagination ("Showing X out of N entries"), four inventory stat cards that also act as stock filters, and a Low Stock Alert panel. The old Categories side card was removed; the Category filter replaces it. An **Add Product** button sits in the page header.
-- Clicking a product row, name, or a menu entry opens a **details modal** (not a drawer): photo gallery, Details, **Variations** (only when the product has variations), Restock and Stock history tabs, Edit button. Row menu: View details, Edit product, Restock, and (below a divider) **Delete product**. The delete menu item and confirmation dialog are built, but the server route does not exist yet (see [Delete product](#delete-product-ui-built-backend-pending)). Direct visits to `GET /seller/products/{product}` (e.g. from notifications) render the same details inside the seller layout.
+- Clicking a product row, name, or a menu entry opens a **details modal** (not a drawer): photo gallery, Details, **Variations** (only when the product has variations), Restock and Stock history tabs, Edit button. Row menu: View details, Edit product, Restock, and (below a divider) **Delete product**. The delete menu item, confirmation dialog and server route are built (see [Delete product](#delete-product-implemented-11-november-2026)). Direct visits to `GET /seller/products/{product}` (e.g. from notifications) render the same details inside the seller layout.
 - `GET /seller/products/create`, `POST /seller/products`, and `GET /seller/products/{product}?mode=edit` + `PATCH` render one full-page form (`seller/products/form.blade.php`). Submitted products start at `for_review`; saved drafts stay private.
 - `POST /seller/products/{product}/restock`: positive quantity and required reason; a unique request key prevents double-submit. When variants exist the form sends a product-owned `variant_id`, which the server validates and records.
 - The product-list voucher badge counts currently available shop-wide, product-specific, and main-category Seller vouchers that apply to each product on the loaded page. "Add to a voucher" links to the Seller Vouchers page; see [Seller Vouchers](../vouchers/spec.md).
 
-All routes require an approved, active seller and scope records to that seller. Category selection is limited to the seller's registered categories and their children. **Delete product is UI-only for now.** The row menu opens a confirmation dialog and sends `DELETE /seller/products/{id}`; that route is not implemented, so the dialog reports that deleting is not available on the server yet. Do not treat deletion as implemented until the backend items listed under [Delete product](#delete-product-ui-built-backend-pending) are built.
+All routes require an approved, active seller and scope records to that seller. Category selection is limited to the seller's registered categories and their children. **Delete product is implemented** as a soft delete: the row menu confirmation sends `DELETE /seller/products/{id}`, the server blocks it while the product sits on an order that is still in progress, removes it from carts and saved items, and notifies Admin. See [Delete product](#delete-product-implemented-11-november-2026).
 
 ## Add / Edit Product form (UI contract)
 
@@ -51,13 +51,15 @@ Existing product photos can be made the main image by ID/order on edit. Admin Pr
 - Direct visits to `GET /seller/products/{product}` now have working tabs too.
 - Reads only data `ProductController::show` already eager-loads (`attributeValues`, `specifications`, `variationTypes.options`, `variants`); no backend change.
 
-## Delete product (UI built, backend pending)
+## Delete product (implemented 11 November 2026)
 
-Intended behavior, as requested by the owner: the Seller deletes their own product from the row's 3-dot menu; the product disappears from the Seller's system; **Admin is notified**. The Admin side is deliberately **not** built; the open items are listed below.
+The Seller deletes their own product from the row's 3-dot menu. `DELETE /seller/products/{product}` (`seller.products.destroy`) is scoped to `seller_id`, answers JSON to the existing dialog and redirects with a flash message for a plain form post.
 
-Built now: the menu item, an accessible confirmation dialog (focus returns to the menu button, Esc/backdrop closes), a loading state, error messages (including 404/405 "route not available yet" and 419 session expiry), an animated row removal and a success toast through the existing `sellerOperationMessage` mechanism.
-
-Not built: route, controller action, soft delete, open-order blocking rule, cart cleanup, Admin notification. Product deletion is only safe as a soft delete because `order_items.product_id` and `product_reviews.product_id` restrict hard deletes.
+- **Soft delete only.** `products.deleted_at` (migration `2026_11_11_170000_add_soft_deletes_to_products.php`) keeps the row for `order_items`, `product_reviews` and `inventory_movements`, which would block a hard delete. `OrderItem::product()` uses `withTrashed()`, so past orders still show what was bought.
+- **Open orders block deletion.** If any order item belongs to an order outside `delivered`, `completed`, `cancelled` and `returned`, the request answers 409 and the dialog shows the reason ("This product is on an order that is still in progress…").
+- **Cleanup.** The product is removed from every `cart_items` row and from Buyers' saved items in the same transaction.
+- **Admin notice.** One Admin operational notification (`product_deleted`) names the Seller, product and code and links to Seller Compliance. There is no Admin approval step and no restore UI; the record can only be recovered from the database.
+- The dialog keeps its accessible behaviour (focus return, Esc/backdrop close), loading state, 404/405/419 messages, animated row removal and success toast through `sellerOperationMessage`.
 
 ## Stock rules
 

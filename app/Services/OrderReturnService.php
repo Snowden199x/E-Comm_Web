@@ -125,13 +125,34 @@ class OrderReturnService
                 'decided_by' => $seller->id,
                 'decided_at' => now(),
                 'refund_cents' => $refundCents,
+                'return_status' => OrderReturnRequest::RETURN_STATUS_PENDING_PICKUP,
+                'pickup_rider_id' => $order->delivery_courier_id,
             ]);
+
+            if ($order->delivery_courier_id) {
+                Notification::create([
+                    'user_id' => $order->delivery_courier_id,
+                    'type' => 'shipment_update',
+                    'title' => $order->number.': Collect a return',
+                    'message' => 'The seller approved a return. Collect the parcel from the buyer and hand it back to the seller.',
+                    'link' => route('buyer.orders.show', $order),
+                ]);
+            }
+            if ($order->destinationLogisticsCenter?->user_id) {
+                Notification::create([
+                    'user_id' => $order->destinationLogisticsCenter->user_id,
+                    'type' => 'shipment_update',
+                    'title' => 'Return pickup scheduled '.$order->number,
+                    'message' => 'A return was approved. Assign or remind the rider to collect it from the buyer.',
+                    'link' => route('lgp.station.delivery-queue'),
+                ]);
+            }
 
             Notification::create([
                 'user_id' => $order->buyer_id,
                 'type' => 'order_update',
                 'title' => $order->number.': Return approved',
-                'message' => 'The seller approved your return. Refund due: ₱'.number_format($refundCents / 100, 2).'.',
+                'message' => 'The seller approved your return. Refund due: ₱'.number_format($refundCents / 100, 2).'. The rider will collect the parcel.',
                 'link' => route('buyer.orders.show', $order),
             ]);
 

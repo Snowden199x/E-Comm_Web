@@ -11,6 +11,7 @@
     $pendingRegistrations = \App\Models\User::whereIn('role', ['seller', 'buyer', 'logistics_center'])->where('status', 'pending')->count();
     $productsForReview = \App\Models\Ecommerce\Product::where('status', 'for_review')->count();
     $openComplaints = \App\Models\Complaints\Complaint::where('status', 'open')->count();
+    $openSupportTickets = \App\Models\Support\SupportTicket::whereIn('status', ['open', 'in_review'])->count();
     $pendingCategoryRequests = \App\Models\Profiles\SellerCategoryRequest::where('status', 'pending')->count();
 
     // Grouped by what the admin is doing, not by feature age:
@@ -42,6 +43,7 @@
                 ['route' => 'admin.user-management.index', 'active' => 'admin.user-management.*', 'icon' => 'users', 'label' => 'User Management'],
                 ['route' => 'admin.seller-compliance.overview', 'active' => 'admin.seller-compliance.*', 'icon' => 'shield-check', 'label' => 'Seller Compliance', 'badge' => $productsForReview, 'anim' => 'pop'],
                 ['route' => 'admin.complaints.index', 'active' => 'admin.complaints.*', 'icon' => 'scale', 'label' => 'Complaints & Disputes', 'badge' => $openComplaints, 'anim' => 'tilt'],
+                ['route' => 'admin.support-tickets.index', 'active' => 'admin.support-tickets.*', 'icon' => 'inbox', 'label' => 'Support Tickets', 'badge' => $openSupportTickets, 'anim' => 'pop'],
                 ['route' => 'admin.messages.index', 'active' => 'admin.messages.*', 'icon' => 'message', 'label' => 'Messages', 'anim' => 'tilt'],
             ],
         ],
@@ -56,7 +58,10 @@
         [
             'label' => 'System',
             'items' => [
-                ...(auth('admin')->user()?->is_super_admin ? [['route' => 'admin.logistics-coverage.index', 'active' => 'admin.logistics-coverage.*', 'icon' => 'map-pin', 'label' => 'Logistics Coverage', 'anim' => 'drop']] : []),
+                ...(auth('admin')->user()?->is_super_admin ? [
+                    ['route' => 'admin.logistics-coverage.index', 'active' => 'admin.logistics-coverage.*', 'icon' => 'map-pin', 'label' => 'Logistics Coverage', 'anim' => 'drop'],
+                    ['route' => 'admin.audit-logs.index', 'active' => 'admin.audit-logs.*', 'icon' => 'file-text', 'label' => 'Audit Logs', 'anim' => 'nudge'],
+                ] : []),
                 ['route' => 'admin.platform-settings.index', 'active' => 'admin.platform-settings.*', 'icon' => 'settings', 'label' => 'Platform Settings', 'anim' => 'spin'],
                 ['route' => 'admin.account-management.index', 'active' => 'admin.account-management.*', 'icon' => 'user-cog', 'label' => 'Account Management'],
             ],

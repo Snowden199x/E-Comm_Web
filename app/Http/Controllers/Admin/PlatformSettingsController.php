@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminActionLog;
 use App\Models\Communication\Announcement;
 use App\Models\Communication\ChatSetting;
 use App\Models\Communication\Notification;
@@ -88,6 +89,8 @@ class PlatformSettingsController extends Controller
             ChatSetting::create(['welcome_message' => $request->welcome_message]);
         }
 
+        AdminActionLog::record(null, 'chat_welcome_updated');
+
         return back()->with('success', 'Greeting saved. New chats use it.');
     }
 
@@ -97,6 +100,8 @@ class PlatformSettingsController extends Controller
 
         $announcement = Announcement::create($data);
 
+        AdminActionLog::record(null, 'announcement_created', $announcement->title);
+
         return back()->with('success', $this->savedMessage($announcement));
     }
 
@@ -104,12 +109,17 @@ class PlatformSettingsController extends Controller
     {
         $announcement->update($this->validatedAnnouncement($request));
 
+        AdminActionLog::record(null, 'announcement_updated', $announcement->title);
+
         return back()->with('success', $this->savedMessage($announcement));
     }
 
     public function destroyAnnouncement(Announcement $announcement): RedirectResponse
     {
+        $title = $announcement->title;
         $announcement->delete();
+
+        AdminActionLog::record(null, 'announcement_deleted', $title);
 
         return back()->with('success', 'Announcement deleted');
     }
@@ -125,6 +135,10 @@ class PlatformSettingsController extends Controller
             ['name' => $request->name],
             ['version' => '1.0', 'content' => '']
         );
+
+        if ($policy->wasRecentlyCreated) {
+            AdminActionLog::record(null, 'policy_created', $policy->name);
+        }
 
         // The editor opens straight away: an empty policy is hidden from users.
         return back()
@@ -154,6 +168,8 @@ class PlatformSettingsController extends Controller
 
         $this->notifyPolicyUpdate($policy);
 
+        AdminActionLog::record(null, 'policy_updated', $policy->name.' v'.$policy->version);
+
         $who = self::POLICY_AUDIENCE[$policy->name] ?? 'Users';
 
         return back()->with('success', "{$policy->name} saved. {$who} were notified.");
@@ -161,9 +177,12 @@ class PlatformSettingsController extends Controller
 
     public function destroyPolicy(PlatformPolicy $policy): RedirectResponse
     {
+        $name = $policy->name;
         $policy->delete();
 
-        return back()->with('success', "{$policy->name} deleted");
+        AdminActionLog::record(null, 'policy_deleted', $name);
+
+        return back()->with('success', "{$name} deleted");
     }
 
     private function validatedAnnouncement(Request $request): array

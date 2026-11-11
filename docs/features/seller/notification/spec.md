@@ -31,7 +31,7 @@ Each notification should link to the relevant seller-owned order, product, revie
 | Voucher first activated | Implemented | Sends one notice per prior Buyer/voucher and links to the Seller's shop. |
 | Voucher ends or reaches its total use limit | Implemented | Detected during Seller notification polling; links to Vouchers and is recorded once per voucher. |
 
-Stock and shipment events are emitted on changes rather than page reads. A stable event key for broader retry deduplication remains future work. Notification text avoids private buyer contact information. Email and push settings can follow when those channels exist.
+Stock and shipment events are emitted on changes rather than page reads. A stable event key for broader retry deduplication remains future work. Notification text avoids private buyer contact information. Order email notifications are out of scope by owner decision; delivery stays in-app (the Seller bell and inbox).
 
 ## Backend contract
 

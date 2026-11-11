@@ -11,6 +11,7 @@ This overview is derived from Eloquent models and migrations, not a replacement 
 - `buyer_addresses` stores a Buyer's saved delivery addresses: `label`, `house_no`, `street`, `barangay`, `municipality`, `province`, `zip_code`, optional `latitude`/`longitude` pin, and `is_default`. Checkout posts `shipping_address_id` and the server rebuilds the shipping fields from the row. Migration `2026_11_11_120000_create_buyer_addresses_table.php`; the registered address stays in `buyer_details`.
 - `account_deletion_requests` stores Buyer/Seller requests to close their account: JSON `reasons`, optional `comments`, `status` (`pending`/`approved`/`rejected`), `requested_at`, the reviewing Admin (`reviewed_by`), `reviewed_at` and `admin_notes`. Migration `2026_11_11_100000_create_account_deletion_requests_table.php` adds it. Approving deactivates the user (records are kept); nothing is hard-deleted.
 - `order_return_requests` stores a Buyer's request to return a delivered order: `reason`, optional `details`, `status` (`pending`/`approved`/`rejected`), the Seller reviewer (`decided_by`), `decided_at`, `decision_note` and `refund_cents` (the amount owed back, frozen at approval). Migration `2026_11_11_140000_create_order_return_requests_table.php`. Approval sets `orders.status = 'returned'`, returns the quantities to stock through `inventory_movements` (type `return`) and records the refund for display only; no money moves.
+- `order_return_requests.return_status` (`pending_pickup`/`picked_up`/`delivered_to_seller`), `pickup_rider_id`, `picked_up_at` and `delivered_to_seller_at` follow the parcel back to the Seller (migration `2026_11_11_173000_add_return_leg_to_order_return_requests.php`). Rider pickup/handover scans write `order_scan_events` (`return_pickup`, `returned_to_seller`); a status note is added to the order timeline, but `orders.status` stays `returned`.
 - `otp_verifications` stores buyer registration OTP records. Seller and logistics-center OTP verification currently uses cache keys instead.
 
 ## Logistics province network and facilities
@@ -21,7 +22,7 @@ Migration `2026_10_14_121000_create_order_facility_scans.php` adds ordered `orde
 
 ## Commerce
 
-- `products` belongs to a seller and optionally to a category; product images, warnings, and violations are separate records. Product approval state is stored on the product.
+- `products` belongs to a seller and optionally to a category; product images, warnings, and violations are separate records. Product approval state is stored on the product. `products.deleted_at` (soft delete, migration `2026_11_11_170000_add_soft_deletes_to_products.php`) keeps the row for order history, reviews and stock movements after a Seller deletes a listing; order-item lookups read with trashed rows.
 - `cart_items` belongs to a buyer and a product; optional variation/color/size fields are carried to order items.
 - `orders` belongs to buyer and seller, optionally references a courier and a delivery Logistics Company, and stores gross product subtotal (`total_amount`), nullable `buyer_note`, Seller `voucher_code`/`voucher_discount` snapshots, shipping fee, payment mode, shipping address, and workflow status. Buyer payable total is subtotal minus voucher discount plus shipping. One buyer checkout can create separate orders for each seller.
 - `order_items` snapshots product reference, quantity, selected variation, and price.
@@ -64,7 +65,9 @@ Migration `2026_10_14_121000_create_order_facility_scans.php` adds ordered `orde
 - `product_attribute_values`, `product_specifications`, `product_variation_types`, `product_variation_options`, and `product_variants` store Seller listing details and purchasable options. Category field definitions remain in `config/product-attributes.php`; each variant stores its selected type/value map as JSON.
 - `cart_items.product_variant_id`, `order_items.product_variant_id` and `inventory_movements.product_variant_id` tie selection, purchase and stock movement to the selected variant. Product aggregate stock equals the sum of variant stocks for variant products.
 - `orders.pickup_request_status`, `pickup_decline_reason` and `pickup_verified_at` record Main Hub review of a Seller pickup request. A decline returns the order to `preparing` and lets the Seller mark it ready again.
-- `admin_action_logs` records actor Admin ID, target user ID, action, reason and timestamps for registration/account actions. These tables/columns are added by three new `2026_10_04_*` migrations.
+- `admin_action_logs` records actor Admin ID, target user ID, action, reason and timestamps for registration/account actions. These tables/columns are added by three new `2026_10_04_*` migrations. The Admin Audit Logs page reads this table; it is not exportable and other Admin actions are not written to it yet.
+- `support_tickets` (Buyer, optional `order_id`, `category`, `subject`, `status`, `last_reply_at`, `closed_at`) and `support_ticket_messages` (`support_ticket_id`, `sender_id`, `body`, `is_staff`) hold the Buyer ↔ Vendo support lifecycle. Migration `2026_11_11_171000_create_support_tickets_tables.php`.
+- `orders.order_number` holds the Seller-visible `ORD-YYYY-NNNN` value (unique, backfilled by creation year); `order_sequences` is the locked yearly counter behind it. Migration `2026_11_11_172000_add_order_numbers.php`. The legacy `VN-` id stays available through `Order::numberFor()` and the `number` accessor's fallback.
 
 ## 23 October 2026 Logistics hierarchy additions (owner migration required)
 
