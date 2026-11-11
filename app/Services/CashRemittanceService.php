@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Ecommerce\Order;
 use App\Models\Finance\CashRemittance;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
