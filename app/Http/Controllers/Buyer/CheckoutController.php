@@ -67,7 +67,11 @@ class CheckoutController extends Controller
 
     public function store(Request $request, LocationCatalog $locations, BuyerCheckoutService $checkout)
     {
-        $data = $request->validate(['shipping_address_id' => 'nullable|integer', 'shipping_address' => 'required|string|max:1800', 'shipping_province_code' => 'required|string|size:9', 'shipping_city_code' => 'required|string|size:9', 'payment_mode' => 'required|in:cod', 'checkout_revision' => ['required', 'regex:/^[a-f0-9]{64}$/'], 'items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct'], 'shipping_quotes' => ['required', 'array'], 'shipping_quotes.*' => ['required', 'numeric', 'min:45'], 'logistics_company_ids' => ['required', 'array'], 'logistics_company_ids.*' => ['required', 'integer', 'exists:logistics_companies,id'], 'seller_notes' => ['sometimes', 'array'], 'seller_notes.*' => ['nullable', 'string', 'max:300'], 'voucher_codes' => ['sometimes', 'array'], 'voucher_codes.*' => ['nullable', 'string', 'regex:/^[A-Z0-9]{4,12}$/']]);
+        $data = $request->validate(['shipping_address_id' => 'nullable|integer', 'shipping_address' => 'required|string|max:1800', 'shipping_province_code' => 'required|string|size:9', 'shipping_city_code' => 'required|string|size:9', 'payment_mode' => 'required|in:cod', 'checkout_revision' => ['required', 'regex:/^[a-f0-9]{64}$/'], 'items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct'], 'shipping_quotes' => ['required', 'array'], 'shipping_quotes.*' => ['required', 'numeric', 'min:45'], 'logistics_company_ids' => ['required', 'array'], 'logistics_company_ids.*' => ['required', 'integer', 'exists:logistics_companies,id'], 'seller_notes' => ['sometimes', 'array'], 'seller_notes.*' => ['nullable', 'string', 'max:300'], 
+            // Each seller entry is either one code or a list of up to two stacked codes.
+            'voucher_codes' => ['sometimes', 'array'], 'voucher_codes.*' => ['nullable'],
+            'voucher_codes.*.*' => ['nullable', 'string', 'regex:/^[A-Z0-9]{4,12}$/'],
+        ]);
         $coordinates = $request->validate([
             'shipping_latitude' => ['nullable', 'required_with:shipping_longitude', 'numeric', 'between:-90,90'],
             'shipping_longitude' => ['nullable', 'required_with:shipping_latitude', 'numeric', 'between:-180,180'],
@@ -155,7 +159,10 @@ class CheckoutController extends Controller
     {
         $data = $request->validate([
             'items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct'],
-            'seller_id' => ['required', 'integer'], 'code' => ['required', 'string', 'regex:/^[A-Z0-9]{4,12}$/'],
+            'seller_id' => ['required', 'integer'],
+            'code' => ['nullable', 'string', 'regex:/^[A-Z0-9]{4,12}$/'],
+            'codes' => ['nullable', 'array', 'max:'.SellerVoucherService::MAX_STACK],
+            'codes.*' => ['required', 'string', 'regex:/^[A-Z0-9]{4,12}$/'],
         ]);
         $cartItems = CartItem::query()->where('user_id', $request->user()->id)->whereIn('id', $data['items'])->get();
         if ($cartItems->count() !== count($data['items'])) {
@@ -173,13 +180,29 @@ class CheckoutController extends Controller
         if ($items->isEmpty()) {
             throw ValidationException::withMessages(['code' => 'This shop is not in your checkout.']);
         }
-        $variants = ProductVariant::query()->whereIn('id', $items->pluck('product_variant_id')->filter())->get()->keyBy('id');
-        $voucher = SellerVoucher::query()->where('seller_id', $data['seller_id'])->where('code', $data['code'])->first();
-        if (! $voucher) {
-            throw ValidationException::withMessages(['code' => 'This shop voucher was not found.']);
+        $codes = collect($data['codes'] ?? array_filter([$data['code'] ?? null]))
+            ->map(fn ($code) => trim((string) $code))->filter()->unique()->values()->all();
+        if ($codes === []) {
+            throw ValidationException::withMessages(['code' => 'Enter a shop voucher code.']);
         }
-        $cents = $vouchers->discountCents($voucher, $items, $products, $variants, $request->user()->id);
+        $variants = ProductVariant::query()->whereIn('id', $items->pluck('product_variant_id')->filter())->get()->keyBy('id');
+        $vouchersFound = [];
+        foreach ($codes as $code) {
+            $voucher = SellerVoucher::query()->where('seller_id', $data['seller_id'])->where('code', $code)->first();
+            if (! $voucher) {
+                throw ValidationException::withMessages(['code' => 'Shop voucher '.$code.' was not found.']);
+            }
+            $vouchersFound[] = $voucher;
+        }
+        $stack = $vouchers->stackedDiscountCents($vouchersFound, $items, $products, $variants, $request->user()->id);
 
-        return response()->json(['discount' => number_format($cents / 100, 2, '.', ''), 'code' => $voucher->code]);
+        return response()->json([
+            'discount' => number_format($stack['total'] / 100, 2, '.', ''),
+            'code' => $codes[0],
+            'codes' => $codes,
+            'lines' => collect($stack['lines'])->map(fn ($cents, $code) => [
+                'code' => $code, 'discount' => number_format($cents / 100, 2, '.', ''),
+            ])->values()->all(),
+        ]);
     }
 }

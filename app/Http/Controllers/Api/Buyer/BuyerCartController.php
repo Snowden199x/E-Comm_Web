@@ -69,6 +69,16 @@ class BuyerCartController extends Controller
             throw ValidationException::withMessages(['quantity' => 'Only '.$availableStock.' item(s) left in stock.']);
         }
 
+        $alreadyInCart = CartItem::where('user_id', $request->user()->id)
+            ->where('product_id', $product->id)
+            ->where('product_variant_id', $variant?->id)
+            ->exists();
+        if (! $alreadyInCart && CartItem::where('user_id', $request->user()->id)->count() >= CartItem::MAX_LINES) {
+            throw ValidationException::withMessages([
+                'cart' => 'Your cart is full. A cart can hold up to '.CartItem::MAX_LINES.' different products.',
+            ]);
+        }
+
         CartItem::create([
             'user_id' => $request->user()->id,
             'product_id' => $product->id,

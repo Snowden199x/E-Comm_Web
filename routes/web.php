@@ -132,6 +132,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/support-tickets/{ticket}', [\App\Http\Controllers\Admin\SupportTicketController::class, 'show'])->whereNumber('ticket')->name('support-tickets.show');
         Route::post('/support-tickets/{ticket}/messages', [\App\Http\Controllers\Admin\SupportTicketController::class, 'reply'])->middleware('throttle:20,1')->whereNumber('ticket')->name('support-tickets.reply');
         Route::patch('/support-tickets/{ticket}/status', [\App\Http\Controllers\Admin\SupportTicketController::class, 'status'])->whereNumber('ticket')->name('support-tickets.status');
+        Route::get('/support-tickets/attachments/{attachment}', [\App\Http\Controllers\SupportTicketAttachmentController::class, 'admin'])->whereNumber('attachment')->name('support-tickets.attachments.show');
         Route::post('/limits/{order}/attempt', [LimitOverrideController::class, 'grantAttempt'])->whereNumber('order')->name('limit-overrides.attempt');
         Route::post('/limits/{order}/window', [LimitOverrideController::class, 'extendReturnWindow'])->whereNumber('order')->name('limit-overrides.window');
         Route::get('/logistics-coverage', [\App\Http\Controllers\Admin\LogisticsCoverageController::class, 'index'])->name('logistics-coverage.index');
@@ -300,6 +301,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/support/{ticket}', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'show'])->middleware('auth')->whereNumber('ticket')->name('support.show');
     Route::post('/support/{ticket}/messages', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'reply'])->middleware(['auth', 'throttle:20,1'])->whereNumber('ticket')->name('support.reply');
     Route::post('/support/{ticket}/close', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'close'])->middleware('auth')->whereNumber('ticket')->name('support.close');
+    Route::get('/support/attachments/{attachment}', [\App\Http\Controllers\SupportTicketAttachmentController::class, 'buyer'])->middleware('auth')->whereNumber('attachment')->name('support.attachments.show');
     Route::get('/orders', [BuyerOrderController::class, 'index'])->middleware('auth')->name('orders.index');
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->middleware('auth')->name('orders.show');
     Route::patch('/orders/{order}/cancel', [BuyerOrderController::class, 'cancel'])->middleware('auth')->whereNumber('order')->name('orders.cancel');
@@ -377,6 +379,8 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::get('/orders/{order}/waybill', [OrderController::class, 'waybill'])->whereNumber('order')->name('orders.waybill');
         Route::get('/orders/{order}', [OrderController::class, 'show'])->whereNumber('order')->name('orders.show');
         Route::patch('/orders/{order}', [OrderController::class, 'update'])->whereNumber('order')->name('orders.update');
+        Route::patch('/orders/{order}/pickup-schedule', [OrderController::class, 'reschedulePickup'])->whereNumber('order')->name('orders.pickup-reschedule');
+        Route::post('/orders/{order}/pickup-report', [OrderController::class, 'reportPickup'])->whereNumber('order')->name('orders.pickup-report');
         Route::get('/completed-orders', [CompletedOrdersController::class, 'index'])->name('completed-orders.index');
         Route::get('/completed-orders/{order}', [CompletedOrdersController::class, 'show'])->whereNumber('order')->name('completed-orders.show');
         Route::get('/returns', [SellerReturnRequestController::class, 'index'])->name('returns.index');

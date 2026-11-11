@@ -43,3 +43,10 @@ The separate SH scanner API now adds a status-history note and Seller notificati
 `Seller/ShipmentController`, `SellerOrderWorkflow`, `Order`, `InventoryService`, the inventory/shipment migration, and `resources/views/seller/shipments/`. Manual acceptance should cover ownership, filters, stale transitions, active rider requirements, tracking persistence and cancellation restoring stock only once. No test files are included, as requested.
 
 [Design reference](design-functions.md) · [Order flow](../../../order-logistics-flow-decisions.md) · [Products & Inventory](../products-inventory/spec.md)
+
+## 11 November 2026: pickup schedule, reschedule limit and pickup report
+
+- **Scheduling:** marking an order ready accepts `pickup_scheduled_at` (datetime-local). If the seller leaves it blank the slot defaults to the next day, 09:00, in the app timezone. The slot is stored on `orders.pickup_scheduled_at` and shown on Shipment details.
+- **Reschedule:** `PATCH /seller/orders/{order}/pickup-schedule` moves the slot while the parcel is still `ready_for_pickup`. Each move increments `pickup_reschedule_count`; a fourth move is rejected (`Order::PICKUP_RESCHEDULE_LIMIT = 3`). The hub and buyer are notified, and the status event records the old and new slot.
+- **Failed attempts:** when `StationPickupExpiry` releases an assignment the rider never scanned, it increments `orders.pickup_attempts` and notifies the seller.
+- **Report to logistics:** `POST /seller/orders/{order}/pickup-report` lets the seller send a short explanation once the attempt count is above zero. It is throttled to one report per six hours, writes a status event, notifies the pickup hub and tells the buyer the pickup is delayed. The seller sees both actions on Shipment details.

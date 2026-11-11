@@ -21,7 +21,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('buyer.support.store') }}" method="POST" class="mt-4 space-y-4">
+            <form action="{{ route('buyer.support.store') }}" method="POST" enctype="multipart/form-data" class="mt-4 space-y-4">
                 @csrf
 
                 <div class="grid gap-4 sm:grid-cols-2">
@@ -58,6 +58,15 @@
                     <label for="message" class="{{ $label }}">What do you need help with?</label>
                     <textarea id="message" name="message" rows="6" required maxlength="5000" class="{{ $field }}" placeholder="Include the order number, the date and what you already tried.">{{ old('message') }}</textarea>
                     @error('message')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
+                </div>
+
+                <div>
+                    <label for="attachments" class="{{ $label }}">Attach a photo or PDF <span class="font-normal text-[#9a8a9d]">(optional, up to 2 files, 5 MB each)</span></label>
+                    <input id="attachments" type="file" name="attachments[]" multiple accept="image/jpeg,image/png,image/webp,application/pdf"
+                        class="mt-1 block w-full rounded-md border border-[#e5dce7] bg-white px-3 py-2 text-[12px] text-[#3d2a42] focus:border-[#805487] focus:outline-none">
+                    @foreach ($errors->get('attachments.*') as $messages)
+                        @foreach ($messages as $errorText)<p class="mt-1 text-[12px] text-[#a32b43]">{{ $errorText }}</p>@endforeach
+                    @endforeach
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">

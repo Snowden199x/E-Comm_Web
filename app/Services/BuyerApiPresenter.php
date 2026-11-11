@@ -37,8 +37,8 @@ class BuyerApiPresenter
     {
         $image = $product->images->first();
         $seller = $product->seller;
-        $price = (float) $product->price;
-        $compareAt = (float) ($product->compare_at_price ?? 0);
+        $price = (float) $product->effective_price;
+        $compareAt = (float) ($product->compare_at_price ?? ($product->hasActiveSale() ? $product->price : 0));
 
         return [
             'id' => $product->id,
@@ -215,6 +215,7 @@ class BuyerApiPresenter
             'money_status' => $order->money_status,
             'money_status_label' => $order->money_status ? (\App\Models\Ecommerce\Order::MONEY_STATUSES[$order->money_status] ?? $order->money_status) : null,
             'voucher_code' => $order->voucher_code,
+            'voucher_codes' => $order->voucher_codes,
             'voucher_discount' => $this->money($order->voucher_discount ?? 0),
             'buyer_note' => $order->buyer_note,
             'tracking_number' => $order->tracking_number,

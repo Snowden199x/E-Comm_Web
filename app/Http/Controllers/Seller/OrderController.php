@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
+use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
 use App\Services\SellerOrderWorkflow;
 use App\Services\ShippingLabelCodeGenerator;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
@@ -87,12 +90,128 @@ class OrderController extends Controller
             'expected_status' => ['required', Rule::in(array_keys(Order::STATUSES))],
             'reason' => 'required_if:action,decline,cancel|nullable|string|max:500',
             'reason_details' => 'required_if:reason,other|nullable|string|max:450',
+            'pickup_scheduled_at' => ['nullable', 'date', 'after:now'],
         ]);
         app(SellerOrderWorkflow::class)->transition(
             $request->user(), $order, $data['action'], $data['expected_status'],
             $data['reason'] ?? null, $data['reason_details'] ?? null,
+            $data['pickup_scheduled_at'] ?? null,
         );
 
         return response()->json(['message' => 'Order updated.']);
+    }
+
+    /**
+     * Move a pickup slot. The seller gets three moves per order, and only while
+     * the parcel is still waiting for the rider's pickup scan.
+     */
+    public function reschedulePickup(Request $request, int $order)
+    {
+        $data = $request->validate([
+            'pickup_scheduled_at' => ['required', 'date', 'after:now'],
+        ]);
+
+        $result = DB::transaction(function () use ($request, $order, $data) {
+            $record = Order::where('seller_id', $request->user()->id)->lockForUpdate()->findOrFail($order);
+
+            abort_unless($record->status === 'ready_for_pickup',
+                409, 'Pickup can only be moved while the parcel is waiting for the rider.');
+            abort_unless($record->canSellerReschedulePickup(), 409,
+                'This pickup already used its '.Order::PICKUP_RESCHEDULE_LIMIT.' reschedules.');
+
+            $previous = $record->pickup_scheduled_at;
+            $record->pickup_scheduled_at = Carbon::parse($data['pickup_scheduled_at']);
+            $record->pickup_reschedule_count = (int) $record->pickup_reschedule_count + 1;
+            $record->save();
+
+            $record->statusEvents()->create([
+                'user_id' => $request->user()->id,
+                'from_status' => 'ready_for_pickup',
+                'to_status' => 'ready_for_pickup',
+                'note' => 'Seller moved the pickup from '
+                    .($previous?->format('M j, Y g:i A') ?? 'the previous slot').' to '
+                    .$record->pickup_scheduled_at->format('M j, Y g:i A').'. '
+                    .$record->pickupReschedulesLeft().' reschedule(s) left.',
+            ]);
+
+            $hubUserId = $record->logisticsCenter?->user_id;
+            if ($hubUserId) {
+                Notification::create([
+                    'user_id' => $hubUserId,
+                    'type' => 'pickup_rescheduled',
+                    'title' => 'Pickup moved '.$record->number,
+                    'message' => 'The seller moved the pickup to '.$record->pickup_scheduled_at->format('M j, Y g:i A').'.',
+                    'link' => route('lgp.station.pickups'),
+                ]);
+            }
+            Notification::create([
+                'user_id' => $record->buyer_id,
+                'type' => 'order_update',
+                'title' => 'Pickup rescheduled '.$record->number,
+                'message' => 'The seller moved the pickup to '.$record->pickup_scheduled_at->format('M j, Y g:i A').'. Your delivery estimate is unchanged for now.',
+                'link' => route('buyer.orders.show', $record),
+            ]);
+
+            return [
+                'message' => 'Pickup moved to '.$record->pickup_scheduled_at->format('M j, Y g:i A').'. '
+                    .$record->pickupReschedulesLeft().' reschedule(s) left.',
+                'pickup_scheduled_at' => $record->pickup_scheduled_at->toIso8601String(),
+                'remaining' => $record->pickupReschedulesLeft(),
+            ];
+        }, 3);
+
+        return $request->expectsJson()
+            ? response()->json($result)
+            : back()->with('success', $result['message']);
+    }
+
+    /** Tell the pickup hub that repeated assignments still have not collected the parcel. */
+    public function reportPickup(Request $request, int $order)
+    {
+        $data = $request->validate(['details' => ['required', 'string', 'min:10', 'max:600']]);
+
+        $result = DB::transaction(function () use ($request, $order, $data) {
+            $record = Order::where('seller_id', $request->user()->id)->lockForUpdate()->findOrFail($order);
+
+            abort_unless($record->canSellerReportPickup(), 409,
+                'A pickup problem can be reported after a rider assignment expires without a scan.');
+            abort_if($record->pickup_reported_at && $record->pickup_reported_at->greaterThan(now()->subHours(6)),
+                409, 'You already reported this pickup. The hub is reviewing it.');
+
+            $record->pickup_reported_at = now();
+            $record->save();
+
+            $record->statusEvents()->create([
+                'user_id' => $request->user()->id,
+                'from_status' => 'ready_for_pickup',
+                'to_status' => 'ready_for_pickup',
+                'note' => 'Seller reported a pickup problem after '.$record->pickup_attempts.' failed assignment(s): '.$data['details'],
+            ]);
+
+            $hubUserId = $record->logisticsCenter?->user_id;
+            if ($hubUserId) {
+                Notification::create([
+                    'user_id' => $hubUserId,
+                    'type' => 'pickup_problem',
+                    'title' => 'Pickup problem '.$record->number,
+                    'message' => 'The seller reports that the parcel is still uncollected after '
+                        .$record->pickup_attempts.' assignment(s). '.$data['details'],
+                    'link' => route('lgp.station.pickups'),
+                ]);
+            }
+            Notification::create([
+                'user_id' => $record->buyer_id,
+                'type' => 'order_update',
+                'title' => 'Pickup delay '.$record->number,
+                'message' => 'We are still arranging the pickup. The seller reported the delay to logistics.',
+                'link' => route('buyer.orders.show', $record),
+            ]);
+
+            return ['message' => 'Reported to logistics. The hub will review the pickup.'];
+        }, 3);
+
+        return $request->expectsJson()
+            ? response()->json($result)
+            : back()->with('success', $result['message']);
     }
 }

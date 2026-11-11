@@ -37,3 +37,8 @@ COD notice (28 October 2026): the checkout payment method card shows the live am
 ## 11 November 2026: saved addresses
 
 The Delivery address section now lists the Buyer's saved addresses first (default preselected), then the registered address as a fallback. Choosing a saved address posts `shipping_address_id` in addition to the existing `shipping_*` fields; the server loads the row by the signed-in Buyer and rebuilds the address line, PSGC province/city codes and pin from it, so posted text and codes are not trusted. A saved address that no longer resolves in PSGC is rejected with a message asking the Buyer to update it in Account. Addresses typed in the **Add new address** dialog still apply to that order only and remain in the browser tab for two hours. See [Buyer Address](../address-book/spec.md).
+
+## 11 November 2026: first delivery estimate and sale prices
+
+- Each new order starts with `estimated_delivery_from = today + 2 days` and `estimated_delivery_to = today + 5 days`, so the buyer sees an estimate immediately. The seller can still replace it from Shipment details, and the buyer order page shows the stored range.
+- When a product has a live sale (see the seller product sale fields), checkout computes the unit price with `Product::salePriceFor()` for the simple product or the selected variant, and stores that value in `order_items.price`. Stock, vouchers and COD are calculated from the same discounted total.

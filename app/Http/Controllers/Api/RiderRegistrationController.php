@@ -48,7 +48,8 @@ class RiderRegistrationController extends Controller
             'barangay_code' => ['required', 'regex:/^[0-9]{9}$/'],
             'street' => ['required', 'string', 'max:255'],
             'zip_code' => ['required', 'string', 'max:20'],
-            'vehicle_type' => ['required', Rule::in(['Motorcycle', 'Van', 'L300', 'Truck'])],
+            // Trucks are company assets now; riders register only their own vehicle.
+            'vehicle_type' => ['required', Rule::in(['Motorcycle', 'Van', 'L300'])],
             'plate_number' => ['required', 'string', 'max:50'],
             // The Rider app no longer asks for a separate Valid ID: the driver's
             // licence is the identity document. Older builds may still send one.

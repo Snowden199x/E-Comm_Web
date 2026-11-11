@@ -50,7 +50,7 @@ class SupportTicketController extends Controller
     public function show(int $ticket)
     {
         $record = SupportTicket::query()
-            ->with(['user:id,name,email,phone', 'order:id,order_number', 'messages.sender:id,name,role'])
+            ->with(['user:id,name,email,phone', 'order:id,order_number', 'messages.sender:id,name,role', 'messages.attachments'])
             ->findOrFail($ticket);
 
         return view('admin.support-tickets.show', ['ticket' => $record]);
@@ -60,6 +60,8 @@ class SupportTicketController extends Controller
     {
         $data = $request->validate([
             'body' => ['required', 'string', 'min:2', 'max:5000'],
+            'attachments' => ['nullable', 'array', 'max:2'],
+            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ], ['body.required' => 'Write a reply before sending.']);
 
         $record = SupportTicket::query()->findOrFail($ticket);
@@ -67,7 +69,7 @@ class SupportTicketController extends Controller
             return back()->with('error', 'This request is already resolved. Change its status to In review to reply.');
         }
 
-        $support->replyByAdmin(auth('admin')->user(), $record, $data['body']);
+        $support->replyByAdmin(auth('admin')->user(), $record, $data['body'], $request->file('attachments', []));
 
         return redirect()->route('admin.support-tickets.show', $record)->with('success', 'Reply sent to the buyer.');
     }

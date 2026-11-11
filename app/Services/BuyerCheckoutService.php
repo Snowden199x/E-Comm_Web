@@ -118,19 +118,31 @@ class BuyerCheckoutService
                     throw ValidationException::withMessages(['shipping_quotes.'.$sellerId => 'The Logistics route or shipping fee changed. Refresh the quote and review the total.']);
                 }
                 $buyerNote = trim((string) ($data['seller_notes'][$sellerId] ?? ''));
-                $code = trim((string) ($data['voucher_codes'][$sellerId] ?? ''));
-                $voucher = null;
+                // Up to two codes: one shop-wide and one product/category voucher (see SellerVoucherService).
+                $codes = collect((array) ($data['voucher_codes'][$sellerId] ?? []))
+                    ->map(fn ($code) => trim((string) $code))->filter()->unique()->values()->all();
+                $vouchers = [];
+                $voucherLines = [];
                 $discountCents = 0;
-                if ($code !== '') {
-                    $voucher = SellerVoucher::query()->where('seller_id', $sellerId)->where('code', $code)
-                        ->lockForUpdate()->first();
-                    if (! $voucher) {
-                        throw ValidationException::withMessages(['voucher_codes.'.$sellerId => 'This shop voucher was not found.']);
+                if ($codes !== []) {
+                    if (count($codes) > SellerVoucherService::MAX_STACK) {
+                        throw ValidationException::withMessages(['voucher_codes.'.$sellerId => 'Use at most two shop vouchers on one order.']);
                     }
-                    $discountCents = $this->vouchers->discountCents($voucher, $items, $products, $variants, $buyer->id);
+                    foreach ($codes as $code) {
+                        $voucher = SellerVoucher::query()->where('seller_id', $sellerId)->where('code', $code)
+                            ->lockForUpdate()->first();
+                        if (! $voucher) {
+                            throw ValidationException::withMessages(['voucher_codes.'.$sellerId => 'Shop voucher '.$code.' was not found.']);
+                        }
+                        $vouchers[] = $voucher;
+                    }
+                    $stack = $this->vouchers->stackedDiscountCents($vouchers, $items, $products, $variants, $buyer->id);
+                    $discountCents = $stack['total'];
+                    $voucherLines = $stack['lines'];
                 }
                 $itemsTotal = $items->sum(fn ($item) => $item->quantity * ($item->product_variant_id
-                    ? $variants[$item->product_variant_id]->price : $products[$item->product_id]->price));
+                    ? $products[$item->product_id]->salePriceFor((float) $variants[$item->product_variant_id]->price)
+                    : (float) $products[$item->product_id]->effective_price));
                 // COD: the exact cash the Rider must collect (items - voucher + delivery fee), frozen now.
                 $codCents = max(0, (int) round(((float) $itemsTotal) * 100) - $discountCents
                     + (int) round(((float) $shippingQuote['shipping_fee']) * 100));
@@ -150,8 +162,13 @@ class BuyerCheckoutService
                     'shipping_hub_count' => $shippingQuote['hub_count'],
                     'shipping_route_snapshot' => $shippingQuote['route'],
                     'status' => 'placed', 'payment_mode' => $data['payment_mode'],
+                    // A first estimate the buyer sees immediately; the seller can
+                    // refine it on the shipment page, and the buyer sees any change.
+                    'estimated_delivery_from' => today()->addDays(2),
+                    'estimated_delivery_to' => today()->addDays(5),
                     'voucher_discount' => number_format($discountCents / 100, 2, '.', ''),
-                    'voucher_code' => $voucher?->code,
+                    'voucher_code' => $vouchers[0]->code ?? null,
+                    'voucher_codes' => $codes !== [] ? $codes : null,
                     'shipping_address' => trim($data['shipping_address']).', '.$location['city'].', '.$location['province'],
                     'shipping_province_code' => $data['shipping_province_code'],
                     'shipping_city_code' => $data['shipping_city_code'],
@@ -160,8 +177,8 @@ class BuyerCheckoutService
                     'shipping_latitude' => $pin['lat'],
                     'shipping_longitude' => $pin['lng'],
                 ]);
-                if ($voucher) {
-                    $this->vouchers->redeemLocked($voucher, $order->id, $buyer->id, $discountCents);
+                foreach ($vouchers as $voucher) {
+                    $this->vouchers->redeemLocked($voucher, $order->id, $buyer->id, $voucherLines[$voucher->code] ?? 0);
                 }
                 $order->statusEvents()->create(['user_id' => $buyer->id, 'to_status' => 'placed']);
                 Notification::create(['user_id' => $sellerId, 'type' => 'new_order', 'title' => 'New order '.$order->number, 'message' => 'A buyer placed an order. Review it in Orders.', 'link' => route('seller.orders.show', $order)]);
@@ -170,7 +187,9 @@ class BuyerCheckoutService
                     $variant = $item->product_variant_id ? $variants[$item->product_variant_id] : null;
                     $order->items()->create(['product_id' => $product->id, 'product_variant_id' => $variant?->id,
                         'quantity' => $item->quantity, 'color' => $item->color, 'size' => $item->size,
-                        'price' => $variant?->price ?? $product->price]);
+                        'price' => $variant
+                            ? $product->salePriceFor((float) $variant->price)
+                            : $product->effective_price]);
                     $this->inventory->changeLocked($product, -$item->quantity, 'checkout', $buyer->id, $order->id, variant: $variant);
                 }
                 $orders[] = $order;

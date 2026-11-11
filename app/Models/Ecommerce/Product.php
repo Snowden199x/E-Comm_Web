@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'rejection_reason', 'rejection_details',
     'condition', 'video_path', 'weight_kg', 'package_length', 'package_width', 'package_height',
     'is_fragile', 'has_variations', 'compare_at_price',
+    'sale_type', 'sale_value', 'sale_starts_at', 'sale_ends_at',
 ])]
 class Product extends Model
 {
@@ -27,7 +28,8 @@ class Product extends Model
     public const STOCK_LABELS = ['in_stock' => 'In Stock', 'low_stock' => 'Low Stock', 'out_of_stock' => 'Out of Stock'];
 
     protected $casts = ['price' => 'decimal:2', 'stock' => 'integer', 'weight_kg' => 'decimal:3',
-        'is_fragile' => 'boolean', 'has_variations' => 'boolean', 'compare_at_price' => 'decimal:2'];
+        'is_fragile' => 'boolean', 'has_variations' => 'boolean', 'compare_at_price' => 'decimal:2',
+        'sale_value' => 'decimal:2', 'sale_starts_at' => 'datetime', 'sale_ends_at' => 'datetime'];
 
     protected static function booted(): void
     {
@@ -58,6 +60,56 @@ class Product extends Model
     public function getStockStatusAttribute(): string
     {
         return $this->stock === 0 ? 'out_of_stock' : ($this->stock <= self::LOW_STOCK_THRESHOLD ? 'low_stock' : 'in_stock');
+    }
+
+    /** A sale is live only inside its own date window. */
+    public function hasActiveSale(): bool
+    {
+        if (! in_array($this->sale_type, ['percent', 'fixed'], true) || $this->sale_value === null) {
+            return false;
+        }
+        $now = now();
+        if ($this->sale_starts_at && $now->lt($this->sale_starts_at)) {
+            return false;
+        }
+        if ($this->sale_ends_at && $now->gt($this->sale_ends_at)) {
+            return false;
+        }
+
+        return (float) $this->sale_value > 0;
+    }
+
+    /** Apply the live sale to any unit price (base product or a variant). */
+    public function salePriceFor(float $base): float
+    {
+        if (! $this->hasActiveSale()) {
+            return $base;
+        }
+
+        $value = (float) $this->sale_value;
+        $price = $this->sale_type === 'percent' ? $base * (1 - $value / 100) : $base - $value;
+
+        return max(0.01, round($price, 2));
+    }
+
+    public function getEffectivePriceAttribute(): float
+    {
+        return $this->salePriceFor((float) $this->price);
+    }
+
+    public function getSaleAmountAttribute(): ?float
+    {
+        return $this->hasActiveSale() ? round((float) $this->price - $this->salePriceFor((float) $this->price), 2) : null;
+    }
+
+    /** True when nothing can be added: simple stock is zero, or every variant is zero. */
+    public function getIsSoldOutAttribute(): bool
+    {
+        if (! $this->has_variations) {
+            return (int) $this->stock <= 0;
+        }
+
+        return ! $this->variants()->where('stock', '>', 0)->exists();
     }
 
     public function getRevisionAttribute(): string
@@ -143,6 +195,16 @@ class Product extends Model
             ->whereHas('seller', fn ($seller) => $seller->where('status', 'approved')
                 ->whereNull('archived_at')
                 ->where(fn ($active) => $active->whereNull('account_status')->orWhere('account_status', 'active')));
+    }
+
+    /** Listings a buyer can still add to a cart: simple stock above zero, or at least one sellable variant. */
+    public function scopeInStock($query)
+    {
+        return $query->where(function ($outer) {
+            $outer->where(function ($simple) {
+                $simple->where('has_variations', false)->where('stock', '>', 0);
+            })->orWhereHas('variants', fn ($variants) => $variants->where('stock', '>', 0));
+        });
     }
 
     public function scopeWithCardMetrics($query)

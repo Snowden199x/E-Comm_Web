@@ -107,6 +107,11 @@
         }
     }
 
+    // Old input may hold one code per seller or a list when the Buyer stacked two.
+    $oldVoucherCodes = collect(old('voucher_codes', []))->map(fn ($codes) => array_values(array_filter(
+        array_map(fn ($code) => trim((string) $code), (array) $codes),
+    )))->all();
+
     $checkoutConfig = [
         'addresses' => $addresses,
         'selected' => $selectedId,
@@ -117,7 +122,8 @@
         'itemIds' => $cartItems->pluck('id')->all(),
         'sellerIds' => $sellerGroups->keys()->map(fn ($id) => (string) $id)->values()->all(),
         'subtotal' => (float) $subtotal,
-        'voucherCodes' => old('voucher_codes', []),
+        'voucherCodes' => collect($oldVoucherCodes)->map(fn ($codes) => $codes[0] ?? '')->all(),
+        'voucherExtras' => collect($oldVoucherCodes)->map(fn ($codes) => $codes[1] ?? '')->all(),
     ];
 
     $primaryButton = 'inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#402143] px-5 text-[13px] font-medium text-white transition-colors duration-200 ease-vendo hover:bg-[#52245b]';
@@ -372,12 +378,16 @@
                                     @endif
                                     <label for="voucher-{{ $sellerKey }}" class="mt-2 block text-[11px] font-medium text-[#6f5f73]">Or enter a voucher code</label>
                                     <div class="mt-1 flex gap-2">
-                                        <input id="voucher-{{ $sellerKey }}" type="text" name="voucher_codes[{{ $sellerKey }}]" maxlength="12" autocomplete="off"
+                                        <input id="voucher-{{ $sellerKey }}" type="text" name="voucher_codes[{{ $sellerKey }}][]" maxlength="12" autocomplete="off"
                                             x-model="voucherCodes[{{ $sellerKey }}]" @input="voucherChanged({{ $sellerKey }}, $event)"
                                             placeholder="Enter code" class="{{ $fieldClass }} !mt-0 min-w-0 flex-1 uppercase">
                                         <button type="button" @click="applyVoucher({{ $sellerKey }})" :disabled="applyingVoucher[{{ $sellerKey }}]"
                                             class="rounded-md border border-[#805487] px-3 text-[12px] font-medium text-[#52245b] disabled:opacity-50">Apply</button>
                                     </div>
+                                    <label for="voucher-extra-{{ $sellerKey }}" class="mt-2 block text-[11px] font-medium text-[#6f5f73]">Second voucher <span class="font-normal">(optional — one shop-wide plus one product or category voucher)</span></label>
+                                    <input id="voucher-extra-{{ $sellerKey }}" type="text" name="voucher_codes[{{ $sellerKey }}][]" maxlength="12" autocomplete="off"
+                                        x-model="voucherExtras[{{ $sellerKey }}]" @input="voucherExtraChanged({{ $sellerKey }}, $event)"
+                                        placeholder="Enter a second code" class="{{ $fieldClass }} !mt-0 uppercase">
                                     <p x-show="appliedVoucherCodes[{{ $sellerKey }}]" x-cloak class="mt-1 text-[12px] text-[#2e6b46]"
                                        x-text="'Discount: ₱' + Number(voucherDiscounts[{{ $sellerKey }}] || 0).toFixed(2)"></p>
                                     <p x-show="voucherErrors[{{ $sellerKey }}]" x-cloak class="mt-1 text-[12px] text-[#a32b43]" role="alert" x-text="voucherErrors[{{ $sellerKey }}]"></p>
@@ -526,6 +536,7 @@
         modal: false,
         submitting: false,
         voucherCodes: config.voucherCodes || {},
+        voucherExtras: config.voucherExtras || {},
         shippingQuotes: {},
         logisticsChoices: {},
         shippingQuoteError: '',
@@ -558,9 +569,9 @@
             if (!this.addresses.some(a => a.id === this.selected && a.usable)) {
                 this.selected = (this.addresses.find(a => a.usable) || {}).id || null;
             }
-            for (const [sellerId, code] of Object.entries(this.voucherCodes)) {
-                if (code) this.applyVoucher(sellerId);
-            }
+            config.sellerIds.forEach(sellerId => {
+                if (this.voucherCodes[sellerId] || this.voucherExtras[sellerId]) this.applyVoucher(sellerId);
+            });
             // Browser back/forward restores the page from cache: allow another submit
             window.addEventListener('pageshow', () => { this.submitting = false; });
             this.$watch('selected', () => { this.persist(); this.refreshShippingQuote(); });
@@ -640,29 +651,44 @@
             }
         },
 
+        voucherKey(sellerId) {
+            return [this.voucherCodes[sellerId], this.voucherExtras[sellerId]].map(c => String(c || '').trim()).filter(Boolean).join('|');
+        },
+
+        resetVoucherState(sellerId) {
+            this.voucherDiscounts[sellerId] = 0;
+            this.appliedVoucherCodes[sellerId] = '';
+            this.voucherErrors[sellerId] = '';
+        },
+
         voucherChanged(sellerId, event = null) {
             const code = String(event ? event.target.value : this.voucherCodes[sellerId] || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
             if (event) event.target.value = code;
             this.voucherCodes[sellerId] = code;
             this.voucherSelections[sellerId] = '';
-            this.voucherDiscounts[sellerId] = 0;
-            this.appliedVoucherCodes[sellerId] = '';
-            this.voucherErrors[sellerId] = '';
+            this.resetVoucherState(sellerId);
+        },
+
+        voucherExtraChanged(sellerId, event = null) {
+            const code = String(event ? event.target.value : this.voucherExtras[sellerId] || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (event) event.target.value = code;
+            this.voucherExtras[sellerId] = code;
+            this.resetVoucherState(sellerId);
         },
 
         selectVoucher(sellerId, event) {
             const code = String(event.target.value || '');
             this.voucherSelections[sellerId] = code;
             this.voucherCodes[sellerId] = code;
-            this.voucherDiscounts[sellerId] = 0;
-            this.appliedVoucherCodes[sellerId] = '';
-            this.voucherErrors[sellerId] = '';
-            if (this.voucherCodes[sellerId]) this.applyVoucher(sellerId);
+            this.resetVoucherState(sellerId);
+            if (this.voucherKey(sellerId)) this.applyVoucher(sellerId);
         },
 
         async applyVoucher(sellerId) {
-            const code = String(this.voucherCodes[sellerId] || '').trim();
-            if (!code) { this.voucherChanged(sellerId); return; }
+            const codes = [this.voucherCodes[sellerId], this.voucherExtras[sellerId]]
+                .map(code => String(code || '').trim()).filter(Boolean);
+            if (!codes.length) { this.resetVoucherState(sellerId); return; }
+            const key = codes.join('|');
             this.applyingVoucher[sellerId] = true;
             this.voucherErrors[sellerId] = '';
             try {
@@ -670,13 +696,13 @@
                     method: 'POST',
                     headers: { 'Accept': 'application/json', 'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
-                    body: JSON.stringify({ items: config.itemIds, seller_id: sellerId, code }),
+                    body: JSON.stringify({ items: config.itemIds, seller_id: sellerId, codes }),
                 });
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) throw new Error(Object.values(data.errors || {}).flat()[0] || data.message || 'Could not apply this voucher.');
-                if (this.voucherCodes[sellerId] !== code) return;
+                if (this.voucherKey(sellerId) !== key) return;
                 this.voucherDiscounts[sellerId] = Number(data.discount);
-                this.appliedVoucherCodes[sellerId] = code;
+                this.appliedVoucherCodes[sellerId] = key;
             } catch (error) {
                 this.voucherErrors[sellerId] = error.message;
             } finally {
@@ -778,8 +804,9 @@
                 this.shippingQuoteError = 'Choose a Logistics provider for every shop.';
                 return;
             }
-            for (const [sellerId, code] of Object.entries(this.voucherCodes)) {
-                if (code && code !== this.appliedVoucherCodes[sellerId]) {
+            for (const sellerId of config.sellerIds) {
+                const key = this.voucherKey(sellerId);
+                if (key && key !== this.appliedVoucherCodes[sellerId]) {
                     event.preventDefault();
                     this.voucherErrors[sellerId] = 'Apply this voucher to check the total before placing the order.';
                     document.getElementById('voucher-' + sellerId)?.focus();

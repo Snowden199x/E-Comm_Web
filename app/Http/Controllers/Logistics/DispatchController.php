@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
 use App\Models\Communication\Notification;
 use App\Models\Profiles\CourierDetail;
+use App\Models\Profiles\LogisticsCompany;
 use App\Models\Profiles\LogisticsFacility;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -80,8 +81,13 @@ class DispatchController extends Controller
             ->get()
             ->sortBy(fn ($courier) => $courier->user->name)
             ->values();
-        $truckRiders = $couriers->filter(fn (CourierDetail $courier) => $courier->vehicle_type === 'Truck')->values();
-        $localRiders = $couriers->filter(fn (CourierDetail $courier) => $courier->vehicle_type !== 'Truck')->values();
+        // Company trucks are assigned by plate; the driver is any approved courier.
+        $truckRiders = $couriers;
+        $localRiders = $couriers;
+        $company = LogisticsCompany::query()->where('logistics_center_id', $center->id)->first();
+        $vehicles = $company
+            ? $company->vehicles()->where('status', 'available')->with('provinceHub')->orderBy('plate_number')->get()
+            : collect();
 
         $workload = Order::query()->where('destination_logistics_center_id', $center->id)
             ->whereIn('status', ['assigned_to_rider', 'out_for_delivery'])
@@ -94,7 +100,7 @@ class DispatchController extends Controller
                 ...$orders->getCollection()->pluck('destination_logistics_center_id')->filter()->unique()->all(),
             ])->orderBy('province')->orderBy('municipality')->get();
 
-        return view('logistics.dispatch.index', compact('center', 'orders', 'couriers', 'truckRiders', 'localRiders', 'lane',
+        return view('logistics.dispatch.index', compact('center', 'orders', 'couriers', 'truckRiders', 'localRiders', 'vehicles', 'lane',
             'filters', 'areas', 'availableStatuses', 'stageCounts', 'selectedStage', 'workload', 'routeStations'));
     }
 
@@ -134,6 +140,8 @@ class DispatchController extends Controller
                 && ! $user->archived_at && (! $user->account_status || $user->account_status === 'active'),
                 422, 'Select an active approved courier from your center.');
 
+            $this->assertPickupSlotFree($record, $user->id);
+
             $record->courier_id = $user->id;
             $record->save();
             DB::table('order_logistics_assignments')->insert([
@@ -151,6 +159,29 @@ class DispatchController extends Controller
         }, 3);
 
         return back()->with('success', 'Pickup courier assigned. Waiting for the rider pickup scan.');
+    }
+
+    /**
+     * One Rider cannot be booked for two pickups at the same date and time. The
+     * slot comes from the seller's pickup schedule; legacy orders without a slot
+     * are not blocked.
+     */
+    private function assertPickupSlotFree(Order $order, int $courierUserId): void
+    {
+        if (! $order->pickup_scheduled_at) {
+            return;
+        }
+
+        $conflict = Order::query()
+            ->where('courier_id', $courierUserId)
+            ->whereKeyNot($order->id)
+            ->whereIn('status', ['ready_for_pickup', 'picked_up'])
+            ->where('pickup_scheduled_at', $order->pickup_scheduled_at)
+            ->exists();
+
+        abort_if($conflict, 409,
+            'This Rider already has a pickup scheduled at '
+            .$order->pickup_scheduled_at->format('M j, Y g:i A').'. Choose another Rider or time.');
     }
 
     public function verifyPickupRequest(Request $request, int $order): RedirectResponse
@@ -286,6 +317,7 @@ class DispatchController extends Controller
     {
         $data = $request->validate([
             'rider_id' => ['required', 'integer', Rule::exists('users', 'id')],
+            'vehicle_id' => ['required', 'integer', Rule::exists('company_vehicles', 'id')],
         ]);
         $centerId = $request->user()->logisticsCenterDetail->id;
 
@@ -302,25 +334,29 @@ class DispatchController extends Controller
                 'A sorted cross-hub parcel with a configured route plan is required for truck assignment.');
 
             $riderDetail = CourierDetail::query()->where('logistics_center_id', $centerId)
-                ->where('user_id', $data['rider_id'])->where('vehicle_type', 'Truck')
-                ->with('user')->firstOrFail();
+                ->where('user_id', $data['rider_id'])->with('user')->firstOrFail();
             $rider = $riderDetail->user;
             abort_unless($rider && $rider->role === 'courier' && $rider->status === 'approved'
                 && ! $rider->archived_at && (! $rider->account_status || $rider->account_status === 'active'),
-                422, 'Select an active, approved Truck Rider linked to this Main Hub.');
+                422, 'Select an active, approved driver linked to this Main Hub.');
+
+            $company = LogisticsCompany::query()->where('logistics_center_id', $centerId)->first();
+            $vehicle = $company?->vehicles()->whereKey($data['vehicle_id'])->where('status', 'available')->first();
+            abort_unless($vehicle, 422, 'Select an available company truck for this hub.');
 
             $previousRiderId = $record->linehaul_rider_id;
-            if ((int) $previousRiderId === (int) $rider->id) {
+            if ((int) $previousRiderId === (int) $rider->id && (int) $record->linehaul_vehicle_id === (int) $vehicle->id) {
                 return;
             }
 
             $record->linehaul_rider_id = $rider->id;
+            $record->linehaul_vehicle_id = $vehicle->id;
             $record->save();
 
             DB::table('order_logistics_assignments')->insert([
                 'order_id' => $record->id,
                 'actor_id' => $request->user()->id,
-                'action' => $previousRiderId ? 'linehaul_rider_reassigned' : 'linehaul_rider_assigned',
+                'action' => $previousRiderId ? 'linehaul_truck_reassigned' : 'linehaul_truck_assigned',
                 'from_logistics_center_id' => $centerId,
                 'to_logistics_center_id' => $record->destination_logistics_center_id,
                 'courier_id' => $rider->id,
@@ -331,7 +367,7 @@ class DispatchController extends Controller
                 'Truck assignment '.$record->number,
                 $previousRiderId
                     ? 'This parcel moved to your truck route. Open the Rider app for the updated route plan.'
-                    : 'Your Main Hub assigned this parcel to your truck route. Open the Rider app for the route plan.');
+                    : 'Your Main Hub assigned this parcel to company truck '.$vehicle->plate_number.'. Open the Rider app for the route plan.');
         }, 3);
 
         return back()->with('success', 'Truck Rider assigned. Facility arrivals and sorting are recorded with the Logistics scanner.');

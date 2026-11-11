@@ -229,7 +229,7 @@
                         <span id="cart-badge" class="contents">
                             @if ($cartCount > 0)
                                 <span
-                                    class="vb-pop absolute right-0 top-0 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#e8c874] px-1 text-[10px] font-semibold leading-none text-[#402143]">{{ $cartCount > 99 ? '99+' : $cartCount }}</span>
+                                    class="vb-pop absolute right-0 top-0 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#e8c874] px-1 text-[10px] font-semibold leading-none text-[#402143]">{{ \App\Models\Ecommerce\CartItem::displayCount($cartCount) }}</span>
                             @endif
                         </span>
                     </a>

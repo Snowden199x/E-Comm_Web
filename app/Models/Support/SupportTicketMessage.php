@@ -24,6 +24,11 @@ class SupportTicketMessage extends Model
         return $this->belongsTo(User::class, 'sender_id');
     }
 
+    public function attachments()
+    {
+        return $this->hasMany(SupportTicketAttachment::class, 'support_ticket_message_id')->orderBy('id');
+    }
+
     /** Vendo staff replies show as "Vendo Support" even when the admin account is later renamed. */
     public function getSenderLabelAttribute(): string
     {

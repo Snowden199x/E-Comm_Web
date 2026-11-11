@@ -16,18 +16,19 @@
     $shopName = $seller?->sellerDetail?->business_name ?: $seller?->name;
     $rating = $product->reviews_avg_rating ?? null;
     $sold = $product->sold_count ?? null;
-    $compareAt = $product->compare_at_price ?? null;
-    $discount = ($compareAt && $compareAt > $product->price) ? (int) round((1 - ($product->price / $compareAt)) * 100) : 0;
+    $price = (float) $product->effective_price;
+    $compareAt = $product->compare_at_price ?? ($product->hasActiveSale() ? (float) $product->price : null);
+    $discount = ($compareAt && $compareAt > $price) ? (int) round((1 - ($price / $compareAt)) * 100) : 0;
     $colorOptions = array_values(array_filter(array_map('trim', explode(',', (string) $product->colors))));
     $sizeOptions = array_values(array_filter(array_map('trim', explode(',', (string) $product->sizes))));
     $hasOptions = $colorOptions || $sizeOptions;
-    $soldOut = $product->stock <= 0;
+    $soldOut = $product->is_sold_out;
     $fmt = fn ($amount) => '₱' . number_format($amount, fmod((float) $amount, 1) ? 2 : 0);
     $productUrl = route('buyer.products.show', $product);
     $payload = [
         'id' => $product->id,
         'name' => $product->name,
-        'price' => $fmt($product->price),
+        'price' => $fmt($price),
         'image' => $imageUrl,
         'colors' => $colorOptions,
         'sizes' => $sizeOptions,
@@ -37,7 +38,7 @@
     $favorite = [
         'id' => $product->id,
         'name' => $product->name,
-        'price' => $fmt($product->price),
+        'price' => $fmt($price),
         'image' => $imageUrl,
         'url' => parse_url($productUrl, PHP_URL_PATH) ?: $productUrl,
         'shop' => $shopName,
@@ -90,7 +91,10 @@
 
         <div class="mt-1 flex items-center justify-between gap-2">
             <div class="flex min-w-0 items-baseline gap-1.5">
-                <span class="text-[16px] font-semibold leading-6 text-[#52245b]">{{ $fmt($product->price) }}</span>
+                <span class="text-[16px] font-semibold leading-6 text-[#52245b]">{{ $fmt($price) }}</span>
+                @if ($compareAt && $compareAt > $price)
+                    <span class="ml-1 text-[11px] text-[#8c7a8e] line-through">{{ $fmt($compareAt) }}</span>
+                @endif
                 @if ($discount > 0)
                     <span class="text-[11px] text-[#9a8a9d] line-through">{{ $fmt($compareAt) }}</span>
                 @endif

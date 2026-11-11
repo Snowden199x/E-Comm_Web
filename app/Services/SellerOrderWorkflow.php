@@ -5,13 +5,21 @@ namespace App\Services;
 use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class SellerOrderWorkflow
 {
-    public function transition(User $seller, int $orderId, string $action, string $expectedStatus, ?string $reason = null, ?string $reasonDetails = null): void
-    {
-        DB::transaction(function () use ($seller, $orderId, $action, $expectedStatus, $reason, $reasonDetails) {
+    public function transition(
+        User $seller,
+        int $orderId,
+        string $action,
+        string $expectedStatus,
+        ?string $reason = null,
+        ?string $reasonDetails = null,
+        ?string $pickupScheduledAt = null,
+    ): void {
+        DB::transaction(function () use ($seller, $orderId, $action, $expectedStatus, $reason, $reasonDetails, $pickupScheduledAt) {
             $order = Order::where('seller_id', $seller->id)->lockForUpdate()->findOrFail($orderId);
             $transitions = [
                 'accept' => [['placed'], 'confirmed'],
@@ -35,12 +43,25 @@ class SellerOrderWorkflow
                 $order->pickup_request_status = 'pending';
                 $order->pickup_decline_reason = null;
                 $order->pickup_verified_at = null;
+                // The seller picks the collection slot; moving it later is limited
+                // to three reschedules on the shipments page.
+                $order->pickup_scheduled_at = $pickupScheduledAt
+                    ? Carbon::parse($pickupScheduledAt)
+                    : now()->addDay()->setTime(9, 0);
+                $order->pickup_reschedule_count = 0;
+                $order->pickup_attempts = 0;
+                $order->pickup_reported_at = null;
             }
             $order->update(['status' => $to]);
             if ($to === 'ready_for_pickup') {
                 app(OrderRoutingService::class)->route($order);
             }
-            $order->statusEvents()->create(['user_id' => $seller->id, 'from_status' => $from, 'to_status' => $to, 'note' => $to === 'cancelled' ? $reason : null]);
+            $order->statusEvents()->create([
+                'user_id' => $seller->id, 'from_status' => $from, 'to_status' => $to,
+                'note' => $to === 'cancelled'
+                    ? $reason
+                    : ($to === 'ready_for_pickup' ? 'Pickup requested for '.$order->pickup_scheduled_at->format('M j, Y g:i A').'.' : null),
+            ]);
             Notification::create([
                 'user_id' => $order->buyer_id, 'type' => 'order_update',
                 'title' => $order->number.': '.Order::STATUSES[$to],
