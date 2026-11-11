@@ -83,6 +83,8 @@ Route::prefix('v1/rider')->group(function () {
         Route::post('/delivery-proofs', [RiderDeliveryProofController::class, 'store']);
         Route::post('/deliveries/{order}/reschedule', [RiderDeliveryRescheduleController::class, 'store'])
             ->whereNumber('order');
+        Route::post('/deliveries/{order}/return-scan', [\App\Http\Controllers\Api\RiderReturnScanController::class, 'store'])
+            ->whereNumber('order');
         Route::post('/facility-scans', [RiderFacilityScanController::class, 'store']);
         Route::post('/logout', [RiderAuthController::class, 'logout']);
     });

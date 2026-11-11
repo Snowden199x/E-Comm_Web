@@ -250,7 +250,7 @@
                 @elseif ($canRequestReturn)
                     <section class="{{ $card }} p-4">
                         <p class="text-[13px] text-[#5b4a60]">Something wrong with this order? You can ask the seller to take it back.</p>
-                        <p class="mt-1 text-[12px] text-[#8a7a8e]">Return window closes {{ $returnWindowClosesAt?->format('M j, Y') }}.</p>
+                        <p class="mt-1 text-[12px] text-[#8a7a8e]">Return window closes {{ $returnWindowClosesAt?->format('M j, Y') }}@if ($returnDaysLeft !== null) · {{ $returnDaysLeft === 0 ? 'last day' : $returnDaysLeft.' day'.($returnDaysLeft === 1 ? '' : 's').' left' }}@endif.</p>
                         <a href="{{ route('buyer.orders.return.create', $order) }}" class="mt-3 inline-flex h-10 w-full items-center justify-center rounded-md border border-[#805487] text-[13px] font-medium text-[#52245b] transition-colors duration-200 hover:bg-[#f5ecf6]">Request a return</a>
                     </section>
                 @elseif (in_array($order->status, ['delivered', 'completed'], true) && $returnWindowClosesAt)
@@ -307,6 +307,16 @@
                         @if ($order->deliveryProof)<div><dt class="text-[12px] text-[#8a7a8e]">Delivery proof</dt><dd><a class="text-[#52245b] underline" href="{{ route('orders.delivery-proof', $order) }}" target="_blank" rel="noopener">View delivery photo</a></dd></div>@endif
                         <div><dt class="text-[12px] text-[#8a7a8e]">Estimated delivery</dt>
                             <dd class="text-[#2b1730]">@if ($order->estimated_delivery_from && $order->estimated_delivery_to){{ $order->estimated_delivery_from->format('M j, Y') }} to {{ $order->estimated_delivery_to->format('M j, Y') }}@else Not yet scheduled @endif</dd></div>
+                        @if ((int) $order->delivery_attempts > 0)
+                            <div><dt class="text-[12px] text-[#8a7a8e]">Delivery attempts</dt>
+                                <dd class="text-[#2b1730]">{{ (int) $order->delivery_attempts }} of {{ $maxDeliveryAttempts }}
+                                    @if ((int) $order->delivery_attempts >= $maxDeliveryAttempts)
+                                        <span class="text-[#a32b43]">— no attempts left</span>
+                                    @elseif ($order->delivery_scheduled_for)
+                                        <small class="block text-[12px] text-[#8a7a8e]">Next attempt {{ $order->delivery_scheduled_for->format('M j, Y') }}</small>
+                                    @endif
+                                </dd></div>
+                        @endif
                     </dl>
                 </section>
 

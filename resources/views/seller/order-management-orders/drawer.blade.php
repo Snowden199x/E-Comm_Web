@@ -75,6 +75,12 @@
                 <div style="grid-column:1/-1"><dt>Delivery address</dt><dd>{{ $order->shipping_address ?: 'Not provided' }}</dd></div>
                 <div><dt>Pickup courier</dt><dd>{{ $order->courier?->name ?? 'Awaiting logistics assignment' }}</dd></div>
                 @if($order->delivery_courier_id)<div><dt>Delivery rider</dt><dd>{{ $order->deliveryCourier?->name ?? 'Unavailable' }}</dd></div>@endif
+                @if((int) $order->delivery_attempts > 0)
+                    <div><dt>Delivery attempts</dt><dd>{{ (int) $order->delivery_attempts }} of {{ \App\Services\DeliveryCutoff::MAX_DELIVERY_ATTEMPTS + (int) $order->delivery_extra_attempts }}</dd></div>
+                @endif
+                @if(in_array($order->status, ['delivered', 'completed'], true))
+                    <div><dt>Return window</dt><dd>{{ app(\App\Services\OrderReturnService::class)->windowClosesAt($order)?->format('M j, Y') ?? 'Not available' }}</dd></div>
+                @endif
                 @if($order->deliveryProof)<div><dt>Delivery proof</dt><dd><a href="{{ route('orders.delivery-proof', $order) }}" target="_blank" rel="noopener">View delivery photo</a></dd></div>@endif
             </dl>
         </section>

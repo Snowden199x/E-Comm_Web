@@ -25,6 +25,7 @@
             'items' => [
                 ['route' => 'admin.dashboard', 'active' => 'admin.dashboard', 'icon' => 'dashboard', 'label' => 'Dashboard', 'anim' => 'pop'],
                 ['route' => 'admin.reports.index', 'active' => 'admin.reports.*', 'icon' => 'bar-chart', 'label' => 'Reports', 'anim' => 'grow'],
+                ['route' => 'admin.limit-overrides.index', 'active' => 'admin.limit-overrides.*', 'icon' => 'rotate-ccw', 'label' => 'Limits & Overrides', 'anim' => 'spin'],
             ],
         ],
         [

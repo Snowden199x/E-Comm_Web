@@ -24,7 +24,7 @@ Frontend only. Route names, form field names, element ids, `data-` hooks, JSON s
 
 ### Order number format (planned, not implemented)
 
-The owner wants Seller-visible order IDs like `ORD-2026-0001`. The live format is still `VN-` plus the zero-padded database id (`Order::getNumberAttribute()`). Every Seller view reads `$order->number`, so they will pick up the new format automatically once the backend generates it. Requirements are in [backend needs](../backend-needs.md). Do not describe the new format as live until then.
+The owner wants Seller-visible order IDs like `ORD-2026-0001`. The live format is still `VN-` plus the zero-padded database id (`Order::getNumberAttribute()`). Every Seller view reads `$order->number`, so they will pick up the new format automatically once the backend generates it. The change is listed in the [future plan](../../../future-plan.md). Do not describe the new format as live until then.
 
 ## Gaps and acceptance direction
 
@@ -36,4 +36,4 @@ Center arrival, sorting, hub send/receipt, and manual delivery-rider assignment 
 
 ## Related documentation
 
-See [backend needs](../backend-needs.md), [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+See [future plan](../../../future-plan.md), [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).

@@ -6,12 +6,12 @@
 ## Routes and UI
 
 - `GET /seller/products`: search name/SKU, category and stock-status filters (selects apply instantly, search after a short pause), ten-row pagination ("Showing X out of N entries"), four inventory stat cards that also act as stock filters, and a Low Stock Alert panel. The old Categories side card was removed; the Category filter replaces it. An **Add Product** button sits in the page header.
-- Clicking a product row, name, or a menu entry opens a **details modal** (not a drawer): photo gallery, Details, **Variations** (only when the product has variations), Restock and Stock history tabs, Edit button. Row menu: View details, Edit product, Restock, and (below a divider) **Delete product**. The delete menu item and confirmation dialog are built, but the server route does not exist yet (see below and [backend needs](../backend-needs.md)). Direct visits to `GET /seller/products/{product}` (e.g. from notifications) render the same details inside the seller layout.
+- Clicking a product row, name, or a menu entry opens a **details modal** (not a drawer): photo gallery, Details, **Variations** (only when the product has variations), Restock and Stock history tabs, Edit button. Row menu: View details, Edit product, Restock, and (below a divider) **Delete product**. The delete menu item and confirmation dialog are built, but the server route does not exist yet (see [Delete product](#delete-product-ui-built-backend-pending)). Direct visits to `GET /seller/products/{product}` (e.g. from notifications) render the same details inside the seller layout.
 - `GET /seller/products/create`, `POST /seller/products`, and `GET /seller/products/{product}?mode=edit` + `PATCH` render one full-page form (`seller/products/form.blade.php`). Submitted products start at `for_review`; saved drafts stay private.
 - `POST /seller/products/{product}/restock`: positive quantity and required reason; a unique request key prevents double-submit. When variants exist the form sends a product-owned `variant_id`, which the server validates and records.
 - The product-list voucher badge counts currently available shop-wide, product-specific, and main-category Seller vouchers that apply to each product on the loaded page. "Add to a voucher" links to the Seller Vouchers page; see [Seller Vouchers](../vouchers/spec.md).
 
-All routes require an approved, active seller and scope records to that seller. Category selection is limited to the seller's registered categories and their children. **Delete product is UI-only for now.** The row menu opens a confirmation dialog and sends `DELETE /seller/products/{id}`; that route is not implemented, so the dialog reports that deleting is not available on the server yet. Do not treat deletion as implemented until the backend items in [backend needs](../backend-needs.md) are built.
+All routes require an approved, active seller and scope records to that seller. Category selection is limited to the seller's registered categories and their children. **Delete product is UI-only for now.** The row menu opens a confirmation dialog and sends `DELETE /seller/products/{id}`; that route is not implemented, so the dialog reports that deleting is not available on the server yet. Do not treat deletion as implemented until the backend items listed under [Delete product](#delete-product-ui-built-backend-pending) are built.
 
 ## Add / Edit Product form (UI contract)
 
@@ -53,7 +53,7 @@ Existing product photos can be made the main image by ID/order on edit. Admin Pr
 
 ## Delete product (UI built, backend pending)
 
-Intended behavior, as requested by the owner: the Seller deletes their own product from the row's 3-dot menu; the product disappears from the Seller's system; **Admin is notified**. The Admin side is deliberately **not** built; it is recorded in [backend needs](../backend-needs.md).
+Intended behavior, as requested by the owner: the Seller deletes their own product from the row's 3-dot menu; the product disappears from the Seller's system; **Admin is notified**. The Admin side is deliberately **not** built; the open items are listed below.
 
 Built now: the menu item, an accessible confirmation dialog (focus returns to the menu button, Esc/backdrop closes), a loading state, error messages (including 404/405 "route not available yet" and 419 session expiry), an animated row removal and a success toast through the existing `sellerOperationMessage` mechanism.
 
@@ -67,4 +67,4 @@ Not built: route, controller action, soft delete, open-order blocking rule, cart
 
 `Seller/ProductController`, `Product`, `Category`, `InventoryMovement`, `InventoryService`; views `resources/views/seller/products/{index,form,detail}.blade.php` and `partials/{detail-body,pagination,thumb}.blade.php`; `resources/css/seller/products.css` (original rules unchanged; the 5 October additions are appended at the end), `resources/js/seller/products.js` (the older `operations.css/js` remain for other seller pages); `config/product-attributes.php`; icons in `public/assets/icons/seller/`.
 
-[Backend needs](../backend-needs.md) · [Role workspace redesign and backend gaps](../../../design/2026-10-04-role-workspace-redesign.md) · [Design functions](design-functions.md) · [Inventory](../inventory/spec.md) · [Shipments](../shipments/spec.md)
+[Future plan](../../../future-plan.md) · [Role workspace redesign and backend gaps](../../../design/2026-10-04-role-workspace-redesign.md) · [Design functions](design-functions.md) · [Shipments](../shipments/spec.md) · [Stock rules](#stock-rules)

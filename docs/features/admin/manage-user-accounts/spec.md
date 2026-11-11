@@ -22,6 +22,8 @@ Unsubmitted suspension reasons, duration and details survive a same-tab reload f
 
 New logistics-center approval remains in Admin Registrations. Rider and admin accounts are outside this screen.
 
+There is no separate cross-platform ban, reason catalogue or appeal workflow: suspension (timed or permanent) and deactivation are the only account states, recorded in `admin_action_logs`.
+
 The Active, Suspended, and Deactivated filters now apply to the server query before pagination; they cover all matching approved accounts rather than just the loaded page. Rejected remains a separate server-side view.
 
 ## Backend update and remaining work

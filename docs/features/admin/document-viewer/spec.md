@@ -32,7 +32,7 @@ The file is held as an in-memory blob URL that is revoked shortly after the popu
 
 - Authorization is unchanged and stays with the server route; hiding or showing the popup is not access control.
 - Mobile browsers that cannot render PDFs inline show a blank frame. The Admin portal is a desktop workflow.
-- Viewing a document is not recorded. See [Admin backend needs](../../../design/2026-10-06-admin-backend-needs.md) if the owner wants an audit trail.
+- Viewing a document is not recorded. See the [7 October frontend pull review](../../../design/2026-10-07-pulled-frontend-review.md) if the owner wants an audit trail.
 - Files missing from private storage need `php artisan verification:privatize` (legacy public uploads) or a re-upload; the viewer only reports the problem.
 - Verified by static review only. No automated tests or browser walkthrough were run.
 

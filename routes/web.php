@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AccountManagementController;
 use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\LimitOverrideController;
 use App\Http\Controllers\Admin\MessageController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\PlatformSettingsController;
@@ -124,6 +125,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/seller-category-requests/{categoryRequest}/decision', [AdminSellerCategoryRequestController::class, 'decide'])->whereNumber('categoryRequest')->name('category-requests.decide');
 
         Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
+        Route::get('/limits', [LimitOverrideController::class, 'index'])->name('limit-overrides.index');
+        Route::post('/limits/{order}/attempt', [LimitOverrideController::class, 'grantAttempt'])->whereNumber('order')->name('limit-overrides.attempt');
+        Route::post('/limits/{order}/window', [LimitOverrideController::class, 'extendReturnWindow'])->whereNumber('order')->name('limit-overrides.window');
         Route::get('/logistics-coverage', [\App\Http\Controllers\Admin\LogisticsCoverageController::class, 'index'])->name('logistics-coverage.index');
         Route::get('/logistics-documents', [\App\Http\Controllers\Admin\LogisticsDocumentReviewController::class, 'index'])->name('logistics-documents.index');
         Route::get('/logistics-documents/{documentRequest}/file', [\App\Http\Controllers\Admin\LogisticsDocumentReviewController::class, 'file'])->whereNumber('documentRequest')->name('logistics-documents.file');

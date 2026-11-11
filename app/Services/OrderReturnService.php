@@ -22,18 +22,38 @@ class OrderReturnService
     /** Days after delivery in which a return can still be requested. */
     public const RETURN_WINDOW_DAYS = 7;
 
-    /** Whether the order is delivered/received and still inside its 7-day return window. */
+    /** Whether the order is delivered/received and still inside its return window. */
     public function canRequest(Order $order): bool
     {
-        return in_array($order->status, self::RETURNABLE_STATUSES, true)
-            && $order->delivered_at !== null
-            && $order->delivered_at->greaterThanOrEqualTo(now()->subDays(self::RETURN_WINDOW_DAYS));
+        if (! in_array($order->status, self::RETURNABLE_STATUSES, true)) {
+            return false;
+        }
+
+        $closes = $this->windowClosesAt($order);
+
+        return $closes !== null && now()->lessThanOrEqualTo($closes);
     }
 
-    /** When the Buyer's return window closes, e.g. for the order page. */
+    /**
+     * When the Buyer's return window closes. An Admin override can only extend it, never shorten it.
+     */
     public function windowClosesAt(Order $order): ?\Carbon\Carbon
     {
-        return $order->delivered_at?->copy()->addDays(self::RETURN_WINDOW_DAYS);
+        $default = $order->delivered_at?->copy()->addDays(self::RETURN_WINDOW_DAYS);
+        $override = $order->return_window_until;
+
+        return $override && (! $default || $override->greaterThan($default)) ? $override->copy() : $default;
+    }
+
+    /** Whole days left before the window closes, for the order page countdown. */
+    public function daysLeft(Order $order): ?int
+    {
+        $closes = $this->windowClosesAt($order);
+        if (! $closes || $closes->isPast()) {
+            return 0;
+        }
+
+        return (int) now()->startOfDay()->diffInDays($closes->copy()->startOfDay(), false);
     }
 
     public function request(User $buyer, int $orderId, string $reasonKey, ?string $details): OrderReturnRequest

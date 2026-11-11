@@ -28,7 +28,8 @@ class RiderDeliveryRescheduleController extends Controller
 
             abort_unless($record->status === 'delivery_failed', 409,
                 'Only a parcel whose delivery window has closed can be rescheduled.');
-            abort_if((int) $record->delivery_attempts >= DeliveryCutoff::MAX_DELIVERY_ATTEMPTS, 409,
+            $maxAttempts = DeliveryCutoff::MAX_DELIVERY_ATTEMPTS + (int) $record->delivery_extra_attempts;
+            abort_if((int) $record->delivery_attempts >= $maxAttempts, 409,
                 'This parcel already used its final delivery attempt and is cancelled.');
 
             $date = today()->addDay();

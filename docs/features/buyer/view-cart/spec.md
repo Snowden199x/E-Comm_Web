@@ -11,7 +11,7 @@ A sticky Order Summary beside the list (stacked below it on narrow screens) show
 
 ## Gaps and acceptance direction
 
-Checkout rechecks selected-item ownership, product availability, stock, and changed prices on the server. Session storage is only a UI convenience; it does not authorize an item. Checkout currently records a shipping fee of 0, so the summary does not quote one. Quantity changes and removals still reload the page. Bulk removal makes one request per item; a single endpoint taking several item IDs would be cleaner (see [backend needs](../../../backend-needs.md), item 8).
+Checkout rechecks selected-item ownership, product availability, stock, and changed prices on the server. Session storage is only a UI convenience; it does not authorize an item. Checkout quotes shipping from the resolved facility route and the summary shows that fee. Quantity changes and removals still reload the page. Bulk removal makes one request per item; a single endpoint taking several item IDs is listed in the [7 October frontend pull review](../../../design/2026-10-07-pulled-frontend-review.md).
 
 The "You May Also Like" section now receives up to six active approved products in cart categories, excluding products already in the cart. Checkout locks variant rows and deducts only the selected variant. Manual UI verification remains with the project owner.
 

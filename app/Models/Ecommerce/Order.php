@@ -64,6 +64,7 @@ class Order extends Model
     protected $casts = ['shipping_fee' => 'decimal:2', 'voucher_discount' => 'decimal:2', 'shipping_route_snapshot' => 'array', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date',
         'delivered_at' => 'datetime', 'pickup_verified_at' => 'datetime',
         'delivery_scheduled_for' => 'date', 'delivery_failed_at' => 'datetime', 'delivery_attempts' => 'integer',
+        'return_window_until' => 'datetime', 'delivery_extra_attempts' => 'integer', 'limit_override_at' => 'datetime',
         'cod_amount' => 'decimal:2', 'rider_pay_rate' => 'decimal:2',
         'vendo_delivery_commission_rate' => 'decimal:2', 'seller_commission_rate' => 'decimal:2'];
 
@@ -292,6 +293,7 @@ class Order extends Model
         'shipping_latitude', 'shipping_longitude',
         'tracking_number', 'carrier_name', 'carrier_tracking_number', 'estimated_delivery_from', 'estimated_delivery_to', 'shipping_fee',
         'delivery_scheduled_for', 'delivery_failed_at', 'delivery_attempts',
+        'return_window_until', 'delivery_extra_attempts', 'limit_override_by', 'limit_override_at', 'limit_override_note',
         'shipping_hub_count', 'shipping_route_snapshot',
         'cod_amount', 'money_status', 'rider_pay_rate', 'vendo_delivery_commission_rate', 'seller_commission_rate',
     ];

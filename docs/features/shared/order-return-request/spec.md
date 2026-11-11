@@ -17,7 +17,7 @@ The Seller route group keeps `auth` + `EnsureActiveSeller`; the Buyer routes kee
 
 ## Buyer behavior
 
-- **7-day window.** A request is accepted only while `now()` is within 7 days of `delivered_at` (`OrderReturnService::RETURN_WINDOW_DAYS = 7`, checked in `canRequest()` and again under the order lock when the request is created). The order page shows the closing date; after it, the button is replaced by a note naming the date. The window is measured from delivery, not from receipt confirmation, so a Buyer who confirms late still gets the same deadline. The Seller-side approval is not windowed: a request made in time can still be approved later.
+- **7-day window.** A request is accepted only while `now()` is within 7 days of `delivered_at` (`OrderReturnService::RETURN_WINDOW_DAYS = 7`, checked in `canRequest()` and again under the order lock when the request is created). The order page shows the closing date and the days left (`OrderReturnService::daysLeft()`), and after the deadline the button is replaced by a note naming the date. The window is measured from delivery, not from receipt confirmation, so a Buyer who confirms late still gets the same deadline. The Seller-side approval is not windowed: a request made in time can still be approved later. An Admin can extend the deadline per order from [Limits & Overrides](../../admin/limit-overrides/spec.md); the later of the default and `orders.return_window_until` always wins, so an override can never shorten it.
 - The form (`buyer/orders/return.blade.php`) offers fixed reasons (`damaged`, `wrong_item`, `missing_item`, `not_as_described`, `other`) and optional details; `other` requires details (max 450 characters). The refund preview is the order's `payable_total` (items − voucher + delivery fee), the cash the Buyer actually paid.
 - One pending request at a time per order. A rejected request can be submitted again; an approved one cannot.
 - Orders that are not delivered/completed (including already `returned`) are rejected with a 409.
@@ -52,7 +52,7 @@ Cancellation notifications are unchanged and still sent by `OrderCancellationSer
 
 ## Not built (deliberate gaps)
 
-- No extension or manual override of the 7-day window (Admin cannot reopen it).
+- No way to shorten a window or revoke an Admin extension, and no bulk extension.
 - No partial or per-line returns, no quantity selection.
 - No Seller-side evidence upload or Buyer photos.
 - No Admin override, escalation, or appeal after a decision.
