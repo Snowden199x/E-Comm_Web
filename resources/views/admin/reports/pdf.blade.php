@@ -50,7 +50,12 @@
                     <div class="value">{{ number_format($salesSummary['return_refund']) }}</div>
                 </div>
             </td>
-            <td></td>
+            <td>
+                <div class="card">
+                    <div class="label">Avg. Delivery Time</div>
+                    <div class="value">{{ $salesSummary['avg_delivery_days'] !== null ? $salesSummary['avg_delivery_days'] . ' days' : '&#8212;' }}</div>
+                </div>
+            </td>
         </tr>
     </table>
 

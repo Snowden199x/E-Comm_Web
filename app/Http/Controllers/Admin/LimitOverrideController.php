@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminActionLog;
 use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
 use App\Services\DeliveryCutoff;
@@ -109,6 +110,8 @@ class LimitOverrideController extends Controller
                     'link' => route('lgp.station.delivery-queue'),
                 ]);
             }
+
+            AdminActionLog::record($record->buyer, 'limit_attempt_granted', $record->number.': '.$data['note']);
         }, 3);
 
         return back()->with('success', 'One extra delivery attempt granted and recorded in the order timeline.');
@@ -163,6 +166,9 @@ class LimitOverrideController extends Controller
                 'message' => 'You can still request a return until '.$until->format('M j, Y').'.',
                 'link' => route('buyer.orders.show', $record),
             ]);
+
+            AdminActionLog::record($record->buyer, 'return_window_extended',
+                $record->number.' until '.$until->format('M j, Y').': '.$data['note']);
         }, 3);
 
         return back()->with('success', 'Return window extended and recorded in the order timeline.');

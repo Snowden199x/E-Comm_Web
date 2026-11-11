@@ -1,6 +1,6 @@
 # Order Return Request (Buyer asks, Seller decides)
 
-**Status:** Implemented in code, including the 7-day window; owner migration and browser verification pending. Money stays display-only: approving a return records what the Buyer is owed and moves no cash.
+**Status:** Implemented in code, including the 7-day window and the rider trip back to the Seller; owner migration and browser/device verification pending. Money stays display-only: approving a return records what the Buyer is owed and moves no cash.
 **Reviewed:** 11 November 2026
 
 ## Routes
@@ -12,6 +12,7 @@
 | `seller.returns.index` (`GET seller/returns`) | GET | Seller | Requests waiting for a decision, plus recent decisions |
 | `seller.returns.approve` (`PATCH seller/returns/{returnRequest}/approve`) | PATCH | Seller (owner) | Approves: `returned`, stock back, refund recorded |
 | `seller.returns.reject` (`PATCH seller/returns/{returnRequest}/reject`) | PATCH | Seller (owner) | Declines with a required note |
+| `seller.returns.received` (`PATCH seller/returns/{returnRequest}/received`) | PATCH | Seller (owner) | Confirms the parcel is back after the rider collected it |
 
 The Seller route group keeps `auth` + `EnsureActiveSeller`; the Buyer routes keep `auth`. Every lookup is scoped: an order by `buyer_id`, a request by `seller_id`, so another account's id is a 404, not a redirect.
 
@@ -29,16 +30,32 @@ The Seller route group keeps `auth` + `EnsureActiveSeller`; the Buyer routes kee
   1. Verifies the request is still `pending` and the order still `delivered`/`completed`.
   2. Returns every item quantity to stock through `InventoryService` (type `return`, reason `Return approved by seller`), restoring variants too.
   3. Sets `orders.status = 'returned'` and writes an `order_status_events` row with the refund amount in the note.
-  4. Stores `status = approved`, `decided_by`, `decided_at`, `refund_cents` (frozen at approval).
+  4. Stores `status = approved`, `decided_by`, `decided_at`, `refund_cents` (frozen at approval), `return_status = pending_pickup` and the assigned delivery Rider as `pickup_rider_id`.
+  5. Notifies the assigned Rider to collect the parcel and the destination hub to keep the pickup scheduled.
 - **Reject** stores `status = rejected`, the reviewer, the time and `decision_note`; the order is untouched.
 - A handled request cannot be handled twice (409).
+
+## Notifications
+
+## Return trip back to the Seller (11 November 2026)
+
+Approving a return restores stock immediately, but the parcel still has to travel back. `order_return_requests.return_status` follows that trip:
+
+- `pending_pickup` — set at approval; the Buyer page reads "Waiting for rider pickup" and the Seller Returns page shows the same.
+- `picked_up` — the assigned Rider scans the parcel at the Buyer's address through `POST /api/v1/rider/deliveries/{order}/return-pickup`. `pickup_rider_id` and `picked_up_at` are recorded, a `return_pickup` scan event and a status note are written, and both sides are notified.
+- `delivered_to_seller` — the Rider hands it over through `POST /api/v1/rider/deliveries/{order}/return-handover`, or the Seller presses **Mark received** on `seller.returns.index` when the app cannot finish the scan (`ReturnTripService::confirmReceived`). `delivered_to_seller_at` is recorded and both sides are notified.
+
+Only `status = returned` orders with an approved request can start the trip; only the assigned delivery Rider can scan pickup, and only the Rider who collected it can scan the handover. Each scan is idempotent by `scan_key`. The order status stays `returned` throughout: the parcel is already out of the sale and the refund is already recorded. See the [scan API](../../courier/scan-api/spec.md).
 
 ## Notifications
 
 | Event | Recipient | Type | Link |
 |---|---|---|---|
 | Buyer requests a return | Seller | `return_request` | `seller.returns.index` |
-| Seller approves | Buyer | `order_update` ("Return approved", refund amount) | Buyer order page |
+| Seller approves | Buyer | `order_update` ("Return approved", refund amount, rider will collect) | Buyer order page |
+| Seller approves | Assigned Rider + destination hub | `shipment_update` (collect the return) | Rider notification feed / hub delivery queue |
+| Rider collects the return | Buyer and Seller | `order_update` ("picked up", "on the way back") | Order / Returns page |
+| Rider hands over / Seller marks received | Buyer and Seller | `order_update` ("handed back", "received") | Order / Returns page |
 | Seller declines | Buyer | `order_update` ("Return declined", reason) | Buyer order page |
 | Buyer cancels | Seller | `order_update` | Seller order page |
 | Seller cancels | Buyer | `order_update` | Buyer order page |

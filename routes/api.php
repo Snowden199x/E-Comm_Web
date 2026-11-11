@@ -85,6 +85,10 @@ Route::prefix('v1/rider')->group(function () {
             ->whereNumber('order');
         Route::post('/deliveries/{order}/return-scan', [\App\Http\Controllers\Api\RiderReturnScanController::class, 'store'])
             ->whereNumber('order');
+        Route::post('/deliveries/{order}/return-pickup', [\App\Http\Controllers\Api\RiderReturnLegController::class, 'pickup'])
+            ->whereNumber('order');
+        Route::post('/deliveries/{order}/return-handover', [\App\Http\Controllers\Api\RiderReturnLegController::class, 'handover'])
+            ->whereNumber('order');
         Route::post('/facility-scans', [RiderFacilityScanController::class, 'store']);
         Route::post('/logout', [RiderAuthController::class, 'logout']);
     });

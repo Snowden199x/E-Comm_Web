@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminActionLog;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -117,6 +118,8 @@ class AccountManagementController extends Controller
             'temp_password_plain' => $temporaryPassword,
         ]);
 
+        AdminActionLog::record($newAdmin, 'admin_account_created', $newAdmin->email);
+
         return redirect()->route('admin.account-management.show', $newAdmin)
             ->with('confirmation', 'created')
             ->with('generated_email', $validated['email'])
@@ -149,6 +152,8 @@ class AccountManagementController extends Controller
 
         $admin->update(['account_status' => 'suspended']);
 
+        AdminActionLog::record($admin, 'admin_account_suspended');
+
         return back()->with('confirmation', 'suspended');
     }
 
@@ -157,6 +162,8 @@ class AccountManagementController extends Controller
         $this->authorizeSuperAdmin();
 
         $admin->update(['account_status' => 'active']);
+
+        AdminActionLog::record($admin, 'admin_account_reactivated');
 
         return back()->with('confirmation', 'reactivated');
     }
@@ -170,6 +177,8 @@ class AccountManagementController extends Controller
 
         $admin->update(['archived_at' => now()]);
 
+        AdminActionLog::record($admin, 'admin_account_archived');
+
         return redirect()
             ->route('admin.account-management.index', ['tab' => 'admin-accounts', 'status' => 'archived'])
             ->with('confirmation', 'admin-archived');
@@ -180,6 +189,8 @@ class AccountManagementController extends Controller
         $this->authorizeSuperAdmin();
 
         $admin->update(['archived_at' => null, 'account_status' => 'active']);
+
+        AdminActionLog::record($admin, 'admin_account_restored');
 
         return redirect()
             ->route('admin.account-management.index', ['tab' => 'admin-accounts'])
@@ -192,7 +203,11 @@ class AccountManagementController extends Controller
 
         abort_if($admin->is_super_admin, 403);
 
+        $name = $admin->name.' ('.$admin->email.')';
         $admin->delete();
+
+        // The target row is gone, so the name stays in the reason for the audit trail.
+        AdminActionLog::record(null, 'admin_account_deleted', $name);
 
         return redirect()
             ->route('admin.account-management.index', ['tab' => 'admin-accounts'])

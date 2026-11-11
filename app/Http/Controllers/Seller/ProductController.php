@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Communication\Notification;
+use App\Models\Ecommerce\BuyerSavedItem;
 use App\Models\Ecommerce\InventoryMovement;
+use App\Models\Ecommerce\OrderItem;
 use App\Models\Ecommerce\Product;
 use App\Models\Ecommerce\SellerVoucher;
 use App\Models\User;
@@ -516,6 +518,48 @@ class ProductController extends Controller
             'message' => $seller->name.' submitted "'.$product->name.'" ('.$product->product_code.') for review.',
             'link' => route('admin.seller-compliance.products-for-review', ['search' => $product->name]),
         ]);
+    }
+
+    /**
+     * Soft delete a seller-owned product. The row stays for past orders, reviews and stock movements;
+     * open orders block deletion, and the product leaves every cart and saved-items list.
+     */
+    public function destroy(Request $request, int $product)
+    {
+        $seller = $request->user();
+        $record = Product::query()->where('seller_id', $seller->id)->whereKey($product)->firstOrFail();
+
+        $openOrders = OrderItem::query()
+            ->where('product_id', $record->id)
+            ->whereHas('order', fn ($query) => $query->whereNotIn('status', ['delivered', 'completed', 'cancelled', 'returned']))
+            ->exists();
+
+        abort_if(
+            $openOrders,
+            409,
+            'This product is on an order that is still in progress. Finish or cancel that order before deleting it.',
+        );
+
+        DB::transaction(function () use ($record, $seller) {
+            DB::table('cart_items')->where('product_id', $record->id)->delete();
+            BuyerSavedItem::query()->where('product_id', $record->id)->delete();
+
+            $record->delete();
+
+            Notification::create([
+                'user_id' => null,
+                'type' => 'product_deleted',
+                'title' => 'Seller deleted a product',
+                'message' => $seller->name.' deleted "'.$record->name.'" ('.$record->product_code.').',
+                'link' => route('admin.seller-compliance.overview'),
+            ]);
+        });
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Product deleted.']);
+        }
+
+        return redirect()->route('seller.products.index')->with('success', 'Product deleted.');
     }
 
     public function restock(Request $request, int $product)

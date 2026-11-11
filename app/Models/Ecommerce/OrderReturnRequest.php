@@ -17,6 +17,18 @@ class OrderReturnRequest extends Model
         self::STATUS_REJECTED => 'Declined',
     ];
 
+    public const RETURN_STATUS_NOT_STARTED = 'not_started';
+    public const RETURN_STATUS_PENDING_PICKUP = 'pending_pickup';
+    public const RETURN_STATUS_PICKED_UP = 'picked_up';
+    public const RETURN_STATUS_DELIVERED_TO_SELLER = 'delivered_to_seller';
+
+    public const RETURN_STATUSES = [
+        self::RETURN_STATUS_NOT_STARTED => 'Not scheduled',
+        self::RETURN_STATUS_PENDING_PICKUP => 'Waiting for rider pickup',
+        self::RETURN_STATUS_PICKED_UP => 'On the way back to the seller',
+        self::RETURN_STATUS_DELIVERED_TO_SELLER => 'Handed back to the seller',
+    ];
+
     public const REASONS = [
         'damaged' => 'Item arrived damaged',
         'wrong_item' => 'Wrong item was delivered',
@@ -28,11 +40,15 @@ class OrderReturnRequest extends Model
     protected $fillable = [
         'order_id', 'buyer_id', 'seller_id', 'reason', 'details', 'status',
         'decided_by', 'decided_at', 'decision_note', 'refund_cents',
+        'return_status', 'pickup_rider_id', 'picked_up_at', 'delivered_to_seller_at',
     ];
 
     protected function casts(): array
     {
-        return ['decided_at' => 'datetime', 'refund_cents' => 'integer'];
+        return [
+            'decided_at' => 'datetime', 'refund_cents' => 'integer',
+            'picked_up_at' => 'datetime', 'delivered_to_seller_at' => 'datetime',
+        ];
     }
 
     public function order()
@@ -63,5 +79,15 @@ class OrderReturnRequest extends Model
     public function getStatusLabelAttribute(): string
     {
         return self::STATUSES[$this->status] ?? ucfirst((string) $this->status);
+    }
+
+    public function pickupRider()
+    {
+        return $this->belongsTo(User::class, 'pickup_rider_id');
+    }
+
+    public function getReturnStatusLabelAttribute(): string
+    {
+        return self::RETURN_STATUSES[$this->return_status] ?? ucfirst(str_replace('_', ' ', (string) $this->return_status));
     }
 }

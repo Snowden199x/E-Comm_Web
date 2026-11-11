@@ -89,6 +89,9 @@
         @if (session('success'))
             <p class="mt-3 rounded-md border border-[#c9e5d3] bg-[#eaf5ee] px-3 py-2.5 text-[13px] text-[#2e6b46]" role="status">{{ session('success') }}</p>
         @endif
+        @if (session('error'))
+            <p class="mt-3 rounded-md border border-[#f0c9d0] bg-[#fdf1f3] px-3 py-2.5 text-[13px] text-[#a32b43]" role="alert">{{ session('error') }}</p>
+        @endif
         @if ($errors->any() && ! $reopenCancelModal)
             <p class="mt-3 rounded-md border border-[#f0c9d0] bg-[#fdf1f3] px-3 py-2.5 text-[13px] text-[#a32b43]" role="alert">{{ $errors->first() }}</p>
         @endif
@@ -240,6 +243,7 @@
                             <p class="text-[#5b4a60]">Reason: {{ $returnRequest->reason_label }}</p>
                             @if ($returnRequest->status === 'approved')
                                 <p class="text-[#2e6b46]">Refund {{ $fmt($returnRequest->refund_cents / 100) }} — the seller approved the return.</p>
+                                <p class="mt-1 text-[12px] text-[#8a7a8e]">Parcel return: {{ $returnRequest->return_status_label }}@if ($returnRequest->picked_up_at) · collected {{ $returnRequest->picked_up_at->format('M j, Y') }}@endif</p>
                             @elseif ($returnRequest->status === 'rejected')
                                 <p class="text-[#a32b43]">Seller's reason: {{ $returnRequest->decision_note }}</p>
                             @else

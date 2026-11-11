@@ -126,6 +126,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
         Route::get('/limits', [LimitOverrideController::class, 'index'])->name('limit-overrides.index');
+
+        Route::get('/audit-logs', [\App\Http\Controllers\Admin\AuditLogController::class, 'index'])->name('audit-logs.index');
+        Route::get('/support-tickets', [\App\Http\Controllers\Admin\SupportTicketController::class, 'index'])->name('support-tickets.index');
+        Route::get('/support-tickets/{ticket}', [\App\Http\Controllers\Admin\SupportTicketController::class, 'show'])->whereNumber('ticket')->name('support-tickets.show');
+        Route::post('/support-tickets/{ticket}/messages', [\App\Http\Controllers\Admin\SupportTicketController::class, 'reply'])->middleware('throttle:20,1')->whereNumber('ticket')->name('support-tickets.reply');
+        Route::patch('/support-tickets/{ticket}/status', [\App\Http\Controllers\Admin\SupportTicketController::class, 'status'])->whereNumber('ticket')->name('support-tickets.status');
         Route::post('/limits/{order}/attempt', [LimitOverrideController::class, 'grantAttempt'])->whereNumber('order')->name('limit-overrides.attempt');
         Route::post('/limits/{order}/window', [LimitOverrideController::class, 'extendReturnWindow'])->whereNumber('order')->name('limit-overrides.window');
         Route::get('/logistics-coverage', [\App\Http\Controllers\Admin\LogisticsCoverageController::class, 'index'])->name('logistics-coverage.index');
@@ -288,6 +294,12 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::post('/checkout/voucher-quote', [BuyerCheckoutController::class, 'voucherQuote'])->middleware(['auth', 'throttle:20,1'])->name('checkout.voucher-quote');
     Route::get('/vouchers', [\App\Http\Controllers\Buyer\VoucherController::class, 'index'])->middleware('auth')->name('vouchers.index');
     Route::get('/complaints', [\App\Http\Controllers\Buyer\ComplaintController::class, 'index'])->middleware('auth')->name('complaints.index');
+    Route::get('/support', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'index'])->middleware('auth')->name('support.index');
+    Route::get('/support/create', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'create'])->middleware('auth')->name('support.create');
+    Route::post('/support', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'store'])->middleware(['auth', 'throttle:5,1'])->name('support.store');
+    Route::get('/support/{ticket}', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'show'])->middleware('auth')->whereNumber('ticket')->name('support.show');
+    Route::post('/support/{ticket}/messages', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'reply'])->middleware(['auth', 'throttle:20,1'])->whereNumber('ticket')->name('support.reply');
+    Route::post('/support/{ticket}/close', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'close'])->middleware('auth')->whereNumber('ticket')->name('support.close');
     Route::get('/orders', [BuyerOrderController::class, 'index'])->middleware('auth')->name('orders.index');
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->middleware('auth')->name('orders.show');
     Route::patch('/orders/{order}/cancel', [BuyerOrderController::class, 'cancel'])->middleware('auth')->whereNumber('order')->name('orders.cancel');
@@ -356,6 +368,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::get('/products/{product}', [ProductController::class, 'show'])->whereNumber('product')->name('products.show');
         Route::patch('/products/{product}', [ProductController::class, 'update'])->whereNumber('product')->name('products.update');
         Route::post('/products/{product}/restock', [ProductController::class, 'restock'])->whereNumber('product')->name('products.restock');
+        Route::delete('/products/{product}', [ProductController::class, 'destroy'])->whereNumber('product')->name('products.destroy');
         Route::get('/shipments', [ShipmentController::class, 'index'])->name('shipments.index');
         Route::get('/shipments/{order}', [ShipmentController::class, 'show'])->whereNumber('order')->name('shipments.show');
         Route::patch('/shipments/{order}', [ShipmentController::class, 'update'])->whereNumber('order')->name('shipments.update');
@@ -369,6 +382,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::get('/returns', [SellerReturnRequestController::class, 'index'])->name('returns.index');
         Route::patch('/returns/{returnRequest}/approve', [SellerReturnRequestController::class, 'approve'])->whereNumber('returnRequest')->name('returns.approve');
         Route::patch('/returns/{returnRequest}/reject', [SellerReturnRequestController::class, 'reject'])->whereNumber('returnRequest')->name('returns.reject');
+        Route::patch('/returns/{returnRequest}/received', [SellerReturnRequestController::class, 'received'])->whereNumber('returnRequest')->name('returns.received');
         Route::get('/earnings', [\App\Http\Controllers\Seller\EarningsController::class, 'index'])->name('earnings.index');
         Route::get('/complaints', [\App\Http\Controllers\Seller\ComplaintController::class, 'index'])->name('complaints.index');
         Route::get('/complaints/{complaint}/evidence/{evidence}', [\App\Http\Controllers\Seller\ComplaintController::class, 'evidence'])->whereNumber(['complaint', 'evidence'])->name('complaints.evidence');

@@ -22,9 +22,9 @@ Frontend only. Route names, form field names, element ids, `data-` hooks, JSON s
 - **Order drawer:** status and total, a progress track (Placed → Accepted → Packing → Ready → In transit → Delivered; cancelled/returned orders show a notice instead), customer card with profile link, address and couriers, product cards (image, variation, SKU, price × quantity, line total), payment summary (shipping line only when greater than zero), history timeline and a pinned action bar. The drawer slides in beside the table on wide screens and becomes a slide-over sheet below 980 px. The decline/cancel reason dialog is unchanged in behavior.
 - Motion respects `prefers-reduced-motion`.
 
-### Order number format (planned, not implemented)
+### Order number format (11 November 2026)
 
-The owner wants Seller-visible order IDs like `ORD-2026-0001`. The live format is still `VN-` plus the zero-padded database id (`Order::getNumberAttribute()`). Every Seller view reads `$order->number`, so they will pick up the new format automatically once the backend generates it. The change is listed in the [future plan](../../../future-plan.md). Do not describe the new format as live until then.
+Every new order gets a Seller-visible number like `ORD-2026-0001` from a yearly counter (`order_sequences`, `OrderSequence::next()` in the `creating` hook), stored in `orders.order_number` and unique. Migration `2026_11_11_172000_add_order_numbers.php` also numbers existing orders by their creation year and id order. All views read `$order->number`, so Seller, Buyer, Admin, labels and notifications show the new format; rows without a stored number (or selects that omit the column) still fall back to the legacy `VN-000123`. The tracking number (`VND-…`) is unchanged and still prints on labels. Rider earnings and cash endpoints still print `VN-` for legacy rows through `Order::numberFor()`.
 
 ## Gaps and acceptance direction
 

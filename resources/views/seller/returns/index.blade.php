@@ -81,7 +81,7 @@
             <h2 class="do-card__head">Recently handled</h2>
             <div class="ops-table-scroll">
                 <table class="do-table">
-                    <thead><tr><th>Order</th><th>Buyer</th><th>Decision</th><th>Refund</th><th>Note</th><th>When</th></tr></thead>
+                    <thead><tr><th>Order</th><th>Buyer</th><th>Decision</th><th>Return trip</th><th>Refund</th><th>Note</th><th>When</th></tr></thead>
                     <tbody>
                     @forelse ($decided as $request)
                         <tr>
@@ -94,12 +94,26 @@
                                     <span class="do-badge do-badge--lilac">Declined</span>
                                 @endif
                             </td>
+                            <td>
+                                @if ($request->status === 'approved')
+                                    <span class="do-badge do-badge--lilac">{{ $request->return_status_label }}</span>
+                                    @if ($request->return_status === 'picked_up')
+                                        <form action="{{ route('seller.returns.received', $request) }}" method="POST" class="mt-2">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="do-btn do-btn--soft do-btn--small">Mark received</button>
+                                        </form>
+                                    @endif
+                                @else
+                                    —
+                                @endif
+                            </td>
                             <td>{{ $request->status === 'approved' ? $money($request->refund_cents / 100) : '—' }}</td>
                             <td>{{ $request->decision_note ?? '—' }}</td>
                             <td>{{ $request->decided_at?->format('M j, Y g:i A') ?? '—' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="do-empty-cell"><div class="do-empty"><strong>Nothing handled yet</strong><p>Approved and declined requests are kept here.</p></div></td></tr>
+                        <tr><td colspan="7" class="do-empty-cell"><div class="do-empty"><strong>Nothing handled yet</strong><p>Approved and declined requests are kept here.</p></div></td></tr>
                     @endforelse
                     </tbody>
                 </table>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\OrderReturnRequest;
 use App\Services\OrderReturnService;
+use App\Services\ReturnTripService;
 use Illuminate\Http\Request;
 
 class ReturnRequestController extends Controller
@@ -28,6 +29,15 @@ class ReturnRequestController extends Controller
 
         return redirect()->route('seller.returns.index')
             ->with('success', 'Return approved for '.$record->order->number.'. The stock is back and the refund is recorded.');
+    }
+
+    /** Confirms the returned parcel is back in the seller's hands when the Rider app could not scan it. */
+    public function received(Request $request, int $returnRequest, ReturnTripService $trips)
+    {
+        $record = OrderReturnRequest::query()->where('seller_id', $request->user()->id)->findOrFail($returnRequest);
+        $trips->confirmReceived($request->user(), $record);
+
+        return redirect()->route('seller.returns.index')->with('success', 'Return marked as received. The buyer was notified.');
     }
 
     public function reject(Request $request, int $returnRequest, OrderReturnService $returns)

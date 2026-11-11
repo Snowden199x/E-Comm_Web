@@ -1,6 +1,6 @@
 # Vendo Project Documentation
 
-This documentation describes the Laravel web application as it exists in the repository, checked on **29 October 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
+This documentation describes the Laravel web application as it exists in the repository, checked on **11 November 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
 
 ## Start here
 
@@ -29,7 +29,9 @@ This documentation describes the Laravel web application as it exists in the rep
 - [Web form reload recovery](features/shared/form-draft-recovery/spec.md) — which forms retain unfinished work in the current tab and which inputs must be re-entered.
 - [Account deletion request](features/shared/account-deletion-request/spec.md) — Buyer and Seller ask to close their account from their profile; Admin approves (deactivates, records kept) or rejects from the User Management profile modal.
 - [Admin limits & overrides](features/admin/limit-overrides/spec.md) — extend a Buyer's 7-day return deadline or grant one more delivery attempt from the Admin sidebar, with the Admin, time and reason kept on the order timeline.
-- [Order return request](features/shared/order-return-request/spec.md) — Buyer asks to return a delivered order from the order page; the Seller approves (order becomes returned, stock is restored, the refund amount is recorded for display) or declines with a reason, and both sides are notified. No money moves.
+- [Order return request](features/shared/order-return-request/spec.md) — Buyer asks to return a delivered order from the order page; the Seller approves (order becomes returned, stock is restored, the refund amount is recorded for display) or declines with a reason, the Rider then collects the parcel and hands it back to the Seller, and both sides are notified. No money moves.
+- [Buyer support tickets](features/buyer/support-tickets/spec.md) — Buyer asks Vendo for help from the account menu; Admin replies and resolves from a Support Tickets inbox, separate from complaints about a Seller.
+- [Admin audit logs](features/admin/system-audit-logs/spec.md) — who approved, suspended, deactivated or deleted which account, when and why, from the Admin sidebar; only the actions the application already records appear.
 - [10 November pull review](logs/PROGRESS-2026-11-10.md) — PR #94 Seller and Logistics UI pass, the small server changes behind it, and the Seller map Vite production-build gap (fixed).
 - [Role workspace redesign](design/2026-10-04-role-workspace-redesign.md) — design and implementation boundaries for the 4 October Buyer, Seller, Logistics, and Admin UI update.
 - [Admin design system](design/admin-design-system.md) — palette, button, spacing, empty/loading/error rules for Admin pages (Dashboard first, 31 October 2026).

@@ -9,6 +9,7 @@ use App\Models\Communication\Notification;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'product_code', 'seller_id', 'category_id', 'name', 'description', 'price', 'stock',
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Model;
 ])]
 class Product extends Model
 {
+    use SoftDeletes;
+
     public const LOW_STOCK_THRESHOLD = 10;
 
     public const STOCK_LABELS = ['in_stock' => 'In Stock', 'low_stock' => 'Low Stock', 'out_of_stock' => 'Out of Stock'];
