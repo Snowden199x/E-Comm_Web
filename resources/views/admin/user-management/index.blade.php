@@ -23,7 +23,7 @@
 
     <div class="rg-page mx-auto w-full max-w-[1440px] p-4 sm:p-6 lg:p-7" x-data="{
         // Dialogs (profile + actions). Their markup lives inside #um-region.
-        openId: null, suspendId: null, deactivateId: null, activateId: null,
+        openId: null, suspendId: null, deactivateId: null, activateId: null, deletionId: null,
 
         // Filters
         q: @js($initialSearch),
@@ -100,7 +100,7 @@
                 if (!next) throw new Error('Missing region');
                 if (ctrl.signal.aborted) return;
 
-                this.openId = this.suspendId = this.deactivateId = this.activateId = null;
+                this.openId = this.suspendId = this.deactivateId = this.activateId = this.deletionId = null;
                 const region = this.$refs.region;
                 region.innerHTML = next.innerHTML;
                 region.classList.remove('rg-fresh');
@@ -154,6 +154,7 @@
                     @include('admin.user-management.partials.suspend-modal', ['user' => $u])
                     @include('admin.user-management.partials.deactivate-modal', ['user' => $u])
                     @include('admin.user-management.partials.activate-modal', ['user' => $u])
+                    @include('admin.user-management.partials.deletion-request-modal', ['user' => $u])
                 @endforeach
             </div>
         </div>

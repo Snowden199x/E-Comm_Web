@@ -130,6 +130,21 @@ class User extends Authenticatable
             ->latest('login_at');
     }
 
+    public function deletionRequests()
+    {
+        return $this->hasMany(AccountDeletionRequest::class);
+    }
+
+    public function latestDeletionRequest()
+    {
+        return $this->hasOne(AccountDeletionRequest::class)->latestOfMany();
+    }
+
+    public function pendingDeletionRequest()
+    {
+        return $this->hasOne(AccountDeletionRequest::class)->where('status', 'pending')->latest('id');
+    }
+
     public function isOnline(): bool
     {
         return $this->loginSessions()

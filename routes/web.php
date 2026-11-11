@@ -130,6 +130,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/user-management/{user}/suspend', [UserManagementController::class, 'suspend'])->name('user-management.suspend');
         Route::post('/user-management/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('user-management.deactivate');
         Route::post('/user-management/{user}/activate', [UserManagementController::class, 'activate'])->name('user-management.activate');
+        Route::post('/user-management/{user}/deletion-request/approve', [UserManagementController::class, 'approveDeletion'])->name('user-management.deletion-request.approve');
+        Route::post('/user-management/{user}/deletion-request/reject', [UserManagementController::class, 'rejectDeletion'])->name('user-management.deletion-request.reject');
         Route::get('/user-management/table', [UserManagementController::class, 'table'])->name('user-management.table');
 
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
@@ -300,6 +302,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/account', [BuyerAccountController::class, 'index'])->middleware('auth')->name('account.index');
     Route::put('/account', [BuyerAccountController::class, 'update'])->middleware('auth')->name('account.update');
     Route::put('/account/password', [BuyerAccountController::class, 'updatePassword'])->middleware('auth')->name('account.password');
+    Route::post('/account/deletion-request', [BuyerAccountController::class, 'requestDeletion'])->middleware(['auth', 'throttle:5,1'])->name('account.deletion-request');
     Route::put('/account/delivery-preference', [BuyerAccountController::class, 'updateDeliveryPreference'])->middleware('auth')->name('account.delivery-preference');
     Route::post('/account/profile-picture', [BuyerAccountController::class, 'uploadProfilePicture'])->middleware('auth')->name('account.profile-picture.upload');
     Route::delete('/account/profile-picture', [BuyerAccountController::class, 'removeProfilePicture'])->middleware('auth')->name('account.profile-picture.remove');
@@ -386,6 +389,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::post('/account/banner', [SellerAccountController::class, 'banner'])->name('account.banner');
         Route::delete('/account/banner', [SellerAccountController::class, 'removeBanner'])->name('account.banner.remove');
         Route::patch('/account/password', [SellerAccountController::class, 'password'])->middleware('throttle:5,1')->name('account.password');
+        Route::post('/account/deletion-request', [SellerAccountController::class, 'requestDeletion'])->middleware('throttle:5,1')->name('account.deletion-request');
         Route::post('/user-reports', [UserReportController::class, 'store'])->middleware('throttle:3,1')->name('user-reports.store');
         Route::get('/notifications', [SellerNotificationController::class, 'index'])->name('notifications.index');
         Route::get('/notifications/recent', [SellerNotificationController::class, 'recent'])->name('notifications.recent');

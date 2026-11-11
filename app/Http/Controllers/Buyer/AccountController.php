@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccountDeletionRequest;
 use App\Models\Profiles\BuyerDetail;
 use App\Services\ProfilePhotoService;
 use App\Services\PsgcAddressResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class AccountController extends Controller
 {
@@ -60,7 +62,43 @@ class AccountController extends Controller
             }
         }
 
-        return view('buyer.account', compact('buyerDetail', 'policies', 'deliveryCompanies'));
+        $pendingDeletion = auth()->user()->pendingDeletionRequest;
+        $deletionReasons = AccountDeletionRequest::REASONS;
+
+        return view('buyer.account', compact('buyerDetail', 'policies', 'deliveryCompanies', 'pendingDeletion', 'deletionReasons'));
+    }
+
+    /** Buyer asks admin to close the account. The account stays usable until an admin approves. */
+    public function requestDeletion(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user->role === 'buyer', 403);
+
+        if ($user->pendingDeletionRequest()->exists()) {
+            return back()->with('success', 'Your deletion request is already waiting for admin review.');
+        }
+
+        $data = $request->validate([
+            'reasons' => ['required', 'array', 'min:1'],
+            'reasons.*' => ['string', Rule::in(AccountDeletionRequest::REASONS)],
+            'comments' => ['nullable', 'string', 'max:500', Rule::requiredIf(fn () => in_array('Other', (array) $request->input('reasons', []), true))],
+        ], [
+            'reasons.required' => 'Pick a reason for deleting your account.',
+            'reasons.min' => 'Pick a reason for deleting your account.',
+            'reasons.*.in' => 'Pick a reason from the list.',
+            'comments.max' => 'Keep your comment under 500 characters.',
+            'comments.required' => 'Tell the admin why when you pick "Other".',
+        ]);
+
+        AccountDeletionRequest::create([
+            'user_id' => $user->id,
+            'reasons' => array_values($data['reasons']),
+            'comments' => $data['comments'] ?? null,
+            'status' => 'pending',
+            'requested_at' => now(),
+        ]);
+
+        return back()->with('success', 'Your deletion request was sent to the admin team for review.');
     }
 
     public function update(Request $request, ProfilePhotoService $photos, PsgcAddressResolver $addresses)
