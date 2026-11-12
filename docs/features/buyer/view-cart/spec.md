@@ -11,7 +11,7 @@ A sticky Order Summary beside the list (stacked below it on narrow screens) show
 
 ## Gaps and acceptance direction
 
-Checkout rechecks selected-item ownership, product availability, stock, and changed prices on the server. Session storage is only a UI convenience; it does not authorize an item. Checkout currently records a shipping fee of 0, so the summary does not quote one. Quantity changes and removals still reload the page. Bulk removal makes one request per item; a single endpoint taking several item IDs would be cleaner (see [backend needs](../../../backend-needs.md), item 8).
+Checkout rechecks selected-item ownership, product availability, stock, and changed prices on the server. Session storage is only a UI convenience; it does not authorize an item. Checkout quotes shipping from the resolved facility route and the summary shows that fee. Quantity changes and removals still reload the page. Bulk removal makes one request per item; a single endpoint taking several item IDs is listed in the [7 October frontend pull review](../../../design/2026-10-07-pulled-frontend-review.md).
 
 The "You May Also Like" section now receives up to six active approved products in cart categories, excluding products already in the cart. Checkout locks variant rows and deducts only the selected variant. Manual UI verification remains with the project owner.
 
@@ -22,3 +22,7 @@ The "You May Also Like" section now receives up to six active approved products 
 ## Related documentation
 
 See [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+
+## 11 November 2026: 200-product cart limit
+
+A cart holds at most **200 distinct product/variant lines** (`CartItem::MAX_LINES`). Adding a new line when the cart is full is rejected on the web cart and on `POST /api/v1/buyer/cart` with a message naming the limit; changing the quantity of a line already in the cart still works. The header badge and dashboard tile still read `99+` once the cart passes 99 lines; the 200-line cap applies to how many lines can be added, not to the badge text.

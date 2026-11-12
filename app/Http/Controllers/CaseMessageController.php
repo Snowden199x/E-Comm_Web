@@ -59,14 +59,27 @@ class CaseMessageController extends Controller
         $conversation->messages()->whereNull('read_at')->where('sender_id', '!=', $request->user()->id)->update(['read_at' => now()]);
         $conversation->load(['messages.sender']);
 
+        if ($request->user()->role === 'seller') {
+            $complaint->load('order:id');
+
+            return view('seller.messages.case', array_merge(
+                compact('complaint', 'conversation'),
+                app(\App\Http\Controllers\Seller\MessageController::class)->sidebarData($request->user()->id),
+                ['tab' => 'complaints', 'activeCase' => $complaint->id]
+            ));
+        }
+
         return view('shared.case-messages', compact('complaint', 'conversation'));
     }
 
     public function store(Request $request, Complaint $complaint): RedirectResponse
     {
         $conversation = $this->participantConversation($request, $complaint);
-        abort_if($complaint->status === 'resolved' || $conversation->status !== 'open', 409, 'This case conversation is closed.');
-        $validated = $request->validate(['body' => ['required', 'string', 'min:1', 'max:2000']]);
+        abort_if($complaint->status === 'resolved' || $conversation->status !== 'open', 409, 'This case is closed. Message Vendo Support from the Messages page if you still need help.');
+        $validated = $request->validate(['body' => ['required', 'string', 'min:1', 'max:2000']], [
+            'body.required' => 'Write a reply before sending.',
+            'body.max' => 'Reply is too long. Keep it under 2,000 characters.',
+        ]);
 
         DB::transaction(function () use ($conversation, $request, $validated, $complaint) {
             $lockedCase = Complaint::query()->whereKey($complaint->id)->lockForUpdate()->firstOrFail();

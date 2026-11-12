@@ -47,17 +47,23 @@
             settings: @js(route('buyer.settings.update')),
         };
         const request = async (url, method, data) => {
-            const response = await fetch(url, {
-                method,
-                credentials: 'same-origin',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                },
-                body: data === undefined ? undefined : JSON.stringify(data),
-            });
-            if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || 'Could not save changes. Please try again.');
+            let response;
+            try {
+                response = await fetch(url, {
+                    method,
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: data === undefined ? undefined : JSON.stringify(data),
+                });
+            } catch (_) {
+                throw new Error('No connection. Check your network and try again.');
+            }
+            if (response.status === 419) throw new Error('Your session expired. Reload the page and try again.');
+            if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || 'Could not save. Try again in a moment.');
             return response.json();
         };
         const legacyPrefs = read(prefKey, {});
@@ -144,12 +150,13 @@
             show(i) {
                 clearTimeout(this.timer);
                 this.active = i;
-                this.timer = setTimeout(() => this.open = true, this.open ? 0 : 90);
+                this.timer = setTimeout(() => { this.open = true; this.$dispatch('vb-menu', { id: 'mega' }); }, this.open ? 0 : 90);
             },
             keep() { clearTimeout(this.timer); },
             hide() { clearTimeout(this.timer); this.timer = setTimeout(() => this.open = false, 140); },
         }"
-        @mouseleave="hide()" @keydown.escape.window="open = false">
+        @mouseleave="hide()" @keydown.escape.window="open = false"
+        @vb-menu.window="if ($event.detail.id !== 'mega') { clearTimeout(timer); open = false }">
 
         <!-- Dim the page while the category menu is open -->
         <div x-show="open" x-cloak @mouseenter="hide()" @click="open = false"
@@ -159,8 +166,8 @@
             class="fixed inset-0 -z-10 bg-[#1b0b1e]/45"></div>
 
         <div class="vb-header">
-            <!-- Top row -->
-            <div
+            <!-- Top row. Moving up from the categories closes the category menu so the account menu is never covered. -->
+            <div @mouseenter="hide()"
                 class="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:h-16 sm:flex-nowrap sm:gap-x-5 sm:px-4 sm:py-0">
 
                 <a href="{{ route('buyer.dashboard') }}" class="flex-shrink-0" aria-label="Vendo home">
@@ -184,43 +191,45 @@
                         </select>
                     @endif
                     <input type="search" name="search" value="{{ request('search') }}"
-                        @if ($shopSearchUrl) :placeholder="scope === 'shops' ? 'Search shops by name or account' : 'Search products'" @endif
+                        @if ($shopSearchUrl) :placeholder="scope === 'shops' ? 'Search shops' : 'Search products'" @endif
                         placeholder="Search products" autocomplete="off"
                         class="h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-[13px] text-[#2b1730] placeholder:text-[#9a8a9d] focus:outline-none focus:ring-0">
                     <button type="submit" aria-label="Search"
-                        class="grid h-full w-11 flex-shrink-0 place-items-center rounded-md bg-transparent text-[#402143] transition-colors duration-200 ease-vendo hover:bg-[#f3e8f5] active:scale-95">
-                        <span class="vb-icon h-[18px] w-[18px]"
+                        class="vb-act grid h-full w-11 flex-shrink-0 place-items-center rounded-md bg-transparent text-[#402143] transition-colors duration-200 ease-vendo hover:bg-[#f3e8f5] active:scale-95">
+                        <span class="vb-icon vb-ico vb-ico--search h-[18px] w-[18px]"
                             style="--icon: url('{{ asset('assets/icons/buyer/search-icon.svg') }}')"></span>
                     </button>
                 </form>
 
                 <div class="ml-auto flex flex-shrink-0 items-center gap-0.5 sm:ml-0 sm:gap-1">
 
-                    <!-- Saved items (favorites) -->
-                    <button type="button" aria-label="Saved items" aria-haspopup="dialog"
-                        x-data @click="$dispatch('open-favorites')"
-                        class="relative hidden h-10 w-10 place-items-center rounded-full text-white/90 transition-colors duration-200 hover:bg-white/10 hover:text-white min-[400px]:grid">
-                        <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.4s-7.6-4.6-9.2-9.5C1.7 7.5 3.8 4.6 6.9 4.6c1.9 0 3.6 1 5.1 3 1.5-2 3.2-3 5.1-3 3.1 0 5.2 2.9 4.1 6.3-1.6 4.9-9.2 9.5-9.2 9.5z" /></svg>
+                    <!-- Favorites -->
+                    <a href="{{ route('buyer.favorites') }}" aria-label="Favorites" @if(request()->routeIs('buyer.favorites')) aria-current="page" @endif
+                        x-data="{ bump: false }"
+                        x-init="$watch('$store.fav.items.length', (n, o) => { if (n > o) { bump = true; setTimeout(() => bump = false, 700) } })"
+                        :class="{ 'is-bump': bump }"
+                        class="vb-act relative hidden h-10 w-10 place-items-center rounded-full text-white/90 transition-colors duration-200 hover:bg-white/10 hover:text-white aria-[current=page]:bg-white/10 min-[400px]:grid">
+                        <svg class="vb-ico vb-ico--heart h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.4s-7.6-4.6-9.2-9.5C1.7 7.5 3.8 4.6 6.9 4.6c1.9 0 3.6 1 5.1 3 1.5-2 3.2-3 5.1-3 3.1 0 5.2 2.9 4.1 6.3-1.6 4.9-9.2 9.5-9.2 9.5z" /></svg>
                         <span x-show="$store.fav.items.length" x-cloak x-text="$store.fav.items.length > 99 ? '99+' : $store.fav.items.length"
                             class="vb-pop absolute right-0 top-0 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#e8c874] px-1 text-[10px] font-semibold leading-none text-[#402143]"></span>
-                    </button>
+                    </a>
 
                     <!-- Messages -->
-                    <a href="{{ route('buyer.messages.index') }}" aria-label="Messages"
-                        class="grid h-10 w-10 place-items-center rounded-full text-white/90 transition-colors duration-200 hover:bg-white/10 hover:text-white">
-                        <span class="vb-icon h-[22px] w-[22px]"
+                    <a href="{{ route('buyer.messages.index') }}" aria-label="Messages" @if(request()->routeIs('buyer.messages.*')) aria-current="page" @endif
+                        class="vb-act grid h-10 w-10 place-items-center rounded-full text-white/90 transition-colors duration-200 hover:bg-white/10 hover:text-white aria-[current=page]:bg-white/10">
+                        <span class="vb-icon vb-ico vb-ico--msg h-[22px] w-[22px]"
                             style="--icon: url('{{ asset('assets/icons/buyer/messages-icon.svg') }}')"></span>
                     </a>
 
                     <!-- Cart. #cart-badge is display:contents so it is not a second grid row (that pushed the icon up). -->
-                    <a href="{{ route('buyer.cart.index') }}" aria-label="Cart"
-                        class="relative grid h-10 w-10 place-items-center rounded-full text-white/90 transition-colors duration-200 hover:bg-white/10 hover:text-white">
-                        <span class="vb-icon h-[22px] w-[22px]"
+                    <a href="{{ route('buyer.cart.index') }}" id="vb-cart-link" aria-label="Cart" @if(request()->routeIs('buyer.cart.*')) aria-current="page" @endif
+                        class="vb-act relative grid h-10 w-10 place-items-center rounded-full text-white/90 transition-colors duration-200 hover:bg-white/10 hover:text-white aria-[current=page]:bg-white/10">
+                        <span class="vb-icon vb-ico vb-ico--cart h-[22px] w-[22px]"
                             style="--icon: url('{{ asset('assets/icons/buyer/cart-icon.svg') }}')"></span>
                         <span id="cart-badge" class="contents">
                             @if ($cartCount > 0)
                                 <span
-                                    class="vb-pop absolute right-0 top-0 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#e8c874] px-1 text-[10px] font-semibold leading-none text-[#402143]">{{ $cartCount > 99 ? '99+' : $cartCount }}</span>
+                                    class="vb-pop absolute right-0 top-0 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#e8c874] px-1 text-[10px] font-semibold leading-none text-[#402143]">{{ \App\Models\Ecommerce\CartItem::displayCount($cartCount) }}</span>
                             @endif
                         </span>
                     </a>
@@ -229,8 +238,8 @@
                     <div class="relative" id="buyerBellWrap">
                         <button type="button" id="buyerBellBtn" aria-label="Notifications" aria-controls="buyerBellMenu"
                             aria-expanded="false"
-                            class="relative grid h-10 w-10 place-items-center rounded-full text-white/90 transition-colors duration-200 hover:bg-white/10 hover:text-white">
-                            <span class="vb-icon h-[22px] w-[22px]"
+                            class="vb-act relative grid h-10 w-10 place-items-center rounded-full text-white/90 transition-colors duration-200 hover:bg-white/10 hover:text-white">
+                            <span class="vb-icon vb-ico vb-ico--bell h-[22px] w-[22px]"
                                 style="--icon: url('{{ asset('assets/icons/buyer/notifications-icon.svg') }}')"></span>
                             <span id="buyerBellCount"
                                 class="absolute right-0 top-0 h-[18px] min-w-[18px] rounded-full bg-[#e8c874] px-1 text-center text-[10px] font-semibold leading-[18px] text-[#402143]"
@@ -239,14 +248,23 @@
                         <div id="buyerBellMenu"
                             class="vb-menu absolute right-0 z-50 mt-2 max-h-[70vh] w-80 max-w-[calc(100vw-24px)] overflow-y-auto rounded-xl border border-gray-100 bg-white text-gray-900 shadow-xl sm:w-[350px]"
                             hidden>
-                            <div class="flex items-center justify-between border-b px-4 py-3"><strong class="text-sm">Notifications</strong><div class="notification-menu-actions"><form method="POST" action="{{ route('buyer.notifications.read-all') }}">@csrf<button type="submit">Mark all as read</button></form><a href="{{ route('buyer.notifications.index') }}">View all</a></div></div>
+                            <div class="flex items-center justify-between border-b border-[#f1e8f2] px-4 py-3"><strong class="text-[14px] text-[#2b1730]">Notifications</strong><div class="notification-menu-actions"><form method="POST" action="{{ route('buyer.notifications.read-all') }}">@csrf<button type="submit">Mark all as read</button></form><a href="{{ route('buyer.notifications.index') }}">View all</a></div></div>
                             <div id="buyerBellList">@include('buyer.notifications.recent', ['notifications' => $recentBuyerNotifications])</div>
                         </div>
                     </div>
 
-                    <!-- Account menu -->
-                    <div class="relative ml-1" x-data="{ o: false }" @click.outside="o = false" @keydown.escape="o = false">
-                        <button type="button" @click="o = !o" :aria-expanded="o"
+                    <!-- Account menu: opens on hover (desktop) or tap, and sits above the category menu -->
+                    <div class="relative ml-1"
+                        x-data="{
+                            o: false, t: null,
+                            hover: window.matchMedia('(hover: hover) and (min-width: 768px)').matches,
+                            openMenu() { clearTimeout(this.t); if (!this.o) { this.o = true; this.$dispatch('vb-menu', { id: 'account' }); } },
+                            closeMenu() { clearTimeout(this.t); this.t = setTimeout(() => this.o = false, 160); },
+                        }"
+                        @mouseenter="if (hover) openMenu()" @mouseleave="if (hover) closeMenu()"
+                        @vb-menu.window="if ($event.detail.id !== 'account') o = false"
+                        @click.outside="o = false" @keydown.escape="o = false">
+                        <button type="button" @click="o ? o = false : openMenu()" :aria-expanded="o" aria-haspopup="menu"
                             class="flex items-center gap-2 rounded-full py-1 pl-1 pr-1 transition-colors duration-200 hover:bg-white/10 md:pr-3"
                             aria-label="Account menu">
                             @if($buyerUser->profile_picture)
@@ -261,29 +279,54 @@
                                 :class="o ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
                         </button>
 
-                        <div x-show="o" x-cloak
+                        {{-- pt-2 (not mt-2) keeps the hover path from the button to the menu unbroken --}}
+                        <div x-show="o" x-cloak role="menu"
                             x-transition:enter="transition duration-200 ease-vendo" x-transition:enter-start="opacity-0 -translate-y-1 scale-95"
                             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
                             x-transition:leave="transition duration-150 ease-vendo" x-transition:leave-start="opacity-100 scale-100"
                             x-transition:leave-end="opacity-0 scale-95"
-                            class="absolute right-0 z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-xl border border-[#eee6ef] bg-white py-1.5 text-[13px] text-[#2b1730] shadow-[0_18px_40px_-16px_rgba(43,23,48,0.5)]">
-                            <div class="border-b border-[#f1e8f2] px-4 pb-2.5 pt-1.5">
-                                <p class="truncate font-semibold">{{ $buyerUser->name }}</p>
-                                <p class="text-[11px] text-[#9a8a9d]">Buyer account</p>
+                            class="absolute right-0 top-full z-50 w-60 origin-top-right pt-2">
+                            <div class="overflow-hidden rounded-xl border border-[#eee6ef] bg-white py-1.5 text-[13px] text-[#2b1730] shadow-[0_18px_40px_-16px_rgba(43,23,48,0.5)]">
+                                <div class="border-b border-[#f1e8f2] px-4 pb-2.5 pt-1.5">
+                                    <p class="truncate font-semibold">{{ $buyerUser->name }}</p>
+                                    <p class="truncate text-[12px] text-[#7a6a7e]">{{ $buyerUser->email }}</p>
+                                </div>
+                                @php
+                                    $accountLinks = [
+                                        ['Orders', route('buyer.orders.index'), 'M7 3h10a1 1 0 0 1 1 1v17l-3-2-3 2-3-2-3 2V4a1 1 0 0 1 1-1zM9.5 8h5M9.5 12h5'],
+                                        ['Vouchers', route('buyer.vouchers.index'), 'M3 8a2 2 0 0 0 0 4v4h18v-4a2 2 0 0 1 0-4V6H3zM9 6v12'],
+                                        ['Complaints', route('buyer.complaints.index'), 'M5 21V4M5 4h11l-2 4 2 4H5'],
+                                        ['Support', route('buyer.support.index'), 'M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12zM9 11h6M9 14h4'],
+                                    ];
+                                @endphp
+                                @foreach ($accountLinks as [$linkLabel, $linkUrl, $linkPath])
+                                    <a href="{{ $linkUrl }}" role="menuitem" class="vb-menu-link">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $linkPath }}" /></svg>
+                                        {{ $linkLabel }}
+                                    </a>
+                                @endforeach
+                                <a href="{{ route('buyer.favorites') }}" role="menuitem" class="vb-menu-link">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.4s-7.6-4.6-9.2-9.5C1.7 7.5 3.8 4.6 6.9 4.6c1.9 0 3.6 1 5.1 3 1.5-2 3.2-3 5.1-3 3.1 0 5.2 2.9 4.1 6.3-1.6 4.9-9.2 9.5-9.2 9.5z" /></svg>
+                                    Favorites
+                                    <span x-show="$store.fav.items.length" x-cloak x-text="$store.fav.items.length" class="ml-auto rounded-full bg-[#f3e8f5] px-1.5 text-[11px] font-medium leading-[18px] text-[#52245b]"></span>
+                                </a>
+                                <div class="my-1.5 border-t border-[#f1e8f2]"></div>
+                                <a href="{{ route('buyer.account.index') }}" role="menuitem" class="vb-menu-link">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></svg>
+                                    Account
+                                </a>
+                                <a href="{{ route('buyer.account.index', ['tab' => 'settings']) }}" role="menuitem" class="vb-menu-link">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
+                                    Settings
+                                </a>
+                                <form method="POST" action="{{ route('buyer.logout') }}" class="mt-1.5 border-t border-[#f1e8f2] pt-1.5">
+                                    @csrf
+                                    <button type="submit" role="menuitem" class="vb-menu-link w-full text-left !text-[#a32b43] hover:!bg-[#fdf1f3]">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4M16 17l5-5-5-5M21 12H9" /></svg>
+                                        Log out
+                                    </button>
+                                </form>
                             </div>
-                            <a href="{{ route('buyer.orders.index') }}" class="block px-4 py-2.5 transition-colors duration-150 hover:bg-[#f7eff8]">My Orders</a>
-                            <a href="{{ route('buyer.vouchers.index') }}" class="block px-4 py-2.5 transition-colors duration-150 hover:bg-[#f7eff8]">My Vouchers</a>
-                            <a href="{{ route('buyer.complaints.index') }}" class="block px-4 py-2.5 transition-colors duration-150 hover:bg-[#f7eff8]">Complaints</a>
-                            <button type="button" @click="o = false; $dispatch('open-favorites')" class="flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors duration-150 hover:bg-[#f7eff8]">
-                                Saved items
-                                <span x-show="$store.fav.items.length" x-cloak x-text="$store.fav.items.length" class="rounded-full bg-[#f3e8f5] px-1.5 text-[11px] font-medium leading-[18px] text-[#52245b]"></span>
-                            </button>
-                            <a href="{{ route('buyer.account.index') }}" class="block px-4 py-2.5 transition-colors duration-150 hover:bg-[#f7eff8]">Account Management</a>
-                            <a href="{{ route('buyer.account.index', ['tab' => 'settings']) }}" class="block px-4 py-2.5 transition-colors duration-150 hover:bg-[#f7eff8]">Settings</a>
-                            <form method="POST" action="{{ route('buyer.logout') }}" class="border-t border-[#f1e8f2]">
-                                @csrf
-                                <button type="submit" class="block w-full px-4 py-2.5 text-left text-[#a32b43] transition-colors duration-150 hover:bg-[#fdf1f3]">Logout</button>
-                            </form>
                         </div>
                     </div>
                 </div>
@@ -298,9 +341,9 @@
                     <button type="button" @click="open ? open = false : show(active)" @mouseenter="show(active)"
                         :aria-expanded="open" aria-controls="vb-mega"
                         :class="open ? 'is-open text-white' : 'text-white/85'"
-                        class="vb-navlink flex h-10 flex-shrink-0 items-center gap-1.5 px-3 text-[13px] font-medium transition-colors duration-200 hover:text-white">
-                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" /></svg>
-                        All Categories
+                        class="vb-navlink vb-act flex h-10 flex-shrink-0 items-center gap-1.5 px-3 text-[13px] font-medium transition-colors duration-200 hover:text-white">
+                        <svg class="vb-ico vb-ico--grid h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" /></svg>
+                        All categories
                         <svg class="h-3 w-3 transition-transform duration-300 ease-vendo" :class="open ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
                     </button>
 
@@ -324,7 +367,7 @@
             x-transition:enter="transition duration-300 ease-vendo" x-transition:enter-start="opacity-0 -translate-y-2"
             x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition duration-200 ease-vendo"
             x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 -translate-y-1"
-            class="absolute inset-x-0 top-full max-h-[calc(100vh-110px)] overflow-y-auto border-t border-[#efe4f1] bg-white text-[#2b1730] shadow-[0_30px_50px_-24px_rgba(43,23,48,0.55)]">
+            class="absolute inset-x-0 top-full z-20 max-h-[calc(100vh-110px)] overflow-y-auto border-t border-[#efe4f1] bg-white text-[#2b1730] shadow-[0_30px_50px_-24px_rgba(43,23,48,0.55)]">
             <div class="mx-auto flex max-w-[1200px] flex-col lg:flex-row">
 
                 <!-- Category list (chips on mobile, column on desktop) -->
@@ -373,7 +416,7 @@
                                             class="grid h-[72px] w-[72px] place-items-center rounded-full bg-[#f1e8f2] text-[#805487] transition-all duration-300 ease-vendo group-hover:-translate-y-0.5 group-hover:bg-[#805487] group-hover:text-white group-hover:shadow-[0_10px_18px_-10px_rgba(128,84,135,0.9)]">
                                             <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><circle cx="16.75" cy="16.75" r="3.25" /></svg>
                                         </span>
-                                        <span class="text-[12px] leading-4 text-[#3d2a42] transition-colors duration-200 group-hover:text-[#805487]">View All</span>
+                                        <span class="text-[12px] leading-4 text-[#3d2a42] transition-colors duration-200 group-hover:text-[#805487]">View all</span>
                                     </a>
 
                                     @foreach ($category->children as $sub)
@@ -398,6 +441,9 @@
                 </div>
             </div>
         </div>
+
+        {{-- Banner notifications hang below the header (above page content, below the open menus) --}}
+        @include('buyer.partials.banner')
     </header>
 
     <main class="flex-1">{{ $slot }}</main>
@@ -406,7 +452,7 @@
         @include('buyer.partials.storefront-footer')
     @endif
 
-    {{-- Saved items panel, back to top, small toast --}}
+    {{-- Favorites store, back to top --}}
     @include('buyer.partials.favorites-panel')
 
     <script>
@@ -442,16 +488,39 @@
             });
         };
         const close = () => { menu.hidden = true; button.setAttribute('aria-expanded', 'false'); };
-        button.addEventListener('click', () => { const open = menu.hidden; menu.hidden = !open; button.setAttribute('aria-expanded', String(open)); });
+        button.addEventListener('click', () => {
+            const open = menu.hidden;
+            menu.hidden = !open;
+            button.setAttribute('aria-expanded', String(open));
+            if (open) window.dispatchEvent(new CustomEvent('vb-menu', { detail: { id: 'bell' } }));
+        });
+        // Opening the category or account menu closes this one
+        window.addEventListener('vb-menu', (event) => { if (event.detail.id !== 'bell') close(); });
+        const ring = () => {
+            button.classList.remove('is-ringing'); void button.offsetWidth; button.classList.add('is-ringing');
+            setTimeout(() => button.classList.remove('is-ringing'), 1400);
+        };
         document.addEventListener('click', event => { if (!wrap.contains(event.target)) close(); });
         document.addEventListener('keydown', event => { if (event.key === 'Escape' && !menu.hidden) { close(); button.focus(); } });
         const refresh = async () => {
+            if (document.hidden) return;
             try {
                 const response = await fetch(@json(route('buyer.notifications.recent')), {headers: {'Accept': 'application/json'}});
                 if (!response.ok) return;
                 const data = await response.json();
                 const currentId = Number(data.latest_id) || 0;
-                if (currentId > latestId) chime();
+                if (currentId > latestId) {
+                    chime();
+                    ring();
+                    if (data.latest && window.Alpine?.store('banner')) {
+                        Alpine.store('banner').show({
+                            type: 'info',
+                            title: data.latest.title,
+                            text: data.latest.message,
+                            action: { label: 'View', href: data.latest.url },
+                        });
+                    }
+                }
                 latestId = Math.max(latestId, currentId);
                 const unread = Number(data.unread_count) || 0;
                 badge.hidden = !unread; badge.textContent = unread > 99 ? '99+' : unread;
@@ -460,6 +529,32 @@
         };
         setInterval(refresh, 3000);
         document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+    })();
+    </script>
+    <script>
+    // Cart icon bumps whenever the badge is replaced after an Add to cart.
+    (() => {
+        const link = document.getElementById('vb-cart-link');
+        if (!link) return;
+        new MutationObserver(() => {
+            link.classList.remove('is-bump'); void link.offsetWidth; link.classList.add('is-bump');
+            setTimeout(() => link.classList.remove('is-bump'), 800);
+        }).observe(link, { childList: true, subtree: true });
+    })();
+
+    // Submit buttons show a spinner and lock while a normal form posts, so a slow request is never clicked twice.
+    (() => {
+        document.addEventListener('submit', (e) => {
+            const form = e.target;
+            if (e.defaultPrevented || form.hasAttribute('x-target') || form.getAttribute('role') === 'search' || (form.target && form.target !== '_self')) return;
+            const button = e.submitter || form.querySelector('button[type=submit]:not([name])');
+            if (!button || button.name || button.disabled) return;
+            setTimeout(() => { button.classList.add('vb-loading'); button.setAttribute('aria-busy', 'true'); button.disabled = true; }, 0);
+        });
+        window.addEventListener('pageshow', (e) => {
+            if (!e.persisted) return;
+            document.querySelectorAll('.vb-loading').forEach((b) => { b.classList.remove('vb-loading'); b.removeAttribute('aria-busy'); b.disabled = false; });
+        });
     })();
     </script>
     <script>

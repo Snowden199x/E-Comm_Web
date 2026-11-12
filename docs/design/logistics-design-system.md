@@ -75,3 +75,28 @@ Emoji icons, colour-only status, hover-only actions, truncated text with no full
 - **Station dashboard:** "Parcels on hand" counts parcels at the station only (awaiting sorting, ready for delivery, waiting for transfer). Parcels out for delivery are with riders and are shown separately. The "Today" card holds only daily counts.
 - **Task Assignment (station only):** one page for pickup and delivery tasks (tabs), select + bulk bar with the rider required. A rider who does not serve a selected barangay triggers a warning, not a block.
 - **All role pages still run on hard-coded preview data** (`routes/logistics_preview.php`). Interactions change page state only; nothing is saved.
+
+## Company portal pass (8 November 2026)
+
+Pages are being moved, one at a time, to the Admin look in [admin-design-system.md](admin-design-system.md). **Company Dashboard** is done. Until a page is done it keeps the older `lg-*` look.
+
+- **Look on a finished page:** Tailwind `vd-*` tokens, 1px borders, no shadows, plum primary button, bordered secondary button, bordered row button that fills plum on hover, `x-admin.status-pill` for statuses, `x-admin.flash` under the heading, Inter body text with Poppins headings.
+- **Loading:** skeleton only. The shell draws the boot and page-to-page skeletons (`x-logistics.skeleton`, shapes `dashboard|table|cards|split|form`, chosen by `$skeletonMap` in the shell). Buttons get a spinner from the Admin `button-loading.js`. Do not add spinners or "Loading..." text to a page.
+- **Empty states:** `x-logistics.empty` (same look as the Admin one). Say what is missing, then what fills it, then one action that starts with a verb. Use `filtered` while a search or filter is active.
+- **Copy:** sentence case, short, no "yet", "please" or "successfully". Errors say the fix.
+- **Colour:** one neutral chip colour for counts and icons. Red, amber and green only carry status.
+- **Resets:** `.lg-body` link colour and heading/paragraph margin resets are zero-specificity (`:where()`), so Tailwind colour and margin classes work on links, headings and paragraphs.
+- **Popups:** `x-logistics.dialog` (same look as `x-admin.dialog`, title and help line can follow Alpine state). Cancel on the left, the main action on the right; destructive actions use the danger pastel.
+
+## Pulled page pass (9 November 2026)
+
+The pulled PR #94 restyles **Company Dashboard, Company Hubs, Hub show, Network and shared Tracking** with per-page theme layers: `dashboard-theme.css`, `hubs-theme.css`, `hub-show-theme.css`, `network-theme.css` and `tracking-theme.css`, pushed last through `@push('lg-head')`. The code names these "the same pastel lilac system as the seller pages" and copies the Seller `--do-*` tokens (status colours: new = lilac, waiting = butter, in progress = sky, done = mint, failed = rose). That is **not** the Admin/Tailwind `vd-*` look described in the Company portal pass above, so the two notes describe different intent. Treat the code as the current state until the owner decides which system wins; the other role pages still use the older `lg-*` look.
+
+Shared pieces added in the same pass now apply to any page that opts in:
+
+- `x-logistics.skeleton` — boot skeleton and page-to-page shapes (`dashboard|table|cards|split|form`, chosen by `$skeletonMap` in the shell); `resources/js/logistics/states.js` lifts the boot skeleton and adds button spinners.
+- `x-logistics.dialog` and `x-logistics.flash` — the dialog used by the converted pages, and hidden `[data-lg-flash]` markers that `banner.js` turns into banners (legacy `lg-toast` dispatches are routed to the same banner).
+- `x-logistics.empty` — reworked; still says what is missing, then what fills it, then an action starting with a verb.
+- Icon motion — `icon.blade.php` icons carry `data-icon`; `workspace.css` animates them on hover/focus of their link, button or `.lg-ico-host` row, and stops under `prefers-reduced-motion`.
+
+See the [10 November progress log](../logs/PROGRESS-2026-11-10.md).

@@ -23,6 +23,14 @@ class CompletedOrdersController extends Controller
             'courier' => ['nullable', Rule::in(array_merge(['0'], $courierIds))],
             'payment' => ['nullable', Rule::in($paymentValues)],
             'page' => ['nullable', 'integer', 'min:1'],
+        ], [
+            'search.max' => 'Search is too long. Use 100 characters or fewer.',
+            'from.date' => 'Start date is not valid. Pick a date from the calendar.',
+            'to.date' => 'End date is not valid. Pick a date from the calendar.',
+            'to.after_or_equal' => 'End date is before the start date. Pick an end date on or after the start date.',
+            'courier.in' => 'That courier has no delivered orders. Choose another courier or clear the filter.',
+            'payment.in' => 'That payment method has no delivered orders. Choose another method or clear the filter.',
+            'page.min' => 'That page does not exist. Go back to the first page.',
         ]);
 
         $base = $this->scopedOrders($request->user()->id, $filters);
@@ -44,8 +52,10 @@ class CompletedOrdersController extends Controller
         $payments = Order::query()->where('seller_id', $request->user()->id)->whereIn('status', Order::SALES_STATUSES)
             ->whereNotNull('payment_mode')->distinct()->orderBy('payment_mode')->pluck('payment_mode');
         $topProducts = $this->topProducts($request->user()->id, $filters);
+        $hasAny = Order::query()->where('seller_id', $sellerId)->whereIn('status', Order::SALES_STATUSES)->exists();
+        $presets = $this->presets($request);
 
-        return view('seller.completed-orders.index', compact('orders', 'stats', 'outcomes', 'couriers', 'payments', 'topProducts', 'filters'));
+        return view('seller.completed-orders.index', compact('orders', 'stats', 'outcomes', 'couriers', 'payments', 'topProducts', 'filters', 'hasAny', 'presets'));
     }
 
     public function show(Request $request, int $order)
@@ -61,6 +71,28 @@ class CompletedOrdersController extends Controller
         }
 
         return view('seller.completed-orders.detail', ['order' => $record]);
+    }
+
+    /** Quick date ranges. Each keeps the other filters and resets the page. */
+    private function presets(Request $request): array
+    {
+        $keep = $request->except(['from', 'to', 'page']);
+        $ranges = [
+            '7 days' => [now()->subDays(6), now()],
+            '30 days' => [now()->subDays(29), now()],
+            'This month' => [now()->startOfMonth(), now()],
+        ];
+        $presets = [];
+        foreach ($ranges as $label => [$from, $to]) {
+            $query = array_merge($keep, ['from' => $from->toDateString(), 'to' => $to->toDateString()]);
+            $presets[] = [
+                'label' => $label,
+                'url' => route('seller.completed-orders.index', $query),
+                'active' => $request->query('from') === $from->toDateString() && $request->query('to') === $to->toDateString(),
+            ];
+        }
+
+        return $presets;
     }
 
     private function scopedOrders(int $sellerId, array $filters)
@@ -131,7 +163,7 @@ class CompletedOrdersController extends Controller
 
         return \App\Models\Ecommerce\OrderItem::query()->select('product_id')
             ->selectRaw('SUM(order_items.quantity) AS units_sold, SUM(order_items.quantity * order_items.price) AS revenue')
-            ->with('product:id,name')
+            ->with('product.images')
             ->whereIn('order_id', $orderIds)->groupBy('product_id')
             ->orderByDesc('units_sold')->limit(5)->get();
     }

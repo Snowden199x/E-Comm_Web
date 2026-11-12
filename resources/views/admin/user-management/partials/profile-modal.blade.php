@@ -65,7 +65,7 @@
     class="fixed inset-0 z-50 flex items-center justify-center bg-vd-ink/50 p-3 sm:p-4">
 
     <div x-show="openId === {{ $user->id }}" @click.stop
-        @keydown.escape.window="if (openId === {{ $user->id }} && !$event.defaultPrevented && !suspendId && !deactivateId && !activateId) openId = null"
+        @keydown.escape.window="if (openId === {{ $user->id }} && !$event.defaultPrevented && !suspendId && !deactivateId && !activateId && !deletionId) openId = null"
         x-transition:enter="transition duration-300 ease-vendo" x-transition:enter-start="opacity-0 translate-y-3 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100"
         x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
         class="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-vd-line bg-vd-paper sm:max-h-[calc(100dvh-2rem)]">
@@ -198,6 +198,24 @@
                         class="h-10 w-full rounded-xl border border-vd-success-line bg-vd-success-bg text-sm font-semibold text-vd-success-ink transition-colors duration-200
                                hover:border-vd-success-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-success-ink/40">
                         {{ $user->account_status === 'suspended' ? 'Lift suspension' : 'Activate account' }}
+                    </button>
+                @endif
+
+                {{-- Deletion requests come from Buyer and Seller profiles only. --}}
+                @if (in_array($user->role, ['buyer', 'seller'], true))
+                    @php $pendingDeletion = $user->pendingDeletionRequest; @endphp
+                    <button type="button" @click="deletionId = {{ $user->id }}"
+                        class="flex w-full items-center justify-between gap-3 rounded-xl border border-vd-line bg-white px-4 py-3 text-left transition-colors duration-200
+                               hover:bg-vd-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40">
+                        <span class="flex min-w-0 items-center gap-2 text-[13px] font-semibold text-vd-ink">
+                            <x-admin.icon name="user-x" class="h-4 w-4 flex-shrink-0 text-vd-muted" />
+                            <span class="truncate">User request for deletion of account</span>
+                        </span>
+                        @if ($pendingDeletion)
+                            <x-admin.status-pill tone="pending" icon="clock">Pending</x-admin.status-pill>
+                        @else
+                            <x-admin.icon name="chevron-right" class="h-4 w-4 flex-shrink-0 text-vd-muted" />
+                        @endif
                     </button>
                 @endif
             </div>

@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
+use App\Models\Finance\CommissionSetting;
 use App\Models\Profiles\LogisticsTransportTrip;
 use App\Models\Profiles\OrderFacilityStop;
 use App\Models\Profiles\RiderTask;
@@ -13,7 +15,10 @@ class ShippingEarningsSettlementService
     /** Legacy per-stop credit, still used for orders created before rate snapshots existed. */
     public const RIDER_SHARE_CENTS_PER_HUB = 1000;
 
-    public function __construct(private DeliveryFeeDistributionCalculator $distribution) {}
+    public function __construct(
+        private DeliveryFeeDistributionCalculator $distribution,
+        private SellerEarningsCalculator $sellerEarnings,
+    ) {}
 
     public function settleDeliveredOrder(Order $order): void
     {
@@ -47,6 +52,10 @@ class ShippingEarningsSettlementService
                 'updated_at' => now(),
             ]);
 
+            // Money is display-only: the Seller's earnings are credited when the parcel is delivered, not when
+            // the cash reaches Vendo, so the notice goes out now and only once (the settlement is idempotent).
+            $this->notifySellerCredited($lockedOrder);
+
             // A route change after checkout needs human review; do not credit a rider against a stale quote.
             if (! $matchesQuote) {
                 return;
@@ -59,6 +68,25 @@ class ShippingEarningsSettlementService
                 $this->accrueLegacyPerStop($lockedOrder, $stops, $settlementId);
             }
         }, 3);
+    }
+
+    /** Tell the Seller that this order's earnings are now credited, using the same math as the earnings page. */
+    private function notifySellerCredited(Order $order): void
+    {
+        $earnings = $this->sellerEarnings->earnings(
+            (int) round(((float) $order->total_amount) * 100),
+            (int) round(((float) $order->voucher_discount) * 100),
+            (float) ($order->seller_commission_rate ?? CommissionSetting::FIXED_RATE),
+        );
+
+        Notification::create([
+            'user_id' => $order->seller_id,
+            'type' => 'earnings_credited',
+            'title' => 'Earnings credited',
+            'message' => '₱'.number_format($earnings['net_cents'] / 100, 2).' from order '.$order->number
+                .' is now credited to your earnings.',
+            'link' => route('seller.earnings.index'),
+        ]);
     }
 
     /**

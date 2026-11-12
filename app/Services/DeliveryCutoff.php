@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
+use App\Models\Ecommerce\Product;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Cache;
@@ -17,6 +18,11 @@ use Illuminate\Support\Facades\DB;
  * told, and the parcel shows up in the Rider app with a Reschedule action that
  * books the next delivery attempt for tomorrow.
  *
+ * A parcel gets two attempts. The first failure returns it to the destination
+ * Station Hub for a final attempt the next day; the second failure cancels the
+ * order automatically, restores the stock and notifies the Buyer, Seller, hub
+ * and Rider. `orders.delivery_attempts` records the count.
+ *
  * This project has no scheduler on the development path, so the sweep runs
  * lazily whenever the Rider app loads its assignments or the Station Hub opens
  * a delivery list. `routes/console.php` also schedules it, so a host with the
@@ -24,6 +30,9 @@ use Illuminate\Support\Facades\DB;
  */
 class DeliveryCutoff
 {
+    /** Failed delivery attempts allowed before the parcel is cancelled automatically. */
+    public const MAX_DELIVERY_ATTEMPTS = 2;
+
     /** Local time of the daily cutoff, e.g. "5:00 PM". */
     public function label(): string
     {
@@ -109,6 +118,28 @@ class DeliveryCutoff
                 }
             });
 
+        // A parcel that already failed (or was scheduled for a day that has passed) and still was not
+        // delivered used its final chance: cancel it automatically instead of leaving it stuck.
+        Order::query()
+            ->where(function ($query) {
+                $query->where(function ($failed) {
+                    $failed->where('status', 'delivery_failed')->whereNotNull('delivery_failed_at')
+                        ->whereDate('delivery_failed_at', '<', today()->toDateString());
+                })->orWhere(function ($scheduled) {
+                    $scheduled->where('status', 'assigned_to_rider')->whereNotNull('delivery_scheduled_for')
+                        ->whereDate('delivery_scheduled_for', '<', today()->toDateString())
+                        ->where('delivery_attempts', '>=', 1);
+                });
+            })
+            ->orderBy('id')
+            ->chunkById(100, function ($orders) use (&$failed) {
+                foreach ($orders as $order) {
+                    if ($this->cancelStaleFailure((int) $order->id)) {
+                        $failed++;
+                    }
+                }
+            });
+
         return $failed;
     }
 
@@ -124,6 +155,21 @@ class DeliveryCutoff
                 return false;
             }
 
+            // An Admin override can grant extra attempts on top of the default two.
+            $maxAttempts = self::MAX_DELIVERY_ATTEMPTS + (int) $order->delivery_extra_attempts;
+            $attempts = (int) $order->delivery_attempts + 1;
+            if ($attempts >= $maxAttempts) {
+                $this->cancelUndelivered($order, $attempts);
+
+                return true;
+            }
+
+            $station = $order->destinationLogisticsCenter;
+            $stationLabel = $station
+                ? $station->business_name.' ('.($station->municipality ?: $station->province).')'
+                : 'the destination Station Hub';
+
+            $order->delivery_attempts = $attempts;
             $order->status = 'delivery_failed';
             $order->delivery_failed_at = now();
             // Buyer and Seller get the standard failed-delivery update from the
@@ -134,7 +180,8 @@ class DeliveryCutoff
                 'user_id' => null,
                 'from_status' => 'out_for_delivery',
                 'to_status' => 'delivery_failed',
-                'note' => 'The '.$this->label().' delivery window closed before this parcel was delivered. The Rider can reschedule it for another day.',
+                'note' => 'Delivery attempt '.$attempts.' of '.$maxAttempts.' failed before the '.$this->label()
+                    .' window closed. The parcel returns to '.$stationLabel.'. One final attempt can be booked for the next day.',
             ]);
 
             if ($order->delivery_courier_id) {
@@ -142,22 +189,139 @@ class DeliveryCutoff
                     'user_id' => $order->delivery_courier_id,
                     'type' => 'delivery_window_closed',
                     'title' => 'Delivery window closed '.$order->number,
-                    'message' => 'The '.$this->label().' deadline passed before this parcel was delivered. Open it in Parcels and reschedule the delivery to try again.',
+                    'message' => 'Attempt '.$attempts.' of '.$maxAttempts.' failed. The parcel is back at '
+                        .$stationLabel.'. Reschedule the final attempt for tomorrow — if it fails again the order is cancelled automatically.',
                 ]);
             }
 
-            $hubUserId = $order->destinationLogisticsCenter?->user_id;
+            Notification::create([
+                'user_id' => $order->buyer_id,
+                'type' => 'order_update',
+                'title' => 'Delivery attempt failed '.$order->number,                    'message' => 'We could not deliver your parcel today. It returns to '.$stationLabel
+                    .' for one final attempt tomorrow. If that attempt also fails, the order is cancelled automatically.',
+                'link' => route('buyer.orders.show', $order),
+            ]);
+
+            $hubUserId = $station?->user_id;
             if ($hubUserId) {
                 Notification::create([
                     'user_id' => $hubUserId,
                     'type' => 'shipment_update',
                     'title' => 'Delivery failed '.$order->number,
-                    'message' => 'The '.$this->label().' delivery window closed before delivery. The Rider can reschedule it, or assign the parcel again from the delivery queue.',
+                    'message' => 'Attempt '.$attempts.' of '.$maxAttempts.' failed and the parcel is back. Schedule the final attempt for tomorrow; a second failure cancels the order automatically.',
                     'link' => route('lgp.station.delivery-queue'),
                 ]);
             }
 
             return true;
         }, 3);
+    }
+
+    /** Cancel a parcel that stayed failed past the next day without a successful attempt. */
+    private function cancelStaleFailure(int $orderId): bool
+    {
+        return (bool) DB::transaction(function () use ($orderId) {
+            $order = Order::query()->with('destinationLogisticsCenter')->lockForUpdate()->find($orderId);
+            if (! $order) {
+                return false;
+            }
+
+            $today = today()->toDateString();
+            $staleFailed = $order->status === 'delivery_failed' && $order->delivery_failed_at
+                && $order->delivery_failed_at->toDateString() < $today;
+            $staleScheduled = $order->status === 'assigned_to_rider' && $order->delivery_scheduled_for
+                && $order->delivery_scheduled_for->toDateString() < $today && (int) $order->delivery_attempts >= 1;
+
+            if (! $staleFailed && ! $staleScheduled) {
+                return false;
+            }
+
+            $attempts = min(self::MAX_DELIVERY_ATTEMPTS, (int) $order->delivery_attempts + 1);
+            $this->cancelUndelivered($order, max($attempts, self::MAX_DELIVERY_ATTEMPTS), $order->status);
+
+            return true;
+        }, 3);
+    }
+
+    /**
+     * Second failed attempt: the parcel is cancelled automatically. Stock returns to the Seller, the
+     * voucher is voided and everyone involved is told. Runs inside the caller's transaction and row lock.
+     */
+    private function cancelUndelivered(Order $order, int $attempts, string $fromStatus = 'delivery_failed'): void
+    {
+        $items = $order->items()->orderBy('product_id')->orderBy('product_variant_id')->get();
+        $products = Product::query()->whereIn('id', $items->pluck('product_id')->unique())
+            ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+
+        foreach ($items as $item) {
+            $product = $products->get($item->product_id);
+            if (! $product) {
+                continue;
+            }
+            $variant = $item->product_variant_id
+                ? $product->variants()->lockForUpdate()->find($item->product_variant_id)
+                : null;
+
+            app(InventoryService::class)->changeLocked(
+                $product,
+                (int) $item->quantity,
+                'cancellation',
+                null,
+                $order->id,
+                'Cancelled automatically after '.$attempts.' failed delivery attempts',
+                variant: $variant,
+            );
+        }
+
+        $station = $order->destinationLogisticsCenter;
+        $stationLabel = $station
+            ? $station->business_name.' ('.($station->municipality ?: $station->province).')'
+            : 'the destination Station Hub';
+
+        $order->delivery_attempts = $attempts;
+        $order->status = 'cancelled';
+        $order->delivery_failed_at = now();
+        $order->save();
+        app(SellerVoucherService::class)->voidForOrderLocked($order->id);
+
+        $order->statusEvents()->create([
+            'user_id' => null,
+            'from_status' => $fromStatus,
+            'to_status' => 'cancelled',
+            'note' => 'Cancelled automatically: '.$attempts.' delivery attempts failed and the buyer did not receive the parcel. '
+                .'The parcel is held at '.$stationLabel.' and the stock went back to the seller.',
+        ]);
+
+        Notification::create([
+            'user_id' => $order->buyer_id,
+            'type' => 'order_update',
+            'title' => $order->number.': Order cancelled',
+            'message' => 'We tried to deliver this parcel '.$attempts.' times and it was not received, so the order was cancelled automatically. No payment is needed.',
+            'link' => route('buyer.orders.show', $order),
+        ]);
+        Notification::create([
+            'user_id' => $order->seller_id,
+            'type' => 'order_update',
+            'title' => $order->number.': Cancelled after failed deliveries',
+            'message' => 'The parcel failed '.$attempts.' delivery attempts and was cancelled automatically. The items are back in stock.',
+            'link' => route('seller.orders.show', $order),
+        ]);
+        if ($order->delivery_courier_id) {
+            Notification::create([
+                'user_id' => $order->delivery_courier_id,
+                'type' => 'shipment_cancelled',
+                'title' => $order->number.' cancelled',
+                'message' => 'Both delivery attempts failed, so this parcel is cancelled. Return it to '.$stationLabel.' stock.',
+            ]);
+        }
+        if ($station?->user_id) {
+            Notification::create([
+                'user_id' => $station->user_id,
+                'type' => 'shipment_update',
+                'title' => $order->number.' cancelled',
+                'message' => 'The second delivery attempt failed, so the order was cancelled automatically. Hold the parcel at the hub.',
+                'link' => route('lgp.station.delivery-queue'),
+            ]);
+        }
     }
 }

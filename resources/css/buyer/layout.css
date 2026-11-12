@@ -25,6 +25,9 @@
 
 /* ---------- Header ---------- */
 .vb-header {
+    /* Above the category menu (z-20) so account and notification menus are never covered by it */
+    position: relative;
+    z-index: 30;
     background: var(--vb-plum);
     box-shadow: 0 10px 24px -18px rgba(43, 23, 48, 0.9);
 }
@@ -85,7 +88,10 @@
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: none; }
 }
-.vb-enter { animation: vb-enter 0.6s var(--vb-ease) both; }
+.vb-enter { animation: vb-enter 0.6s var(--vb-ease) backwards; }
+/* Why "backwards" and not "both": a finished animation that keeps its last frame (fill-mode forwards) still counts as a
+   transform for the browser, which makes it the containing block of every position:fixed child. Dialogs inside the page then
+   dim only the page column instead of the whole screen. After the animation ends nothing may stay applied. */
 
 @keyframes vb-menu-in {
     from { opacity: 0; transform: translateY(-6px) scale(0.98); }
@@ -156,24 +162,14 @@ html.vb-js .vb-reveal:not(.is-in) { animation: vb-reveal-failsafe 0s linear 3.5s
 @keyframes vb-reveal-failsafe { to { opacity: 1; transform: none; } }
 
 /* Header drops in on every load */
-.vb-header { animation: vb-drop 0.7s var(--vb-ease) both; }
+.vb-header { animation: vb-drop 0.7s var(--vb-ease) backwards; }
 @keyframes vb-drop { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
 html.vb-calm .vb-header { animation: none; }
 
 /* ---------- Hero carousel (announcements) ---------- */
-.vb-hero { background: var(--vb-plum); isolation: isolate; }
+.vb-hero { background: #f3e8f5; border: 1px solid #e6d6ea; isolation: isolate; }
 .vb-hero__track { display: flex; transition: transform 0.9s var(--vb-ease); will-change: transform; }
-.vb-hero__slide { position: relative; flex: 0 0 100%; min-width: 0; background: var(--slide-bg, var(--vb-plum)); }
-.vb-hero__art {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background-image: var(--banner-art, none);
-    background-repeat: no-repeat;
-    background-position: right center;
-    background-size: cover;
-    opacity: 0.9;
-}
+.vb-hero__slide { position: relative; flex: 0 0 100%; min-width: 0; }
 .vb-rise { opacity: 0; }
 .vb-hero__slide.is-active .vb-rise { animation: vb-rise 0.8s var(--vb-ease) both; animation-delay: calc(var(--d, 0) * 90ms + 180ms); }
 @keyframes vb-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
@@ -183,10 +179,10 @@ html.vb-calm .vb-header { animation: none; }
 @keyframes vb-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
 
 /* Slide dots double as the autoplay timer: the active dot fills over 6.5s, and when the fill ends the next slide opens. */
-.vb-dot { position: relative; height: 6px; width: 6px; overflow: hidden; border-radius: 999px; background: rgba(255, 255, 255, 0.45); transition: width 0.5s var(--vb-ease), background-color 0.3s; }
-.vb-dot:hover { background: rgba(255, 255, 255, 0.75); }
-.vb-dot.is-active { width: 34px; background: rgba(255, 255, 255, 0.35); }
-.vb-dot__fill { position: absolute; inset: 0; transform-origin: left; transform: scaleX(0); background: #fff; border-radius: 999px; }
+.vb-dot { position: relative; height: 6px; width: 6px; overflow: hidden; border-radius: 999px; background: #d8bfdc; transition: width 0.5s var(--vb-ease), background-color 0.3s; }
+.vb-dot:hover { background: #b78fbd; }
+.vb-dot.is-active { width: 34px; background: #d8bfdc; }
+.vb-dot__fill { position: absolute; inset: 0; transform-origin: left; transform: scaleX(0); background: var(--vb-plum); border-radius: 999px; }
 .vb-dot.is-active .vb-dot__fill { animation: vb-dot-fill 6.5s linear forwards; }
 .vb-hero.is-paused .vb-dot__fill { animation-play-state: paused; }
 @keyframes vb-dot-fill { to { transform: scaleX(1); } }
@@ -197,8 +193,103 @@ html.vb-calm .vb-header { animation: none; }
 .vb-heart:active { transform: scale(0.88); }
 .vb-heart.is-saved { animation: vb-pop 0.45s var(--vb-ease); }
 
-/* ---------- Favorites panel ---------- */
-.vb-fav-scrim { background: rgba(27, 11, 30, 0.45); }
+/* ---------- Pastel palette used by banners, alerts and badges ----------
+   success  #eaf5ee / #c9e5d3 / #2e6b46      error  #fdf1f3 / #f0c9d0 / #a32b43
+   warning  #fbf3dc / #eadfb8 / #7a5a0c      info   #f5ecf6 / #e3d3e6 / #52245b */
+
+/* ---------- Buttons: one family, so actions look the same on every page ---------- */
+.vb-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: none;
+    height: 40px; padding: 0 20px; border: 1px solid transparent; border-radius: 8px;
+    font-size: 13px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none;
+    transition: background-color 0.25s var(--vb-ease), color 0.25s var(--vb-ease), border-color 0.25s var(--vb-ease), transform 0.2s var(--vb-ease), box-shadow 0.3s var(--vb-ease);
+}
+.vb-btn:active:not(:disabled) { transform: scale(0.97); }
+.vb-btn:disabled { cursor: not-allowed; opacity: 0.55; }
+.vb-btn--sm { height: 32px; padding: 0 14px; font-size: 12px; }
+.vb-btn--primary { background: var(--vb-plum); color: #fff; }
+.vb-btn--primary:hover:not(:disabled) { background: #52245b; box-shadow: 0 12px 20px -14px rgba(64, 33, 67, 0.9); }
+.vb-btn--outline { background: #fff; border-color: var(--vb-accent); color: #52245b; }
+.vb-btn--outline:hover:not(:disabled) { background: var(--vb-accent); color: #fff; }
+.vb-btn--danger-soft { background: #fdf1f3; border-color: #f0c9d0; color: #a32b43; }
+.vb-btn--danger-soft:hover:not(:disabled) { background: #a32b43; border-color: #a32b43; color: #fff; }
+.vb-btn--danger { background: #a32b43; color: #fff; }
+.vb-btn--danger:hover:not(:disabled) { background: #8f2438; }
+
+/* Inputs and selects */
+.vb-field {
+    border: 1px solid #e5dce7; border-radius: 8px; background-color: #fff; color: var(--vb-ink); font-size: 13px;
+    transition: border-color 0.2s var(--vb-ease), box-shadow 0.2s var(--vb-ease);
+}
+.vb-field::placeholder { color: #9a8a9d; }
+.vb-field:hover { border-color: #cfb2d4; }
+.vb-field:focus { border-color: var(--vb-accent); box-shadow: 0 0 0 3px rgba(128, 84, 135, 0.2); outline: 0; }
+
+/* ---------- Loading: spinner on a button that is waiting ---------- */
+@keyframes vb-spin { to { transform: rotate(360deg); } }
+.vb-loading { pointer-events: none; opacity: 0.8; }
+.vb-loading::before {
+    content: ''; flex: none; display: inline-block; width: 14px; height: 14px; margin-right: 8px;
+    border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+    vertical-align: -2px; animation: vb-spin 0.7s linear infinite;
+}
+
+/* ---------- Account menu rows ---------- */
+.vb-menu-link {
+    display: flex; align-items: center; gap: 10px; padding: 9px 16px; color: #3d2a42; font-size: 13px; text-decoration: none;
+    transition: background-color 0.15s var(--vb-ease), color 0.15s var(--vb-ease);
+}
+.vb-menu-link svg { width: 16px; height: 16px; flex: none; color: var(--vb-accent); transition: transform 0.3s var(--vb-ease); }
+.vb-menu-link:hover { background: #f7eff8; color: var(--vb-plum); }
+.vb-menu-link:hover svg { transform: translateX(2px) scale(1.08); }
+
+/* ---------- Icon animation ----------
+   Header icons react to hover and to events: heart beats when a favorite is added, the cart bumps when an item is
+   added, the bell rings when a notification arrives. Each plays once; reduced motion turns them all off. */
+.vb-ico { transform-origin: center; }
+.vb-ico--bell { transform-origin: 50% 12%; }
+.vb-act:hover .vb-ico--bell, .is-ringing .vb-ico--bell { animation: vb-ring 0.9s var(--vb-ease); }
+.vb-act:hover .vb-ico--cart, .is-bump .vb-ico--cart { animation: vb-cart 0.55s var(--vb-ease); }
+.vb-act:hover .vb-ico--heart, .is-bump .vb-ico--heart { animation: vb-beat 0.7s var(--vb-ease); }
+.vb-act:hover .vb-ico--msg { animation: vb-nudge 0.5s var(--vb-ease); }
+.vb-act:hover .vb-ico--search { animation: vb-tilt 0.5s var(--vb-ease); }
+.vb-act:hover .vb-ico--up { animation: vb-lift 0.5s var(--vb-ease); }
+.vb-act:hover .vb-ico--grid { animation: vb-flip 0.5s var(--vb-ease); }
+.vb-act:hover .vb-ico--trash { animation: vb-wiggle 0.45s var(--vb-ease); }
+.vb-act:hover .vb-ico--arrow { transform: translateX(3px); }
+.vb-ico--arrow { transition: transform 0.3s var(--vb-ease); }
+@keyframes vb-ring { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(16deg); } 30% { transform: rotate(-14deg); } 45% { transform: rotate(10deg); } 60% { transform: rotate(-8deg); } 75% { transform: rotate(4deg); } }
+@keyframes vb-cart { 0% { transform: translateY(0) scale(1); } 35% { transform: translateY(-4px) scale(1.14) rotate(-6deg); } 70% { transform: translateY(0) scale(0.96); } 100% { transform: none; } }
+@keyframes vb-beat { 0%, 100% { transform: scale(1); } 20% { transform: scale(1.25); } 40% { transform: scale(1); } 60% { transform: scale(1.14); } }
+@keyframes vb-nudge { 0%, 100% { transform: none; } 40% { transform: translateY(-3px) rotate(-8deg); } 70% { transform: translateY(0) rotate(4deg); } }
+@keyframes vb-tilt { 0%, 100% { transform: none; } 45% { transform: scale(1.14) rotate(-12deg); } }
+@keyframes vb-lift { 0%, 100% { transform: none; } 45% { transform: translateY(-3px); } }
+@keyframes vb-flip { 0%, 100% { transform: none; } 50% { transform: rotate(90deg) scale(1.1); } }
+@keyframes vb-wiggle { 0%, 100% { transform: none; } 30% { transform: rotate(-10deg); } 60% { transform: rotate(8deg); } }
+@keyframes vb-draw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+
+/* ---------- Banner notifications (partials/banner.blade.php) ---------- */
+.vb-banner { box-shadow: 0 14px 30px -16px rgba(43, 23, 48, 0.45); animation: vb-banner-in 0.45s var(--vb-ease) both; }
+.vb-banner.is-leaving { animation: vb-banner-out 0.22s var(--vb-ease) forwards; }
+@keyframes vb-banner-in { from { opacity: 0; transform: translateY(-14px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes vb-banner-out { to { opacity: 0; transform: translateY(-8px) scale(0.97); } }
+.vb-banner--success { background: #eaf5ee; border-color: #c9e5d3; color: #1f5a38; }
+.vb-banner--error   { background: #fdf1f3; border-color: #f0c9d0; color: #8f2438; }
+.vb-banner--warning { background: #fbf3dc; border-color: #eadfb8; color: #6b4d09; }
+.vb-banner--info    { background: #f5ecf6; border-color: #e3d3e6; color: #402143; }
+.vb-banner--success .vb-banner__icon { background: #c9e5d3; color: #2e6b46; }
+.vb-banner--error   .vb-banner__icon { background: #f7d6dc; color: #a32b43; }
+.vb-banner--warning .vb-banner__icon { background: #f2e4b4; color: #7a5a0c; }
+.vb-banner--info    .vb-banner__icon { background: #e3d3e6; color: #52245b; }
+.vb-banner__action { background: rgba(255, 255, 255, 0.75); border: 1px solid currentColor; }
+.vb-banner__action:hover { background: #fff; }
+.vb-banner__close { color: inherit; opacity: 0.6; }
+.vb-banner__close:hover { opacity: 1; background: rgba(255, 255, 255, 0.7); }
+.vb-banner__bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: currentColor; opacity: 0.35; transform-origin: left; animation: vb-banner-bar var(--dur, 5000ms) linear forwards; }
+.vb-banner:hover .vb-banner__bar { animation-play-state: paused; }
+@keyframes vb-banner-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.vb-banner--success .vb-draw { stroke-dasharray: 24; animation: vb-draw 0.5s 0.1s var(--vb-ease) both; }
+.vb-banner--info .vb-banner__bell { transform-origin: 50% 12%; animation: vb-ring 0.9s 0.2s var(--vb-ease); }
 
 /* ---------- Back to top ---------- */
 .vb-top { box-shadow: 0 10px 24px -10px rgba(43, 23, 48, 0.7); }
@@ -232,6 +323,8 @@ html.vb-text-xl body { zoom: 1.16; }
     .vb-float { animation: none; }
     .vb-skel, .vb-img-shell::before { animation: none; }
     .vb-dot.is-active .vb-dot__fill { animation: none !important; transform: scaleX(1); }
+    .vb-banner__bar { display: none; }
+    .vb-loading::before { animation-duration: 1.4s !important; animation-iteration-count: infinite !important; }
 }
 html.vb-calm *, html.vb-calm *::before, html.vb-calm *::after {
     transition-duration: 0.01ms !important;
@@ -243,6 +336,8 @@ html.vb-calm .vb-rise, html.vb-calm.vb-js .vb-reveal { opacity: 1; transform: no
 html.vb-calm .vb-float { animation: none; }
 html.vb-calm .vb-skel, html.vb-calm .vb-img-shell::before { animation: none; }
 html.vb-calm .vb-dot.is-active .vb-dot__fill { animation: none !important; transform: scaleX(1); }
+html.vb-calm .vb-banner__bar { display: none; }
+html.vb-calm .vb-loading::before { animation-duration: 1.4s !important; animation-iteration-count: infinite !important; }
 
 [x-cloak] { display: none !important; }
 

@@ -22,6 +22,8 @@ Unsubmitted suspension reasons, duration and details survive a same-tab reload f
 
 New logistics-center approval remains in Admin Registrations. Rider and admin accounts are outside this screen.
 
+There is no separate cross-platform ban, reason catalogue or appeal workflow: suspension (timed or permanent) and deactivation are the only account states, recorded in `admin_action_logs`.
+
 The Active, Suspended, and Deactivated filters now apply to the server query before pagination; they cover all matching approved accounts rather than just the loaded page. Rejected remains a separate server-side view.
 
 ## Backend update and remaining work
@@ -39,3 +41,11 @@ The browser still fetches the full index page for in-place refresh; the existing
 See [Registration Review](../manage-account-registration/spec.md), [Admin document viewer](../document-viewer/spec.md), [domain status](../../../domain-feature-status.md), and the [Admin domain page](../../../domains/Admin.md).
 
 **31 October 2026 (User Management pass).** The list and dialogs follow the Admin design system. The user-type dropdown was removed (the count cards filter by type); Status is a plain select; the date filter is a plain date field. Rows have a bordered "View" button and stay clickable. Status chips: Active (success), Suspended (warning), Deactivated (neutral), Rejected (danger). The client-side "this page only" status filter and its "no X users on this page" message were removed because the server filters by status. Suspend, Deactivate and Activate dialogs use the same layout as the Registrations reject dialog, with buttons that start with a verb ("Keep active", "Suspend account"). The result dialog (`confirmation-modal`) was replaced by the flash banner. Pagination now comes from the shared `admin/partials/pagination.blade.php`.
+
+## 11 November 2026: account deletion requests
+
+Under the Suspend/Deactivate (or Activate) actions in a Buyer or Seller profile there is now a **User request for deletion of account** bar, showing a *Pending* pill while a request waits. It opens a panel with the submitted reasons, comment and requested date — or an empty state when the user has not asked. While pending, Admin can **Approve deletion**, which marks the request approved and deactivates the account (records are kept), or **Reject request** with an optional note up to 500 characters. Both write `admin_action_logs` (`deletion_approved`, `deletion_rejected`) and show the shared confirmation banner. The table and count cards are unchanged; there is no pending-deletion filter or badge on the list. See [account deletion request](../../shared/account-deletion-request/spec.md).
+
+## 11 November 2026: deletion request notification, filter and badge
+
+A new Buyer or Seller deletion request also creates an Admin operational notification ("Account deletion request") that links to User Management filtered to those accounts. The filter toolbar gained a **Deletion requests** pill with a count badge; it lists only approved Buyer/Seller accounts whose owner has a `pending` request, and turns off the Rejected toggle when used. The profile-modal bar from the earlier entry is unchanged. See [account deletion request](../../shared/account-deletion-request/spec.md).

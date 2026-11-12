@@ -41,6 +41,23 @@ return [
         ))),
     ],
 
+    'vendo' => [
+        // Where the buyer-facing landing sends someone who wants the Rider app.
+        // Keep the GitHub asset name stable: releases/latest/download/<asset> always
+        // serves the newest release, so the URL survives new builds.
+        'rider_app_url' => env(
+            'RIDER_APP_DOWNLOAD_URL',
+            'https://github.com/Snowden199x/E-Comm_Mobile/releases/latest/download/vendo-rider.apk',
+        ),
+    ],
+
+    'firebase' => [
+        // Service account JSON from the Firebase console (Project settings › Service accounts).
+        // Without it, push is disabled and the Rider app keeps its polling fallback.
+        'credentials' => env('FIREBASE_CREDENTIALS'),
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

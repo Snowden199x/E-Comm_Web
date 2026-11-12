@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\RiderPasswordResetController;
 use App\Http\Controllers\Api\RiderProfileController;
 use App\Http\Controllers\Api\RiderRegistrationController;
 use App\Http\Controllers\Api\RiderNotificationController;
+use App\Http\Controllers\Api\RiderPushTokenController;
 use App\Http\Controllers\Api\RiderScanController;
 use App\Http\Controllers\Api\RiderFacilityScanController;
 use App\Http\Controllers\Api\RiderDeliveryProofController;
@@ -73,6 +74,8 @@ Route::prefix('v1/rider')->group(function () {
         Route::post('/profile/photo', [RiderProfileController::class, 'uploadPhoto']);
         Route::put('/profile/password', [RiderProfileController::class, 'updatePassword']);
         Route::get('/notifications', [RiderNotificationController::class, 'index']);
+        Route::post('/push-tokens', [RiderPushTokenController::class, 'store']);
+        Route::delete('/push-tokens', [RiderPushTokenController::class, 'destroy']);
         Route::post('/notifications/read-all', [RiderNotificationController::class, 'readAll']);
         Route::post('/notifications/{notification}/read', [RiderNotificationController::class, 'read'])
             ->whereNumber('notification');
@@ -80,8 +83,15 @@ Route::prefix('v1/rider')->group(function () {
         Route::get('/cash', [\App\Http\Controllers\Api\RiderCashController::class, 'show']);
         Route::post('/tasks/{task}/exceptions', [\App\Http\Controllers\Api\RiderTaskExceptionController::class, 'store']);
         Route::post('/scans', [RiderScanController::class, 'store']);
+        Route::post('/pickups/bulk', [RiderScanController::class, 'bulkPickup']);
         Route::post('/delivery-proofs', [RiderDeliveryProofController::class, 'store']);
         Route::post('/deliveries/{order}/reschedule', [RiderDeliveryRescheduleController::class, 'store'])
+            ->whereNumber('order');
+        Route::post('/deliveries/{order}/return-scan', [\App\Http\Controllers\Api\RiderReturnScanController::class, 'store'])
+            ->whereNumber('order');
+        Route::post('/deliveries/{order}/return-pickup', [\App\Http\Controllers\Api\RiderReturnLegController::class, 'pickup'])
+            ->whereNumber('order');
+        Route::post('/deliveries/{order}/return-handover', [\App\Http\Controllers\Api\RiderReturnLegController::class, 'handover'])
             ->whereNumber('order');
         Route::post('/facility-scans', [RiderFacilityScanController::class, 'store']);
         Route::post('/logout', [RiderAuthController::class, 'logout']);

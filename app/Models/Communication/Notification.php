@@ -2,6 +2,8 @@
 
 namespace App\Models\Communication;
 
+use App\Jobs\SendPushNotification;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 class Notification extends Model
@@ -39,5 +41,31 @@ class Notification extends Model
     public function user()
     {
         return $this->belongsTo(\App\Models\User::class);
+    }
+
+    /**
+     * Rider notifications also go out as a push. The row stays the source of truth, and
+     * when Firebase is not configured the job is skipped so polling still works.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (Notification $notification) {
+            if ($notification->user_id === null) {
+                return;
+            }
+
+            $role = User::query()->whereKey($notification->user_id)->value('role');
+            if ($role !== 'courier') {
+                return;
+            }
+
+            // Without Firebase credentials every device would answer "disabled";
+            // skipping the job keeps the queue quiet and polling unaffected.
+            if (! app(\App\Services\FirebasePushService::class)->enabled()) {
+                return;
+            }
+
+            SendPushNotification::dispatch($notification->id)->afterCommit();
+        });
     }
 }

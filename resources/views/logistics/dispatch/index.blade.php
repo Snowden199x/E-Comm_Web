@@ -53,7 +53,7 @@
                                 <button type="submit" class="lg-btn lg-btn--sm">Complete sorting</button>
                             </form>
                         @elseif ($isOrigin && $order->status === 'sorted' && ! $isDestination && ! $order->linehaul_rider_id)
-                            <form method="POST" action="{{ route('logistics.dispatch.linehaul-rider', $order) }}" class="lg-dispatch-inline">@csrf<select name="rider_id" class="lg-select" required><option value="">Truck Rider</option>@foreach ($truckRiders as $rider)<option value="{{ $rider->user_id }}">{{ $rider->user?->name }}</option>@endforeach</select><button class="lg-btn lg-btn--sm">Assign linehaul</button></form>
+                            <form method="POST" action="{{ route('logistics.dispatch.linehaul-rider', $order) }}" class="lg-dispatch-inline">@csrf<select name="vehicle_id" class="lg-select" required><option value="">Company truck</option>@foreach ($vehicles as $vehicle)<option value="{{ $vehicle->id }}">{{ $vehicle->plate_number }} · {{ $vehicle->vehicle_type }}</option>@endforeach</select><select name="rider_id" class="lg-select" required><option value="">Driver</option>@foreach ($truckRiders as $rider)<option value="{{ $rider->user_id }}">{{ $rider->user?->name }} · {{ $rider->vehicle_type }}</option>@endforeach</select><button class="lg-btn lg-btn--sm">Assign truck</button></form>
                         @endif
 
                         @if ($isDestination && ($order->status === 'at_destination_hub' || ($isOrigin && $order->status === 'sorted' && ! $hasNewRoute)) && ! $order->delivery_courier_id)

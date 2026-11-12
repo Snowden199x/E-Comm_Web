@@ -31,7 +31,7 @@ Each notification should link to the relevant seller-owned order, product, revie
 | Voucher first activated | Implemented | Sends one notice per prior Buyer/voucher and links to the Seller's shop. |
 | Voucher ends or reaches its total use limit | Implemented | Detected during Seller notification polling; links to Vouchers and is recorded once per voucher. |
 
-Stock and shipment events are emitted on changes rather than page reads. A stable event key for broader retry deduplication remains future work. Notification text avoids private buyer contact information. Email and push settings can follow when those channels exist.
+Stock and shipment events are emitted on changes rather than page reads. A stable event key for broader retry deduplication remains future work. Notification text avoids private buyer contact information. Order email notifications are out of scope by owner decision; delivery stays in-app (the Seller bell and inbox).
 
 ## Backend contract
 
@@ -41,7 +41,7 @@ The notification destination resolves owned order detail URLs through the full O
 
 The dashboard's recent list and the header badge should use the same notification source so their counts agree. Future mobile clients can consume the same recipient-scoped event records without changing the event definitions.
 
-**Related:** [Order notifications](../order-notification/spec.md) · [Seller Messages](../chat-messaging/spec.md) · [Seller domain](../../../domains/Seller.md)
+**Related:** [Seller Messages](../chat-messaging/spec.md) · [Seller domain](../../../domains/Seller.md)
 ## 25 September 2026 update
 
 The dashboard notification panel and header bell reveal roughly three recent items before scrolling. Both expose View all; the Inventory Alerts panel opens the low-stock inventory filter. The seller bell and dashboard card refresh every three seconds. The bell plays a short tone for newly observed notifications and notification controls, subject to browser audio permission after interaction.

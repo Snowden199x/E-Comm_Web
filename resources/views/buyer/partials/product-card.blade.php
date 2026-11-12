@@ -4,7 +4,7 @@
        $showShop (bool, optional, default true: show the shop name; the shop page passes false because every card is from that shop).
      Optional data (shown only when the controller supplies it):
        reviews_avg_rating, sold_count, compare_at_price, seller.sellerDetail
-     The heart saves the product to the buyer's saved items (browser storage, see favorites-panel.blade.php);
+     The heart saves the product to the buyer's favorites (see favorites-panel.blade.php);
      it never adds anything to the cart. --}}
 @php
     $compact = $compact ?? false;
@@ -16,18 +16,19 @@
     $shopName = $seller?->sellerDetail?->business_name ?: $seller?->name;
     $rating = $product->reviews_avg_rating ?? null;
     $sold = $product->sold_count ?? null;
-    $compareAt = $product->compare_at_price ?? null;
-    $discount = ($compareAt && $compareAt > $product->price) ? (int) round((1 - ($product->price / $compareAt)) * 100) : 0;
+    $price = (float) $product->effective_price;
+    $compareAt = $product->compare_at_price ?? ($product->hasActiveSale() ? (float) $product->price : null);
+    $discount = ($compareAt && $compareAt > $price) ? (int) round((1 - ($price / $compareAt)) * 100) : 0;
     $colorOptions = array_values(array_filter(array_map('trim', explode(',', (string) $product->colors))));
     $sizeOptions = array_values(array_filter(array_map('trim', explode(',', (string) $product->sizes))));
     $hasOptions = $colorOptions || $sizeOptions;
-    $soldOut = $product->stock <= 0;
+    $soldOut = $product->is_sold_out;
     $fmt = fn ($amount) => '₱' . number_format($amount, fmod((float) $amount, 1) ? 2 : 0);
     $productUrl = route('buyer.products.show', $product);
     $payload = [
         'id' => $product->id,
         'name' => $product->name,
-        'price' => $fmt($product->price),
+        'price' => $fmt($price),
         'image' => $imageUrl,
         'colors' => $colorOptions,
         'sizes' => $sizeOptions,
@@ -37,7 +38,7 @@
     $favorite = [
         'id' => $product->id,
         'name' => $product->name,
-        'price' => $fmt($product->price),
+        'price' => $fmt($price),
         'image' => $imageUrl,
         'url' => parse_url($productUrl, PHP_URL_PATH) ?: $productUrl,
         'shop' => $shopName,
@@ -63,12 +64,13 @@
             </span>
         @endif
 
-        <!-- Save for later (does not touch the cart) -->
+        <!-- Favorite (does not touch the cart) -->
         <button type="button" x-data="{ p: @js($favorite) }" @click.prevent.stop="$store.fav.toggle(p)"
-            :aria-pressed="$store.fav.has(p.id)" :aria-label="($store.fav.has(p.id) ? 'Remove ' : 'Save ') + p.name + ($store.fav.has(p.id) ? ' from saved items' : ' for later')"
-            :class="$store.fav.has(p.id) ? 'is-saved bg-white text-[#c0395b]' : 'bg-white/90 text-[#805487] hover:bg-white hover:text-[#c0395b]'"
-            class="vb-heart absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full shadow-[0_6px_14px_-8px_rgba(43,23,48,0.6)]">
-            <svg class="h-[17px] w-[17px]" viewBox="0 0 24 24" :fill="$store.fav.has(p.id) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.4s-7.6-4.6-9.2-9.5C1.7 7.5 3.8 4.6 6.9 4.6c1.9 0 3.6 1 5.1 3 1.5-2 3.2-3 5.1-3 3.1 0 5.2 2.9 4.1 6.3-1.6 4.9-9.2 9.5-9.2 9.5z" /></svg>
+            :aria-pressed="$store.fav.has(p.id)" :aria-label="($store.fav.has(p.id) ? 'Remove ' : 'Add ') + p.name + ($store.fav.has(p.id) ? ' from favorites' : ' to favorites')"
+            :disabled="$store.fav.busy[p.id]"
+            :class="[$store.fav.has(p.id) ? 'is-saved bg-white text-[#a32b43]' : 'bg-white/90 text-[#805487] hover:bg-white hover:text-[#a32b43]', $store.fav.busy[p.id] ? 'opacity-60' : '']"
+            class="vb-heart vb-act absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full shadow-[0_6px_14px_-8px_rgba(43,23,48,0.6)]">
+            <svg class="vb-ico vb-ico--heart h-[17px] w-[17px]" viewBox="0 0 24 24" :fill="$store.fav.has(p.id) ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.4s-7.6-4.6-9.2-9.5C1.7 7.5 3.8 4.6 6.9 4.6c1.9 0 3.6 1 5.1 3 1.5-2 3.2-3 5.1-3 3.1 0 5.2 2.9 4.1 6.3-1.6 4.9-9.2 9.5-9.2 9.5z" /></svg>
         </button>
     </div>
 
@@ -89,7 +91,10 @@
 
         <div class="mt-1 flex items-center justify-between gap-2">
             <div class="flex min-w-0 items-baseline gap-1.5">
-                <span class="text-[16px] font-semibold leading-6 text-[#52245b]">{{ $fmt($product->price) }}</span>
+                <span class="text-[16px] font-semibold leading-6 text-[#52245b]">{{ $fmt($price) }}</span>
+                @if ($compareAt && $compareAt > $price)
+                    <span class="ml-1 text-[11px] text-[#8c7a8e] line-through">{{ $fmt($compareAt) }}</span>
+                @endif
                 @if ($discount > 0)
                     <span class="text-[11px] text-[#9a8a9d] line-through">{{ $fmt($compareAt) }}</span>
                 @endif
@@ -98,14 +103,14 @@
             @if ($compact && ! $soldOut)
                 @if ($product->has_variations)
                     <a href="{{ $productUrl }}" aria-label="Choose a variant of {{ $product->name }}"
-                        class="relative z-10 grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#805487] hover:bg-[#f3e8f5]">
-                        <span class="vb-icon h-[18px] w-[18px]" style="--icon: url('{{ asset('assets/icons/buyer/cart-icon.svg') }}')"></span>
+                        class="vb-act relative z-10 grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#805487] hover:bg-[#f3e8f5]">
+                        <span class="vb-icon vb-ico vb-ico--cart h-[18px] w-[18px]" style="--icon: url('{{ asset('assets/icons/buyer/cart-icon.svg') }}')"></span>
                     </a>
                 @elseif ($hasOptions)
                     <button type="button" aria-label="Add {{ $product->name }} to cart"
                         @click="$dispatch('quick-add', @js($payload))"
-                        class="relative z-10 grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#805487] transition-all duration-300 ease-vendo hover:bg-[#f3e8f5] hover:text-[#402143] active:scale-90">
-                        <span class="vb-icon h-[18px] w-[18px]" style="--icon: url('{{ asset('assets/icons/buyer/cart-icon.svg') }}')"></span>
+                        class="vb-act relative z-10 grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#805487] transition-all duration-300 ease-vendo hover:bg-[#f3e8f5] hover:text-[#402143] active:scale-90">
+                        <span class="vb-icon vb-ico vb-ico--cart h-[18px] w-[18px]" style="--icon: url('{{ asset('assets/icons/buyer/cart-icon.svg') }}')"></span>
                     </button>
                 @else
                     <form method="POST" action="{{ route('buyer.cart.store') }}" x-data="{ adding: false }" class="relative z-10"
@@ -113,8 +118,8 @@
                         @csrf
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
                         <button type="submit" :disabled="adding" aria-label="Add {{ $product->name }} to cart"
-                            class="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#805487] transition-all duration-300 ease-vendo hover:bg-[#f3e8f5] hover:text-[#402143] active:scale-90 disabled:opacity-50">
-                            <span class="vb-icon h-[18px] w-[18px]" style="--icon: url('{{ asset('assets/icons/buyer/cart-icon.svg') }}')"></span>
+                            class="vb-act grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#805487] transition-all duration-300 ease-vendo hover:bg-[#f3e8f5] hover:text-[#402143] active:scale-90 disabled:opacity-50">
+                            <span class="vb-icon vb-ico vb-ico--cart h-[18px] w-[18px]" style="--icon: url('{{ asset('assets/icons/buyer/cart-icon.svg') }}')"></span>
                         </button>
                     </form>
                 @endif
@@ -131,21 +136,21 @@
 
             <div class="relative z-10 mt-2.5">
                 @if ($soldOut)
-                    <span class="flex h-8 w-full items-center justify-center rounded-md bg-[#efe8f0] text-[12px] font-medium text-[#8c7a8e]">Out of Stock</span>
+                    <span class="flex h-8 w-full items-center justify-center rounded-md bg-[#efe8f0] text-[12px] font-medium text-[#7a6a7e]">Out of stock</span>
                 @elseif ($toProduct || $product->has_variations)
                     <a href="{{ $productUrl }}"
-                        class="flex h-8 w-full items-center justify-center rounded-md border border-[#805487] bg-white text-[12px] font-medium text-[#52245b] transition-all duration-300 ease-vendo hover:bg-[#805487] hover:text-white active:scale-[0.97]">{{ $toProduct ? 'Add to Cart' : 'Choose variation' }}</a>
+                        class="flex h-8 w-full items-center justify-center rounded-md border border-[#805487] bg-white text-[12px] font-medium text-[#52245b] transition-all duration-300 ease-vendo hover:bg-[#805487] hover:text-white active:scale-[0.97]">{{ $toProduct ? 'View product' : 'Choose options' }}</a>
                 @elseif ($hasOptions)
                     <button type="button" @click="$dispatch('quick-add', @js($payload))"
-                        class="flex h-8 w-full items-center justify-center rounded-md border border-[#805487] bg-white text-[12px] font-medium text-[#52245b] transition-all duration-300 ease-vendo hover:bg-[#805487] hover:text-white active:scale-[0.97]">Add to Cart</button>
+                        class="flex h-8 w-full items-center justify-center rounded-md border border-[#805487] bg-white text-[12px] font-medium text-[#52245b] transition-all duration-300 ease-vendo hover:bg-[#805487] hover:text-white active:scale-[0.97]">Add to cart</button>
                 @else
                     <form method="POST" action="{{ route('buyer.cart.store') }}" x-data="{ adding: false }"
                         x-target="cart-badge buyer-toast" @ajax:before="adding = true" @ajax:after="adding = false">
                         @csrf
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
-                        <button type="submit" :disabled="adding"
+                        <button type="submit" :disabled="adding" :class="adding && 'vb-loading'"
                             class="flex h-8 w-full items-center justify-center rounded-md border border-[#805487] bg-white text-[12px] font-medium text-[#52245b] transition-all duration-300 ease-vendo hover:bg-[#805487] hover:text-white active:scale-[0.97] disabled:opacity-70">
-                            <span x-text="adding ? 'Adding…' : 'Add to Cart'">Add to Cart</span>
+                            <span x-text="adding ? 'Adding…' : 'Add to cart'">Add to cart</span>
                         </button>
                     </form>
                 @endif

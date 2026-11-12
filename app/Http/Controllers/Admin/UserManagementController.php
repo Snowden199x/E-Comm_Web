@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccountDeletionRequest;
 use App\Models\User;
 use App\Models\AdminActionLog;
 use App\Services\OrderRoutingService;
@@ -17,7 +18,8 @@ class UserManagementController extends Controller
     public function index(Request $request): View
     {
         $showRejected = $request->boolean('rejected');
-        $users = $this->filteredUsers($request, $showRejected);
+        $showDeletionRequests = $request->boolean('deletion');
+        $users = $this->filteredUsers($request, $showRejected, $showDeletionRequests);
 
         $managed = User::query()->where('status', 'approved');
         $stats = [
@@ -26,19 +28,24 @@ class UserManagementController extends Controller
             'buyers' => (clone $managed)->where('role', 'buyer')->count(),
             'logistics_centers' => (clone $managed)->where('role', 'logistics_center')->count(),
         ];
+        // Badge count for the "Deletion requests" filter; only approved Buyer/Seller rows can request.
+        $pendingDeletions = AccountDeletionRequest::query()->where('status', 'pending')
+            ->whereHas('user', fn ($query) => $query->where('status', 'approved')->whereIn('role', ['buyer', 'seller']))
+            ->count();
 
-        return view('admin.user-management.index', compact('users', 'stats', 'showRejected'));
+        return view('admin.user-management.index', compact('users', 'stats', 'showRejected', 'showDeletionRequests', 'pendingDeletions'));
     }
 
     public function table(Request $request): View
     {
         $showRejected = $request->boolean('rejected');
-        $users = $this->filteredUsers($request, $showRejected);
+        $showDeletionRequests = $request->boolean('deletion');
+        $users = $this->filteredUsers($request, $showRejected, $showDeletionRequests);
 
         return view('admin.user-management.partials.users-table', compact('users'));
     }
 
-    private function filteredUsers(Request $request, bool $showRejected)
+    private function filteredUsers(Request $request, bool $showRejected, bool $showDeletionRequests = false)
     {
         $query = User::whereIn('role', ['seller', 'buyer', 'logistics_center']);
 
@@ -64,7 +71,11 @@ class UserManagementController extends Controller
             $query->whereDate('created_at', $request->date);
         }
 
-        return $query->with(['sellerDetail', 'buyerDetail', 'logisticsCenterDetail', 'categories'])
+        if ($showDeletionRequests) {
+            $query->whereHas('pendingDeletionRequest');
+        }
+
+        return $query->with(['sellerDetail', 'buyerDetail', 'logisticsCenterDetail', 'categories', 'pendingDeletionRequest', 'latestDeletionRequest'])
             ->latest()
             ->paginate(8)
             ->withQueryString();
@@ -129,6 +140,61 @@ class UserManagementController extends Controller
         }
 
         return back()->with('confirmation', $wasSuspended ? 'suspension_lifted' : 'activated');
+    }
+
+    /** Approving a deletion request closes the account: it can no longer sign in, and orders stay on record. */
+    public function approveDeletion(User $user): RedirectResponse
+    {
+        $deletion = $this->pendingDeletionFor($user);
+
+        DB::transaction(function () use ($user, $deletion) {
+            $deletion->update([
+                'status' => 'approved',
+                'reviewed_by' => auth('admin')->id(),
+                'reviewed_at' => now(),
+            ]);
+            $user->update([
+                'account_status' => 'deactivated',
+                'suspended_at' => null,
+                'suspended_until' => null,
+            ]);
+            AdminActionLog::record($user, 'deletion_approved', implode(', ', $deletion->reasons ?? []));
+        }, 3);
+
+        return back()->with('confirmation', 'deletion_approved');
+    }
+
+    /** Rejecting a deletion request keeps the account as it is and records the admin's note. */
+    public function rejectDeletion(Request $request, User $user): RedirectResponse
+    {
+        $deletion = $this->pendingDeletionFor($user);
+        $data = $request->validate([
+            'admin_notes' => ['nullable', 'string', 'max:500'],
+        ], [
+            'admin_notes.max' => 'Keep the note to 500 characters or fewer.',
+        ]);
+
+        DB::transaction(function () use ($user, $deletion, $data) {
+            $deletion->update([
+                'status' => 'rejected',
+                'reviewed_by' => auth('admin')->id(),
+                'reviewed_at' => now(),
+                'admin_notes' => $data['admin_notes'] ?? null,
+            ]);
+            AdminActionLog::record($user, 'deletion_rejected', $data['admin_notes'] ?? null);
+        }, 3);
+
+        return back()->with('confirmation', 'deletion_rejected');
+    }
+
+    private function pendingDeletionFor(User $user): AccountDeletionRequest
+    {
+        abort_unless(in_array($user->role, ['buyer', 'seller'], true) && $user->status === 'approved', 403);
+
+        $deletion = $user->pendingDeletionRequest()->first();
+        abort_unless($deletion, 404);
+
+        return $deletion;
     }
 
     private function authorizeManagedAccount(User $user, array $accountStatuses): void

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AccountManagementController;
 use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\LimitOverrideController;
 use App\Http\Controllers\Admin\MessageController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\PlatformSettingsController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\VerificationDocumentController;
 use App\Http\Controllers\MarketplaceMessageController;
 use App\Http\Controllers\UserReportController;
 use App\Http\Controllers\Buyer\AccountController as BuyerAccountController;
+use App\Http\Controllers\Buyer\AddressBookController as BuyerAddressBookController;
 use App\Http\Controllers\Buyer\AuthenticatedSessionController as BuyerAuthenticatedSessionController;
 use App\Http\Controllers\Buyer\CartController as BuyerCartController;
 use App\Http\Controllers\Buyer\CategoryController as BuyerCategoryController;
@@ -46,6 +48,7 @@ use App\Http\Controllers\Seller\DashboardController as SellerDashboardController
 use App\Http\Controllers\Seller\CompletedOrdersController;
 use App\Http\Controllers\Seller\FeedbackController as SellerFeedbackController;
 use App\Http\Controllers\Seller\OrderController;
+use App\Http\Controllers\Seller\ReturnRequestController as SellerReturnRequestController;
 use App\Http\Controllers\Seller\ProductController;
 use App\Http\Controllers\Seller\RegisteredUserController as SellerRegisteredUserController;
 use App\Http\Controllers\Seller\ShipmentController;
@@ -122,6 +125,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/seller-category-requests/{categoryRequest}/decision', [AdminSellerCategoryRequestController::class, 'decide'])->whereNumber('categoryRequest')->name('category-requests.decide');
 
         Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
+        Route::get('/limits', [LimitOverrideController::class, 'index'])->name('limit-overrides.index');
+
+        Route::get('/audit-logs', [\App\Http\Controllers\Admin\AuditLogController::class, 'index'])->name('audit-logs.index');
+        Route::get('/support-tickets', [\App\Http\Controllers\Admin\SupportTicketController::class, 'index'])->name('support-tickets.index');
+        Route::get('/support-tickets/{ticket}', [\App\Http\Controllers\Admin\SupportTicketController::class, 'show'])->whereNumber('ticket')->name('support-tickets.show');
+        Route::post('/support-tickets/{ticket}/messages', [\App\Http\Controllers\Admin\SupportTicketController::class, 'reply'])->middleware('throttle:20,1')->whereNumber('ticket')->name('support-tickets.reply');
+        Route::patch('/support-tickets/{ticket}/status', [\App\Http\Controllers\Admin\SupportTicketController::class, 'status'])->whereNumber('ticket')->name('support-tickets.status');
+        Route::get('/support-tickets/attachments/{attachment}', [\App\Http\Controllers\SupportTicketAttachmentController::class, 'admin'])->whereNumber('attachment')->name('support-tickets.attachments.show');
+        Route::post('/limits/{order}/attempt', [LimitOverrideController::class, 'grantAttempt'])->whereNumber('order')->name('limit-overrides.attempt');
+        Route::post('/limits/{order}/window', [LimitOverrideController::class, 'extendReturnWindow'])->whereNumber('order')->name('limit-overrides.window');
         Route::get('/logistics-coverage', [\App\Http\Controllers\Admin\LogisticsCoverageController::class, 'index'])->name('logistics-coverage.index');
         Route::get('/logistics-documents', [\App\Http\Controllers\Admin\LogisticsDocumentReviewController::class, 'index'])->name('logistics-documents.index');
         Route::get('/logistics-documents/{documentRequest}/file', [\App\Http\Controllers\Admin\LogisticsDocumentReviewController::class, 'file'])->whereNumber('documentRequest')->name('logistics-documents.file');
@@ -130,6 +143,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/user-management/{user}/suspend', [UserManagementController::class, 'suspend'])->name('user-management.suspend');
         Route::post('/user-management/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('user-management.deactivate');
         Route::post('/user-management/{user}/activate', [UserManagementController::class, 'activate'])->name('user-management.activate');
+        Route::post('/user-management/{user}/deletion-request/approve', [UserManagementController::class, 'approveDeletion'])->name('user-management.deletion-request.approve');
+        Route::post('/user-management/{user}/deletion-request/reject', [UserManagementController::class, 'rejectDeletion'])->name('user-management.deletion-request.reject');
         Route::get('/user-management/table', [UserManagementController::class, 'table'])->name('user-management.table');
 
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
@@ -260,6 +275,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/products/{product}', [BuyerProductController::class, 'show'])->middleware('auth')->name('products.show');
     Route::get('/sellers', [BuyerSellerProfileController::class, 'index'])->middleware('auth')->name('sellers.index');
     Route::get('/sellers/{seller}', [BuyerSellerProfileController::class, 'show'])->middleware('auth')->whereNumber('seller')->name('sellers.show');
+    Route::get('/favorites', [\App\Http\Controllers\Buyer\PersonalizationController::class, 'favorites'])->name('favorites');
     Route::get('/saved-items', [\App\Http\Controllers\Buyer\PersonalizationController::class, 'savedItems'])->name('saved-items.index');
     Route::get('/case-messages/{complaint}', [\App\Http\Controllers\CaseMessageController::class, 'show'])->whereNumber('complaint')->name('case-messages.show');
     Route::post('/case-messages/{complaint}', [\App\Http\Controllers\CaseMessageController::class, 'store'])->middleware('throttle:20,1')->whereNumber('complaint')->name('case-messages.store');
@@ -279,9 +295,18 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::post('/checkout/voucher-quote', [BuyerCheckoutController::class, 'voucherQuote'])->middleware(['auth', 'throttle:20,1'])->name('checkout.voucher-quote');
     Route::get('/vouchers', [\App\Http\Controllers\Buyer\VoucherController::class, 'index'])->middleware('auth')->name('vouchers.index');
     Route::get('/complaints', [\App\Http\Controllers\Buyer\ComplaintController::class, 'index'])->middleware('auth')->name('complaints.index');
+    Route::get('/support', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'index'])->middleware('auth')->name('support.index');
+    Route::get('/support/create', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'create'])->middleware('auth')->name('support.create');
+    Route::post('/support', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'store'])->middleware(['auth', 'throttle:5,1'])->name('support.store');
+    Route::get('/support/{ticket}', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'show'])->middleware('auth')->whereNumber('ticket')->name('support.show');
+    Route::post('/support/{ticket}/messages', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'reply'])->middleware(['auth', 'throttle:20,1'])->whereNumber('ticket')->name('support.reply');
+    Route::post('/support/{ticket}/close', [\App\Http\Controllers\Buyer\SupportTicketController::class, 'close'])->middleware('auth')->whereNumber('ticket')->name('support.close');
+    Route::get('/support/attachments/{attachment}', [\App\Http\Controllers\SupportTicketAttachmentController::class, 'buyer'])->middleware('auth')->whereNumber('attachment')->name('support.attachments.show');
     Route::get('/orders', [BuyerOrderController::class, 'index'])->middleware('auth')->name('orders.index');
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->middleware('auth')->name('orders.show');
     Route::patch('/orders/{order}/cancel', [BuyerOrderController::class, 'cancel'])->middleware('auth')->whereNumber('order')->name('orders.cancel');
+    Route::get('/orders/{order}/return', [BuyerOrderController::class, 'returnForm'])->middleware('auth')->whereNumber('order')->name('orders.return.create');
+    Route::post('/orders/{order}/return', [BuyerOrderController::class, 'requestReturn'])->middleware(['auth', 'throttle:10,1'])->whereNumber('order')->name('orders.return.store');
     Route::get('/messages/orders/{order}', [MarketplaceMessageController::class, 'buyerShow'])->middleware('auth')->whereNumber('order')->name('marketplace-messages.show');
     Route::post('/messages/orders/{order}', [MarketplaceMessageController::class, 'buyerStore'])->middleware(['auth', 'throttle:20,1'])->whereNumber('order')->name('marketplace-messages.store');
     Route::get('/messages/orders/{order}/fetch', [MarketplaceMessageController::class, 'buyerFetch'])->middleware('auth')->whereNumber('order')->name('marketplace-messages.fetch');
@@ -299,6 +324,12 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/account', [BuyerAccountController::class, 'index'])->middleware('auth')->name('account.index');
     Route::put('/account', [BuyerAccountController::class, 'update'])->middleware('auth')->name('account.update');
     Route::put('/account/password', [BuyerAccountController::class, 'updatePassword'])->middleware('auth')->name('account.password');
+    Route::post('/account/deletion-request', [BuyerAccountController::class, 'requestDeletion'])->middleware(['auth', 'throttle:5,1'])->name('account.deletion-request');
+    Route::get('/addresses', [BuyerAddressBookController::class, 'index'])->name('addresses.index');
+    Route::post('/addresses', [BuyerAddressBookController::class, 'store'])->middleware('throttle:10,1')->name('addresses.store');
+    Route::put('/addresses/{address}', [BuyerAddressBookController::class, 'update'])->whereNumber('address')->name('addresses.update');
+    Route::delete('/addresses/{address}', [BuyerAddressBookController::class, 'destroy'])->whereNumber('address')->name('addresses.destroy');
+    Route::post('/addresses/{address}/default', [BuyerAddressBookController::class, 'makeDefault'])->whereNumber('address')->name('addresses.default');
     Route::put('/account/delivery-preference', [BuyerAccountController::class, 'updateDeliveryPreference'])->middleware('auth')->name('account.delivery-preference');
     Route::post('/account/profile-picture', [BuyerAccountController::class, 'uploadProfilePicture'])->middleware('auth')->name('account.profile-picture.upload');
     Route::delete('/account/profile-picture', [BuyerAccountController::class, 'removeProfilePicture'])->middleware('auth')->name('account.profile-picture.remove');
@@ -339,6 +370,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::get('/products/{product}', [ProductController::class, 'show'])->whereNumber('product')->name('products.show');
         Route::patch('/products/{product}', [ProductController::class, 'update'])->whereNumber('product')->name('products.update');
         Route::post('/products/{product}/restock', [ProductController::class, 'restock'])->whereNumber('product')->name('products.restock');
+        Route::delete('/products/{product}', [ProductController::class, 'destroy'])->whereNumber('product')->name('products.destroy');
         Route::get('/shipments', [ShipmentController::class, 'index'])->name('shipments.index');
         Route::get('/shipments/{order}', [ShipmentController::class, 'show'])->whereNumber('order')->name('shipments.show');
         Route::patch('/shipments/{order}', [ShipmentController::class, 'update'])->whereNumber('order')->name('shipments.update');
@@ -347,10 +379,17 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::get('/orders/{order}/waybill', [OrderController::class, 'waybill'])->whereNumber('order')->name('orders.waybill');
         Route::get('/orders/{order}', [OrderController::class, 'show'])->whereNumber('order')->name('orders.show');
         Route::patch('/orders/{order}', [OrderController::class, 'update'])->whereNumber('order')->name('orders.update');
+        Route::patch('/orders/{order}/pickup-schedule', [OrderController::class, 'reschedulePickup'])->whereNumber('order')->name('orders.pickup-reschedule');
+        Route::post('/orders/{order}/pickup-report', [OrderController::class, 'reportPickup'])->whereNumber('order')->name('orders.pickup-report');
         Route::get('/completed-orders', [CompletedOrdersController::class, 'index'])->name('completed-orders.index');
         Route::get('/completed-orders/{order}', [CompletedOrdersController::class, 'show'])->whereNumber('order')->name('completed-orders.show');
+        Route::get('/returns', [SellerReturnRequestController::class, 'index'])->name('returns.index');
+        Route::patch('/returns/{returnRequest}/approve', [SellerReturnRequestController::class, 'approve'])->whereNumber('returnRequest')->name('returns.approve');
+        Route::patch('/returns/{returnRequest}/reject', [SellerReturnRequestController::class, 'reject'])->whereNumber('returnRequest')->name('returns.reject');
+        Route::patch('/returns/{returnRequest}/received', [SellerReturnRequestController::class, 'received'])->whereNumber('returnRequest')->name('returns.received');
         Route::get('/earnings', [\App\Http\Controllers\Seller\EarningsController::class, 'index'])->name('earnings.index');
         Route::get('/complaints', [\App\Http\Controllers\Seller\ComplaintController::class, 'index'])->name('complaints.index');
+        Route::get('/complaints/{complaint}/evidence/{evidence}', [\App\Http\Controllers\Seller\ComplaintController::class, 'evidence'])->whereNumber(['complaint', 'evidence'])->name('complaints.evidence');
         Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('vouchers.index');
         Route::post('/vouchers', [SellerVoucherController::class, 'store'])->name('vouchers.store');
         Route::put('/vouchers/{voucher}', [SellerVoucherController::class, 'update'])->whereNumber('voucher')->name('vouchers.update');
@@ -384,6 +423,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::post('/account/banner', [SellerAccountController::class, 'banner'])->name('account.banner');
         Route::delete('/account/banner', [SellerAccountController::class, 'removeBanner'])->name('account.banner.remove');
         Route::patch('/account/password', [SellerAccountController::class, 'password'])->middleware('throttle:5,1')->name('account.password');
+        Route::post('/account/deletion-request', [SellerAccountController::class, 'requestDeletion'])->middleware('throttle:5,1')->name('account.deletion-request');
         Route::post('/user-reports', [UserReportController::class, 'store'])->middleware('throttle:3,1')->name('user-reports.store');
         Route::get('/notifications', [SellerNotificationController::class, 'index'])->name('notifications.index');
         Route::get('/notifications/recent', [SellerNotificationController::class, 'recent'])->name('notifications.recent');
@@ -472,10 +512,11 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
         return view('logistics.auth.forgot-password');
     })->name('password.request');
 
-    // Temporary placeholder — individual riders will apply via the Vendo Rider mobile app,
-    // which isn't built yet. Swap this for a real app-store/landing redirect once it exists.
+    // Individual riders apply in the Vendo Rider Android app. The landing button and
+    // the printed QR both point here, so moving the app to Google Play later means
+    // changing config('services.vendo.rider_app_url') only.
     Route::get('/get-the-app', function () {
-        return view('coming-soon', ['title' => 'Vendo Rider App — Coming Soon']);
+        return redirect()->away(config('services.vendo.rider_app_url'));
     })->name('rider-app');
 });
 

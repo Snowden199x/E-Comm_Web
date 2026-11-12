@@ -2,8 +2,9 @@
     Buyer checkout.
     Posts exactly what CheckoutController@store already validates:
       items[], checkout_revision, shipping_address, shipping_province_code, shipping_city_code, payment_mode=cod.
-    The address chosen on this page fills the three shipping_* fields. There is no saved address book on the
-    server yet, so extra addresses a buyer adds live in this browser tab (sessionStorage) until they place the order.
+    The address chosen on this page fills the three shipping_* fields. Saved addresses (Buyer > Account > Delivery)
+    arrive as "book-<id>" and post shipping_address_id, so the server rebuilds the shipping fields from
+    the Buyer's own row. An address typed here for one order lives in this browser tab (sessionStorage).
 
     Message for the seller: one optional note per shop (posted as seller_notes[<seller id>]).
     Checkout stores each note on that shop's order.
@@ -26,11 +27,40 @@
     $registeredCity = ($defaultProvinceCode && $defaultCityCode) ? $cityName($defaultProvinceCode, $defaultCityCode) : null;
     $registeredUsable = filled($defaultAddress) && $registeredProvince && $registeredCity;
 
-    $addresses = [[
+    // Saved addresses come first so their labels are easy to scan; the registered
+    // address stays available as a fallback.
+    $addresses = [];
+    foreach ($savedAddresses ?? [] as $saved) {
+        $savedModel = $saved['address'];
+        $savedCodes = $saved['codes'];
+        $savedLine = $savedModel->fullLine();
+        $addresses[] = [
+            'id' => 'book-' . $savedModel->id,
+            'addressId' => $savedModel->id,
+            'label' => $savedModel->label,
+            'registered' => false,
+            'custom' => false,
+            'saved' => true,
+            'default' => (bool) $savedModel->is_default,
+            'usable' => (bool) ($savedCodes && filled($savedLine)),
+            'line' => (string) $savedLine,
+            'provinceCode' => $savedCodes ? (string) $savedCodes[0] : '',
+            'cityCode' => $savedCodes ? (string) $savedCodes[1] : '',
+            'province' => $savedCodes ? $provinceName((string) $savedCodes[0]) : null,
+            'city' => $savedCodes ? $cityName((string) $savedCodes[0], (string) $savedCodes[1]) : null,
+            'latitude' => $savedModel->latitude,
+            'longitude' => $savedModel->longitude,
+        ];
+    }
+
+    $addresses[] = [
         'id' => 'registered',
+        'addressId' => null,
         'label' => 'Registered address',
         'registered' => true,
         'custom' => false,
+        'saved' => false,
+        'default' => ! collect($savedAddresses ?? [])->contains(fn ($saved) => $saved['address']->is_default),
         'usable' => (bool) $registeredUsable,
         'line' => (string) $defaultAddress,
         'provinceCode' => (string) $defaultProvinceCode,
@@ -39,25 +69,48 @@
         'city' => $registeredCity,
         'latitude' => $buyerDetail?->latitude,
         'longitude' => $buyerDetail?->longitude,
-    ]];
-    $selectedId = $registeredUsable ? 'registered' : null;
+    ];
+
+    $selectedId = null;
+    foreach ($addresses as $address) {
+        if ($address['usable'] && $address['default']) {
+            $selectedId = $address['id'];
+            break;
+        }
+    }
+    if ($selectedId === null) {
+        $firstUsable = collect($addresses)->first(fn ($address) => $address['usable']);
+        $selectedId = $firstUsable['id'] ?? null;
+    }
     $restoreSaved = true;
 
     // After a failed submit, keep the address the buyer had picked
     $oldLine = trim((string) old('shipping_address'));
     $oldProvince = (string) old('shipping_province_code');
     $oldCity = (string) old('shipping_city_code');
-    $sameAsRegistered = $registeredUsable && $oldLine === trim((string) $defaultAddress)
-        && $oldProvince === (string) $defaultProvinceCode && $oldCity === (string) $defaultCityCode;
-    if ($oldLine !== '' && $oldProvince !== '' && $oldCity !== '' && ! $sameAsRegistered && $provinceName($oldProvince) && $cityName($oldProvince, $oldCity)) {
-        $addresses[] = [
-            'id' => 'previous', 'label' => 'Address you entered', 'registered' => false, 'custom' => false, 'usable' => true,
-            'line' => $oldLine, 'provinceCode' => $oldProvince, 'cityCode' => $oldCity,
-            'province' => $provinceName($oldProvince), 'city' => $cityName($oldProvince, $oldCity),
-        ];
-        $selectedId = 'previous';
-        $restoreSaved = false;
+    if ($oldLine !== '' && $oldProvince !== '' && $oldCity !== '') {
+        $matched = collect($addresses)->first(fn ($address) => $address['usable']
+            && trim((string) $address['line']) === $oldLine
+            && (string) $address['provinceCode'] === $oldProvince
+            && (string) $address['cityCode'] === $oldCity);
+        if ($matched) {
+            $selectedId = $matched['id'];
+        } elseif ($provinceName($oldProvince) && $cityName($oldProvince, $oldCity)) {
+            $addresses[] = [
+                'id' => 'previous', 'addressId' => null, 'label' => 'Address you entered', 'registered' => false,
+                'custom' => false, 'saved' => false, 'default' => false, 'usable' => true,
+                'line' => $oldLine, 'provinceCode' => $oldProvince, 'cityCode' => $oldCity,
+                'province' => $provinceName($oldProvince), 'city' => $cityName($oldProvince, $oldCity),
+            ];
+            $selectedId = 'previous';
+            $restoreSaved = false;
+        }
     }
+
+    // Old input may hold one code per seller or a list when the Buyer stacked two.
+    $oldVoucherCodes = collect(old('voucher_codes', []))->map(fn ($codes) => array_values(array_filter(
+        array_map(fn ($code) => trim((string) $code), (array) $codes),
+    )))->all();
 
     $checkoutConfig = [
         'addresses' => $addresses,
@@ -69,7 +122,8 @@
         'itemIds' => $cartItems->pluck('id')->all(),
         'sellerIds' => $sellerGroups->keys()->map(fn ($id) => (string) $id)->values()->all(),
         'subtotal' => (float) $subtotal,
-        'voucherCodes' => old('voucher_codes', []),
+        'voucherCodes' => collect($oldVoucherCodes)->map(fn ($codes) => $codes[0] ?? '')->all(),
+        'voucherExtras' => collect($oldVoucherCodes)->map(fn ($codes) => $codes[1] ?? '')->all(),
     ];
 
     $primaryButton = 'inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#402143] px-5 text-[13px] font-medium text-white transition-colors duration-200 ease-vendo hover:bg-[#52245b]';
@@ -84,6 +138,7 @@
         @foreach ($cartItems as $item)<input type="hidden" name="items[]" value="{{ $item->id }}">@endforeach
         <input type="hidden" name="checkout_revision" value="{{ $checkoutRevision }}">
         <input type="hidden" name="payment_mode" value="cod">
+        <input type="hidden" name="shipping_address_id" :value="current?.addressId ?? ''">
         <input type="hidden" name="shipping_address" :value="current ? current.line : ''">
         <input type="hidden" name="shipping_province_code" :value="current ? current.provinceCode : ''">
         <input type="hidden" name="shipping_city_code" :value="current ? current.cityCode : ''">
@@ -118,11 +173,14 @@
                             <h2 id="address-heading" class="text-[15px] font-semibold text-[#402143]">Delivery address</h2>
                             <p class="text-[12px] text-[#7a6a7e]">Choose where this order should be delivered.</p>
                         </div>
-                        <button type="button" @click="openModal()"
-                            class="inline-flex h-9 items-center gap-1.5 rounded-md border border-[#805487] bg-white px-3.5 text-[13px] font-medium text-[#52245b] transition-colors duration-200 ease-vendo hover:bg-[#f5ecf6] active:scale-[0.98]">
-                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-                            Add new address
-                        </button>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <a href="{{ route('buyer.addresses.index') }}" class="inline-flex h-9 items-center text-[12px] font-medium text-[#52245b] underline underline-offset-2 hover:text-[#402143]">Manage saved addresses</a>
+                            <button type="button" @click="openModal()"
+                                class="inline-flex h-9 items-center gap-1.5 rounded-md border border-[#805487] bg-white px-3.5 text-[13px] font-medium text-[#52245b] transition-colors duration-200 ease-vendo hover:bg-[#f5ecf6] active:scale-[0.98]">
+                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                                Add new address
+                            </button>
+                        </div>
                     </div>
 
                     <div class="space-y-3 p-4 sm:p-5" role="radiogroup" aria-labelledby="address-heading">
@@ -142,7 +200,7 @@
                                         <span class="min-w-0 text-[13px]">
                                             <span class="flex flex-wrap items-center gap-2">
                                                 <span class="font-semibold text-[#2b1730]" x-text="a.label"></span>
-                                                <span x-show="a.registered" class="rounded bg-[#e8c874] px-1.5 py-0.5 text-[11px] font-semibold text-[#402143]">Default</span>
+                                                <span x-show="a.default" class="rounded bg-[#e8c874] px-1.5 py-0.5 text-[11px] font-semibold text-[#402143]">Default</span>
                                             </span>
                                             <template x-if="a.registered">
                                                 <span class="mt-0.5 block text-[#5b4a60]">{{ $buyer->name }}@if (filled($buyer->phone_number)), {{ $buyer->phone_number }}@endif</span>
@@ -171,7 +229,7 @@
                         </template>
 
                         <p x-show="!current" x-cloak class="rounded-md bg-[#fdf1f3] px-3 py-2 text-[12px] text-[#a32b43]" role="alert">Add a delivery address to place your order.</p>
-                        @foreach (['shipping_address', 'shipping_province_code', 'shipping_city_code', 'shipping_latitude', 'shipping_longitude'] as $field)
+                        @foreach (['shipping_address_id', 'shipping_address', 'shipping_province_code', 'shipping_city_code', 'shipping_latitude', 'shipping_longitude'] as $field)
                             @error($field)<p class="rounded-md bg-[#fdf1f3] px-3 py-2 text-[12px] text-[#a32b43]" role="alert">{{ $message }}</p>@enderror
                         @endforeach
                         <p class="text-[11px] text-[#7a6a7e]">A delivery pin helps the assigned Rider find the destination. It is shared with Vendo and the Rider assigned to this order.</p>
@@ -320,12 +378,16 @@
                                     @endif
                                     <label for="voucher-{{ $sellerKey }}" class="mt-2 block text-[11px] font-medium text-[#6f5f73]">Or enter a voucher code</label>
                                     <div class="mt-1 flex gap-2">
-                                        <input id="voucher-{{ $sellerKey }}" type="text" name="voucher_codes[{{ $sellerKey }}]" maxlength="12" autocomplete="off"
+                                        <input id="voucher-{{ $sellerKey }}" type="text" name="voucher_codes[{{ $sellerKey }}][]" maxlength="12" autocomplete="off"
                                             x-model="voucherCodes[{{ $sellerKey }}]" @input="voucherChanged({{ $sellerKey }}, $event)"
                                             placeholder="Enter code" class="{{ $fieldClass }} !mt-0 min-w-0 flex-1 uppercase">
                                         <button type="button" @click="applyVoucher({{ $sellerKey }})" :disabled="applyingVoucher[{{ $sellerKey }}]"
                                             class="rounded-md border border-[#805487] px-3 text-[12px] font-medium text-[#52245b] disabled:opacity-50">Apply</button>
                                     </div>
+                                    <label for="voucher-extra-{{ $sellerKey }}" class="mt-2 block text-[11px] font-medium text-[#6f5f73]">Second voucher <span class="font-normal">(optional — one shop-wide plus one product or category voucher)</span></label>
+                                    <input id="voucher-extra-{{ $sellerKey }}" type="text" name="voucher_codes[{{ $sellerKey }}][]" maxlength="12" autocomplete="off"
+                                        x-model="voucherExtras[{{ $sellerKey }}]" @input="voucherExtraChanged({{ $sellerKey }}, $event)"
+                                        placeholder="Enter a second code" class="{{ $fieldClass }} !mt-0 uppercase">
                                     <p x-show="appliedVoucherCodes[{{ $sellerKey }}]" x-cloak class="mt-1 text-[12px] text-[#2e6b46]"
                                        x-text="'Discount: ₱' + Number(voucherDiscounts[{{ $sellerKey }}] || 0).toFixed(2)"></p>
                                     <p x-show="voucherErrors[{{ $sellerKey }}]" x-cloak class="mt-1 text-[12px] text-[#a32b43]" role="alert" x-text="voucherErrors[{{ $sellerKey }}]"></p>
@@ -403,7 +465,7 @@
                 </button>
 
                 <h2 id="address-dialog-title" class="pr-8 text-[16px] font-semibold text-[#2b1730]">Add a delivery address</h2>
-                <p class="mt-1 text-[12px] text-[#7a6a7e]">This address is used for this checkout. Your registered address stays on your account.</p>
+                <p class="mt-1 text-[12px] text-[#7a6a7e]">This address is used for this checkout only. To reuse it next time, save it in <a href="{{ route('buyer.addresses.index') }}" class="underline underline-offset-2">Saved addresses</a>.</p>
 
                 <div class="mt-4 space-y-3.5" x-on:maps-address.window="applyMapAddress($event)">
                     <div>
@@ -474,6 +536,7 @@
         modal: false,
         submitting: false,
         voucherCodes: config.voucherCodes || {},
+        voucherExtras: config.voucherExtras || {},
         shippingQuotes: {},
         logisticsChoices: {},
         shippingQuoteError: '',
@@ -506,9 +569,9 @@
             if (!this.addresses.some(a => a.id === this.selected && a.usable)) {
                 this.selected = (this.addresses.find(a => a.usable) || {}).id || null;
             }
-            for (const [sellerId, code] of Object.entries(this.voucherCodes)) {
-                if (code) this.applyVoucher(sellerId);
-            }
+            config.sellerIds.forEach(sellerId => {
+                if (this.voucherCodes[sellerId] || this.voucherExtras[sellerId]) this.applyVoucher(sellerId);
+            });
             // Browser back/forward restores the page from cache: allow another submit
             window.addEventListener('pageshow', () => { this.submitting = false; });
             this.$watch('selected', () => { this.persist(); this.refreshShippingQuote(); });
@@ -588,29 +651,44 @@
             }
         },
 
+        voucherKey(sellerId) {
+            return [this.voucherCodes[sellerId], this.voucherExtras[sellerId]].map(c => String(c || '').trim()).filter(Boolean).join('|');
+        },
+
+        resetVoucherState(sellerId) {
+            this.voucherDiscounts[sellerId] = 0;
+            this.appliedVoucherCodes[sellerId] = '';
+            this.voucherErrors[sellerId] = '';
+        },
+
         voucherChanged(sellerId, event = null) {
             const code = String(event ? event.target.value : this.voucherCodes[sellerId] || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
             if (event) event.target.value = code;
             this.voucherCodes[sellerId] = code;
             this.voucherSelections[sellerId] = '';
-            this.voucherDiscounts[sellerId] = 0;
-            this.appliedVoucherCodes[sellerId] = '';
-            this.voucherErrors[sellerId] = '';
+            this.resetVoucherState(sellerId);
+        },
+
+        voucherExtraChanged(sellerId, event = null) {
+            const code = String(event ? event.target.value : this.voucherExtras[sellerId] || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (event) event.target.value = code;
+            this.voucherExtras[sellerId] = code;
+            this.resetVoucherState(sellerId);
         },
 
         selectVoucher(sellerId, event) {
             const code = String(event.target.value || '');
             this.voucherSelections[sellerId] = code;
             this.voucherCodes[sellerId] = code;
-            this.voucherDiscounts[sellerId] = 0;
-            this.appliedVoucherCodes[sellerId] = '';
-            this.voucherErrors[sellerId] = '';
-            if (this.voucherCodes[sellerId]) this.applyVoucher(sellerId);
+            this.resetVoucherState(sellerId);
+            if (this.voucherKey(sellerId)) this.applyVoucher(sellerId);
         },
 
         async applyVoucher(sellerId) {
-            const code = String(this.voucherCodes[sellerId] || '').trim();
-            if (!code) { this.voucherChanged(sellerId); return; }
+            const codes = [this.voucherCodes[sellerId], this.voucherExtras[sellerId]]
+                .map(code => String(code || '').trim()).filter(Boolean);
+            if (!codes.length) { this.resetVoucherState(sellerId); return; }
+            const key = codes.join('|');
             this.applyingVoucher[sellerId] = true;
             this.voucherErrors[sellerId] = '';
             try {
@@ -618,13 +696,13 @@
                     method: 'POST',
                     headers: { 'Accept': 'application/json', 'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
-                    body: JSON.stringify({ items: config.itemIds, seller_id: sellerId, code }),
+                    body: JSON.stringify({ items: config.itemIds, seller_id: sellerId, codes }),
                 });
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) throw new Error(Object.values(data.errors || {}).flat()[0] || data.message || 'Could not apply this voucher.');
-                if (this.voucherCodes[sellerId] !== code) return;
+                if (this.voucherKey(sellerId) !== key) return;
                 this.voucherDiscounts[sellerId] = Number(data.discount);
-                this.appliedVoucherCodes[sellerId] = code;
+                this.appliedVoucherCodes[sellerId] = key;
             } catch (error) {
                 this.voucherErrors[sellerId] = error.message;
             } finally {
@@ -726,8 +804,9 @@
                 this.shippingQuoteError = 'Choose a Logistics provider for every shop.';
                 return;
             }
-            for (const [sellerId, code] of Object.entries(this.voucherCodes)) {
-                if (code && code !== this.appliedVoucherCodes[sellerId]) {
+            for (const sellerId of config.sellerIds) {
+                const key = this.voucherKey(sellerId);
+                if (key && key !== this.appliedVoucherCodes[sellerId]) {
                     event.preventDefault();
                     this.voucherErrors[sellerId] = 'Apply this voucher to check the total before placing the order.';
                     document.getElementById('voucher-' + sellerId)?.focus();

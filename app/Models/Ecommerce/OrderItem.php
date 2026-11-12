@@ -13,9 +13,10 @@ class OrderItem extends Model
         return $this->belongsTo(Order::class);
     }
 
+    /** Include soft-deleted products so order history still shows what was bought. */
     public function product()
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class)->withTrashed();
     }
 
     public function variant()

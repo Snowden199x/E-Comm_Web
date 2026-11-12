@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminActionLog;
 use App\Models\Category;
 use App\Models\Ecommerce\Product;
 use App\Models\Compliance\ProductViolation;
@@ -106,6 +107,8 @@ class SellerComplianceController extends Controller
                 'link' => route('seller.products.show', $product)]);
         }
 
+        AdminActionLog::record($product->seller, 'product_approved', $product->name.' ('.$product->product_code.')');
+
         return back()->with('confirmation', 'product_approved');
     }
 
@@ -134,6 +137,8 @@ class SellerComplianceController extends Controller
         ]);
 
         $this->escalateSuspension($product->seller);
+
+        AdminActionLog::record($product->seller, 'product_rejected', $product->name.' ('.$product->product_code.'): '.$request->reason);
 
         return back()->with('confirmation', 'product_rejected');
     }
@@ -170,6 +175,8 @@ class SellerComplianceController extends Controller
 
             $this->escalateSuspension($seller);
         }
+
+        AdminActionLog::record($seller, 'product_warned', $product->name.' ('.$product->product_code.'): '.$request->reason);
 
         return back()->with('confirmation', 'warning_issued');
     }

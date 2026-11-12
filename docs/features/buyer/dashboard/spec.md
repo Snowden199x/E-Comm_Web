@@ -1,11 +1,11 @@
 # Buyer Dashboard and Storefront Shell
 
 **Status:** Dashboard data, parent-category browse, cart recommendations and variant commerce wired in code; owner verification pending
-**Reviewed:** 7 October 2026
+**Reviewed:** 8 November 2026
 
 ## Current behavior
 
-Every Buyer page that uses `<x-buyer.layout>` shows a solid purple header (no gradient): Vendo logo, product search, Messages, Cart (with item-count badge), Notifications (existing bell and polling), and an account menu with My Orders, Account Management, and Logout. The Messages control uses the white-tinted `messages-icon.svg` asset for contrast on the purple header. There is no Buyer sidebar. A category strip under the header lists Home, All Categories, and every top-level category. Hovering (or tapping, on touch screens) opens a subcategory menu: top-level categories on one side and round tiles for their subcategories on the other, each linking to `buyer.products.index?category_id=`. Tile images are optional files under `public/images/buyer/subcategories/<category>/<subcategory>.png`; a missing file shows a colored letter tile. The layout reads categories directly from the `categories` table.
+Every Buyer page that uses `<x-buyer.layout>` shows a solid purple header (no gradient): Vendo logo, product search, Messages, Cart (with item-count badge capped at 99; more shows "99+"), Notifications (existing bell and polling), and an account menu with My Orders, Account Management, and Logout. The Messages control uses the white-tinted `messages-icon.svg` asset for contrast on the purple header. There is no Buyer sidebar. A category strip under the header lists Home, All Categories, and every top-level category. Hovering (or tapping, on touch screens) opens a subcategory menu: top-level categories on one side and round tiles for their subcategories on the other, each linking to `buyer.products.index?category_id=`. Tile images are optional files under `public/images/buyer/subcategories/<category>/<subcategory>.png`; a missing file shows a colored letter tile. The layout reads categories directly from the `categories` table.
 
 The header search box has a white field with no colored square behind the search icon. When the route `buyer.sellers.index` exists it also gets a Products/Shops selector (see [Seller shop](../seller-shop/spec.md)).
 
@@ -25,6 +25,10 @@ The optional `compare_at_price` column exists, but the Seller form has no input 
 
 The refreshed Dashboard adds an announcement carousel, Saved for later row, quick links, benefits strip, and footer. Saved products now come from the signed-in Buyer's `buyer_saved_items` rows through the shared layout and Alpine store. Browser-local saved IDs are imported once after the new migration. The carousel and page motion follow account-stored appearance settings. Owner verification remains pending.
 
+## 8 November UI/UX pass
+
+The account and notification menus now sit above the category menu; moving up from the category strip closes it, and the account menu opens on hover. The header heart links to the Favorites page. Banner notifications (`buyer/partials/banner.blade.php`) replace the bottom toast for Add to cart, favorites and new notifications. Header icons animate on hover and on events. The hero uses one pastel color, the benefits strip is gone, and the shortcuts are Track orders, View cart and View favorites. Dashboard cards add to cart directly (`Add to cart`, or `Choose options` when a color, size or variant is needed). Category circles use `public/images/categories/*.jpg` with a tinted initial fallback. See the [progress log](../../../logs/PROGRESS-2026-11-08.md). Owner verification pending.
+
 ## Source evidence
 
 `resources/views/components/buyer/layout.blade.php`, `resources/views/buyer/dashboard.blade.php`, `resources/views/buyer/partials/product-card.blade.php`, `resources/views/buyer/partials/quick-add.blade.php`, `resources/css/buyer/layout.css`, `app/Http/Controllers/Buyer/DashboardController.php`
@@ -32,3 +36,7 @@ The refreshed Dashboard adds an announcement carousel, Saved for later row, quic
 ## Related documentation
 
 See [domain status](../../../domain-feature-status.md), the [Buyer domain page](../../../domains/Buyer.md), [Browse Shop](../browse-shop/spec.md), [Cart](../view-cart/spec.md), and [feature implementation guide](../../../feature-implementation-guide.md).
+
+## 11 November 2026: out-of-stock listings
+
+The buyer dashboard now filters with `Product::inStock()`, so a listing with zero stock (or no sellable variant) is not suggested there. The shop still lists it with the existing **Sold out** overlay so buyers can open it and read the details.

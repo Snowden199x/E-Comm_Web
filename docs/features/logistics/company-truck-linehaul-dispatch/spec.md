@@ -33,3 +33,7 @@ Rider, Truck, and checkpoint-scanner interfaces are mobile-only. The Logistics w
 ## Related documentation
 
 See [virtual SH route checkpoints](../subhub-routing/spec.md), [route-plan selection](../hub-to-hub-routing/spec.md), and [mobile rider scan API](../../courier/scan-api/spec.md).
+
+## 11 November 2026: company truck by plate number
+
+Trucks are no longer a courier vehicle type: rider registration accepts only Motorcycle, Van and L300. Linehaul assignment now requires an available **company vehicle** from the origin hub's fleet (`company_vehicles`) plus a driver, and stores `orders.linehaul_vehicle_id`. The Logistics dispatch form shows the plate number, the rider notification names the truck, and local pickup/delivery assignment continues to exclude the old Truck type. Existing Truck Rider rows and legacy assignments are left untouched for history.

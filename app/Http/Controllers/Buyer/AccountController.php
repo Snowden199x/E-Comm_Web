@@ -3,14 +3,42 @@
 namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
+use App\Models\AccountDeletionRequest;
 use App\Models\Profiles\BuyerDetail;
 use App\Services\ProfilePhotoService;
 use App\Services\PsgcAddressResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class AccountController extends Controller
 {
+    /** Validation messages that say how to fix the problem. */
+    private const MESSAGES = [
+        'name.required' => 'Enter your full name.',
+        'name.max' => 'Use 255 characters or fewer.',
+        'phone_number.max' => 'Use 20 characters or fewer, for example 09171234567.',
+        'province.required' => 'Enter your province.',
+        'municipality.required' => 'Enter your city or municipality.',
+        'barangay.required' => 'Enter your barangay.',
+        'street.required' => 'Enter your street so the rider can find you.',
+        'house_no.max' => 'Use 255 characters or fewer.',
+        'zip_code.max' => 'Use 20 characters or fewer.',
+        'latitude.numeric' => 'Move the pin on the map, then save again.',
+        'latitude.between' => 'Move the pin onto the map, then save again.',
+        'longitude.numeric' => 'Move the pin on the map, then save again.',
+        'longitude.between' => 'Move the pin onto the map, then save again.',
+        'longitude.required_with' => 'Move the pin on the map, then save again.',
+        'profile_picture.required' => 'Choose a photo to upload.',
+        'profile_picture.image' => 'Choose a JPG, PNG or WebP photo.',
+        'profile_picture.max' => 'Choose a photo under 2 MB.',
+        'banner.required' => 'Choose a banner to upload.',
+        'banner.image' => 'Choose a JPG, PNG or WebP image.',
+        'banner.max' => 'Choose a banner under 4 MB.',
+        'preferred_delivery_company_id.exists' => 'Pick a provider from the list.',
+        'preferred_delivery_company_id.integer' => 'Pick a provider from the list.',
+    ];
+
     public function index()
     {
         abort_unless(auth()->user()->role === 'buyer', 403);
@@ -34,7 +62,54 @@ class AccountController extends Controller
             }
         }
 
-        return view('buyer.account', compact('buyerDetail', 'policies', 'deliveryCompanies'));
+        $pendingDeletion = auth()->user()->pendingDeletionRequest;
+        $deletionReasons = AccountDeletionRequest::REASONS;
+        $savedAddresses = \App\Models\BuyerAddress::query()->where('user_id', auth()->id())
+            ->orderByDesc('is_default')->oldest('id')->get();
+
+        return view('buyer.account', compact('buyerDetail', 'policies', 'deliveryCompanies', 'pendingDeletion', 'deletionReasons', 'savedAddresses'));
+    }
+
+    /** Buyer asks admin to close the account. The account stays usable until an admin approves. */
+    public function requestDeletion(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user->role === 'buyer', 403);
+
+        if ($user->pendingDeletionRequest()->exists()) {
+            return back()->with('success', 'Your deletion request is already waiting for admin review.');
+        }
+
+        $data = $request->validate([
+            'reasons' => ['required', 'array', 'min:1'],
+            'reasons.*' => ['string', Rule::in(AccountDeletionRequest::REASONS)],
+            'comments' => ['nullable', 'string', 'max:500', Rule::requiredIf(fn () => in_array('Other', (array) $request->input('reasons', []), true))],
+        ], [
+            'reasons.required' => 'Pick a reason for deleting your account.',
+            'reasons.min' => 'Pick a reason for deleting your account.',
+            'reasons.*.in' => 'Pick a reason from the list.',
+            'comments.max' => 'Keep your comment under 500 characters.',
+            'comments.required' => 'Tell the admin why when you pick "Other".',
+        ]);
+
+        AccountDeletionRequest::create([
+            'user_id' => $user->id,
+            'reasons' => array_values($data['reasons']),
+            'comments' => $data['comments'] ?? null,
+            'status' => 'pending',
+            'requested_at' => now(),
+        ]);
+
+        // Admin operational inbox: opens User Management filtered to pending deletion requests.
+        \App\Models\Communication\Notification::create([
+            'user_id' => null,
+            'type' => 'account_deletion_request',
+            'title' => 'Account deletion request',
+            'message' => 'A buyer asked to close their account.',
+            'link' => route('admin.user-management.index', ['deletion' => 1]),
+        ]);
+
+        return back()->with('success', 'Your deletion request was sent to the admin team for review.');
     }
 
     public function update(Request $request, ProfilePhotoService $photos, PsgcAddressResolver $addresses)
@@ -58,7 +133,7 @@ class AccountController extends Controller
                 'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
             ];
         }
-        $request->validate($rules);
+        $request->validate($rules, self::MESSAGES);
 
         $address = $buyerDetail
             ? $addresses->resolve($request->only('province', 'municipality', 'barangay'))
@@ -100,12 +175,12 @@ class AccountController extends Controller
             $photos->replace($request->user(), $request->file('profile_picture'), 'profile-pictures/buyers');
         }
 
-        return back()->with('success', 'Profile updated.');
+        return back()->with('success', 'Profile saved');
     }
 
     public function uploadProfilePicture(Request $request, ProfilePhotoService $photos)
     {
-        $request->validate(['profile_picture' => 'required|image|max:2048']);
+        $request->validate(['profile_picture' => 'required|image|max:2048'], self::MESSAGES);
 
         $photos->replace($request->user(), $request->file('profile_picture'), 'profile-pictures/buyers');
 
@@ -114,7 +189,7 @@ class AccountController extends Controller
 
     public function uploadBanner(Request $request)
     {
-        $request->validate(['banner' => 'required|image|max:4096']);
+        $request->validate(['banner' => 'required|image|max:4096'], self::MESSAGES);
 
         $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
 
@@ -149,7 +224,7 @@ class AccountController extends Controller
     {
         $data = $request->validate([
             'preferred_delivery_company_id' => ['nullable', 'integer', 'exists:logistics_companies,id'],
-        ]);
+        ], self::MESSAGES);
 
         $buyerDetail = BuyerDetail::where('user_id', auth()->id())->first();
         if ($buyerDetail) {
@@ -166,16 +241,16 @@ class AccountController extends Controller
         'current_password' => ['required'],
         'password' => ['required', 'min:8', 'confirmed'],
     ], [
-        'current_password.required' => 'Please enter your current password.',
-        'password.required' => 'Please enter a new password.',
-        'password.min' => 'The new password must be at least 8 characters.',
-        'password.confirmed' => 'The password confirmation does not match.',
+        'current_password.required' => 'Enter your current password.',
+        'password.required' => 'Enter a new password.',
+        'password.min' => 'Use at least 8 characters.',
+        'password.confirmed' => "Passwords don't match. Retype the new password.",
     ]);
 
     if (!Hash::check($request->current_password, auth()->user()->password)) {
         return back()
             ->withErrors([
-                'current_password' => 'The current password is incorrect.',
+                'current_password' => "That isn't your current password. Re-enter it and try again.",
             ])
             ->withInput();
     }
@@ -184,6 +259,6 @@ class AccountController extends Controller
         'password' => Hash::make($request->password),
     ]);
 
-    return back()->with('password_success', 'Password updated successfully!');
+    return back()->with('password_success', 'Password updated');
 }
 }

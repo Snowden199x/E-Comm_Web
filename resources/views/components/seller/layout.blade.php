@@ -47,13 +47,13 @@
                 <span>Dashboard</span>
             </a>
 
-            <button type="button" class="sd-nav__item sd-nav__toggle @if(request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.feedback.*')) is-active @endif" id="orderMenuToggle" aria-expanded="{{ request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.feedback.*') ? 'true' : 'false' }}" aria-controls="orderSubmenu" title="Order Management">
+            <button type="button" class="sd-nav__item sd-nav__toggle @if(request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.returns.*', 'seller.feedback.*')) is-active @endif" id="orderMenuToggle" aria-expanded="{{ request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.returns.*', 'seller.feedback.*') ? 'true' : 'false' }}" aria-controls="orderSubmenu" title="Order Management">
                 <img src="{{ $icon('Ordermanagement-icon.png') }}" alt="">
                 <span>Order Management</span>
                 <svg class="sd-nav__chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
             </button>
 
-            <div class="sd-submenu @if(!request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.feedback.*')) is-closed @endif" id="orderSubmenu">
+            <div class="sd-submenu @if(!request()->routeIs('seller.orders.*', 'seller.products.*', 'seller.shipments.*', 'seller.completed-orders.*', 'seller.returns.*', 'seller.feedback.*')) is-closed @endif" id="orderSubmenu">
                 <a href="{{ route('seller.orders.index') }}" class="sd-nav__item sd-nav__item--sub @if(request()->routeIs('seller.orders.index')) is-active @endif" @if(request()->routeIs('seller.orders.index')) aria-current="page" @endif title="Orders">
                     <img src="{{ $icon('orders-icon.png') }}" alt="">
                     <span>Orders</span>
@@ -69,6 +69,10 @@
                 <a href="{{ route('seller.completed-orders.index') }}" class="sd-nav__item sd-nav__item--sub @if(request()->routeIs('seller.completed-orders.*')) is-active @endif" @if(request()->routeIs('seller.completed-orders.*')) aria-current="page" @endif title="Delivered Orders">
                     <img src="{{ $icon('completed-orders-icon.png') }}" alt="">
                     <span>Delivered Orders</span>
+                </a>
+                <a href="{{ route('seller.returns.index') }}" class="sd-nav__item sd-nav__item--sub @if(request()->routeIs('seller.returns.*')) is-active @endif" @if(request()->routeIs('seller.returns.*')) aria-current="page" @endif title="Returns">
+                    <svg class="sd-nav__svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12H9"/></svg>
+                    <span>Returns</span>
                 </a>
                 <a href="{{ route('seller.earnings.index') }}" class="sd-nav__item sd-nav__item--sub @if(request()->routeIs('seller.earnings.*')) is-active @endif" @if(request()->routeIs('seller.earnings.*')) aria-current="page" @endif title="Earnings">
                     <img src="{{ $icon('earnings-icon.svg') }}" alt="">
@@ -136,6 +140,7 @@
     </script>
 
     <div class="sd-backdrop" id="sdBackdrop"></div>
+    <div class="sd-banners" id="sdBanners" aria-live="polite" aria-atomic="false"></div>
 
     {{-- ============ MAIN ============ --}}
     <div class="sd-main">
@@ -146,7 +151,7 @@
 
             <div class="sd-topbar__right">
                 <div class="sd-bell-wrap" id="sdBellWrap">
-                    <button type="button" class="sd-topbar__bell" id="sdBellBtn" aria-label="Notifications" aria-controls="sdBellMenu" aria-expanded="false">
+                    <button type="button" class="sd-topbar__bell @if($unreadNotifications) has-unread @endif" id="sdBellBtn" aria-label="Notifications" aria-controls="sdBellMenu" aria-expanded="false">
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
                         <span class="sd-bell-count" id="sdBellCount" @if(!$unreadNotifications) hidden @endif>{{ $unreadNotifications > 99 ? '99+' : $unreadNotifications }}</span>
                     </button>
@@ -233,6 +238,61 @@
                 if (!bellMenu.hidden) { closeBell(); bellButton.focus(); }
                 if (!userMenu.hidden) { closeUser(); userButton.focus(); }
             });
+            // Banner API: window.sellerBanner({type, title, message, actionLabel, onAction, timeout})
+            var bannerHost = document.getElementById('sdBanners');
+            var bannerIcons = {
+                success: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+                error: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.500v.01"/>',
+                info: '<path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.700 21a2 2 0 01-3.400 0"/>'
+            };
+            window.sellerBanner = function (opts) {
+                opts = opts || {};
+                var type = bannerIcons[opts.type] ? opts.type : 'info';
+                while (bannerHost.children.length >= 3) bannerHost.firstChild.remove();
+                var el = document.createElement('div');
+                el.className = 'sd-banner sd-banner--' + type;
+                el.setAttribute('role', type === 'error' ? 'alert' : 'status');
+                el.innerHTML = '<span class="sd-banner__icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + bannerIcons[type] + '</svg></span><div class="sd-banner__text"></div><button type="button" class="sd-banner__close" aria-label="Dismiss"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
+                var text = el.querySelector('.sd-banner__text');
+                if (opts.title) { var t = document.createElement('strong'); t.textContent = opts.title; text.appendChild(t); }
+                if (opts.message) { var m = document.createElement('span'); m.textContent = opts.message; text.appendChild(m); }
+                if (opts.actionLabel) {
+                    var a = document.createElement('button');
+                    a.type = 'button'; a.className = 'sd-banner__action'; a.textContent = opts.actionLabel;
+                    a.addEventListener('click', function () { if (opts.onAction) opts.onAction(); dismiss(); });
+                    el.insertBefore(a, el.querySelector('.sd-banner__close'));
+                }
+                var timer;
+                var dismiss = function () {
+                    clearTimeout(timer);
+                    if (!el.parentNode) return;
+                    el.classList.add('is-leaving');
+                    setTimeout(function () { el.remove(); }, 200);
+                };
+                var start = function () { timer = setTimeout(dismiss, opts.timeout || (opts.type === 'error' ? 10000 : 6000)); };
+                el.querySelector('.sd-banner__close').addEventListener('click', dismiss);
+                el.addEventListener('mouseenter', function () { clearTimeout(timer); });
+                el.addEventListener('mouseleave', start);
+                bannerHost.appendChild(el);
+                start();
+                return el;
+            };
+            var ringBell = function () {
+                bellButton.classList.remove('is-ringing');
+                void bellButton.offsetWidth;
+                bellButton.classList.add('is-ringing');
+            };
+            // Drop the class when the swing ends so it does not replay after hover.
+            bellButton.addEventListener('animationend', function (event) {
+                if (event.animationName === 'sd-bell-swing') bellButton.classList.remove('is-ringing');
+            });
+            var openNotification = function (url) {
+                var form = document.createElement('form');
+                form.method = 'POST'; form.action = url; form.style.display = 'none';
+                var token = document.createElement('input');
+                token.type = 'hidden'; token.name = '_token'; token.value = document.querySelector('meta[name="csrf-token"]').content;
+                form.appendChild(token); document.body.appendChild(form); form.submit();
+            };
             var latestNotificationId = {{ $recentNotifications->first()?->id ?? 0 }};
             var audioContext;
             var unlockAudio = function () {
@@ -268,10 +328,20 @@
                     var data = await response.json();
                     var latestCount = Number(data.unread_count) || 0;
                     var latestId = Number(data.latest_id) || 0;
-                    if (latestId > latestNotificationId) playNotification();
+                    if (latestId > latestNotificationId) {
+                        playNotification();
+                        ringBell();
+                        if (data.latest) {
+                            window.sellerBanner({
+                                type: 'info', title: data.latest.title, message: data.latest.message,
+                                actionLabel: 'View', onAction: function () { openNotification(data.latest.open_url); }, timeout: 8000
+                            });
+                        }
+                    }
                     latestNotificationId = Math.max(latestNotificationId, latestId);
                     var badge = document.getElementById('sdBellCount');
                     badge.hidden = !latestCount;
+                    bellButton.classList.toggle('has-unread', latestCount > 0);
                     badge.textContent = latestCount > 99 ? '99+' : latestCount;
                     document.getElementById('sdBellList').innerHTML = data.html;
                     var dashboardList = document.getElementById('sdDashboardNotifications');

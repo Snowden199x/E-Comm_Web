@@ -1,0 +1,69 @@
+/* Logistics · top banners, notification bell and menu.
+   Loaded by the logistics shell right after workspace.css, so it applies on every logistics page.
+   The banner host sits outside the page wrapper, so it carries its own copy of the tokens.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32. */
+.lgb-host, .lgb-menu, .lgb-count {
+    --do-ink: #2d2233; --do-muted: #7d7285; --do-line: #ece4ef;
+    --do-lilac-50: #f8f4f9; --do-lilac-100: #efe6f2; --do-lilac-200: #e0d0e5; --do-lilac-500: #b79ac2; --do-lilac-700: #5a1d63;
+    --do-mint-100: #dff3e6; --do-mint-700: #2f6b45;
+    --do-butter-100: #fcf1cf; --do-butter-700: #8a6417;
+    --do-rose-100: #fbe2e7; --do-rose-700: #9a3a4d;
+}
+
+/* ---- Banners (window.logisticsBanner) ---- */
+.lgb-host { position: fixed; top: 84px; right: 16px; z-index: 120; display: grid; gap: 8px; width: min(380px, calc(100vw - 32px)); pointer-events: none; font: 13px/1.4 'Poppins', system-ui, sans-serif; }
+.lgb { --b-bg: var(--do-lilac-100); --b-fg: var(--do-lilac-700); --b-line: var(--do-lilac-200); display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 16px; border: 1px solid var(--b-line); border-radius: 14px; background: var(--b-bg); color: var(--b-fg); box-shadow: 0 10px 28px rgba(54, 9, 60, .14); pointer-events: auto; animation: lgb-in .3s ease both; }
+.lgb.is-leaving { animation: lgb-out .2s ease forwards; }
+.lgb--success { --b-bg: var(--do-mint-100); --b-fg: var(--do-mint-700); --b-line: #c5e6d1; }
+.lgb--warning { --b-bg: var(--do-butter-100); --b-fg: var(--do-butter-700); --b-line: #f0dfaa; }
+.lgb--error { --b-bg: var(--do-rose-100); --b-fg: var(--do-rose-700); --b-line: #f2c5cf; }
+.lgb__icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: rgba(255, 255, 255, .7); flex: none; animation: lgb-pop .5s .15s cubic-bezier(.3, 1.6, .5, 1) both; }
+.lgb__text { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.lgb__text strong { font-weight: 600; }
+.lgb__text span { opacity: .85; overflow-wrap: anywhere; }
+.lgb__action { min-height: 32px; padding: 6px 12px; border: 0; border-radius: 8px; background: var(--b-fg); color: #fff; font: 600 12px 'Poppins', system-ui, sans-serif; cursor: pointer; white-space: nowrap; transition: transform .1s, opacity .15s; }
+.lgb__action:hover { opacity: .88; }
+.lgb__action:active { transform: scale(.96); }
+.lgb__close { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: inherit; cursor: pointer; opacity: .7; flex: none; transition: background .15s, opacity .15s; }
+.lgb__close:hover { background: rgba(255, 255, 255, .7); opacity: 1; }
+.lgb :is(button):focus-visible { outline: 2px solid var(--b-fg); outline-offset: 2px; }
+@keyframes lgb-in { from { opacity: 0; transform: translateY(-12px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes lgb-out { to { opacity: 0; transform: translateX(24px); } }
+@keyframes lgb-pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (max-width: 520px) { .lgb-host { right: 8px; left: 8px; width: auto; } }
+
+/* Message shown only when JavaScript is off */
+.lgb-inline { padding: 12px 16px; margin-bottom: 16px; border-radius: 12px; background: var(--do-lilac-100); color: var(--do-lilac-700); font-size: 13px; }
+.lgb-inline--success { background: var(--do-mint-100); color: var(--do-mint-700); }
+.lgb-inline--warning { background: var(--do-butter-100); color: var(--do-butter-700); }
+.lgb-inline--error { background: var(--do-rose-100); color: var(--do-rose-700); }
+
+/* ---- Bell: same keyframes and timing as the admin bell (vd-ring, 0.7s, pivot near the top) ---- */
+@keyframes lgb-ring {
+    0%, 100% { transform: rotate(0); }
+    20% { transform: rotate(14deg); }
+    40% { transform: rotate(-12deg); }
+    60% { transform: rotate(8deg); }
+    80% { transform: rotate(-4deg); }
+}
+#lgBellBtn .lg-bell-img { transform-origin: 50% 10%; }
+@keyframes lgb-badge-pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Unread count: brand plum, not red (red is reserved for failed). */
+.lgb-count { min-width: 18px; padding: 1px 4px; border-radius: 999px; background: var(--do-lilac-700); color: #fff; font-size: 10px; font-weight: 600; line-height: 16px; text-align: center; animation: lgb-badge-pop .35s ease; }
+
+/* ---- Notification and account menus ---- */
+header .lgb-menu { border-color: var(--do-line); border-radius: 18px; transform-origin: top right; animation: lgb-menu-in .18s ease both; }
+header .lgb-menu a, header .lgb-menu button[role="menuitem"] { transition: background .15s; }
+header .lgb-menu a:hover, header .lgb-menu button[role="menuitem"]:hover, header .lgb-menu button[role="menuitem"]:focus-visible { background: var(--do-lilac-50); }
+header .lgb-menu .lgb-menu__danger { color: var(--do-rose-700); }
+header .lgb-menu .lgb-menu__danger:hover, header .lgb-menu .lgb-menu__danger:focus-visible { background: var(--do-rose-100); }
+header .lgb-menu .lgb-menu__error { color: var(--do-rose-700); }
+@keyframes lgb-menu-in { from { opacity: 0; transform: translateY(-6px) scale(.97); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: no-preference) {
+    #lgBellBtn:hover .lg-bell-img, #lgBellBtn:focus-visible .lg-bell-img, #lgBellBtn.is-ringing .lg-bell-img { animation: lgb-ring .7s ease-in-out; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lgb, .lgb__icon, .lgb-count, header .lgb-menu, #lgBellBtn .lg-bell-img { animation: none !important; transition: none !important; }
+}

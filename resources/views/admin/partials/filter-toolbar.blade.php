@@ -4,6 +4,9 @@
 
     $searchLabel     aria-label for the search box
     $rejectedToggle  (User Management only) also shows the "Rejected users" pill, which needs `status` in scope
+    $deletionToggle  (User Management only) adds the "Deletion requests" pill with a count badge; needs `deletion`
+                     and `status` in scope
+    $pendingDeletionCount  number shown in the deletion badge (default 0)
 
     The dropdown defaults to the user-type filter. Other pages can reuse it (Messages uses it for status):
     $dropdownModel   Alpine property the dropdown sets (default 'type')
@@ -103,12 +106,24 @@
         </div>
 
         @if (! empty($rejectedToggle))
-            <button type="button" @click="status = status === 'rejected' ? 'all' : 'rejected'; apply()"
+            <button type="button" @click="status = status === 'rejected' ? 'all' : 'rejected'; deletion = false; apply()"
                 :aria-pressed="status === 'rejected'"
                 :class="status === 'rejected' ? '!border-vd-plum !bg-vd-lavender' : ''"
                 class="{{ $pill }}">
                 <x-admin.icon name="user-x" class="h-4 w-4 text-vd-plum" />
                 Rejected users
+            </button>
+        @endif
+
+        @if (! empty($deletionToggle))
+            {{-- Accounts whose Buyer/Seller owner asked to close the account. Shown as a badge count. --}}
+            <button type="button" @click="deletion = !deletion; status = 'all'; apply()"
+                :aria-pressed="deletion"
+                :class="deletion ? '!border-vd-plum !bg-vd-lavender' : ''"
+                class="{{ $pill }}">
+                <x-admin.icon name="user-x" class="h-4 w-4 text-vd-plum" />
+                Deletion requests
+                <span class="ml-0.5 inline-flex min-w-[20px] items-center justify-center rounded-full bg-vd-plum px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">{{ (int) ($pendingDeletionCount ?? 0) }}</span>
             </button>
         @endif
     </div>

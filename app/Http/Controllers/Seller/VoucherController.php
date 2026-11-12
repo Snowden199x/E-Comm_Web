@@ -21,6 +21,10 @@ class VoucherController extends Controller
             'status' => ['nullable', 'in:active,scheduled,expired,paused'],
             'search' => ['nullable', 'string', 'max:60'],
             'product' => ['nullable', 'integer'],
+        ], [
+            'status.in' => 'Choose All, Active, Scheduled, Expired, or Paused.',
+            'search.max' => 'Search is too long. Use 60 characters or fewer.',
+            'product.integer' => 'Product filter is not valid. Clear it and try again.',
         ]);
         $filters = ['status' => $filters['status'] ?? '', 'search' => trim($filters['search'] ?? ''),
             'product' => $filters['product'] ?? ''];
@@ -149,23 +153,45 @@ class VoucherController extends Controller
             'product_ids' => ['array', 'max:1000'], 'product_ids.*' => ['integer', 'distinct'],
             'category_ids' => ['array', 'max:100'], 'category_ids.*' => ['integer', 'distinct'],
             'status' => ['required', 'in:active,paused'],
+        ], [
+            'name.required' => 'Give the voucher a name.',
+            'code.required' => 'Enter a voucher code, or use Generate.',
+            'code.regex' => 'Code must be 4–12 capital letters or numbers. Use Generate to make one.',
+            'value.required' => 'Enter a discount above zero.',
+            'value.gt' => 'Discount must be above zero. Enter a higher amount.',
+            'value.regex' => 'Discount can have up to 2 decimal places. Round it and try again.',
+            'max_discount.gt' => 'Max discount must be above zero, or leave it empty.',
+            'min_spend.min' => 'Minimum spend cannot be negative. Enter 0 for no minimum.',
+            'usage_limit.min' => 'Total uses must be at least 1, or leave it empty for unlimited.',
+            'per_buyer_limit.required' => 'Enter how many times one buyer can use the voucher.',
+            'per_buyer_limit.min' => 'Uses per buyer must be at least 1.',
+            'starts_at.date' => 'Start time is not valid. Pick it from the calendar.',
+            'ends_at.date' => 'End time is not valid. Pick it from the calendar.',
+            'ends_at.after' => 'End time must be in the future. Pick a later date.',
         ]);
-        if (($data['type'] === 'percent' && $data['value'] > 90)
-            || ($data['type'] === 'fixed' && ($data['min_spend'] ?? 0) > 0 && $data['value'] > $data['min_spend'])
-            || (($data['usage_limit'] ?? null) !== null && $data['per_buyer_limit'] > $data['usage_limit'])
-            || (! empty($data['starts_at']) && ! empty($data['ends_at']) && $data['ends_at'] <= $data['starts_at'])) {
-            throw ValidationException::withMessages(['value' => 'Review the discount, usage limits, and schedule.']);
+        $fail = fn (string $field, string $message) => throw ValidationException::withMessages([$field => $message]);
+        if ($data['type'] === 'percent' && $data['value'] > 90) {
+            $fail('value', 'Percentage vouchers give at most 90% off. Lower the discount.');
+        }
+        if ($data['type'] === 'fixed' && ($data['min_spend'] ?? 0) > 0 && $data['value'] > $data['min_spend']) {
+            $fail('value', 'Discount is bigger than the minimum spend. Lower the discount or raise the minimum spend.');
+        }
+        if (($data['usage_limit'] ?? null) !== null && $data['per_buyer_limit'] > $data['usage_limit']) {
+            $fail('per_buyer_limit', 'Uses per buyer cannot exceed total uses. Lower it or raise total uses.');
+        }
+        if (! empty($data['starts_at']) && ! empty($data['ends_at']) && $data['ends_at'] <= $data['starts_at']) {
+            $fail('ends_at', 'End time is before the start time. Pick an end after the start.');
         }
         $sellerId = $request->user()->id;
         $ids = $data['scope'] === 'products' ? ($data['product_ids'] ?? []) : ($data['category_ids'] ?? []);
         if ($data['scope'] !== 'all' && ! $ids) {
-            throw ValidationException::withMessages(['scope' => 'Choose at least one product or category.']);
+            throw ValidationException::withMessages(['scope' => 'Choose at least one product or category, or apply the voucher to all products.']);
         }
         if ($data['scope'] === 'products' && Product::query()->where('seller_id', $sellerId)->whereIn('id', $ids)->count() !== count($ids)) {
-            throw ValidationException::withMessages(['product_ids' => 'Choose products from your shop only.']);
+            throw ValidationException::withMessages(['product_ids' => 'One product is not in your shop. Remove it and try again.']);
         }
         if ($data['scope'] === 'categories' && $request->user()->categories()->whereIn('categories.id', $ids)->count() !== count($ids)) {
-            throw ValidationException::withMessages(['category_ids' => 'Choose your approved categories only.']);
+            throw ValidationException::withMessages(['category_ids' => 'One category is not approved for your shop. Remove it and try again.']);
         }
 
         return $data;
@@ -190,7 +216,7 @@ class VoucherController extends Controller
     {
         if (SellerVoucher::query()->where('seller_id', $sellerId)->where('code', $code)
             ->when($exceptId, fn ($query) => $query->where('id', '!=', $exceptId))->exists()) {
-            throw ValidationException::withMessages(['code' => 'This voucher code is already used by your shop.']);
+            throw ValidationException::withMessages(['code' => 'You already use this code. Pick another, or use Generate.']);
         }
     }
 }

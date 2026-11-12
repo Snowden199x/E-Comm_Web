@@ -1,6 +1,6 @@
 # Commission and Settlement
 
-**Status:** Partial: fixed Admin commission reports and route-based shipping quote/earnings ledger are implemented; migration and owner verification pending
+**Status:** Partial: fixed Admin commission reports and route-based shipping quote/earnings ledger are implemented; migration and owner verification pending. The settlement ledger, payout and return/refund policy is proposed but **not approved and not implemented** (see [settlement ledger, payouts and return/refund policy](../../../design/settlement-ledger-and-return-policy.md)).
 **Reviewed:** 28 October 2026
 
 ## Current behavior
@@ -23,7 +23,7 @@ Orders created before this change (null `rider_pay_rate`) keep the earlier per-s
 
 ## Gaps and acceptance direction
 
-No immutable order-level Admin commission snapshot, Seller net payout accounting, payout execution, reversal, or company-level cross-company Logistics distribution exists. Aisley's per-leg shipping model remains reference material only; Vendo's current fee is the fixed minimum-plus-extra-stops rule described above. See [Vendo Commission and Settlement Design](../../../design/commission-calculation-and-settlement.md).
+No immutable order-level Admin commission snapshot, Seller net payout accounting, payout execution, reversal, or company-level cross-company Logistics distribution exists. Nothing in the application sets `orders.status = 'returned'`, so returns are absent rather than partial. Aisley's per-leg shipping model remains reference material only; Vendo's current fee is the fixed minimum-plus-extra-stops rule described above. See [Vendo Commission and Settlement Design](../../../design/commission-calculation-and-settlement.md) and the proposed [settlement ledger, payouts and return/refund policy](../../../design/settlement-ledger-and-return-policy.md), which is awaiting owner approval and has no code.
 
 ## Source evidence
 

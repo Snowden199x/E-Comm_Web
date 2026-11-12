@@ -16,3 +16,7 @@ Published reviews may appear on the product page with verified-purchase context.
 Every published buyer review feeds the seller [Feedback page](../../seller/review-management/spec.md), its rating cards and response status, and eventually the seller dashboard average. The seller's Completed Orders drawer links to reviews for that order. A separate shop-service or courier rating is not created from these product stars.
 
 See [domain status](../../../domain-feature-status.md), [order flow](../../../order-logistics-flow-decisions.md), and [feature implementation guide](../../../feature-implementation-guide.md).
+
+## 11 November 2026: sale-aware catalogue prices
+
+Buyer cards, the product page, cart unit prices and the buyer mobile presenter use the effective sale price while a seller sale is active, with the original price shown crossed out. This is a price display change only; review rules are unchanged.

@@ -10,6 +10,7 @@ use App\Services\DeliveryCutoff;
 use App\Services\OrderScanWorkflow;
 use App\Services\RiderAccessService;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -55,6 +56,8 @@ class RiderScanController extends Controller
             'nextRouteCheckpoint', 'routePlan.stops.checkpoint',
             'facilityStops.facility',
             'seller:id,name,phone_number', 'seller.sellerDetail',
+            // The approved return that the Rider may still have to collect or hand over.
+            'returnRequests' => fn ($query) => $query->where('status', 'approved')->latest('decided_at'),
         ];
         if (! $isTruck) {
             $relations[] = 'buyer:id,name,phone_number';
@@ -80,6 +83,19 @@ class RiderScanController extends Controller
                 $query->orWhere(fn ($delivery) => $delivery->where('delivery_courier_id', $rider->id)
                     ->where('destination_logistics_center_id', $center->id)
                     ->whereIn('status', ['assigned_to_rider', 'out_for_delivery', 'delivery_failed']));
+                // Return leg: the delivery Rider collects from the Buyer, then hands the parcel to the Seller.
+                $query->orWhere(fn ($returns) => $returns->where('status', 'returned')
+                    ->where('destination_logistics_center_id', $center->id)
+                    ->whereHas('returnRequests', function ($return) use ($rider) {
+                        $return->where('status', 'approved')
+                            ->where(fn ($leg) => $leg
+                                ->where(fn ($pickup) => $pickup
+                                    ->where('return_status', 'pending_pickup')
+                                    ->whereHas('order', fn ($order) => $order->where('delivery_courier_id', $rider->id)))
+                                ->orWhere(fn ($handover) => $handover
+                                    ->where('return_status', 'picked_up')
+                                    ->where('pickup_rider_id', $rider->id)));
+                    }));
             }
         })->with($relations)
             ->latest()->limit(100)->get();
@@ -91,6 +107,8 @@ class RiderScanController extends Controller
 
         $assignments = $orders->map(function (Order $order) use ($rider, $center, $isTruck, $tasks, $cutoff) {
             $facilityStops = $order->facilityStops;
+            $returnRequest = $order->returnRequests->first();
+            $isReturn = $returnRequest !== null && $order->status === 'returned';
             $linehaul = $isTruck && (int) $order->linehaul_rider_id === (int) $rider->id
                 && in_array($order->status, ['sorted', 'to_soc5', 'to_soc6', 'in_transit_to_hub'], true);
             $pickup = ! $linehaul && (int) $order->courier_id === (int) $rider->id
@@ -132,50 +150,82 @@ class RiderScanController extends Controller
                 }
             }
 
+            $sellerStop = [
+                'name' => $detail?->business_name ?: $seller?->name,
+                'phone' => $seller?->phone_number,
+                'address' => implode(', ', array_filter([
+                    $detail?->house_no, $detail?->street, $detail?->barangay,
+                    $detail?->municipality, $detail?->province, $detail?->zip_code,
+                ])),
+            ];
+            $buyerStop = [
+                'name' => $order->buyer?->name,
+                'phone' => $order->buyer?->phone_number,
+                'address' => $order->shipping_address,
+                'latitude' => $order->shipping_latitude ?? $buyerPin['lat'],
+                'longitude' => $order->shipping_longitude ?? $buyerPin['lng'],
+            ];
+            // Pickup stops at the Seller, delivery stops at the Buyer. A return starts at the Buyer
+            // and, once collected, points the Rider at the Seller.
+            $stop = $linehaul ? [
+                'name' => $origin?->business_name ?: 'Origin Main Hub',
+                'address' => implode(', ', array_filter([$origin?->municipality, $origin?->province])),
+            ] : ($isReturn
+                ? ($returnRequest->return_status === 'pending_pickup' ? $buyerStop : $sellerStop)
+                : ($pickup ? $sellerStop : $buyerStop));
+
             return [
                 'order_id' => $order->id,
                 'tracking_number' => $order->tracking_number,
                 'status' => $order->status,
-                'assignment' => $linehaul ? 'linehaul' : ($pickup ? 'pickup' : 'delivery'),
+                'assignment' => $linehaul ? 'linehaul' : ($pickup ? 'pickup' : ($isReturn ? 'return' : 'delivery')),
+                // What the return leg still needs: collect from the Buyer, or hand back to the Seller.
+                'return' => $isReturn ? [
+                    'status' => $returnRequest->return_status,
+                    'label' => $returnRequest->return_status_label,
+                    'reason' => $returnRequest->reason,
+                    'refund_cents' => $returnRequest->refund_cents,
+                    'picked_up_at' => $returnRequest->picked_up_at?->toIso8601String(),
+                    'delivered_to_seller_at' => $returnRequest->delivered_to_seller_at?->toIso8601String(),
+                    'buyer' => [
+                        'name' => $order->buyer?->name,
+                        'phone' => $order->buyer?->phone_number,
+                        'address' => $order->shipping_address,
+                        'latitude' => $order->shipping_latitude,
+                        'longitude' => $order->shipping_longitude,
+                    ],
+                    'seller' => [
+                        'name' => $detail?->business_name ?: $seller?->name,
+                        'phone' => $seller?->phone_number,
+                        'address' => implode(', ', array_filter([
+                            $detail?->house_no, $detail?->street, $detail?->barangay,
+                            $detail?->municipality, $detail?->province, $detail?->zip_code,
+                        ])),
+                    ],
+                ] : null,
                 'task' => isset($tasks[$order->id]) ? [
                     'id' => $tasks[$order->id]->id,
                     'status' => $tasks[$order->id]->status,
                     'failure_reason' => $tasks[$order->id]->failure_reason,
                 ] : null,
-                'stop' => $linehaul ? [
-                    'name' => $origin?->business_name ?: 'Origin Main Hub',
-                    'address' => implode(', ', array_filter([$origin?->municipality, $origin?->province])),
-                ] : ($pickup ? [
-                    'name' => $detail?->business_name ?: $seller?->name,
-                    'phone' => $seller?->phone_number,
-                    'address' => implode(', ', array_filter([
-                        $detail?->house_no, $detail?->street, $detail?->barangay,
-                        $detail?->municipality, $detail?->province, $detail?->zip_code,
-                    ])),
-                ] : [
-                    'name' => $order->buyer?->name,
-                    'phone' => $order->buyer?->phone_number,
-                    'address' => $order->shipping_address,
-                    'latitude' => $order->shipping_latitude ?? $buyerPin['lat'],
-                    'longitude' => $order->shipping_longitude ?? $buyerPin['lng'],
-                ]),
+                'stop' => $stop,
                 'pickup_center' => $linehaul || $pickup ? $origin?->business_name
                     : ($deliveryFacility?->name ?: $destination?->business_name),
-                'dispatch_facility' => ! $linehaul && ! $pickup && $deliveryFacility ? [
+                'dispatch_facility' => ! $linehaul && ! $pickup && ! $isReturn && $deliveryFacility ? [
                     'name' => $deliveryFacility->name,
                     'municipality' => $deliveryFacility->municipality,
                     'province' => $deliveryFacility->province,
                     'address' => $deliveryFacility->address,
                 ] : null,
-                'delivery_proof_required' => ! $linehaul && ! $pickup
+                'delivery_proof_required' => ! $linehaul && ! $pickup && ! $isReturn
                     && $facilityStops->isNotEmpty() && $order->destination_station_id !== null,
                 // COD cash the Rider must collect from the Buyer; the app sends it back as `cash_collected` with the delivery proof.
-                'cash_to_collect' => ! $linehaul && ! $pickup && $order->cod_amount !== null
+                'cash_to_collect' => ! $linehaul && ! $pickup && ! $isReturn && $order->cod_amount !== null
                     ? number_format((float) $order->cod_amount, 2, '.', '') : null,
-                'cash_collection_required' => ! $linehaul && ! $pickup && $order->money_status === 'not_collected',
+                'cash_collection_required' => ! $linehaul && ! $pickup && ! $isReturn && $order->money_status === 'not_collected',
                 // The daily delivery window. A failed parcel keeps its Rider and
                 // can be rescheduled for the next day from the app.
-                'delivery_window' => ! $linehaul && ! $pickup ? [
+                'delivery_window' => ! $linehaul && ! $pickup && ! $isReturn ? [
                     'cutoff_label' => $cutoff->label(),
                     'deadline_label' => $cutoff->deadlineLabel($order),
                     'closed' => $order->status === 'delivery_failed',
@@ -225,6 +275,7 @@ class RiderScanController extends Controller
                 'loaded' => $assignments->count(),
                 'pickup' => $assignments->where('assignment', 'pickup')->count(),
                 'delivery' => $assignments->where('assignment', 'delivery')->count(),
+                'return' => $assignments->where('assignment', 'return')->count(),
                 'linehaul' => $assignments->where('assignment', 'linehaul')->count(),
             ],
         ]);
@@ -242,6 +293,54 @@ class RiderScanController extends Controller
             'municipality' => $facility->municipality,
             'province' => $facility->province,
         ];
+    }
+
+    /**
+     * Pick up several parcels from one seller in a single run. Each item carries
+     * its own scan key, so a retry is idempotent per parcel and a bad parcel does
+     * not block the rest of the batch.
+     */
+    public function bulkPickup(Request $request, RiderAccessService $access, OrderScanWorkflow $workflow): JsonResponse
+    {
+        $data = $request->validate([
+            'items' => ['required', 'array', 'min:1', 'max:50'],
+            'items.*.tracking_number' => ['required', 'string', 'max:64'],
+            'items.*.scan_key' => ['required', 'uuid'],
+        ]);
+
+        $center = $access->approvedCenter($request->user());
+        abort_unless($center, 403, 'Approved logistics membership required.');
+
+        $results = [];
+        foreach ($data['items'] as $item) {
+            try {
+                $result = $workflow->record($request->user(), $center, [
+                    'tracking_number' => $item['tracking_number'],
+                    'scan_type' => 'pickup',
+                    'scan_key' => $item['scan_key'],
+                ]);
+                $results[] = [
+                    'tracking_number' => $item['tracking_number'],
+                    'ok' => true,
+                    'duplicate' => $result['duplicate'] ?? false,
+                    'status' => $result['status'],
+                    'message' => ($result['duplicate'] ?? false) ? 'Already scanned.' : 'Picked up.',
+                ];
+            } catch (HttpException $exception) {
+                $results[] = [
+                    'tracking_number' => $item['tracking_number'],
+                    'ok' => false,
+                    'status' => $exception->getStatusCode(),
+                    'message' => $exception->getMessage(),
+                ];
+            }
+        }
+
+        return response()->json([
+            'results' => $results,
+            'picked_up' => count(array_filter($results, fn ($row) => $row['ok'])),
+            'failed' => count(array_filter($results, fn ($row) => ! $row['ok'])),
+        ]);
     }
 
     public function store(Request $request, RiderAccessService $access, OrderScanWorkflow $workflow): JsonResponse

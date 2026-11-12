@@ -22,3 +22,17 @@ Notification choices by type and email preference are still unavailable. Address
 ## Related documentation
 
 See [domain status](../../../domain-feature-status.md), the relevant domain page, and [feature implementation guide](../../../feature-implementation-guide.md).
+
+## 8 November 2026 UI/UX pass
+
+The account page was reworked without changing routes or field names. Tabs are Profile, Password, Appearance, Delivery, Notifications, Favorites and Privacy and terms. Success and failure messages open as banners; each field error says the fix. Photo and banner uploads are checked in the browser (image only, 2 MB photo, 4 MB banner) and show a spinner; their menus are no longer clipped. The password form shows a strength bar and live checks, and its button stays disabled until the form can pass. The delivery select is now radio cards. The Favorites tab summarizes the list and links to the Favorites page. See the [progress log](../../../logs/PROGRESS-2026-11-08.md).
+
+Photo and banner uploads open a crop dialog (drag to reposition, zoom 1x to 4x). The photo saves as a 512x512 circle-framed JPEG and the banner as 1600x400 (4:1), using the same upload routes. Each password field has its own show/hide eye.
+
+## 11 November 2026 account deletion request
+
+Settings → *Privacy and terms* now has a **Delete account** card. It opens a dialog with a required reason and an optional comment (max 500, required for *Other*) and posts to `buyer.account.deletion-request`. The request waits for Admin review; the account stays usable and the card shows the sent date until it is decided. See [account deletion request](../../shared/account-deletion-request/spec.md).
+
+## 11 November 2026: saved addresses
+
+Settings > *Delivery* now summarizes saved delivery addresses (count, default label and line) and links to **Saved addresses**, a page where the Buyer adds, edits, makes default, or deletes up to 10 addresses. The registered address in the *Profile* section is unchanged and is still what checkout falls back to. See [Buyer Address](../address-book/spec.md).

@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
 use App\Models\Ecommerce\OrderItem;
+use App\Models\Ecommerce\OrderReturnRequest;
+use App\Services\DeliveryCutoff;
 use App\Services\OrderCancellationService;
+use App\Services\OrderReturnService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -23,13 +26,19 @@ class OrderController extends Controller
         return view('buyer.orders.index', compact('orders'));
     }
 
-    public function show(Order $order)
+    public function show(Order $order, OrderReturnService $returns)
     {
         abort_unless($order->buyer_id === auth()->id(), 403);
 
-        $order->load('items.product.images', 'items.review.reply', 'seller.sellerDetail', 'statusEvents');
+        $order->load('items.product.images', 'items.review.reply', 'seller.sellerDetail', 'statusEvents', 'latestReturnRequest');
+        $canRequestReturn = $returns->canRequest($order);
+        $returnWindowClosesAt = $returns->windowClosesAt($order);
+        $returnDaysLeft = $returns->daysLeft($order);
+        $maxDeliveryAttempts = DeliveryCutoff::MAX_DELIVERY_ATTEMPTS + (int) $order->delivery_extra_attempts;
 
-        return view('buyer.orders.show', compact('order'));
+        return view('buyer.orders.show', compact(
+            'order', 'canRequestReturn', 'returnWindowClosesAt', 'returnDaysLeft', 'maxDeliveryAttempts',
+        ));
     }
 
     public function cancel(Request $request, int $order, OrderCancellationService $cancellations)
@@ -40,15 +49,58 @@ class OrderController extends Controller
             'reason_details' => ['required_if:reason,other', 'nullable', 'string', 'max:450'],
         ]);
 
-        $cancellations->cancelForBuyer(
-            $request->user(),
-            $order,
-            $data['expected_status'],
-            $data['reason'],
-            $data['reason_details'] ?? null,
-        );
+        try {
+            $cancellations->cancelForBuyer(
+                $request->user(),
+                $order,
+                $data['expected_status'],
+                $data['reason'],
+                $data['reason_details'] ?? null,
+            );
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            if ($e->getStatusCode() === 409) {
+                return redirect()->route('buyer.orders.show', $order)
+                    ->with('error', $e->getMessage().' The page now shows the latest status.');
+            }
+
+            throw $e;
+        }
 
         return redirect()->route('buyer.orders.show', $order)->with('success', 'Your order has been cancelled. Reserved stock has been restored.');
+    }
+
+    /** Return request form for a delivered or received order. */
+    public function returnForm(Request $request, int $order, OrderReturnService $returns)
+    {
+        $record = Order::query()->where('buyer_id', $request->user()->id)
+            ->with('latestReturnRequest')->findOrFail($order);
+        abort_unless(in_array($record->status, OrderReturnService::RETURNABLE_STATUSES, true), 409, 'Only delivered orders can be returned.');
+        abort_unless($returns->canRequest($record), 409, 'The 7-day return window for this order has closed.');
+        abort_if(
+            $record->returnRequests()->where('status', OrderReturnRequest::STATUS_PENDING)->exists(),
+            409,
+            'Your return request is already waiting for the seller.',
+        );
+
+        return view('buyer.orders.return', [
+            'order' => $record,
+            'reasons' => OrderReturnRequest::REASONS,
+            'windowClosesAt' => $returns->windowClosesAt($record),
+            'daysLeft' => $returns->daysLeft($record),
+        ]);
+    }
+
+    public function requestReturn(Request $request, int $order, OrderReturnService $returns)
+    {
+        $data = $request->validate([
+            'reason' => ['required', Rule::in(array_keys(OrderReturnRequest::REASONS))],
+            'details' => ['required_if:reason,other', 'nullable', 'string', 'max:450'],
+        ]);
+
+        $returns->request($request->user(), $order, $data['reason'], $data['details'] ?? null);
+
+        return redirect()->route('buyer.orders.show', $order)
+            ->with('success', 'Return request sent. The seller will review it.');
     }
 
     public function complete(\Illuminate\Http\Request $request, int $order)

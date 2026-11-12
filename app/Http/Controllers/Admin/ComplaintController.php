@@ -111,6 +111,9 @@ class ComplaintController extends Controller
                 : 'Status changed to In Progress',
         ]);
 
+        \App\Models\AdminActionLog::record($complaint->complainant, 'complaint_status',
+            'Case #'.$complaint->id.' set to '.str_replace('_', ' ', (string) $complaint->status).': '.$complaint->type);
+
         return back()->with('confirmation', 'status_updated');
     }
 
@@ -136,6 +139,9 @@ class ComplaintController extends Controller
                 'actor' => 'admin #'.Auth::guard('admin')->id(),
                 'action' => 'Report '.($validated['decision'] === 'approved' ? 'approved' : 'rejected').': '.trim($validated['note']),
             ]);
+
+            \App\Models\AdminActionLog::record($report->respondent, 'account_report_'.$validated['decision'],
+                'Case #'.$report->id.' '.$report->type.': '.trim($validated['note']));
 
             if ($validated['decision'] === 'approved') {
                 $respondent = $report->respondent;

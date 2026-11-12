@@ -54,7 +54,7 @@
 </div>
 
 {{-- Secondary figures --}}
-<div class="mb-6 grid grid-cols-1 gap-3 rounded-2xl border border-[#ece4ec] bg-[#FBF8FB] p-4 sm:grid-cols-3">
+<div class="mb-6 grid grid-cols-1 gap-3 rounded-2xl border border-[#ece4ec] bg-[#FBF8FB] p-4 sm:grid-cols-2 lg:grid-cols-4">
     <div>
         <p class="text-xs text-gray-500">Gross sales <span class="text-gray-400">(orders placed, not cancelled)</span></p>
         <p class="mt-0.5 text-lg font-semibold tabular-nums text-[#2B1730]">₱{{ number_format($salesSummary['gross_sales'], 2) }}</p>
@@ -67,7 +67,19 @@
         <p class="text-xs text-gray-500">Returns / refunds</p>
         <p class="mt-0.5 text-lg font-semibold tabular-nums {{ $salesSummary['return_refund'] > 0 ? 'text-orange-700' : 'text-[#2B1730]' }}">{{ number_format($salesSummary['return_refund']) }}</p>
     </div>
-    <p class="text-xs leading-relaxed text-gray-500 sm:col-span-3">
+    <div>
+        <p class="text-xs text-gray-500">Average delivery time <span class="text-gray-400">(placed to delivered)</span></p>
+        <p class="mt-0.5 text-lg font-semibold tabular-nums text-[#2B1730]">
+            {{ $salesSummary['avg_delivery_days'] !== null ? $salesSummary['avg_delivery_days'] . ' days' : '—' }}
+        </p>
+        @if ($salesSummary['delivery_measured'] > 0)
+            <p class="text-xs text-gray-500">
+                {{ number_format($salesSummary['delivery_same_day']) }} same day ·
+                {{ number_format($salesSummary['delivery_over_three_days']) }} over 3 days
+            </p>
+        @endif
+    </div>
+    <p class="text-xs leading-relaxed text-gray-500 sm:col-span-2 lg:col-span-4">
         Gross sales counts every order placed that wasn't cancelled, so it can be higher than completed sales, which only counts delivered and completed orders.
     </p>
 </div>

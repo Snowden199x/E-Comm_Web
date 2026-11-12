@@ -80,6 +80,12 @@ class LogisticsDocumentReviewController extends Controller
                     ? ($data['review_note'] ?? 'Please submit a new document.')
                     : 'Your updated '.str_replace('_', ' ', $item->document_type).' is now on file.',
                 'link' => route('lgp.company.account')]);
+
+            \App\Models\AdminActionLog::record(
+                $center->user,
+                'logistics_document_'.$data['decision'],
+                $center->business_name.' '.$documentLabel.($data['review_note'] ? ': '.$data['review_note'] : ''),
+            );
         }, 3);
 
         return back()->with('success', $message);

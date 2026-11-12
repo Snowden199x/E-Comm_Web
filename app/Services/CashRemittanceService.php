@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
 use App\Models\Finance\CashRemittance;
 use App\Models\User;
@@ -43,9 +42,6 @@ class CashRemittanceService
 
             $orderIds = $locked->items()->pluck('order_id');
             Order::query()->whereIn('id', $orderIds)->lockForUpdate()->get();
-            // Orders that move forward now (not ones already advanced), used to credit Sellers once.
-            $moving = Order::query()->whereIn('id', $orderIds)
-                ->where('money_status', CashRemittance::SENT_MONEY_STATUS[$locked->level])->pluck('id');
             $locked->update([
                 'received_amount' => number_format($receivedCents / 100, 2, '.', ''),
                 'status' => $matches ? CashRemittance::STATUS_RECEIVED : CashRemittance::STATUS_DISCREPANCY,
@@ -55,9 +51,6 @@ class CashRemittanceService
             Order::query()->whereIn('id', $orderIds)
                 ->where('money_status', CashRemittance::SENT_MONEY_STATUS[$locked->level])
                 ->update(['money_status' => $matches ? CashRemittance::RECEIVED_MONEY_STATUS[$locked->level] : 'discrepancy']);
-            if ($matches && $locked->level === CashRemittance::LEVEL_COMPANY_TO_VENDO) {
-                $this->notifySellersCredited($moving);
-            }
 
             return [$matches, $expectedCents, $receivedCents];
         }, 3);
@@ -76,36 +69,7 @@ class CashRemittanceService
             $held = Order::query()->whereIn('id', $locked->items()->pluck('order_id'))->where('money_status', 'discrepancy')->pluck('id');
             Order::query()->whereIn('id', $held)
                 ->update(['money_status' => CashRemittance::RECEIVED_MONEY_STATUS[$locked->level]]);
-            if ($locked->level === CashRemittance::LEVEL_COMPANY_TO_VENDO) {
-                $this->notifySellersCredited($held);
-            }
         }, 3);
-    }
-
-    /**
-     * Tell each Seller what was just credited. Net earnings are the item price minus the commission saved
-     * on the order; nothing is stored beyond the order's money status, and no real money moves.
-     *
-     * @param  Collection<int, int>  $orderIds
-     */
-    private function notifySellersCredited(Collection $orderIds): void
-    {
-        if ($orderIds->isEmpty()) {
-            return;
-        }
-
-        Order::query()->whereIn('id', $orderIds)->get(['id', 'seller_id', 'total_amount', 'seller_commission_rate'])
-            ->groupBy('seller_id')->each(function ($orders, $sellerId) {
-                $net = (float) $orders->sum(fn (Order $order) => $order->seller_net_earnings);
-                Notification::create([
-                    'user_id' => $sellerId,
-                    'type' => 'earnings_credited',
-                    'title' => 'Earnings credited',
-                    'message' => '₱'.number_format($net, 2).' from '.$orders->count().' delivered '
-                        .($orders->count() === 1 ? 'order' : 'orders').' is now credited to your earnings.',
-                    'link' => route('seller.earnings.index', ['state' => 'credited']),
-                ]);
-            });
     }
 
     /** Orders a Province Hub has confirmed cash for and not yet sent to the Company. */

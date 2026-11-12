@@ -28,7 +28,7 @@
 - **Important route/data mismatch:** successful password and Google login now navigate to the new `DashboardScreen`. Its Home, Parcels, Map, Earnings, and delivery-detail content still contains prototype/sample data (including a fixed Bubukal map destination and hard-coded earnings). The API-backed `RiderWorkScreen` can fetch assigned parcels and submit supported scans, but the current login success path does not navigate to it. The UI refresh therefore does not make the new tabs live API workflows.
 - Buyer registration has a new multi-step visual form with email verification modal, ID capture, address fields, terms checkbox, and success screen. The screen has no Buyer API client call; its OTP and successful submission are prototype UI and do not create a Buyer account.
 - No new mobile API contract or dependency change was found in the latest Rider UI pull. The Buyer app remains a prototype outside the Rider integration.
-- Details and existing gaps are documented in the [mobile Rider integration spec](../../E-Comm_Mobile/docs/features/rider-integration.md) and [mobile status](../../E-Comm_Mobile/docs/domain-feature-status.md); the mobile repo needs its own matching progress entry.
+- Details and existing gaps live in the sibling repository (`E-Comm_Mobile/docs/features/rider-integration.md` and `E-Comm_Mobile/docs/domain-feature-status.md`); the mobile repo needs its own matching progress entry.
 
 ## Verification
 

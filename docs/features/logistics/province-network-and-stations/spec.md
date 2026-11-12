@@ -3,7 +3,7 @@
 **Status:** Logistics web hierarchy and operational workflows implemented in code; owner migrations and runtime verification pending; mobile Rider/Driver integration remains partial
 **Decision recorded:** 23 October 2026
 
-**Current decision note (23 October 2026):** The owner approved the pulled Company / Province Hub / Station Hub structure. Multiple companies may operate in the same province; each company can have one active Province Hub per province and one active Station Hub per municipality under that Province Hub. This supersedes the prior one-network-account-per-province rule. See the [pull review](../../design/2026-10-23-logistics-pull-review.md) and [implementation spec](../../design/logistics-hub-restructure-backend-spec.md).
+**Current decision note (23 October 2026):** The owner approved the pulled Company / Province Hub / Station Hub structure. Multiple companies may operate in the same province; each company can have one active Province Hub per province and one active Station Hub per municipality under that Province Hub. This supersedes the prior one-network-account-per-province rule. See the [pull review](../../../design/2026-10-23-logistics-pull-review.md) and [implementation spec](../../../design/logistics-hub-restructure-backend-spec.md).
 
 ## Agreed direction
 
@@ -95,7 +95,7 @@ Keep scan processing online for the initial project version. Offline scan queues
 
 ## Remaining limits
 
-- Owner must run the migrations and manually verify the workflow. No automated tests, build or browser/app walkthrough were run by the agent. Reports still lack SLA percentages and PDF/Excel exports. Financial reports show accruals and Logistics pool values only; there is no payout, reversal, or cross-company remainder allocation. Notification updates use polling and require owner verification.
+- Owner must run the migrations and manually verify the workflow. No automated tests, build or browser/app walkthrough were run by the agent. Reports still lack SLA percentages. Downloads are PDF or CSV; Excel is out of scope. Financial reports show accruals and Logistics pool values only; there is no payout, reversal, or cross-company remainder allocation. Notification updates use polling and require owner verification.
 - Legacy virtual SH route plans and scanner tables remain for historical compatibility. No automatic mapping from an old SH label to a new facility occurs. Legacy orders retain the old destination receipt gate; new facility routes use the final-facility scan.
 - Company coverage selection is implemented through the Superuser primary-station page. No production camera or end-to-end acceptance was run by the agent; the owner tests after migration.
 

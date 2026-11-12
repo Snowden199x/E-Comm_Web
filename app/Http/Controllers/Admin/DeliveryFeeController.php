@@ -60,6 +60,12 @@ class DeliveryFeeController extends Controller
             'updated_by' => auth('admin')->id(),
         ]);
 
+        \App\Models\AdminActionLog::record(null, 'delivery_rates_updated', sprintf(
+            'Vendo delivery commission %s%% · Seller commission %s%%',
+            rtrim(rtrim((string) $data['vendo_delivery_commission_rate'], '0'), '.'),
+            rtrim(rtrim((string) $data['seller_commission_rate'], '0'), '.'),
+        ));
+
         return back()->with('success', 'Rates saved. New orders use them; existing orders keep their rates.');
     }
 }

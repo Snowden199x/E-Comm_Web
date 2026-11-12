@@ -61,9 +61,12 @@ class Order extends Model
         return $this->hasOne(\App\Models\Profiles\OrderDeliveryProof::class);
     }
 
-    protected $casts = ['shipping_fee' => 'decimal:2', 'voucher_discount' => 'decimal:2', 'shipping_route_snapshot' => 'array', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date',
+    protected $casts = ['shipping_fee' => 'decimal:2', 'voucher_discount' => 'decimal:2', 'voucher_codes' => 'array', 'shipping_route_snapshot' => 'array', 'estimated_delivery_from' => 'date', 'estimated_delivery_to' => 'date',
         'delivered_at' => 'datetime', 'pickup_verified_at' => 'datetime',
-        'delivery_scheduled_for' => 'date', 'delivery_failed_at' => 'datetime',
+        'delivery_scheduled_for' => 'date', 'delivery_failed_at' => 'datetime', 'delivery_attempts' => 'integer',
+        'pickup_scheduled_at' => 'datetime', 'pickup_reschedule_count' => 'integer', 'pickup_attempts' => 'integer',
+        'pickup_reported_at' => 'datetime',
+        'return_window_until' => 'datetime', 'delivery_extra_attempts' => 'integer', 'limit_override_at' => 'datetime',
         'cod_amount' => 'decimal:2', 'rider_pay_rate' => 'decimal:2',
         'vendo_delivery_commission_rate' => 'decimal:2', 'seller_commission_rate' => 'decimal:2'];
 
@@ -83,6 +86,25 @@ class Order extends Model
         'void' => 'No cash collected',
     ];
 
+    /** A seller may move the pickup schedule at most this many times. */
+    public const PICKUP_RESCHEDULE_LIMIT = 3;
+
+    public function pickupReschedulesLeft(): int
+    {
+        return max(0, self::PICKUP_RESCHEDULE_LIMIT - (int) $this->pickup_reschedule_count);
+    }
+
+    public function canSellerReschedulePickup(): bool
+    {
+        return $this->status === 'ready_for_pickup'
+            && (int) $this->pickup_reschedule_count < self::PICKUP_RESCHEDULE_LIMIT;
+    }
+
+    public function canSellerReportPickup(): bool
+    {
+        return $this->status === 'ready_for_pickup' && (int) $this->pickup_attempts > 0;
+    }
+
     public function codCollection()
     {
         return $this->hasOne(\App\Models\Finance\OrderCodCollection::class);
@@ -97,6 +119,7 @@ class Order extends Model
     {
         static::creating(function (Order $order) {
             $order->tracking_number ??= 'VND-'.Str::ulid();
+            $order->order_number ??= OrderSequence::next();
         });
 
         static::saving(function (Order $order) {
@@ -207,12 +230,13 @@ class Order extends Model
 
     public const SALES_STATUSES = ['delivered', 'completed'];
 
+    /** The Seller-visible order number (`ORD-2026-0001`), with the legacy VN- id for unnumbered rows. */
     public function getNumberAttribute(): string
     {
-        return self::numberFor((int) $this->id);
+        return $this->order_number ?: self::numberFor((int) $this->id);
     }
 
-    /** `number` is computed from the id and is not a database column, so it can never appear in a SQL select. */
+    /** Legacy `VN-` reference. Kept for rows created before order numbers and for old links. */
     public static function numberFor(int $id): string
     {
         return 'VN-'.str_pad((string) $id, 6, '0', STR_PAD_LEFT);
@@ -278,7 +302,7 @@ class Order extends Model
         'buyer_id',
         'seller_id',
         'buyer_note',
-        'voucher_discount', 'voucher_code',
+        'voucher_discount', 'voucher_code', 'voucher_codes',
         'courier_id',
         'total_amount',
         'status',
@@ -291,7 +315,8 @@ class Order extends Model
         // Buyer-selected delivery pin, shared only with the assigned Rider.
         'shipping_latitude', 'shipping_longitude',
         'tracking_number', 'carrier_name', 'carrier_tracking_number', 'estimated_delivery_from', 'estimated_delivery_to', 'shipping_fee',
-        'delivery_scheduled_for', 'delivery_failed_at',
+        'delivery_scheduled_for', 'delivery_failed_at', 'delivery_attempts',
+        'return_window_until', 'delivery_extra_attempts', 'limit_override_by', 'limit_override_at', 'limit_override_note',
         'shipping_hub_count', 'shipping_route_snapshot',
         'cod_amount', 'money_status', 'rider_pay_rate', 'vendo_delivery_commission_rate', 'seller_commission_rate',
     ];
@@ -350,6 +375,17 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function returnRequests()
+    {
+        return $this->hasMany(OrderReturnRequest::class);
+    }
+
+    /** The request shown on the Buyer and Seller order pages. */
+    public function latestReturnRequest()
+    {
+        return $this->hasOne(OrderReturnRequest::class)->latestOfMany();
     }
 
     public function reviews()

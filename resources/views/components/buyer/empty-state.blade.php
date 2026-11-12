@@ -8,7 +8,7 @@
         </x-buyer.empty-state>
 
     Props
-        icon     search | box | store | cart | orders | review | chat   (default: box)
+        icon     search | box | store | cart | orders | review | chat | heart   (default: box)
         title    short heading, says what is missing
         text     one sentence on why, or what the buyer can do next
         compact  smaller version for use inside a card or a section
@@ -61,6 +61,10 @@
 
                 @case('review')
                     <path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" fill="#ffffff" />
+                    @break
+
+                @case('heart')
+                    <path d="M12 20.4s-7.6-4.6-9.2-9.5C1.7 7.5 3.8 4.6 6.9 4.6c1.9 0 3.6 1 5.1 3 1.5-2 3.2-3 5.1-3 3.1 0 5.2 2.9 4.1 6.3-1.6 4.9-9.2 9.5-9.2 9.5z" fill="#ffffff" />
                     @break
 
                 @case('chat')
