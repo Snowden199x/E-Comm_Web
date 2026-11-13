@@ -1,0 +1,79 @@
+/* =========================================================
+   Logistics · Account management (Company, Province Hub and Station Hub). Loaded after hubs-theme.css and drivers-theme.css
+   (@push('lg-head')), which supply the .lgh tokens, buttons, fields, callouts, pills, table, empty state and dialogs.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32.
+   Status colors: Awaiting review = butter, Approved = mint, Rejected = rose; a met password rule = mint.
+   ========================================================= */
+.lgh.lga .lga-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+.lgh.lga .lga-stack { display: grid; gap: 16px; min-width: 0; }
+
+/* Identity */
+.lgh.lga .lga-identity { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; padding: 16px 24px; }
+.lgh.lga .lga-avatar { display: grid; place-items: center; width: 48px; height: 48px; flex: none; border-radius: 14px; background: var(--do-lilac-100); color: var(--do-lilac-700); font-size: 18px; font-weight: 600; animation: lgh-pop .35s cubic-bezier(.2, .9, .3, 1.2) both; }
+.lgh.lga .lga-identity__text { flex: 1 1 220px; min-width: 0; }
+.lgh.lga .lga-identity__name { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.lgh.lga .lga-identity__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 4px 0 0; color: var(--do-muted); font-size: 12px; }
+.lgh.lga .lga-identity__note { display: flex; gap: 8px; flex: 1 1 280px; max-width: 420px; margin: 0; color: var(--do-muted); font-size: 12px; }
+.lgh.lga .lga-identity__note .lg-icon { flex: none; margin-top: 2px; color: var(--do-lilac-500); }
+
+/* Panels */
+.lgh.lga .lga-panel { overflow: hidden; }
+.lgh.lga .lga-panel__head { display: flex; align-items: center; gap: 12px; padding: 16px 24px; border-bottom: 1px solid var(--do-line); }
+.lgh.lga .lga-panel__head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.lgh.lga .lga-panel__head p { margin: 2px 0 0; color: var(--do-muted); font-size: 12px; }
+.lgh.lga .lga-tile { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 12px; animation: lgh-pop .35s cubic-bezier(.2, .9, .3, 1.2) both; }
+.lgh.lga .lga-panel:hover .lga-tile { animation: lgh-hop .45s ease; }
+.lgh.lga .lga-panel__body { padding: 24px; }
+.lgh.lga .lga-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.lgh.lga .lga-fields--one { grid-template-columns: minmax(0, 1fr); }
+.lgh.lga .lga-wide { grid-column: 1 / -1; }
+.lgh.lga .lgh-hint { margin: 0; color: var(--do-muted); font-size: 11px; }
+.lgh.lga .lgh-callout { background: var(--do-butter-100); color: var(--do-butter-700); }
+
+/* Read-only email with its button */
+.lgh.lga .lga-inline { display: flex; gap: 8px; align-items: stretch; }
+.lgh.lga .lga-inline input { flex: 1; min-width: 0; }
+.lgh.lga .lga-inline .lgh-btn { flex: none; }
+
+/* Facility facts (province and station) */
+.lgh.lga .lga-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 12px 16px; border-radius: 12px; background: var(--do-lilac-50); }
+.lgh.lga .lga-facts dt { color: var(--do-muted); font-size: 11px; }
+.lgh.lga .lga-facts dd { margin: 2px 0 0; font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
+
+/* Save */
+.lgh.lga .lga-save { display: flex; justify-content: flex-end; }
+.lgh.lga .lga-save--inner { padding-top: 4px; }
+
+/* Password: show or hide, and the rule chips */
+.lgh.lga .lga-pass { position: relative; }
+.lgh.lga .lga-pass input { padding-right: 44px; }
+.lgh.lga .lga-eye { position: absolute; top: 50%; right: 4px; display: grid; place-items: center; width: 32px; height: 32px; transform: translateY(-50%); border: 0; border-radius: 8px; background: none; color: var(--do-lilac-700); cursor: pointer; transition: background .15s; }
+.lgh.lga .lga-eye:hover { background: var(--do-lilac-100); }
+.lgh.lga .lga-eye:focus-visible { outline: 2px solid var(--do-lilac-500); outline-offset: 1px; }
+.lgh.lga .lga-rules { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.lgh.lga .lga-rules li { padding: 4px 12px; border-radius: 999px; background: var(--do-lilac-50); color: var(--do-muted); font-size: 11px; font-weight: 500; transition: background .2s, color .2s; }
+.lgh.lga .lga-rules li.is-met { background: var(--do-mint-100); color: var(--do-mint-700); }
+
+/* Documents */
+.lgh.lga .lga-docs { border-top: 1px solid var(--do-line); }
+.lgh.lga .lga-table { min-width: 0; }
+.lgh.lga .lga-empty { padding-top: 24px; padding-bottom: 24px; border-top: 1px solid var(--do-line); }
+.lgh.lga input[type='file'] { padding: 8px; }
+
+/* The shared address map brings its own Tailwind classes; keep it inside the card */
+.lgh.lga .lga-map { display: grid; gap: 8px; min-width: 0; }
+
+@media (max-width: 960px) {
+    .lgh.lga .lga-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+    .lgh.lga .lga-fields { grid-template-columns: minmax(0, 1fr); }
+    .lgh.lga .lga-facts { grid-template-columns: minmax(0, 1fr); }
+    .lgh.lga .lga-panel__head, .lgh.lga .lga-panel__body { padding-left: 16px; padding-right: 16px; }
+    .lgh.lga .lga-inline { flex-direction: column; }
+    .lgh.lga .lga-save .lgh-btn { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lgh.lga .lga-avatar, .lgh.lga .lga-tile { animation: none !important; }
+    .lgh.lga .lga-rules li, .lgh.lga .lga-eye { transition: none; }
+}

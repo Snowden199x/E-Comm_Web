@@ -1,0 +1,37 @@
+/* =========================================================
+   Logistics · Province Hub > Parcel Operations additions. Loaded after hubs-theme.css (@push('lg-head')),
+   which supplies the .lgh tokens, buttons, chips, search, table and empty states.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32.
+   Status colors: Incoming = sky, Sorting = lilac, Outgoing (waiting for a trip) = butter, Departed = mint.
+   ========================================================= */
+.lgh {
+    --do-sky-100: #e0ecfa;
+    --do-sky-700: #355f8f;
+}
+.lgh .lgh-pill--sky { background: var(--do-sky-100); color: var(--do-sky-700); }
+.lgh .lgh-pill--butter { background: var(--do-butter-100); color: var(--do-butter-700); }
+
+/* Chips here are links */
+.lgh a.lgh-chip { text-decoration: none; }
+
+/* The search is a form, so it needs the same width rules as the other pages' search label */
+.lgh form.lgh-search { margin: 0; }
+
+.lgh .lgh-table.lgh-table--parcels { min-width: 860px; }
+.lgh .lgh-table--parcels .lgh-name { text-decoration: none; }
+
+/* Pager (resources/views/logistics/partials/pagination.blade.php) in the lilac look */
+.lgh .lgh-pager { padding: 0 24px 16px; }
+.lgh .lgh-pager .lg-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 0; padding-top: 16px; border-top: 1px solid var(--do-line); color: var(--do-muted); font-size: 12px; }
+.lgh .lgh-pager .lg-pager p { margin: 0; }
+.lgh .lgh-pager .lg-pager ul { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.lgh .lgh-pager .lg-pager :is(a, span) { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 4px 12px; border: 1px solid var(--do-lilac-200); border-radius: 8px; background: var(--do-lilac-50); color: var(--do-lilac-700); font-size: 12px; font-weight: 500; text-decoration: none; }
+.lgh .lgh-pager .lg-pager a:hover { background: var(--do-lilac-100); }
+.lgh .lgh-pager .lg-pager a:focus-visible { outline: 2px solid var(--do-lilac-500); outline-offset: 2px; }
+.lgh .lgh-pager .lg-pager [aria-current='page'] { background: var(--do-lilac-700); border-color: var(--do-lilac-700); color: #fff; }
+.lgh .lgh-pager .lg-pager [aria-disabled='true'] { opacity: .5; }
+
+@media (max-width: 720px) {
+    .lgh .lgh-table.lgh-table--parcels { min-width: 0; }
+    .lgh .lgh-pager { padding: 0 16px 16px; }
+}

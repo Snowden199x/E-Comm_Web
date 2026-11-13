@@ -1,6 +1,15 @@
-{{-- Live Province Hub overview. Operational actions are linked to the relevant hub pages. --}}
+{{--
+    Province Hub Dashboard. Read-only overview, fed by PortalController::provinceDashboard (nothing about the data changed).
+    Look: the seller pastel lilac system, the same .lgd layer as the Company dashboard. Styles: resources/css/logistics/dashboard-theme.css
+    plus province-dashboard-theme.css (loaded last). Behavior: resources/js/logistics/dashboard.js (one click on a row opens its page,
+    spinner on buttons that open another page).
+    Status colors: new = lilac, waiting = butter, in progress = sky, done = mint, delayed or failed = rose.
+    Loading: shell skeleton (boot and page-to-page) plus a button spinner. Errors: top banner (<x-logistics.flash />) for messages sent
+    back from other pages. Empty: nothing needs attention, no active trips, no Station Hubs, no drivers, no vehicles. No search or filters.
+--}}
 @php
     use Carbon\Carbon;
+    use Illuminate\Support\Str;
 
     $stations = collect($hub['stations']);
     $stationsSetup = $stations->where('status', 'Setup');
@@ -20,217 +29,325 @@
     $incomingParcels = collect($incoming)->sum('parcels');
     $outgoingParcels = collect($outgoing)->sum('parcels');
     $delayedCount = count($delayed);
+    $delayedIds = collect($delayed)->pluck('id');
 
-    $stationTone = ['Active' => 'green', 'Setup' => 'amber', 'Inactive' => 'gray'];
-    $statusLabel = ['scheduled' => 'Scheduled', 'in_transit' => 'In transit'];
-    $statusTone = ['scheduled' => 'blue', 'in_transit' => 'amber'];
+    $statusTone = ['Active' => 'mint', 'Setup' => 'butter', 'Inactive' => 'lilac'];
+    $tripLabel = ['scheduled' => 'Scheduled', 'in_transit' => 'In transit'];
+    $tripTone = ['scheduled' => 'butter', 'in_transit' => 'sky'];
     $typeLabel = ['station_transfer' => 'Station transfer', 'inter_province' => 'Inter-province'];
     $maxWaiting = max(1, $stations->max('parcels') ?? 1);
 
-    // Needs your attention: each item links to the page where it is fixed.
+    // Needs attention: each item names the page where it is fixed. Worst first.
     $attention = [];
     foreach ($delayed as $d) {
-        $attention[] = ['red', 'clock', 'Transfer '.$d['id'].' is delayed', $d['text'], route('lgp.province.trips'), 'Open trips'];
+        $attention[] = ['rank' => 0, 'tone' => 'rose', 'icon' => 'clock', 'title' => 'Transfer '.$d['id'].' is delayed',
+            'text' => $d['text'], 'url' => route('lgp.province.trips'), 'cta' => 'Open trips'];
     }
     if ($waitingForTrip) {
-        $attention[] = ['amber', 'truck', $waitingForTrip.' parcels are waiting for a transfer trip', 'Create a trip and assign an available driver and vehicle.', route('lgp.province.trips.create'), 'Create trip'];
+        $attention[] = ['rank' => 1, 'tone' => 'butter', 'icon' => 'truck',
+            'title' => $waitingForTrip.' '.Str::plural('parcel', $waitingForTrip).' '.($waitingForTrip === 1 ? 'is' : 'are').' waiting for a trip',
+            'text' => 'Create a trip and assign an available driver and vehicle.',
+            'url' => route('lgp.province.trips.create'), 'cta' => 'Create trip'];
     }
     if ($pending->count()) {
-        $attention[] = ['violet', 'users', $pending->count().' driver '.($pending->count() === 1 ? 'application' : 'applications').' to review',
-            $expiredApplications ? $expiredApplications.' of them '.($expiredApplications === 1 ? 'has' : 'have').' an expired license.' : 'Approve or reject them so they can take trips.',
-            route('lgp.province.drivers'), 'Review'];
+        $attention[] = ['rank' => 1, 'tone' => 'lilac', 'icon' => 'users',
+            'title' => $pending->count().' driver '.Str::plural('application', $pending->count()).' to review',
+            'text' => $expiredApplications
+                ? $expiredApplications.' of them '.($expiredApplications === 1 ? 'has' : 'have').' an expired license.'
+                : 'Approve or reject them so they can take trips.',
+            'url' => route('lgp.province.drivers'), 'cta' => 'Review drivers'];
     }
     foreach ($stationsSetup as $s) {
-        $attention[] = ['amber', 'alert', $s['name'].' is still in setup', 'Its manager has not signed in yet, so it cannot receive parcels.', route('lgp.province.stations.show', $s['id']), 'View station'];
+        $attention[] = ['rank' => 1, 'tone' => 'butter', 'icon' => 'alert', 'title' => $s['name'].' is in setup',
+            'text' => 'Its manager hasn’t signed in yet, so it can’t receive parcels.',
+            'url' => route('lgp.province.stations.show', $s['id']), 'cta' => 'View station'];
     }
     if ($vehicleCount('maintenance')) {
-        $attention[] = ['blue', 'info', $vehicleCount('maintenance').' '.($vehicleCount('maintenance') === 1 ? 'vehicle is' : 'vehicles are').' in maintenance', 'It cannot be assigned to a trip until it is set back to available.', route('lgp.province.vehicles'), 'Open vehicles'];
+        $attention[] = ['rank' => 2, 'tone' => 'sky', 'icon' => 'info',
+            'title' => $vehicleCount('maintenance').' '.($vehicleCount('maintenance') === 1 ? 'vehicle is' : 'vehicles are').' in maintenance',
+            'text' => 'Set '.($vehicleCount('maintenance') === 1 ? 'it' : 'them').' back to available before assigning '.($vehicleCount('maintenance') === 1 ? 'it' : 'them').' to a trip.',
+            'url' => route('lgp.province.vehicles'), 'cta' => 'Open vehicles'];
     }
+    $attention = collect($attention)->sortBy('rank')->values();
+    $attentionShown = 3;
 
-    // Parcels at this hub, in the order they move through it.
+    // [label, value, icon, url, tone]
+    $tiles = [
+        ['Parcels at this hub', number_format($hub['parcels']), 'package', route('lgp.province.parcels'), 'lilac'],
+        ['Station Hubs', number_format($stations->count()), 'building', route('lgp.province.stations'), 'lilac'],
+        ['Active trips', number_format($trips->count()), 'calendar', route('lgp.province.trips'), 'sky'],
+        ['Delayed transfers', number_format($delayedCount), 'clock', route('lgp.province.trips'), $delayedCount ? 'rose' : 'lilac'],
+    ];
+
+    // Parcels, in the order they move through this hub: [label, count, icon, tone, url, hint]
     $flow = [
-        ['Incoming transfers', $incomingParcels, 'inbox', 'blue', route('lgp.province.parcels'), count($incoming) ? count($incoming).' '.(count($incoming) === 1 ? 'trip is' : 'trips are').' bringing parcels here from stations or other hubs.' : 'No trips are on their way here.'],
-        ['Awaiting sorting', $awaitingSorting, 'layers', 'violet', route('lgp.province.parcels'), 'Received and scanned. Each one gets its next destination.'],
-        ['Waiting for a trip', $waitingForTrip, 'package', 'amber', route('lgp.province.trips.create'), 'Sorted and ready to load. Create a trip to move them.'],
-        ['Outgoing transfers', $outgoingParcels, 'truck', 'green', route('lgp.province.trips'), count($outgoing) ? count($outgoing).' '.(count($outgoing) === 1 ? 'trip is' : 'trips are').' loaded or scheduled to leave this hub.' : 'No trips are scheduled to leave.'],
+        ['Incoming transfers', $incomingParcels, 'inbox', 'sky', route('lgp.province.parcels'),
+            count($incoming) ? count($incoming).' '.(count($incoming) === 1 ? 'trip is' : 'trips are').' bringing parcels here.' : 'No trips are on their way here.'],
+        ['Awaiting sorting', $awaitingSorting, 'layers', 'lilac', route('lgp.province.parcels'), 'Scan and sort each one to give it a next stop.'],
+        ['Waiting for a trip', $waitingForTrip, 'package', 'butter', route('lgp.province.trips.create'), 'Sorted and ready to load. Create a trip to move them.'],
+        ['Outgoing transfers', $outgoingParcels, 'truck', 'sky', route('lgp.province.trips'),
+            count($outgoing) ? count($outgoing).' '.(count($outgoing) === 1 ? 'trip is' : 'trips are').' loaded or scheduled to leave.' : 'No trips are scheduled to leave.'],
     ];
 
-    $headline = [
-        ['Parcels at this hub', number_format($hub['parcels']), 'package', 'blue', route('lgp.province.parcels')],
-        ['Station Hubs', $stations->count(), 'building', 'blue', route('lgp.province.stations')],
-        ['Active trips', $trips->count(), 'calendar', 'amber', route('lgp.province.trips')],
-        ['Delayed transfers', $delayedCount, 'clock', $delayedCount ? 'red' : 'green', route('lgp.province.trips')],
-    ];
-
-    // Drivers and vehicles are shown as availability: ready, busy, unavailable.
+    // Availability: [title, subtitle, url, button, empty title, empty text, empty button, rows [label, count, tone]]
     $fleet = [
-        ['Transport drivers', $approvedDrivers.' approved', route('lgp.province.drivers'), 'Manage drivers', [
-            ['Available', $driverCount('available'), 'green'],
-            ['On a trip', $driverCount('on_trip'), 'amber'],
-            ['Off duty', $driverCount('off_duty'), 'gray'],
-        ]],
-        ['Vehicles', $activeVehicles.' in service', route('lgp.province.vehicles'), 'Manage vehicles', [
-            ['Available', $vehicleCount('available'), 'green'],
-            ['On a trip', $vehicleCount('on_trip'), 'amber'],
-            ['In maintenance', $vehicleCount('maintenance'), 'gray'],
-        ]],
+        ['Transport drivers', $approvedDrivers.' approved', route('lgp.province.drivers'), 'Manage drivers',
+            'No drivers yet', 'Drivers apply in the Driver app. Approve them here so they can take trips.', 'Open drivers', [
+                ['Available', $driverCount('available'), 'mint'],
+                ['On a trip', $driverCount('on_trip'), 'sky'],
+                ['Off duty', $driverCount('off_duty'), 'lilac'],
+            ]],
+        ['Vehicles', $activeVehicles.' in service', route('lgp.province.vehicles'), 'Manage vehicles',
+            'No vehicles yet', 'Add a vehicle so trips can be assigned to it.', 'Add vehicle', [
+                ['Available', $vehicleCount('available'), 'mint'],
+                ['On a trip', $vehicleCount('on_trip'), 'sky'],
+                ['In maintenance', $vehicleCount('maintenance'), 'butter'],
+            ]],
     ];
 @endphp
-<x-logistics.shell title="Province Hub Dashboard" role="province">
-    <div class="lg-page">
-        <div class="lg-page-head">
-            <div>
-                <h1>Province Hub Dashboard</h1>
-                <p>{{ $hub['name'] }}: {{ $stations->count() }} Station Hubs, {{ number_format($hub['parcels']) }} parcels on hand and {{ $trips->count() }} active transport trips.</p>
-            </div>
-            <div class="lg-page-head__actions">
-                <a href="{{ route('lgp.province.parcels') }}" class="lg-btn lg-btn--outline"><x-logistics.icon name="inbox" :size="18" /> Parcel operations</a>
-                <a href="{{ route('lgp.province.trips.create') }}" class="lg-btn"><x-logistics.icon name="plus" :size="18" /> Create trip</a>
-            </div>
-        </div>
 
-        @if (count($attention))
-            <section aria-labelledby="attnTitle">
-                <h2 class="lg-section-title" id="attnTitle" style="margin-bottom:12px">Needs your attention</h2>
-                <ul class="lg-attn">
-                    @foreach ($attention as $i => [$t, $icon, $title, $text, $url, $cta])
-                        <li class="lg-attn__item lg-rise" style="--i: {{ $i }}">
-                            <span class="lg-attn__icon lg-attn__icon--{{ $t }}"><x-logistics.icon :name="$icon" :size="20" /></span>
-                            <span class="lg-attn__text">{{ $title }}<small>{{ $text }}</small></span>
-                            <a href="{{ $url }}" class="lg-btn lg-btn--outline lg-btn--sm">{{ $cta }}</a>
+@push('lg-head')
+    @vite(['resources/css/logistics/dashboard-theme.css', 'resources/css/logistics/province-dashboard-theme.css', 'resources/js/logistics/dashboard.js'])
+@endpush
+
+<x-logistics.shell title="Province Hub Dashboard" role="province">
+    <div class="lgd" data-lgd>
+
+        <x-logistics.flash />
+
+        <header class="lgd-head">
+            <div>
+                <h1>Dashboard</h1>
+                <p>{{ $hub['name'] }} · {{ now()->format('l, F j') }}</p>
+            </div>
+            <div class="lgd-head__actions">
+                <a href="{{ route('lgp.province.trips.create') }}" class="lgd-btn lgd-btn--primary">
+                    <x-logistics.icon name="plus" :size="16" /> Create trip
+                </a>
+                <a href="{{ route('lgp.province.parcels') }}" class="lgd-btn lgd-btn--soft">
+                    <x-logistics.icon name="inbox" :size="16" /> View parcels
+                </a>
+            </div>
+        </header>
+
+        {{-- Your hub --}}
+        <section class="lgd-tiles lgd-tiles--4" aria-label="Your hub">
+            @foreach ($tiles as [$label, $value, $icon, $url, $tone])
+                <a href="{{ $url }}" class="lgd-tile @if ($tone === 'rose') is-problem @endif" aria-label="{{ $label }}: {{ $value }}. View details">
+                    <span class="lgd-tile__top">
+                        <span class="lgd-tile__icon lgd-tone-{{ $tone }}"><x-logistics.icon :name="$icon" :size="22" /></span>
+                        <span class="lgd-tile__go"><x-logistics.icon name="arrow-right" :size="16" /></span>
+                    </span>
+                    <span class="lgd-tile__label">{{ $label }}</span>
+                    <strong class="lgd-tile__value">{{ $value }}</strong>
+                </a>
+            @endforeach
+        </section>
+
+        {{-- Needs attention --}}
+        <section class="lgd-card" aria-labelledby="attn-title" x-data="{ all: false }">
+            <div class="lgd-card__head">
+                <h2 id="attn-title">Needs attention</h2>
+                @if ($attention->isNotEmpty())
+                    <span class="lgd-count">{{ $attention->count() }}</span>
+                @endif
+            </div>
+
+            @if ($attention->isEmpty())
+                <div class="lgd-empty" role="status">
+                    <span class="lgd-empty__icon lgd-tone-mint"><x-logistics.icon name="check-circle" :size="26" /></span>
+                    <strong>Nothing needs attention</strong>
+                    <p>No delayed trips, waiting parcels or applications to review.</p>
+                </div>
+            @else
+                <ul class="lgd-list">
+                    @foreach ($attention as $i => $item)
+                        <li class="lgd-item lgd-row" data-href="{{ $item['url'] }}" @if ($i >= $attentionShown) x-show="all" x-cloak @endif>
+                            <span class="lgd-item__icon lgd-tone-{{ $item['tone'] }}"><x-logistics.icon :name="$item['icon']" :size="18" /></span>
+                            <div class="lgd-item__body">
+                                <strong>{{ $item['title'] }}</strong>
+                                <p>{{ $item['text'] }}</p>
+                            </div>
+                            <a href="{{ $item['url'] }}" class="lgd-btn lgd-btn--soft lgd-btn--small">
+                                {{ $item['cta'] }} <x-logistics.icon name="arrow-right" :size="14" class="lgd-nudge" />
+                            </a>
                         </li>
                     @endforeach
                 </ul>
-            </section>
-        @endif
 
-        <section aria-labelledby="hubStats">
-            <h2 class="lg-section-title" id="hubStats" style="margin-bottom:12px">Your hub</h2>
-            <div class="lg-grid lg-grid--4">
-                @foreach ($headline as $i => [$label, $value, $icon, $t, $url])
-                    <a href="{{ $url }}" class="lg-stat lg-rise" style="--i: {{ $i }}">
-                        <span class="lg-stat__icon lg-stat__icon--{{ $t }}"><x-logistics.icon :name="$icon" :size="24" /></span>
-                        <div class="lg-stat__body">
-                            <p class="lg-stat__label">{{ $label }}</p>
-                            <p class="lg-stat__value">{{ $value }}</p>
-                        </div>
-                        <x-logistics.icon name="arrow-right" :size="18" class="lg-stat__go" />
-                    </a>
-                @endforeach
-            </div>
+                @if ($attention->count() > $attentionShown)
+                    <div class="lgd-more">
+                        <button type="button" @click="all = !all" :aria-expanded="all" class="lgd-btn lgd-btn--soft lgd-btn--small"
+                                x-text="all ? 'Show fewer' : 'Show {{ $attention->count() - $attentionShown }} more'">Show {{ $attention->count() - $attentionShown }} more</button>
+                    </div>
+                @endif
+            @endif
         </section>
 
-        <section aria-labelledby="flowTitle">
-            <h2 class="lg-section-title" id="flowTitle" style="margin-bottom:12px">Parcels moving through this hub</h2>
-            <ol class="lg-flow">
-                @foreach ($flow as $i => [$label, $value, $icon, $t, $url, $text])
-                    <li>
-                        <a href="{{ $url }}" class="lg-flow__step lg-rise" style="--i: {{ $i }}">
-                            <span class="lg-flow__top">
-                                <span class="lg-flow__chip"><x-logistics.icon :name="$icon" :size="22" /></span>
-                                <span class="lg-flow__count">{{ number_format($value) }}</span>
+        {{-- Parcels moving through this hub --}}
+        <section class="lgd-card" aria-labelledby="flow-title">
+            <div class="lgd-card__head">
+                <div class="lgd-card__title">
+                    <h2 id="flow-title">Parcels moving through this hub</h2>
+                    <p class="lgd-card__sub">In the order they pass through.</p>
+                </div>
+            </div>
+            <ol class="lgd-tiles lgd-tiles--4" style="list-style:none;margin:0;padding:0">
+                @foreach ($flow as [$label, $value, $icon, $tone, $url, $hint])
+                    <li style="display:grid">
+                        <a href="{{ $url }}" class="lgd-tile" aria-label="{{ $label }}: {{ $value }}. View details">
+                            <span class="lgd-tile__top">
+                                <span class="lgd-tile__icon lgd-tone-{{ $tone }}"><x-logistics.icon :name="$icon" :size="22" /></span>
+                                <span class="lgd-tile__go"><x-logistics.icon name="arrow-right" :size="16" /></span>
                             </span>
-                            <h3>{{ $label }}</h3>
-                            <p>{{ $text }}</p>
+                            <span class="lgd-tile__label">{{ $label }}</span>
+                            <strong class="lgd-tile__value">{{ number_format($value) }}</strong>
+                            <span class="lgd-tile__hint">{{ $hint }}</span>
                         </a>
                     </li>
                 @endforeach
             </ol>
         </section>
 
-        <div class="lg-grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
-            @foreach ($fleet as [$title, $sub, $url, $cta, $rows])
-                @php $total = max(1, collect($rows)->sum(1)); @endphp
-                <section class="lg-card" aria-label="{{ $title }}">
-                    <div class="lg-card__head">
-                        <div>
-                            <h2 class="lg-section-title">{{ $title }}</h2>
-                            <p class="lg-section-sub">{{ $sub }}</p>
+        {{-- Drivers and vehicles --}}
+        <div class="lgd-pair">
+            @foreach ($fleet as [$title, $sub, $url, $cta, $emptyTitle, $emptyText, $emptyCta, $rows])
+                @php $total = max(1, collect($rows)->sum(fn ($row) => $row[1])); $hasAny = collect($rows)->sum(fn ($row) => $row[1]) > 0; @endphp
+                <section class="lgd-card" aria-label="{{ $title }}">
+                    <div class="lgd-card__head lgd-card__head--bar">
+                        <div class="lgd-card__title">
+                            <h2>{{ $title }}</h2>
+                            <p class="lgd-card__sub">{{ $sub }}</p>
                         </div>
-                        <a href="{{ $url }}" class="lg-btn lg-btn--ghost lg-btn--sm">{{ $cta }}</a>
+                        <a href="{{ $url }}" class="lgd-btn lgd-btn--soft lgd-btn--small">{{ $cta }}</a>
                     </div>
-                    <div style="display:grid;gap:14px">
-                        @foreach ($rows as [$label, $count, $t])
-                            <div class="lg-meter-row">
-                                <div class="lg-meter-row__top"><span>{{ $label }}</span><strong>{{ $count }}</strong></div>
-                                <div class="lg-meter {{ ['green' => 'lg-meter--ok', 'amber' => 'lg-meter--warn', 'gray' => ''][$t] }}" role="presentation"><span style="--w: {{ round($count / $total * 100) }}%"></span></div>
-                            </div>
-                        @endforeach
-                    </div>
+                    @if ($hasAny)
+                        <div class="lgd-meters">
+                            @foreach ($rows as [$label, $count, $tone])
+                                <div>
+                                    <div class="lgd-meter__top"><span><i class="lgd-meter__dot lgd-meter__dot--{{ $tone }}"></i>{{ $label }}</span><strong>{{ $count }}</strong></div>
+                                    <span class="lgd-bar lgd-bar--{{ $tone }}" role="img" aria-label="{{ $count }} of {{ $total }} {{ Str::lower($title) }} are {{ Str::lower($label) }}"><i style="--w: {{ round($count / $total * 100) }}%"></i></span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="lgd-empty" role="status">
+                            <span class="lgd-empty__icon lgd-tone-lilac"><x-logistics.icon :name="$title === 'Vehicles' ? 'truck' : 'users'" :size="26" /></span>
+                            <strong>{{ $emptyTitle }}</strong>
+                            <p>{{ $emptyText }}</p>
+                            <a href="{{ $url }}" class="lgd-btn lgd-btn--soft lgd-btn--small">{{ $emptyCta }}</a>
+                        </div>
+                    @endif
                 </section>
             @endforeach
         </div>
 
-        <section class="lg-card" aria-labelledby="tripsTitle">
-            <div class="lg-card__head">
-                <div>
-                    <h2 class="lg-section-title" id="tripsTitle">Active transport trips</h2>
-                    <p class="lg-section-sub">{{ $stationTrips }} station {{ $stationTrips === 1 ? 'transfer' : 'transfers' }} and {{ $provinceTrips }} inter-province {{ $provinceTrips === 1 ? 'trip' : 'trips' }}. {{ $delayedRule }}</p>
+        {{-- Active transport trips --}}
+        <section class="lgd-card lgd-table-card" aria-labelledby="trips-title">
+            <div class="lgd-card__head lgd-card__head--bar">
+                <div class="lgd-card__title">
+                    <h2 id="trips-title">Active transport trips</h2>
+                    <p class="lgd-card__sub">{{ $stationTrips }} station {{ Str::plural('transfer', $stationTrips) }} and {{ $provinceTrips }} inter-province {{ Str::plural('trip', $provinceTrips) }}. {{ $delayedRule }}</p>
                 </div>
-                <a href="{{ route('lgp.province.trips') }}" class="lg-btn lg-btn--ghost lg-btn--sm">All trips</a>
+                <a href="{{ route('lgp.province.trips') }}" class="lgd-btn lgd-btn--soft lgd-btn--small">View all trips</a>
             </div>
-            <div class="lg-table-wrap">
-                <table class="lg-table lg-table--stack lg-table--mid">
-                    <thead><tr><th>Trip</th><th>Route</th><th>Driver and vehicle</th><th class="is-num">Parcels</th><th>Departure</th><th>Status</th></tr></thead>
-                    <tbody>
-                    @forelse ($trips as $t)
+            <div class="lgd-table-wrap">
+                <table class="lgd-table lgd-table--wide">
+                    <thead>
                         <tr>
-                            <td data-label="Trip"><span class="lg-cell-title">{{ $t['id'] }}</span><div class="lg-cell-sub">{{ $typeLabel[$t['type']] }}</div></td>
-                            <td data-label="Route">{{ $t['origin'] }} to {{ $t['destination'] }}</td>
-                            <td data-label="Driver and vehicle">{{ $t['driver'] }}<div class="lg-cell-sub">{{ $t['vehicle'] }}</div></td>
-                            <td data-label="Parcels" class="is-num">{{ $t['parcels'] }}</td>
-                            <td data-label="Departure">{{ Carbon::parse($t['departed'] ?? $t['scheduled'])->format('M j, g:i A') }}</td>
-                            <td data-label="Status">
-                                <span class="lg-pill lg-pill--{{ $statusTone[$t['status']] }}">{{ $statusLabel[$t['status']] }}</span>
-                                @if (collect($delayed)->contains('id', $t['id']))<span class="lg-pill lg-pill--red">Delayed</span>@endif
-                            </td>
+                            <th scope="col">Trip</th>
+                            <th scope="col">Route</th>
+                            <th scope="col">Driver and vehicle</th>
+                            <th scope="col" class="is-num">Parcels</th>
+                            <th scope="col">Departure</th>
+                            <th scope="col">Status</th>
+                            <th scope="col"><span class="lgd-sr">Action</span></th>
                         </tr>
-                    @empty
-                        <tr><td colspan="6">
-                            <x-logistics.empty icon="truck" title="No active trips" text="Create a trip to move parcels between your stations or to another Province Hub.">
-                                <a href="{{ route('lgp.province.trips.create') }}" class="lg-btn lg-btn--sm">Create trip</a>
-                            </x-logistics.empty>
-                        </td></tr>
-                    @endforelse
+                    </thead>
+                    <tbody>
+                        @forelse ($trips as $t)
+                            <tr class="lgd-row" data-href="{{ route('lgp.province.trips') }}">
+                                <td><span class="lgd-name">{{ $t['id'] }}</span><small>{{ $typeLabel[$t['type']] ?? Str::headline($t['type']) }}</small></td>
+                                <td data-label="Route">{{ $t['origin'] }} to {{ $t['destination'] }}</td>
+                                <td data-label="Driver and vehicle">{{ $t['driver'] }}<small>{{ $t['vehicle'] }}</small></td>
+                                <td class="is-num" data-label="Parcels">{{ $t['parcels'] }}</td>
+                                <td data-label="Departure">{{ Carbon::parse($t['departed'] ?? $t['scheduled'])->format('M j, g:i A') }}</td>
+                                <td data-label="Status">
+                                    <span class="lgd-pill lgd-pill--{{ $tripTone[$t['status']] ?? 'lilac' }}">{{ $tripLabel[$t['status']] ?? Str::headline($t['status']) }}</span>
+                                    @if ($delayedIds->contains($t['id']))<span class="lgd-pill lgd-pill--rose">Delayed</span>@endif
+                                </td>
+                                <td class="lgd-actions">
+                                    <a href="{{ route('lgp.province.trips') }}" aria-label="Manage trip {{ $t['id'] }}" class="lgd-btn lgd-btn--soft lgd-btn--small">
+                                        Manage trip <x-logistics.icon name="arrow-right" :size="14" class="lgd-nudge" />
+                                    </a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7">
+                                    <div class="lgd-empty" role="status">
+                                        <span class="lgd-empty__icon lgd-tone-lilac"><x-logistics.icon name="truck" :size="26" /></span>
+                                        <strong>No active trips</strong>
+                                        <p>Create a trip to move parcels between your stations or to another Province Hub.</p>
+                                        <a href="{{ route('lgp.province.trips.create') }}" class="lgd-btn lgd-btn--primary lgd-btn--small"><x-logistics.icon name="plus" :size="14" /> Create trip</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
         </section>
 
-        <section class="lg-card" aria-labelledby="stTitle">
-            <div class="lg-card__head">
-                <div>
-                    <h2 class="lg-section-title" id="stTitle">Station Hubs</h2>
-                    <p class="lg-section-sub">Parcels each station has on hand, and the riders who deliver them.</p>
+        {{-- Station Hubs --}}
+        <section class="lgd-card lgd-table-card" aria-labelledby="stations-title">
+            <div class="lgd-card__head lgd-card__head--bar">
+                <div class="lgd-card__title">
+                    <h2 id="stations-title">Station Hubs</h2>
+                    <p class="lgd-card__sub">Parcels each station has on hand, and its riders.</p>
                 </div>
-                <a href="{{ route('lgp.province.stations') }}" class="lg-btn lg-btn--ghost lg-btn--sm">All stations</a>
+                <a href="{{ route('lgp.province.stations') }}" class="lgd-btn lgd-btn--soft lgd-btn--small">View all stations</a>
             </div>
-            <div class="lg-table-wrap">
-                <table class="lg-table lg-table--stack lg-table--mid">
-                    <thead><tr><th>Station</th><th>Parcels on hand</th><th class="is-num">Riders</th><th>Status</th></tr></thead>
-                    <tbody>
-                    @forelse ($stations as $s)
+            <div class="lgd-table-wrap">
+                <table class="lgd-table lgd-table--wide">
+                    <thead>
                         <tr>
-                            <td data-label="Station">
-                                <a href="{{ route('lgp.province.stations.show', $s['id']) }}" class="lg-cell-title">{{ $s['name'] }}</a>
-                                <div class="lg-cell-sub">Manager {{ $s['manager'] }}</div>
-                            </td>
-                            <td data-label="Parcels on hand" style="min-width:180px">
-                                <div class="lg-meter-row">
-                                    <div class="lg-meter-row__top"><span class="sr-only">Parcels on hand</span><strong>{{ $s['parcels'] }} parcels</strong></div>
-                                    <div class="lg-meter" role="presentation"><span style="--w: {{ round($s['parcels'] / $maxWaiting * 100) }}%"></span></div>
-                                </div>
-                            </td>
-                            <td data-label="Riders" class="is-num">{{ $s['riders'] }}</td>
-                            <td data-label="Status"><span class="lg-pill lg-pill--{{ $stationTone[$s['status']] ?? 'gray' }}">{{ $s['status'] }}</span></td>
+                            <th scope="col">Station</th>
+                            <th scope="col">Parcels on hand</th>
+                            <th scope="col" class="is-num">Riders</th>
+                            <th scope="col">Status</th>
+                            <th scope="col"><span class="lgd-sr">Action</span></th>
                         </tr>
-                    @empty
-                        <tr><td colspan="4">
-                            <x-logistics.empty icon="building" title="No Station Hubs yet" text="Add a Station Hub for each municipality you serve. It appears here once it is set up.">
-                                <a href="{{ route('lgp.province.stations') }}" class="lg-btn lg-btn--sm">Add a Station Hub</a>
-                            </x-logistics.empty>
-                        </td></tr>
-                    @endforelse
+                    </thead>
+                    <tbody>
+                        @forelse ($stations as $s)
+                            @php $stationUrl = route('lgp.province.stations.show', $s['id']); @endphp
+                            <tr class="lgd-row" data-href="{{ $stationUrl }}">
+                                <td><a href="{{ $stationUrl }}" class="lgd-name">{{ $s['name'] }}</a><small>Manager: {{ $s['manager'] }}</small></td>
+                                <td class="lgd-parcels" data-label="Parcels on hand">
+                                    <strong>{{ number_format($s['parcels']) }}</strong>
+                                    <span class="lgd-bar" role="img" aria-label="{{ number_format($s['parcels']) }} parcels on hand, compared with the busiest station"><i style="--w: {{ round($s['parcels'] / $maxWaiting * 100) }}%"></i></span>
+                                </td>
+                                <td class="is-num" data-label="Riders">{{ $s['riders'] }}</td>
+                                <td data-label="Status"><span class="lgd-pill lgd-pill--{{ $statusTone[$s['status']] ?? 'lilac' }}">{{ $s['status'] }}</span></td>
+                                <td class="lgd-actions">
+                                    <a href="{{ $stationUrl }}" aria-label="View details for {{ $s['name'] }}" class="lgd-btn lgd-btn--soft lgd-btn--small">
+                                        View details <x-logistics.icon name="arrow-right" :size="14" class="lgd-nudge" />
+                                    </a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5">
+                                    <div class="lgd-empty" role="status">
+                                        <span class="lgd-empty__icon lgd-tone-lilac"><x-logistics.icon name="building" :size="26" /></span>
+                                        <strong>No Station Hubs yet</strong>
+                                        <p>Add a Station Hub for each municipality you serve.</p>
+                                        <a href="{{ route('lgp.province.stations') }}" class="lgd-btn lgd-btn--primary lgd-btn--small"><x-logistics.icon name="plus" :size="14" /> Add Station Hub</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>

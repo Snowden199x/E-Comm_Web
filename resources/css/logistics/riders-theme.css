@@ -1,0 +1,22 @@
+/* =========================================================
+   Logistics · Station Hub > Riders additions. Loaded after hubs-theme.css and drivers-theme.css (@push('lg-head')).
+   hubs-theme.css supplies the .lgh tokens, buttons, chips, search, table, empty states, dialogs and form fields;
+   drivers-theme.css supplies the sky, butter and rose pills, callout tones and the sky tokens.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32. Status colors: Active = mint, Applications = butter, Rejected = rose, Inactive = lilac.
+   ========================================================= */
+.lgh .lgh-table.lgh-table--riders { min-width: 720px; }
+.lgh .lgh-person { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.lgh .lgh-avatar { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--do-lilac-100); color: var(--do-lilac-700); font-size: 14px; font-weight: 600; animation: lgh-pop .35s ease both; }
+.lgh .lgh-row:hover .lgh-avatar { animation: lgh-hop .5s ease; }
+.lgh .lgh-person__text { min-width: 0; }
+.lgh .lgh-person__text strong { display: block; font-weight: 600; }
+.lgh .lgh-person__text small { display: block; color: var(--do-muted); font-size: 11px; overflow-wrap: anywhere; }
+.lgh .lgh-row--static { cursor: default; }
+.lgh-layer .lgh-callout a { color: inherit; font-weight: 600; text-decoration: underline; }
+
+@media (max-width: 720px) {
+    .lgh .lgh-table.lgh-table--riders { min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lgh .lgh-avatar, .lgh .lgh-row:hover .lgh-avatar { animation: none; }
+}

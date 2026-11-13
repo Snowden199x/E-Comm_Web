@@ -1,0 +1,27 @@
+/* =========================================================
+   Logistics · Station Hub > Cash discrepancies additions. Loaded after cash-theme.css (@push('lg-head')),
+   which supplies the .lgc tokens, tiles, chips, tables, pills, empty states, dialogs and facts shared with Cash collections.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32. Status colors: Discrepancy = rose (problem), Resolved = mint (done).
+   A short count is rose text, an over count is butter text.
+   ========================================================= */
+
+/* Three tiles instead of four */
+.lgc .lgc-tiles.lgc-tiles--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* How far a receipt is off, under the received amount */
+.lgc .lgc-table small.lgc-diff-sub { font-weight: 500; }
+.lgc .lgc-table small.lgc-diff-sub--short { color: var(--do-rose-700); }
+.lgc .lgc-table small.lgc-diff-sub--over { color: var(--do-butter-700); }
+.lgc-layer .lgc-diff--short { color: var(--do-rose-700); }
+.lgc-layer .lgc-diff--over { color: var(--do-butter-700); }
+
+/* Parcels in the receipt, as small lilac chips */
+.lgc-layer .lgc-parcels { display: flex; flex-wrap: wrap; gap: 4px; max-height: 96px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.lgc-layer .lgc-parcels li { padding: 4px 12px; border-radius: 999px; background: var(--do-lilac-100); color: var(--do-lilac-700); font-size: 11px; font-weight: 500; overflow-wrap: anywhere; }
+
+@media (max-width: 1100px) {
+    .lgc .lgc-tiles.lgc-tiles--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+    .lgc .lgc-tiles.lgc-tiles--3 { grid-template-columns: 1fr; }
+}

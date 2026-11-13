@@ -1,0 +1,39 @@
+/* =========================================================
+   Logistics · Province Hub > Transport Trips additions. Loaded after hubs-theme.css and drivers-theme.css (@push('lg-head')),
+   which supply the .lgh tokens, buttons, chips, search, table, empty states, dialogs, pills (sky, butter, rose), callouts and facts.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32.
+   Status colors: Scheduled = butter (waiting), In transit = sky, Completed = mint, Cancelled = rose.
+   ========================================================= */
+.lgh .lgh-table.lgh-table--trips { min-width: 960px; }
+.lgh .lgh-table--trips td small { max-width: 240px; }
+.lgh .lgh-name--btn { padding: 0; border: 0; background: none; font: 600 12px/1.5 'Poppins', system-ui, sans-serif; text-align: left; cursor: pointer; }
+
+/* Type select next to the search (applies as soon as it changes) */
+.lgh .lgh-select select { min-height: 40px; padding: 8px 36px 8px 12px; border: 1px solid var(--do-lilac-200); border-radius: 10px; color: var(--do-ink); font: 13px 'Poppins', system-ui, sans-serif; appearance: none; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b79ac2' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center; cursor: pointer; }
+.lgh .lgh-select select:hover { border-color: var(--do-lilac-500); }
+.lgh .lgh-select select:focus-visible { outline: 2px solid var(--do-lilac-500); outline-offset: 1px; }
+.lgh .lgh-toolbar .lgh-search { flex: 1 1 240px; }
+
+/* Manifest */
+.lgh-layer .lgh-manifest { display: flex; flex-wrap: wrap; gap: 8px; max-height: 120px; margin: 0; padding: 0; overflow: auto; list-style: none; }
+.lgh-layer .lgh-manifest a { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--do-lilac-100); color: var(--do-lilac-700); font-size: 11px; font-weight: 500; text-decoration: none; }
+.lgh-layer .lgh-manifest a:hover { background: var(--do-lilac-200); }
+.lgh-layer .lgh-manifest a:focus-visible { outline: 2px solid var(--do-lilac-500); outline-offset: 2px; }
+
+/* Progress steps: done = mint, current = sky, not reached = lilac line */
+.lgh-layer .lgh-steps { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.lgh-layer .lgh-steps li { position: relative; display: grid; gap: 2px; padding: 0 0 16px 24px; }
+.lgh-layer .lgh-steps li:last-child { padding-bottom: 0; }
+.lgh-layer .lgh-steps li::before { content: ''; position: absolute; left: 0; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--do-lilac-200); }
+.lgh-layer .lgh-steps li::after { content: ''; position: absolute; left: 5px; top: 18px; bottom: 2px; width: 2px; background: var(--do-line); }
+.lgh-layer .lgh-steps li:last-child::after { display: none; }
+.lgh-layer .lgh-steps li.is-done::before { background: var(--do-mint-700); }
+.lgh-layer .lgh-steps li.is-current::before { background: var(--do-sky-700); box-shadow: 0 0 0 4px var(--do-sky-100); }
+.lgh-layer .lgh-steps strong { font-size: 12px; font-weight: 600; }
+.lgh-layer .lgh-steps small { color: var(--do-muted); font-size: 11px; }
+
+@media (max-width: 720px) {
+    .lgh .lgh-table.lgh-table--trips { min-width: 0; }
+    .lgh .lgh-select { flex: 1 1 100%; }
+    .lgh .lgh-select select { width: 100%; }
+}

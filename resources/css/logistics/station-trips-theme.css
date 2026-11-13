@@ -1,0 +1,62 @@
+/* =========================================================
+   Logistics · Station Hub > Driver assignments additions. Loaded after hubs-theme.css, drivers-theme.css and trips-theme.css (@push('lg-head')),
+   which supply the .lgh tokens, buttons, chips, search, table, empty states, dialogs, pills, callouts, facts, manifest and steps.
+   This file only adds the assign dialog (route fields, parcel checklist, sticky action bar) and the page-level blocker notice.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32.
+   Status colors: a blocker or an error = rose, the selected parcel = lilac, delivers in the destination hub = mint, passes through = lilac.
+   Dialogs sit in .lgh-layer and carry their own copy of the tokens.
+   ========================================================= */
+
+/* ---- Blocker notice on the page (the dialog callouts live in drivers-theme.css) ---- */
+.lgh .lgh-callout--rose { background: var(--do-rose-100); color: var(--do-rose-700); }
+.lgh .lgh-callout a { color: inherit; font-weight: 600; text-decoration: underline; }
+.lgh .lgh-needs { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.lgh .lgh-needs a { margin-left: 4px; }
+
+/* ---- Assign dialog ---- */
+.lgh-layer .lgh-dialog--assign { width: min(680px, 100%); }
+.lgh-layer .lgh-dialog--assign .lgh-dialog__body { padding-bottom: 0; }
+.lgh-layer .lgh-dialog--assign .lgh-callout a { display: inline-block; margin-left: 4px; color: var(--do-lilac-700); font-weight: 600; text-decoration: underline; }
+
+/* Parcel checklist */
+.lgh-layer .lgh-load { display: grid; gap: 12px; }
+.lgh-layer .lgh-load__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; }
+.lgh-layer .lgh-load__head > div:first-child { flex: 1; min-width: 200px; }
+.lgh-layer .lgh-load__head h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.lgh-layer .lgh-load__head h3 span { color: var(--do-rose-700); }
+.lgh-layer .lgh-load__head p { margin: 2px 0 0; color: var(--do-muted); font-size: 12px; line-height: 1.5; }
+.lgh-layer .lgh-load__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.lgh-layer .lgh-load__search { position: relative; max-width: none; }
+.lgh-layer .lgh-load__search .lg-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--do-muted); pointer-events: none; }
+.lgh-layer .lgh-load__search input { width: 100%; min-height: 40px; padding: 8px 12px 8px 38px; border: 1px solid var(--do-lilac-200); border-radius: 10px; background: #fff; color: var(--do-ink); font: 13px 'Poppins', system-ui, sans-serif; }
+.lgh-layer .lgh-load__search input:hover { border-color: var(--do-lilac-500); }
+.lgh-layer .lgh-load__search input:focus-visible { outline: 2px solid var(--do-lilac-500); outline-offset: 1px; }
+.lgh-layer .lgh-load__list { display: grid; gap: 8px; max-height: 280px; margin: 0; padding: 0; overflow: auto; list-style: none; }
+.lgh-layer .lgh-load__list label { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border: 1px solid var(--do-line); border-radius: 12px; background: #fff; cursor: pointer; transition: background .15s, border-color .15s; }
+.lgh-layer .lgh-load__list label:hover { border-color: var(--do-lilac-500); }
+.lgh-layer .lgh-load__list label.is-on { border-color: var(--do-lilac-700); background: var(--do-lilac-50); }
+.lgh-layer .lgh-load__list label:has(input:focus-visible) { outline: 2px solid var(--do-lilac-500); outline-offset: 2px; }
+.lgh-layer .lgh-load__list input[type='checkbox'] { width: 16px; height: 16px; margin-top: 2px; accent-color: var(--do-lilac-700); cursor: pointer; flex: none; }
+.lgh-layer .lgh-load__body { display: grid; gap: 4px; min-width: 0; }
+.lgh-layer .lgh-load__top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lgh-layer .lgh-load__top strong { font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.lgh-layer .lgh-load__facts { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--do-muted); font-size: 11px; line-height: 1.5; }
+.lgh-layer .lgh-empty { display: grid; justify-items: center; gap: 8px; max-width: 360px; margin: 0 auto; padding: 32px 16px; text-align: center; }
+.lgh-layer .lgh-empty__icon { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 8px; border-radius: 16px; }
+.lgh-layer .lgh-empty strong { font-size: 15px; font-weight: 600; }
+.lgh-layer .lgh-empty p { margin: 0 0 8px; color: var(--do-muted); font-size: 13px; line-height: 1.5; }
+.lgh-layer .lgh-tone-lilac { background: var(--do-lilac-100); color: var(--do-lilac-700); }
+
+/* Action bar: stays in view while the parcel list scrolls */
+.lgh-layer .lgh-dialog__foot--bar { position: sticky; bottom: 0; z-index: 2; margin: 0 -24px; padding: 16px 24px; border-top: 1px solid var(--do-line); background: rgba(255, 255, 255, .96); backdrop-filter: blur(4px); }
+.lgh-layer .lgh-bar__sum { margin: 0; color: var(--do-muted); font-size: 12px; }
+
+@media (max-width: 640px) {
+    .lgh-layer .lgh-dialog__foot--bar { margin: 0 -16px; padding: 12px 16px; }
+    .lgh-layer .lgh-dialog__foot--bar .lgh-bar__sum { flex-basis: 100%; }
+    .lgh-layer .lgh-dialog__foot--bar .lgh-spacer { display: none; }
+    .lgh-layer .lgh-load__actions .lgh-btn { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lgh-layer .lgh-load__list label { transition: none !important; }
+}

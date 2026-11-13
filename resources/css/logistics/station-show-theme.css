@@ -1,0 +1,39 @@
+/* =========================================================
+   Logistics · Province Hub > Station Hub details additions. Loaded after hub-show-theme.css (@push('lg-head')),
+   which supplies the .lgs tokens, header, buttons, tiles, cards, facts, tables, pills and empty states.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32. Status colors: mint = done, butter = waiting, sky = in progress,
+   lilac = new or inactive, rose = cancelled or failed.
+   ========================================================= */
+.lgs .lgs-tone-rose { background: var(--do-rose-100); color: var(--do-rose-700); }
+.lgs .lgs-dot--lilac { background: var(--do-lilac-500); }
+.lgs .lgs-dot--rose { background: var(--do-rose-700); }
+
+/* ---- Notes (setup, deactivated) ---- */
+.lgs .lgs-note { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border-radius: 12px; font-size: 12px; animation: lgs-rise .4s ease both; }
+.lgs .lgs-note p { margin: 0; }
+.lgs .lgs-note .lg-icon { margin-top: 1px; }
+.lgs .lgs-note--butter { background: var(--do-butter-100); color: var(--do-butter-700); }
+.lgs .lgs-note--lilac { background: var(--do-lilac-100); color: var(--do-lilac-700); }
+
+/* ---- Card head with an action on the right ---- */
+.lgs .lgs-card__head--row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.lgs .lgs-btn--small { min-height: 32px; padding: 8px 12px; border-radius: 8px; font-size: 12px; }
+.lgs .lgs-cell-action { text-align: right; }
+
+/* ---- Parcels by stage ---- */
+.lgs .lgs-stages { display: grid; gap: 16px; margin: 0; padding: 16px; list-style: none; border-radius: 12px; background: var(--do-lilac-50); }
+.lgs .lgs-stage { display: grid; gap: 8px; }
+.lgs .lgs-stage__row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+.lgs .lgs-stage__row > span { display: inline-flex; align-items: center; gap: 8px; color: var(--do-muted); }
+.lgs .lgs-stage__row strong { font-weight: 600; color: var(--do-ink); font-variant-numeric: tabular-nums; }
+.lgs .lgs-meter { display: block; height: 8px; border-radius: 999px; background: var(--do-lilac-100); overflow: hidden; }
+.lgs .lgs-meter__fill { display: block; height: 100%; min-width: 4px; border-radius: 999px; animation: lgs-grow .6s ease both; transform-origin: left; }
+.lgs .lgs-meter__fill--lilac { background: var(--do-lilac-500); }
+.lgs .lgs-meter__fill--mint { background: var(--do-mint-500); }
+.lgs .lgs-meter__fill--butter { background: var(--do-butter-500); }
+.lgs .lgs-meter__fill--sky { background: var(--do-sky-500); }
+@keyframes lgs-grow { from { transform: scaleX(0); } to { transform: none; } }
+
+@media (max-width: 720px) {
+    .lgs .lgs-cell-action { text-align: left; }
+}

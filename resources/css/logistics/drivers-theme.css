@@ -1,0 +1,53 @@
+/* =========================================================
+   Logistics · Province Hub > Transport Drivers additions. Loaded after hubs-theme.css (@push('lg-head')),
+   which supplies the .lgh tokens, buttons, chips, search, table, empty states, dialogs and form fields.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32.
+   Status colors: Available = mint, On trip = sky, Off duty or Inactive = lilac, Needs review or waiting = butter,
+   Rejected or expired licence = rose. Dialogs sit in .lgh-layer and carry their own copy of the tokens.
+   ========================================================= */
+.lgh, .lgh-layer {
+    --do-sky-100: #e0ecfa;
+    --do-sky-700: #355f8f;
+}
+.lgh .lgh-tone-sky { background: var(--do-sky-100); color: var(--do-sky-700); }
+.lgh .lgh-tone-butter { background: var(--do-butter-100); color: var(--do-butter-700); }
+
+/* ---- Pills ---- */
+.lgh .lgh-pill--sky, .lgh-layer .lgh-pill--sky { background: var(--do-sky-100); color: var(--do-sky-700); }
+.lgh .lgh-pill--butter, .lgh-layer .lgh-pill--butter { background: var(--do-butter-100); color: var(--do-butter-700); }
+.lgh .lgh-pill--rose, .lgh-layer .lgh-pill--rose { background: var(--do-rose-100); color: var(--do-rose-700); }
+.lgh-layer .lgh-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.lgh-layer .lgh-pill--mint { background: var(--do-mint-100); color: var(--do-mint-700); }
+.lgh-layer .lgh-pill--lilac { background: var(--do-lilac-100); color: var(--do-lilac-700); }
+
+/* ---- Table ---- */
+.lgh .lgh-table.lgh-table--drivers { min-width: 960px; }
+.lgh .lgh-table--drivers .lgh-pill { margin-top: 4px; }
+.lgh .lgh-name--btn { padding: 0; border: 0; background: none; font: 600 12px/1.5 'Poppins', system-ui, sans-serif; text-align: left; cursor: pointer; }
+.lgh .lgh-name--btn:focus-visible { outline: 2px solid var(--do-lilac-500); outline-offset: 2px; border-radius: 4px; }
+
+/* ---- Callouts (shared with the stations page; more tones here) ---- */
+.lgh-layer .lgh-callout--lilac { background: var(--do-lilac-100); color: var(--do-lilac-700); }
+.lgh-layer .lgh-callout--rose { background: var(--do-rose-100); color: var(--do-rose-700); }
+.lgh-layer .lgh-callout--sky { background: var(--do-sky-100); color: var(--do-sky-700); }
+
+/* ---- Driver details ---- */
+.lgh-layer .lgh-dialog--wide { width: min(600px, 100%); }
+.lgh-layer .lgh-dialog__stack { display: grid; gap: 16px; }
+.lgh-layer .lgh-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 0; padding: 16px; border-radius: 12px; background: var(--do-lilac-50); }
+.lgh-layer .lgh-facts dt { margin-bottom: 4px; color: var(--do-muted); font-size: 11px; }
+.lgh-layer .lgh-facts dd { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+.lgh-layer .lgh-facts .is-wide { grid-column: 1 / -1; }
+.lgh-layer .lgh-docs { display: grid; gap: 8px; }
+.lgh-layer .lgh-docs h3 { margin: 0; color: var(--do-muted); font-size: 11px; font-weight: 500; }
+.lgh-layer .lgh-docs__row { display: flex; flex-wrap: wrap; gap: 8px; }
+.lgh-layer .lgh-btn--small { min-height: 32px; padding: 6px 12px; border-radius: 8px; font-size: 12px; }
+.lgh-layer .lgh-dialog__foot--sticky { margin-top: 0; padding-top: 16px; border-top: 1px solid var(--do-line); }
+.lgh-layer .lgh-hint { margin: 0; color: var(--do-muted); font-size: 11px; }
+
+@media (max-width: 720px) {
+    .lgh .lgh-table.lgh-table--drivers { min-width: 0; }
+}
+@media (max-width: 640px) {
+    .lgh-layer .lgh-facts { grid-template-columns: 1fr; }
+}

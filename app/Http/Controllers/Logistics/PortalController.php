@@ -323,13 +323,25 @@ class PortalController extends Controller
         return $this->trackingView($query->latest()->get(), 'company');
     }
 
-    public function companyHandoffs(Request $request): View
+    public function companyHandoffs(Request $request): View|\Illuminate\Http\RedirectResponse
     {
         $company = $this->company($request);
-        $handoffs = ManualLogisticsHandoff::query()->where(fn ($query) =>
-            $query->where('origin_company_id', $company->id)->orWhere('destination_company_id', $company->id))
+        $term = trim((string) $request->query('q', ''));
+        if (mb_strlen($term) > 100) {
+            return redirect()->route('lgp.company.handoffs')
+                ->withErrors(['q' => 'The search is too long. Use a tracking number of 100 characters or fewer.']);
+        }
+
+        $mine = fn () => ManualLogisticsHandoff::query()->where(fn ($query) =>
+            $query->where('origin_company_id', $company->id)->orWhere('destination_company_id', $company->id));
+        $statusCounts = $mine()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $status = in_array($request->query('status'), ['awaiting_origin', 'pending', 'accepted'], true) ? $request->query('status') : null;
+        $handoffs = $mine()
+            ->when($status, fn ($query) => $query->where('status', $status))
+            ->when($term !== '', fn ($query) => $query->whereHas('order', fn ($order) =>
+                $order->where('tracking_number', 'like', '%'.addcslashes($term, '%_\\').'%')))
             ->with(['order', 'originCompany', 'destinationCompany', 'originFacility', 'destinationFacility', 'manifest'])
-            ->latest()->paginate(30);
+            ->latest()->paginate(30)->withQueryString();
         $hubIds = $company->provinceHubs()->pluck('id');
         $drivers = TransportDriverDetail::query()->whereIn('province_hub_id', $hubIds)
             ->where('status', 'available')->whereDate('license_expires_at', '>=', today())
@@ -343,7 +355,7 @@ class PortalController extends Controller
             ->withCount(['handoffs', 'handoffs as accepted_count' => fn ($query) => $query->where('status', 'accepted')])
             ->latest()->limit(20)->get();
 
-        return view('logistics.company.handoffs', compact('company', 'handoffs', 'drivers', 'vehicles', 'manifests'));
+        return view('logistics.company.handoffs', compact('company', 'handoffs', 'drivers', 'vehicles', 'manifests', 'statusCounts', 'status', 'term'));
     }
 
     public function facilityTracking(Request $request): View|\Illuminate\Http\RedirectResponse
@@ -478,14 +490,31 @@ class PortalController extends Controller
             'manager' => ['required', 'string', 'max:80'],
             'email' => ['required', 'email', 'lowercase', 'max:120', Rule::unique('users', 'email')],
             'phone' => ['required', 'regex:/^09[0-9]{9}$/'],
+        ], [
+            'municipality.required' => 'Municipality is not chosen. Pick one from the list.',
+            'municipality.max' => 'Municipality name is too long. Pick one from the list.',
+            'name.required' => 'Station name is empty. Enter a name, like Santa Cruz Station.',
+            'name.max' => 'Station name is longer than 80 characters. Shorten it.',
+            'address.required' => 'Address is empty. Add the unit, street, barangay and municipality.',
+            'address.min' => 'Address is too short. Add the unit, street, barangay and municipality so riders can find the station.',
+            'address.max' => 'Address is longer than 200 characters. Shorten it.',
+            'manager.required' => 'Manager name is empty. Enter the manager’s full name.',
+            'manager.max' => 'Manager name is longer than 80 characters. Shorten it.',
+            'email.required' => 'Manager email is empty. Enter an email like name@company.com.',
+            'email.email' => 'That doesn’t look like an email address. Use the format name@company.com.',
+            'email.lowercase' => 'Email has capital letters. Type it in lowercase.',
+            'email.max' => 'Email is longer than 120 characters. Use a shorter address.',
+            'email.unique' => 'This email is already in use. Enter a different email.',
+            'phone.required' => 'Phone number is empty. Enter 11 digits starting with 09, like 0917 123 4567.',
+            'phone.regex' => 'Phone number isn’t a mobile number. Enter 11 digits starting with 09, like 0917 123 4567.',
         ]);
         $codes = $locations->codesForNames($hub->province, $data['municipality']);
-        abort_unless($codes && $codes[0] === $hub->province_code, 422, 'Choose a municipality inside this Province Hub.');
+        abort_unless($codes && $codes[0] === $hub->province_code, 422, 'That municipality is outside '.$hub->province.'. Pick one from the list.');
         $manager = $this->managerName($data['manager']);
         $station = DB::transaction(function () use ($hub, $data, $codes, $manager) {
             LogisticsFacility::query()->whereKey($hub->id)->lockForUpdate()->firstOrFail();
             if ($hub->children()->where('kind', 'station_hub')->where('municipality_code', $codes[1])->where('is_active', true)->exists()) {
-                throw ValidationException::withMessages(['municipality' => 'This company already has a Station Hub in that municipality.']);
+                throw ValidationException::withMessages(['municipality' => 'This municipality already has an active Station Hub. Pick another, or deactivate that station first.']);
             }
             $user = User::create([
                 'name' => $manager['name'], 'first_name' => $manager['first_name'], 'last_name' => $manager['last_name'],
@@ -507,7 +536,7 @@ class PortalController extends Controller
             return $facility->load('staff.user');
         }, 3);
 
-        return response()->json(['station' => $this->stationCard($station), 'message' => 'Station Hub created. A password setup link was emailed to its manager. The link opens the Create New Password page.'], 201);
+        return response()->json(['station' => $this->stationCard($station), 'message' => 'Station Hub created. We emailed its manager a link to set a password.'], 201);
     }
 
     public function updateStation(Request $request, LogisticsFacility $station): JsonResponse
@@ -518,7 +547,7 @@ class PortalController extends Controller
         if ($data['is_active']) {
             abort_if($hub->children()->where('kind', 'station_hub')->where('municipality_code', $station->municipality_code)
                 ->where('is_active', true)->where('id', '!=', $station->id)->exists(), 409,
-                'This Province Hub already has an active Station Hub in that municipality.');
+                'This municipality already has an active Station Hub. Deactivate that station first, then activate this one.');
         }
         if (! $data['is_active'] && $station->is_active) {
             $this->ensureNoOpenWork($station);
@@ -607,6 +636,8 @@ class PortalController extends Controller
             'pendingPickups' => $stage['pickup_requests'] ?? 0,
             'receivedToday' => $stage['received_today'] ?? 0,
             'deliveredToday' => $stage['delivered_today'] ?? 0,
+            // The tile and the attention item use the real total; the list below is only the latest 10, to name a few of them.
+            'failedTotal' => $this->ordersAtFacilityAndChildren($station, collect())->where('status', 'delivery_failed')->count(),
             'failed' => $this->ordersAtFacilityAndChildren($station, collect())->where('status', 'delivery_failed')->latest()->take(10)->get()->map(fn ($order) => [
                 'code' => $order->tracking_number ?? $order->number, 'area' => $order->shipping_city ?? 'Delivery area not recorded',
             ])->all(),
@@ -672,16 +703,22 @@ class PortalController extends Controller
         $hub = $this->facility($request);
         abort_unless((int) $driver->province_hub_id === (int) $hub->id, 404);
         abort_if($driver->apply_to === TransportDriverDetail::APPLY_STATION, 409,
-            'This driver applied to a Station Hub only. Its Station Hub reviews the application.');
+            'This driver applied to a Station Hub only, so its Station Hub reviews the application. Nothing to do here.');
         $data = $request->validate(['decision' => ['required', Rule::in(['approve', 'reject'])],
-            'reason' => ['required_if:decision,reject', 'nullable', 'string', 'min:10', 'max:300']]);
+            'reason' => ['required_if:decision,reject', 'nullable', 'string', 'min:10', 'max:300']], [
+            'decision.required' => 'Choose Approve driver or Reject application.',
+            'decision.in' => 'Choose Approve driver or Reject application.',
+            'reason.required_if' => 'Reason is empty. Write at least 10 characters so the applicant knows what to fix.',
+            'reason.min' => 'Reason is too short. Write at least 10 characters so the applicant knows what to fix.',
+            'reason.max' => 'Reason is longer than 300 characters. Shorten it.',
+        ]);
 
         $driver = DB::transaction(function () use ($driver, $data, $hub) {
             $driver = TransportDriverDetail::query()->lockForUpdate()->findOrFail($driver->id);
             $user = User::query()->lockForUpdate()->findOrFail($driver->user_id);
-            abort_unless($driver->status === 'pending' && $user->status === 'pending', 409, 'This application has already been reviewed.');
+            abort_unless($driver->status === 'pending' && $user->status === 'pending', 409, 'This application was already reviewed. Reload the page to see its current status.');
             if ($data['decision'] === 'approve') {
-                abort_unless($driver->license_expires_at && $driver->license_expires_at->toDateString() >= today()->toDateString(), 409, 'The driver license has expired.');
+                abort_unless($driver->license_expires_at && $driver->license_expires_at->toDateString() >= today()->toDateString(), 409, 'The driver’s licence is expired, so it can’t be approved. Ask for a renewed licence.');
                 $driver->update(['status' => 'available', 'approved_by' => auth()->id(), 'approved_at' => now()]);
                 $user->update(['status' => 'approved', 'account_status' => 'active', 'rejection_reason' => null]);
             } else {
@@ -698,7 +735,11 @@ class PortalController extends Controller
             return $driver->load(['user', 'trips.origin', 'trips.destination', 'stationHub', 'approvedBy']);
         }, 3);
 
-        return response()->json(['driver' => $this->driverCard($driver), 'message' => 'Driver application reviewed.']);
+        $name = $driver->user?->name ?? 'The driver';
+
+        return response()->json(['driver' => $this->driverCard($driver), 'message' => $data['decision'] === 'approve'
+            ? $name.' is approved. They can now be assigned to trips.'
+            : $name.'’s application is rejected. They see your reason in the Driver app.']);
     }
 
     public function updateDriverStatus(Request $request, TransportDriverDetail $driver): JsonResponse
@@ -706,16 +747,19 @@ class PortalController extends Controller
         $hub = $this->facility($request);
         abort_unless((int) $driver->province_hub_id === (int) $hub->id, 404);
         abort_if($driver->apply_to === TransportDriverDetail::APPLY_STATION, 409,
-            'A station-only driver is managed by its Station Hub.');
-        $data = $request->validate(['status' => ['required', Rule::in(['available', 'inactive'])]]);
+            'This driver works for a Station Hub only, so that hub manages them. Ask its station manager to make the change.');
+        $data = $request->validate(['status' => ['required', Rule::in(['available', 'inactive'])]], [
+            'status.required' => 'Choose Activate driver or Deactivate driver.',
+            'status.in' => 'Choose Activate driver or Deactivate driver.',
+        ]);
 
         $driver = DB::transaction(function () use ($driver, $data) {
             $driver = TransportDriverDetail::query()->lockForUpdate()->findOrFail($driver->id);
             $user = User::query()->lockForUpdate()->findOrFail($driver->user_id);
             abort_unless($user->status === 'approved' && $driver->status !== 'on_trip', 409,
-                'A driver must be approved and off trip before changing availability.');
+                'This driver is on a trip or not approved yet. Change availability after the trip ends or the application is approved.');
             if ($data['status'] === 'available') {
-                abort_unless($driver->license_expires_at && $driver->license_expires_at->toDateString() >= today()->toDateString(), 409, 'The driver license has expired.');
+                abort_unless($driver->license_expires_at && $driver->license_expires_at->toDateString() >= today()->toDateString(), 409, 'The driver’s licence is expired, so they can’t be activated. Ask for a renewed licence.');
             }
             $driver->update(['status' => $data['status']]);
             $user->update(['account_status' => $data['status'] === 'available' ? 'active' : 'deactivated']);
@@ -723,7 +767,11 @@ class PortalController extends Controller
             return $driver->load(['user', 'trips.origin', 'trips.destination', 'stationHub', 'approvedBy']);
         }, 3);
 
-        return response()->json(['driver' => $this->driverCard($driver), 'message' => 'Driver availability updated.']);
+        $name = $driver->user?->name ?? 'The driver';
+
+        return response()->json(['driver' => $this->driverCard($driver), 'message' => $data['status'] === 'available'
+            ? $name.' is active again. They can take trips.'
+            : $name.' is deactivated. They won’t be assigned to new trips.']);
     }
 
     public function driverDocument(Request $request, TransportDriverDetail $driver, string $document)
@@ -767,16 +815,22 @@ class PortalController extends Controller
         $station = $this->facility($request);
         abort_unless((int) $driver->station_hub_id === (int) $station->id, 404);
         abort_unless($driver->apply_to === TransportDriverDetail::APPLY_STATION, 403,
-            'This driver applied to the Province Hub. Only the Province Hub reviews that application.');
+            'This driver applied to the Province Hub, so only the Province Hub reviews the application. Nothing to do here.');
         $data = $request->validate(['decision' => ['required', Rule::in(['approve', 'reject'])],
-            'reason' => ['required_if:decision,reject', 'nullable', 'string', 'min:10', 'max:300']]);
+            'reason' => ['required_if:decision,reject', 'nullable', 'string', 'min:10', 'max:300']], [
+            'decision.required' => 'Choose Approve driver or Reject application.',
+            'decision.in' => 'Choose Approve driver or Reject application.',
+            'reason.required_if' => 'Reason is empty. Write at least 10 characters so the applicant knows what to fix.',
+            'reason.min' => 'Reason is too short. Write at least 10 characters so the applicant knows what to fix.',
+            'reason.max' => 'Reason is longer than 300 characters. Shorten it.',
+        ]);
 
         $driver = DB::transaction(function () use ($driver, $data) {
             $driver = TransportDriverDetail::query()->lockForUpdate()->findOrFail($driver->id);
             $user = User::query()->lockForUpdate()->findOrFail($driver->user_id);
-            abort_unless($driver->status === 'pending' && $user->status === 'pending', 409, 'This application has already been reviewed.');
+            abort_unless($driver->status === 'pending' && $user->status === 'pending', 409, 'This application was already reviewed. Reload the page to see its current status.');
             if ($data['decision'] === 'approve') {
-                abort_unless($driver->license_expires_at && $driver->license_expires_at->toDateString() >= today()->toDateString(), 409, 'The driver license has expired.');
+                abort_unless($driver->license_expires_at && $driver->license_expires_at->toDateString() >= today()->toDateString(), 409, 'The driver’s licence is expired, so it can’t be approved. Ask for a renewed licence.');
                 $driver->update(['status' => 'available', 'approved_by' => auth()->id(), 'approved_at' => now()]);
                 $user->update(['status' => 'approved', 'account_status' => 'active', 'rejection_reason' => null]);
             } else {
@@ -793,7 +847,11 @@ class PortalController extends Controller
             return $driver->load(['user', 'trips.origin', 'trips.destination', 'stationHub', 'approvedBy']);
         }, 3);
 
-        return response()->json(['driver' => $this->driverCard($driver), 'message' => 'Driver application reviewed.']);
+        $name = $driver->user?->name ?? 'The driver';
+
+        return response()->json(['driver' => $this->driverCard($driver), 'message' => $data['decision'] === 'approve'
+            ? $name.' is approved. They can now be assigned to trips.'
+            : $name.'’s application is rejected. They see your reason in the Driver app.']);
     }
 
     public function updateStationDriverStatus(Request $request, TransportDriverDetail $driver): JsonResponse
@@ -801,16 +859,19 @@ class PortalController extends Controller
         $station = $this->facility($request);
         abort_unless((int) $driver->station_hub_id === (int) $station->id, 404);
         abort_unless($driver->apply_to === TransportDriverDetail::APPLY_STATION, 403,
-            'This driver is managed by the Province Hub.');
-        $data = $request->validate(['status' => ['required', Rule::in(['available', 'inactive'])]]);
+            'This driver is managed by the Province Hub, so only the Province Hub can make that change.');
+        $data = $request->validate(['status' => ['required', Rule::in(['available', 'inactive'])]], [
+            'status.required' => 'Choose Activate driver or Deactivate driver.',
+            'status.in' => 'Choose Activate driver or Deactivate driver.',
+        ]);
 
         $driver = DB::transaction(function () use ($driver, $data) {
             $driver = TransportDriverDetail::query()->lockForUpdate()->findOrFail($driver->id);
             $user = User::query()->lockForUpdate()->findOrFail($driver->user_id);
             abort_unless($user->status === 'approved' && $driver->status !== 'on_trip', 409,
-                'A driver must be approved and off trip before changing availability.');
+                'This driver is on a trip or not approved yet. Change availability after the trip ends or the application is approved.');
             if ($data['status'] === 'available') {
-                abort_unless($driver->license_expires_at && $driver->license_expires_at->toDateString() >= today()->toDateString(), 409, 'The driver license has expired.');
+                abort_unless($driver->license_expires_at && $driver->license_expires_at->toDateString() >= today()->toDateString(), 409, 'The driver’s licence is expired, so they can’t be activated. Ask for a renewed licence.');
             }
             $driver->update(['status' => $data['status']]);
             $user->update(['account_status' => $data['status'] === 'available' ? 'active' : 'deactivated']);
@@ -818,7 +879,11 @@ class PortalController extends Controller
             return $driver->load(['user', 'trips.origin', 'trips.destination', 'stationHub', 'approvedBy']);
         }, 3);
 
-        return response()->json(['driver' => $this->driverCard($driver), 'message' => 'Driver availability updated.']);
+        $name = $driver->user?->name ?? 'The driver';
+
+        return response()->json(['driver' => $this->driverCard($driver), 'message' => $data['status'] === 'available'
+            ? $name.' is active again. They can take trips.'
+            : $name.' is deactivated. They won’t be assigned to new trips.']);
     }
 
     public function stationDriverDocument(Request $request, TransportDriverDetail $driver, string $document)
@@ -904,6 +969,8 @@ class PortalController extends Controller
             'defaultDeparture' => now()->addHour()->format('Y-m-d\\TH:i'),
             'defaultArrival' => now()->addHours(6)->format('Y-m-d\\TH:i'),
             'storeUrl' => route('lgp.station.trips.store'),
+            'trackingUrl' => route('lgp.station.tracking'),
+            'driversUrl' => route('lgp.station.drivers'),
             'cancelUrl' => route('lgp.station.trips.cancel', '__trip__'),
             'departUrl' => route('lgp.station.trips.depart', '__trip__'),
             'arriveUrl' => route('lgp.station.trips.arrive', '__trip__'),
@@ -963,26 +1030,43 @@ class PortalController extends Controller
             'departure' => ['required', 'date'], 'expected_arrival_at' => ['required', 'date', 'after:departure'],
             'orders' => ['required', 'array', 'min:1'],
             'orders.*' => ['required', 'integer', 'distinct', 'exists:orders,id'],
+        ], [
+            'destination_id.required' => 'Hub is not chosen. Pick the hub the driver must reach.',
+            'destination_id.in' => 'That hub isn’t available for this station. Reload the page and pick another hub.',
+            'driver_id.required' => 'Driver is not chosen. Pick an available driver.',
+            'vehicle_id.required' => 'Vehicle is not chosen. Pick an available vehicle.',
+            'departure.required' => 'Departure is empty. Set when the trip leaves.',
+            'departure.date' => 'Departure isn’t a valid date and time. Pick it from the calendar.',
+            'expected_arrival_at.required' => 'Expected arrival is empty. Set when the trip should arrive.',
+            'expected_arrival_at.date' => 'Expected arrival isn’t a valid date and time. Pick it from the calendar.',
+            'expected_arrival_at.after' => 'Expected arrival is before the departure. Pick a time after the departure.',
+            'orders.required' => 'No parcels are selected. Select at least one parcel to load.',
+            'orders.min' => 'No parcels are selected. Select at least one parcel to load.',
+            'orders.*.exists' => 'A selected parcel no longer exists. Reload the page and select the parcels again.',
+            'orders.*.distinct' => 'A parcel is selected twice. Reload the page and select the parcels again.',
         ]);
         $destinationId = (int) $data['destination_id'];
-        abort_if(\Illuminate\Support\Carbon::parse($data['departure'])->isPast(), 422, 'Scheduled departure must be in the future.');
+        abort_if(\Illuminate\Support\Carbon::parse($data['departure'])->isPast(), 422, 'Departure is in the past. Pick a time from now on.');
 
         $trip = DB::transaction(function () use ($station, $data, $destinationId) {
             // Only a driver linked to this Station Hub can be assigned here, and
             // the licence is checked again against the departure date.
-            $driver = $station->stationTransportDrivers()->whereKey($data['driver_id'])->lockForUpdate()->firstOrFail();
+            $driver = $station->stationTransportDrivers()->whereKey($data['driver_id'])->lockForUpdate()->first()
+                ?? abort(422, 'This driver isn’t linked to this station. Reload the page and pick another driver.');
             abort_unless($driver->status === 'available'
                 && $driver->license_expires_at?->toDateString() >= substr($data['departure'], 0, 10), 422,
-                'The selected driver is unavailable or has a licence that expires before this departure.');
+                'This driver is no longer available, or their licence expires before the departure. Reload the page and pick another driver.');
             $driverUser = User::query()->lockForUpdate()->findOrFail($driver->user_id);
             abort_unless($driverUser->status === 'approved' && $driverUser->account_status === 'active', 422,
-                'The selected driver account is not active.');
+                'This driver’s account is not active. Pick another driver.');
             $vehicle = $station->company->vehicles()->where('province_hub_id', $station->parent_id)
-                ->whereKey($data['vehicle_id'])->lockForUpdate()->firstOrFail();
-            abort_unless($vehicle->status === 'available', 422, 'The selected vehicle is no longer available.');
+                ->whereKey($data['vehicle_id'])->lockForUpdate()->first()
+                ?? abort(422, 'This vehicle isn’t part of your Province Hub. Reload the page and pick another vehicle.');
+            abort_unless($vehicle->status === 'available', 422, 'This vehicle is no longer available. Reload the page and pick another vehicle.');
 
             $orders = collect($data['orders'])->map(fn ($id) => $this->eligibleTripOrders($station, (int) $station->id, $destinationId)
-                ->lockForUpdate()->findOrFail($id));
+                ->lockForUpdate()->find($id)
+                ?? abort(409, 'A selected parcel is no longer ready for this hub. Reload the page and select the parcels again.'));
             $trip = LogisticsTransportTrip::create([
                 'logistics_company_id' => $station->logistics_company_id, 'trip_type' => 'station_transfer',
                 'origin_facility_id' => $station->id, 'destination_facility_id' => $destinationId,
@@ -1002,18 +1086,44 @@ class PortalController extends Controller
 
         return response()->json([
             'trip' => $this->tripCard($trip) + ['can_cancel' => true, 'can_depart' => true, 'can_arrive' => false],
-            'message' => $code.' assigned to '.($trip->driver?->user?->name ?? 'the driver').' for '
+            'message' => $code.' is assigned to '.($trip->driver?->user?->name ?? 'the driver').' for '
                 .($trip->destination?->name ?? 'the destination hub').' with '.$parcels.' '
-                .($parcels === 1 ? 'parcel' : 'parcels').'. It is on the driver app now.',
+                .($parcels === 1 ? 'parcel' : 'parcels').'. It is in the driver app now. Scan each parcel at departure, then record the departure.',
         ], 201);
     }
 
-    public function provinceParcels(Request $request): View
+    public function provinceParcels(Request $request): View|\Illuminate\Http\RedirectResponse
     {
         $hub = $this->facility($request);
-        $stops = OrderFacilityStop::query()->where('facility_id', $hub->id)
-            ->whereHas('order', fn ($query) => $query->whereNotIn('status', ['cancelled', 'returned']))
-            ->with(['order.facilityStops.facility', 'facility'])->latest()->paginate(40);
+        if ($tooLong = $this->trackingSearchTooLong($request, 'lgp.province.parcels')) {
+            return $tooLong;
+        }
+
+        // Read-only filters: a stage chip (?stage=) and a tracking number search (?q=). The stage comes from the stop's own timestamps.
+        $stageScopes = [
+            'incoming' => fn ($query) => $query->whereNull('arrived_at'),
+            'sorting' => fn ($query) => $query->whereNotNull('arrived_at')->whereNull('sorted_at'),
+            'outgoing' => fn ($query) => $query->whereNotNull('sorted_at')->whereNull('departed_at'),
+            'departed' => fn ($query) => $query->whereNotNull('sorted_at')->whereNotNull('departed_at'),
+        ];
+        $base = fn () => OrderFacilityStop::query()->where('facility_id', $hub->id)
+            ->whereHas('order', fn ($query) => $query->whereNotIn('status', ['cancelled', 'returned']));
+        $stage = array_key_exists((string) $request->query('stage'), $stageScopes) ? (string) $request->query('stage') : 'all';
+        $term = trim((string) $request->query('q', ''));
+
+        $counts = ['all' => $base()->count()];
+        foreach ($stageScopes as $key => $scope) {
+            $counts[$key] = $scope($base())->count();
+        }
+
+        $query = $base();
+        if ($stage !== 'all') {
+            $stageScopes[$stage]($query);
+        }
+        if ($term !== '') {
+            $query->whereHas('order', fn ($order) => $order->where('tracking_number', 'like', '%'.$term.'%'));
+        }
+        $stops = $query->with(['order.facilityStops.facility', 'facility'])->latest()->paginate(40)->withQueryString();
         $rows = $stops->through(function ($stop) {
             $next = $stop->order->facilityStops->firstWhere('position', $stop->position + 1);
             $stage = ! $stop->arrived_at ? 'Incoming' : (! $stop->sorted_at ? 'Sorting'
@@ -1021,10 +1131,14 @@ class PortalController extends Controller
             return ['tracking' => $stop->order->tracking_number, 'status' => $stop->order->status_label,
                 'stage' => $stage, 'next' => $next?->facility?->name ?? 'Final delivery',
                 'arrived' => $stop->arrived_at?->format('M j, g:i A'),
-                'departed' => $stop->departed_at?->format('M j, g:i A')];
+                'departed' => $stop->departed_at?->format('M j, g:i A'),
+                'url' => route('lgp.province.tracking', ['q' => $stop->order->tracking_number])];
         });
 
-        return view('logistics.province.live-parcels', compact('hub', 'rows'));
+        return view('logistics.province.live-parcels', [
+            'hub' => $hub, 'rows' => $rows, 'counts' => $counts, 'stage' => $stage, 'q' => $term,
+            'createUrl' => route('lgp.province.trips.create'), 'trackingUrl' => route('lgp.province.tracking'),
+        ]);
     }
 
     public function provinceTrips(Request $request): View
@@ -1042,6 +1156,7 @@ class PortalController extends Controller
         return view('logistics.province.trips', [
             'hub' => ['id' => $hub->id, 'name' => $hub->name], 'trips' => $trips,
             'now' => now()->toIso8601String(), 'createUrl' => route('lgp.province.trips.create'),
+            'trackingUrl' => route('lgp.province.tracking'),
             'cancelUrl' => route('lgp.province.trips.cancel', '__trip__'),
             'departUrl' => route('lgp.province.trips.depart', '__trip__'),
             'arriveUrl' => route('lgp.province.trips.arrive', '__trip__'),
@@ -1101,28 +1216,48 @@ class PortalController extends Controller
             'departure' => ['required', 'date'], 'expected_arrival_at' => ['required', 'date', 'after:departure'],
             'orders' => ['required', 'array', 'min:1'],
             'orders.*' => ['required', 'integer', 'distinct', 'exists:orders,id'],
+        ], [
+            'type.required' => 'Trip type is missing. Pick Station transfer or Inter-province.',
+            'type.in' => 'That trip type isn’t available. Pick Station transfer or Inter-province.',
+            'origin_id.required' => 'The start of the trip is missing. Reload the page and try again.',
+            'destination_id.required' => 'Destination is not chosen. Pick where this trip goes.',
+            'destination_id.different' => 'The trip starts and ends at the same hub. Pick a different destination.',
+            'driver_id.required' => 'Driver is not chosen. Pick an available driver.',
+            'vehicle_id.required' => 'Vehicle is not chosen. Pick an available vehicle.',
+            'departure.required' => 'Departure is empty. Set when the trip leaves.',
+            'departure.date' => 'Departure isn’t a valid date and time. Pick it from the calendar.',
+            'expected_arrival_at.required' => 'Expected arrival is empty. Set when the trip should arrive.',
+            'expected_arrival_at.date' => 'Expected arrival isn’t a valid date and time. Pick it from the calendar.',
+            'expected_arrival_at.after' => 'Expected arrival is before the departure. Pick a time after the departure.',
+            'orders.required' => 'No parcels are selected. Select at least one parcel to load.',
+            'orders.min' => 'No parcels are selected. Select at least one parcel to load.',
+            'orders.*.exists' => 'A selected parcel no longer exists. Reload the page and select the parcels again.',
+            'orders.*.distinct' => 'A parcel is selected twice. Reload the page and select the parcels again.',
         ]);
         $allowedFacilityIds = $hub->children()->where('kind', 'station_hub')->where('is_active', true)->pluck('id')->push($hub->id)->all();
         $originId = (int) $data['origin_id'];
         $destinationId = (int) $data['destination_id'];
-        abort_if(\Illuminate\Support\Carbon::parse($data['departure'])->isPast(), 422, 'Scheduled departure must be in the future.');
+        abort_if(\Illuminate\Support\Carbon::parse($data['departure'])->isPast(), 422, 'Departure is in the past. Pick a time from now on.');
         abort_unless(in_array($originId, array_map('intval', $allowedFacilityIds), true), 404);
         $destination = LogisticsFacility::query()->where('logistics_company_id', $hub->logistics_company_id)
             ->where('is_active', true)->whereKey($destinationId)->firstOrFail();
         $validDestination = $data['type'] === 'station_transfer'
             ? ($destination->id === $hub->id || ($destination->kind === 'station_hub' && (int) $destination->parent_id === (int) $hub->id))
             : ($originId === (int) $hub->id && $destination->kind === 'province_hub' && $destination->id !== $hub->id);
-        abort_unless($validDestination, 422, 'Choose a destination allowed for this trip type.');
+        abort_unless($validDestination, 422, 'This destination isn’t allowed for this trip type. Pick a Station Hub for a station transfer, or another Province Hub for an inter-province trip.');
 
         $trip = DB::transaction(function () use ($hub, $data, $originId, $destinationId) {
-            $driver = $hub->transportDrivers()->whereKey($data['driver_id'])->lockForUpdate()->firstOrFail();
-            abort_unless($driver->status === 'available' && $driver->license_expires_at?->toDateString() >= substr($data['departure'], 0, 10), 422, 'The selected Driver is unavailable or has an expired license.');
+            $driver = $hub->transportDrivers()->whereKey($data['driver_id'])->lockForUpdate()->first()
+                ?? abort(422, 'This driver isn’t part of this hub. Reload the page and pick another driver.');
+            abort_unless($driver->status === 'available' && $driver->license_expires_at?->toDateString() >= substr($data['departure'], 0, 10), 422, 'This driver is no longer available, or their licence expires before the departure. Reload the page and pick another driver.');
             $driverUser = User::query()->lockForUpdate()->findOrFail($driver->user_id);
-            abort_unless($driverUser->status === 'approved' && $driverUser->account_status === 'active', 422, 'The selected Driver account is not active.');
-            $vehicle = $hub->company->vehicles()->where('province_hub_id', $hub->id)->whereKey($data['vehicle_id'])->lockForUpdate()->firstOrFail();
-            abort_unless($vehicle->status === 'available', 422, 'The selected vehicle is no longer available.');
+            abort_unless($driverUser->status === 'approved' && $driverUser->account_status === 'active', 422, 'This driver’s account is not active. Pick another driver.');
+            $vehicle = $hub->company->vehicles()->where('province_hub_id', $hub->id)->whereKey($data['vehicle_id'])->lockForUpdate()->first()
+                ?? abort(422, 'This vehicle isn’t part of this hub. Reload the page and pick another vehicle.');
+            abort_unless($vehicle->status === 'available', 422, 'This vehicle is no longer available. Reload the page and pick another vehicle.');
 
-            $orders = collect($data['orders'])->map(fn ($id) => $this->eligibleTripOrders($hub, $originId, $destinationId)->lockForUpdate()->findOrFail($id));
+            $orders = collect($data['orders'])->map(fn ($id) => $this->eligibleTripOrders($hub, $originId, $destinationId)->lockForUpdate()->find($id)
+                ?? abort(409, 'A selected parcel is no longer ready for this route. Reload the page and select the parcels again.'));
             $trip = LogisticsTransportTrip::create([
                 'logistics_company_id' => $hub->logistics_company_id, 'trip_type' => $data['type'],
                 'origin_facility_id' => $originId, 'destination_facility_id' => $destinationId,
@@ -1137,7 +1272,13 @@ class PortalController extends Controller
             return $trip->load(['origin', 'destination', 'driver.user', 'vehicle', 'orders']);
         }, 3);
 
-        return response()->json(['trip' => $this->tripCard($trip), 'message' => 'Transport trip scheduled and parcels assigned.'], 201);
+        $count = $trip->orders->count();
+        $message = 'TRP-'.str_pad((string) $trip->id, 5, '0', STR_PAD_LEFT).' is scheduled with '.$count.($count === 1 ? ' parcel' : ' parcels')
+            .'. Scan each parcel at departure, then record the departure.';
+        // The next page is the Trips list, which shows this in its top banner.
+        session()->flash('success', $message);
+
+        return response()->json(['trip' => $this->tripCard($trip), 'message' => $message], 201);
     }
 
     public function cancelTrip(Request $request, LogisticsTransportTrip $trip): JsonResponse
@@ -1146,20 +1287,24 @@ class PortalController extends Controller
         $facilityScopeIds = $hub->children()->pluck('id')->map(fn ($id) => (int) $id)->push((int) $hub->id)->all();
         abort_unless((int) $trip->logistics_company_id === (int) $hub->logistics_company_id
             && in_array((int) $trip->origin_facility_id, $facilityScopeIds, true), 404);
-        $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500']]);
+        $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500']], [
+            'reason.required' => 'Reason is empty. Write a short reason so the stations know why the trip was cancelled.',
+            'reason.min' => 'Reason is too short. Write at least 5 characters so the stations know why the trip was cancelled.',
+            'reason.max' => 'Reason is too long. Keep it to 500 characters or fewer.',
+        ]);
 
         DB::transaction(function () use ($trip, $data) {
             $lockedTrip = LogisticsTransportTrip::query()->whereKey($trip->id)->lockForUpdate()->firstOrFail();
-            abort_unless($lockedTrip->status === 'scheduled', 409, 'Only a scheduled trip can be cancelled.');
+            abort_unless($lockedTrip->status === 'scheduled', 409, 'This trip is no longer scheduled, so it can’t be cancelled. Reload the page to see its current status.');
             abort_if(\App\Models\Profiles\OrderFacilityStop::query()->where('facility_id', $lockedTrip->origin_facility_id)
                 ->whereNotNull('departed_at')->whereIn('order_id', $lockedTrip->orders()->select('orders.id'))->exists(),
-                409, 'A parcel has already been scanned for departure. Complete the trip or resolve the scan first.');
+                409, 'A parcel was already scanned for departure, so this trip can’t be cancelled. Finish the trip, or resolve the scan first.');
             $lockedTrip->update(['status' => 'cancelled', 'cancel_reason' => $data['reason']]);
             $lockedTrip->driver()->where('status', 'on_trip')->update(['status' => 'available']);
             $lockedTrip->vehicle()->where('status', 'on_trip')->update(['status' => 'available']);
         }, 3);
 
-        return response()->json(['trip' => $this->tripCard($trip->fresh(['origin', 'destination', 'driver.user', 'vehicle', 'orders'])) + ['can_cancel' => true], 'message' => 'Trip cancelled and assignments released.']);
+        return response()->json(['trip' => $this->tripCard($trip->fresh(['origin', 'destination', 'driver.user', 'vehicle', 'orders'])) + ['can_cancel' => true], 'message' => 'TRP-'.str_pad((string) $trip->id, 5, '0', STR_PAD_LEFT).' is cancelled. The driver, vehicle and parcels are released.']);
     }
 
     public function departTrip(Request $request, LogisticsTransportTrip $trip, TransportTripWorkflow $workflow): JsonResponse
@@ -1171,7 +1316,7 @@ class PortalController extends Controller
         $trip = $workflow->depart($trip, $request->user());
 
         return response()->json(['trip' => $this->tripCard($trip) + ['can_cancel' => false, 'can_depart' => true,
-            'can_arrive' => $scopeIds->contains($trip->destination_facility_id)], 'message' => 'Trip departure recorded.']);
+            'can_arrive' => $scopeIds->contains($trip->destination_facility_id)], 'message' => 'TRP-'.str_pad((string) $trip->id, 5, '0', STR_PAD_LEFT).' is on its way to '.($trip->destination?->name ?? 'its destination').'.']);
     }
 
     public function arriveTrip(Request $request, LogisticsTransportTrip $trip, TransportTripWorkflow $workflow): JsonResponse
@@ -1183,7 +1328,7 @@ class PortalController extends Controller
         $trip = $workflow->arrive($trip);
 
         return response()->json(['trip' => $this->tripCard($trip) + ['can_cancel' => false, 'can_depart' => false,
-            'can_arrive' => true], 'message' => 'Trip arrival recorded; Driver and vehicle are available again.']);
+            'can_arrive' => true], 'message' => 'TRP-'.str_pad((string) $trip->id, 5, '0', STR_PAD_LEFT).' arrived at '.($trip->destination?->name ?? 'its destination').'. The driver and vehicle are available again.']);
     }
 
     public function scanParcel(Request $request, PortalParcelScanService $workflow): JsonResponse
@@ -1205,71 +1350,101 @@ class PortalController extends Controller
             'capacity_kg' => (int) round((float) $data['capacity'] * 1000), 'status' => 'available',
         ]);
 
-        return response()->json(['vehicle' => $this->vehicleCard($vehicle->fresh()), 'message' => 'Vehicle added and available for a trip.'], 201);
+        return response()->json(['vehicle' => $this->vehicleCard($vehicle->fresh()), 'message' => $vehicle->vehicle_code.' is added. It is available for trips.'], 201);
     }
 
     public function updateVehicle(Request $request, LogisticsCompanyVehicle $vehicle): JsonResponse
     {
         $hub = $this->facility($request);
         abort_unless((int) $vehicle->province_hub_id === (int) $hub->id && (int) $vehicle->logistics_company_id === (int) $hub->logistics_company_id, 404);
-        abort_if($vehicle->status === 'on_trip', 409, 'A vehicle cannot be edited while it is on a trip.');
+        abort_if($vehicle->status === 'on_trip', 409, $vehicle->vehicle_code.' is on a trip, so it can’t be edited. Edit it after the trip ends.');
         $data = $this->validateVehicle($request, $hub, $vehicle);
         $vehicle->update([
             'plate_number' => $this->normalizePlate($data['plate']), 'vehicle_type' => $data['type'],
             'capacity_kg' => (int) round((float) $data['capacity'] * 1000),
         ]);
 
-        return response()->json(['vehicle' => $this->vehicleCard($vehicle->fresh()), 'message' => 'Vehicle updated.']);
+        return response()->json(['vehicle' => $this->vehicleCard($vehicle->fresh()), 'message' => $vehicle->vehicle_code.' is updated. Changes apply to future trips.']);
     }
 
     public function updateVehicleStatus(Request $request, LogisticsCompanyVehicle $vehicle): JsonResponse
     {
         $hub = $this->facility($request);
         abort_unless((int) $vehicle->province_hub_id === (int) $hub->id && (int) $vehicle->logistics_company_id === (int) $hub->logistics_company_id, 404);
-        abort_if($vehicle->status === 'on_trip', 409, 'A vehicle on a trip cannot change status.');
+        abort_if($vehicle->status === 'on_trip', 409, $vehicle->vehicle_code.' is on a trip, so its status can’t change. Change it after the trip ends.');
         $data = $request->validate([
             'status' => ['required', Rule::in(['available', 'maintenance', 'inactive'])],
             'maintenance_note' => ['required_if:status,maintenance', 'nullable', 'string', 'min:5', 'max:500'],
+        ], [
+            'status.required' => 'Status is missing. Reload the page and try again.',
+            'status.in' => 'That status isn’t available for a vehicle. Reload the page and try again.',
+            'maintenance_note.required_if' => 'Maintenance reason is empty. Say what the vehicle is in maintenance for.',
+            'maintenance_note.min' => 'Maintenance reason is too short. Write at least 5 characters so the team knows what the vehicle needs.',
+            'maintenance_note.max' => 'Maintenance reason is too long. Keep it to 500 characters or fewer.',
         ]);
+        $wasInMaintenance = $vehicle->status === 'maintenance';
         $vehicle->update([
             'status' => $data['status'],
             'maintenance_note' => $data['status'] === 'maintenance' ? $data['maintenance_note'] : null,
             'maintenance_at' => $data['status'] === 'maintenance' ? ($vehicle->maintenance_at ?? now()) : null,
         ]);
 
-        return response()->json(['vehicle' => $this->vehicleCard($vehicle->fresh()), 'message' => 'Vehicle status updated.']);
+        $code = $vehicle->vehicle_code;
+        $message = match ($data['status']) {
+            'maintenance' => $code.' is in maintenance. It won’t be assigned to trips until it is back in service.',
+            'inactive' => $code.' is deactivated. Activate it to assign it to trips again.',
+            default => $wasInMaintenance ? $code.' is back in service and available for trips.' : $code.' is active and available for trips.',
+        };
+
+        return response()->json(['vehicle' => $this->vehicleCard($vehicle->fresh()), 'message' => $message]);
     }
 
     public function reviewRider(Request $request, \App\Models\Profiles\CourierDetail $courierDetail): JsonResponse
     {
         $station = $this->facility($request);
         abort_unless((int) $courierDetail->station_hub_id === (int) $station->id, 404);
-        $data = $request->validate(['decision' => ['required', Rule::in(['approve', 'reject'])], 'reason' => ['required_if:decision,reject', 'nullable', 'string', 'min:5', 'max:500']]);
+        $data = $request->validate(['decision' => ['required', Rule::in(['approve', 'reject'])], 'reason' => ['required_if:decision,reject', 'nullable', 'string', 'min:5', 'max:500']], [
+            'decision.required' => 'Choose Approve rider or Reject application.',
+            'decision.in' => 'Choose Approve rider or Reject application.',
+            'reason.required_if' => 'Reason is empty. Write at least 5 characters so the applicant knows what to fix.',
+            'reason.min' => 'Reason is too short. Write at least 5 characters so the applicant knows what to fix.',
+            'reason.max' => 'Reason is longer than 500 characters. Shorten it.',
+        ]);
 
         DB::transaction(function () use ($courierDetail, $data) {
             $user = User::query()->lockForUpdate()->findOrFail($courierDetail->user_id);
-            abort_unless($user->role === 'courier' && $user->status === 'pending', 409, 'This Rider application has already been reviewed.');
+            abort_unless($user->role === 'courier' && $user->status === 'pending', 409, 'This application was already reviewed. Reload the page to see its current status.');
             $user->update($data['decision'] === 'approve'
                 ? ['status' => 'approved', 'account_status' => 'active']
                 : ['status' => 'disapproved', 'rejection_reason' => $data['reason'], 'rejection_notes' => null]);
         }, 3);
 
-        return response()->json(['status' => $data['decision'] === 'approve' ? 'active' : 'rejected']);
+        $name = $courierDetail->user?->name ?? 'The rider';
+
+        return response()->json(['status' => $data['decision'] === 'approve' ? 'active' : 'rejected', 'message' => $data['decision'] === 'approve'
+            ? $name.' is approved. They can now be assigned tasks.'
+            : $name.'’s application is rejected. They see your reason in the Rider app.']);
     }
 
     public function updateRiderStatus(Request $request, \App\Models\Profiles\CourierDetail $courierDetail): JsonResponse
     {
         $station = $this->facility($request);
         abort_unless((int) $courierDetail->station_hub_id === (int) $station->id, 404);
-        $data = $request->validate(['active' => ['required', 'boolean']]);
+        $data = $request->validate(['active' => ['required', 'boolean']], [
+            'active.required' => 'Choose Activate rider or Deactivate rider.',
+            'active.boolean' => 'Choose Activate rider or Deactivate rider.',
+        ]);
         if (! $data['active']) {
-            abort_if($courierDetail->tasks()->whereIn('status', ['assigned', 'in_progress'])->exists(), 409, 'Reassign this Rider’s open tasks before deactivation.');
+            abort_if($courierDetail->tasks()->whereIn('status', ['assigned', 'in_progress'])->exists(), 409, 'This rider still has open parcels. Reassign them on Task assignment, then deactivate.');
         }
         $user = User::query()->lockForUpdate()->findOrFail($courierDetail->user_id);
-        abort_unless($user->role === 'courier' && $user->status === 'approved', 409, 'Only approved Riders can be activated or deactivated.');
+        abort_unless($user->role === 'courier' && $user->status === 'approved', 409, 'Only approved riders can be activated or deactivated. Approve the application first.');
         $user->update(['account_status' => $data['active'] ? 'active' : 'deactivated']);
+        $name = $user->name ?: 'The rider';
 
-        return response()->json(['status' => $data['active'] ? 'active' : 'inactive']);
+        return response()->json(['status' => $data['active'] ? 'active' : 'inactive', 'message' => $data['active']
+            ? $name.' is active again. They can be assigned tasks.'
+            : $name.' is deactivated. They won’t get new parcels.']);
     }
 
     public function plannedPage(Request $request, ?string $portal = null, ?string $page = null): View
@@ -1406,6 +1581,20 @@ class PortalController extends Controller
             'plate' => ['required', 'string', 'regex:/^[A-Z]{3} \d{3,4}$/', $plateRule],
             'type' => ['required', Rule::in(['L300 Van', 'Closed Van', '6-Wheeler Truck', '10-Wheeler'])],
             'capacity' => ['required', 'numeric', 'min:0.5', 'max:40'],
+        ], [
+            'code.required' => 'Vehicle code is empty. Enter a code, like TRK-010.',
+            'code.max' => 'Vehicle code is too long. Use 40 characters or fewer.',
+            'code.regex' => 'Vehicle code has symbols that aren’t allowed. Use only letters, numbers and dashes.',
+            'code.unique' => 'This vehicle code is already used by another vehicle. Enter a different code.',
+            'plate.required' => 'Plate number is empty. Enter the plate number, like ABC 1234.',
+            'plate.regex' => 'Plate number isn’t in the right format. Use three letters and three or four digits, like ABC 1234.',
+            'plate.unique' => 'This plate number is already registered to another vehicle. Check the plate number.',
+            'type.required' => 'Vehicle type is not chosen. Pick one from the list.',
+            'type.in' => 'That vehicle type isn’t available. Pick one from the list.',
+            'capacity.required' => 'Capacity is empty. Enter the capacity in tons, from 0.5 to 40.',
+            'capacity.numeric' => 'Capacity must be a number. Enter the capacity in tons, like 8.',
+            'capacity.min' => 'Capacity is too low. Enter at least 0.5 tons.',
+            'capacity.max' => 'Capacity is too high. Enter 40 tons or less.',
         ]);
     }
 
@@ -1571,7 +1760,7 @@ class PortalController extends Controller
                 ->orWhereHas('facilityStops', fn ($stops) => $stops->where('facility_id', $facility->id)))->exists();
         $tripUsesFacility = LogisticsTransportTrip::query()->whereIn('status', ['scheduled', 'in_transit'])
             ->where(fn ($q) => $q->where('origin_facility_id', $facility->id)->orWhere('destination_facility_id', $facility->id))->exists();
-        abort_if($orderUsesFacility || $tripUsesFacility, 409, 'Move or finish all open parcels and trips before deactivating this facility.');
+        abort_if($orderUsesFacility || $tripUsesFacility, 409, 'Open parcels or trips still use this facility. Finish or move them, then deactivate it.');
     }
 
     private function provinceHubHasHistory(LogisticsFacility $hub): bool

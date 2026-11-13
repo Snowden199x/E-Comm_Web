@@ -1,0 +1,57 @@
+/* =========================================================
+   Logistics · Province Hub dashboard additions. Loaded after dashboard-theme.css (@push('lg-head')),
+   which supplies the .lgd tokens, tiles, cards, tables, pills and empty states shared with the Company dashboard.
+   This file only adds what the Province Hub page needs: a four-tile row, parcel-flow tiles, availability meters.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32. Status colors: new = lilac, waiting = butter, in progress = sky, done = mint, failed = rose.
+   ========================================================= */
+
+/* ---- Four-tile rows (the Company page has five) ---- */
+.lgd .lgd-tiles.lgd-tiles--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.lgd .lgd-tile__hint { margin-top: 4px; color: var(--do-muted); font-size: 12px; line-height: 1.5; }
+.lgd .lgd-card .lgd-tiles { margin-top: 0; }
+.lgd .lgd-card .lgd-tile { background: var(--do-lilac-50); border-color: transparent; }
+.lgd .lgd-card .lgd-tile:hover { background: var(--do-surface); border-color: var(--do-lilac-500); }
+.lgd .lgd-card .lgd-tile .lgd-tile__go { background: var(--do-lilac-100); }
+
+/* ---- Card heading with a one-line hint ---- */
+.lgd .lgd-card__title { display: grid; gap: 2px; min-width: 0; }
+.lgd .lgd-card__sub { margin: 0; color: var(--do-muted); font-size: 12px; line-height: 1.5; }
+.lgd .lgd-card__head--bar { align-items: flex-start; }
+
+/* ---- Two cards side by side (drivers, vehicles) ---- */
+.lgd .lgd-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; align-items: start; }
+
+/* ---- Availability meters ---- */
+.lgd .lgd-meters { display: grid; gap: 16px; }
+.lgd .lgd-meter__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lgd .lgd-meter__top span { display: inline-flex; align-items: center; gap: 8px; color: var(--do-muted); }
+.lgd .lgd-meter__top strong { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.lgd .lgd-meter__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--do-lilac-500); }
+.lgd .lgd-meter__dot--mint { background: #8cc9a2; }
+.lgd .lgd-meter__dot--sky { background: #8fb6e0; }
+.lgd .lgd-meter__dot--butter { background: #e6c46a; }
+.lgd .lgd-bar--mint i { background: #9bd3ae; }
+.lgd .lgd-bar--sky i { background: #a6c6ea; }
+.lgd .lgd-bar--butter i { background: #efd48a; }
+.lgd .lgd-bar { height: 8px; margin-top: 8px; }
+
+/* ---- Tables ---- */
+.lgd .lgd-table--wide { min-width: 880px; }
+.lgd .lgd-table .lgd-pill + .lgd-pill { margin-left: 4px; }
+.lgd .lgd-table tr.lgd-row { transition: background .15s; }
+.lgd .lgd-table tr.lgd-row:hover { background: var(--do-lilac-50); }
+.lgd .lgd-table tr.lgd-row:hover .lgd-nudge { transform: translateX(3px); }
+.lgd .lgd-table td[colspan] { padding: 0; }
+.lgd .lgd-table tr:has(td[colspan]) { cursor: default; }
+
+/* ---- Responsive ---- */
+@media (max-width: 1280px) {
+    .lgd .lgd-tiles.lgd-tiles--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+    .lgd .lgd-tiles.lgd-tiles--4 { gap: 8px; }
+    .lgd .lgd-tiles.lgd-tiles--4 .lgd-tile:last-child { grid-column: auto; }
+    .lgd .lgd-table--wide { min-width: 0; }
+    .lgd .lgd-table td[colspan] { display: block; padding: 0; }
+    .lgd .lgd-table tr:has(td[colspan]) { display: block; padding: 0; }
+}

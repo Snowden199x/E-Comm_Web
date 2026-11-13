@@ -1,0 +1,95 @@
+/* =========================================================
+   Logistics · Company > Rider Payment theme layer. Loaded last (@push('lg-head')).
+   Same pastel lilac system as the seller pages (seller/delivered-orders.css).
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32. Colors: Rider = sky, Vendo = lilac, your Company = mint.
+   No dialogs on this page.
+   ========================================================= */
+.lgy {
+    --do-ink: #2d2233;
+    --do-muted: #7d7285;
+    --do-line: #ece4ef;
+    --do-surface: #fff;
+    --do-lilac-50: #f8f4f9;
+    --do-lilac-100: #efe6f2;
+    --do-lilac-200: #e0d0e5;
+    --do-lilac-500: #b79ac2;
+    --do-lilac-700: #5a1d63;
+    --do-mint-500: #86cba1;
+    --do-sky-500: #8fb4e0;
+    --do-rose-700: #9a3a4d;
+    display: grid;
+    gap: 16px;
+    font: 13px/1.5 'Poppins', system-ui, sans-serif;
+    color: var(--do-ink);
+}
+.lgy [x-cloak] { display: none !important; }
+.lgy .lgy-ico { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---- Header ---- */
+.lgy .lgy-head { margin: 8px 0 8px; }
+.lgy .lgy-head h1 { font-size: 24px; font-weight: 600; letter-spacing: -.4px; line-height: 1.3; }
+.lgy .lgy-head p { margin-top: 4px; max-width: 720px; color: var(--do-muted); font-size: 13px; }
+
+/* ---- Cards ---- */
+.lgy .lgy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 16px; align-items: start; }
+.lgy .lgy-card { display: grid; gap: 16px; min-width: 0; padding: 24px; background: var(--do-surface); border: 1px solid var(--do-line); border-radius: 14px; animation: lgy-rise .4s ease both; }
+.lgy .lgy-card:nth-child(2) { animation-delay: .05s; }
+.lgy .lgy-card__head h2 { font-size: 15px; font-weight: 600; }
+.lgy .lgy-card__head p { margin-top: 2px; color: var(--do-muted); font-size: 12px; }
+
+/* ---- Form ---- */
+.lgy .lgy-form { display: grid; gap: 16px; margin: 0; }
+.lgy .lgy-field { display: grid; gap: 4px; }
+.lgy .lgy-field label { font-size: 12px; font-weight: 500; }
+.lgy .lgy-field label span { color: var(--do-rose-700); }
+.lgy .lgy-input { display: flex; align-items: center; min-height: 48px; border: 1px solid var(--do-lilac-200); border-radius: 10px; background: #fff; transition: border-color .15s; }
+.lgy .lgy-input:hover { border-color: var(--do-lilac-500); }
+.lgy .lgy-input:focus-within { outline: 2px solid var(--do-lilac-500); outline-offset: 1px; }
+.lgy .lgy-input.has-error { border-color: var(--do-rose-700); background: #fffafb; }
+.lgy .lgy-input span { padding: 0 0 0 16px; color: var(--do-muted); font-size: 16px; font-weight: 500; }
+.lgy .lgy-input input { flex: 1; min-width: 0; padding: 8px 16px 8px 8px; border: 0; background: transparent; color: var(--do-ink); font: 600 18px 'Poppins', system-ui, sans-serif; font-variant-numeric: tabular-nums; outline: none; }
+.lgy .lgy-hint { margin: 0; color: var(--do-muted); font-size: 12px; }
+.lgy .lgy-err { margin: 0; color: var(--do-rose-700); font-size: 12px; }
+.lgy .lgy-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.lgy .lgy-note { display: flex; align-items: flex-start; gap: 12px; margin: 0; padding: 12px 16px; border-radius: 12px; background: var(--do-lilac-50); color: var(--do-muted); font-size: 12px; }
+.lgy .lgy-note .lgy-ico { margin-top: 1px; color: var(--do-lilac-700); }
+
+/* ---- Buttons ---- */
+.lgy .lgy-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border: 1px solid transparent; border-radius: 10px; font: 500 13px/1 'Poppins', system-ui, sans-serif; white-space: nowrap; cursor: pointer; transition: background .15s, box-shadow .15s, transform .1s; }
+.lgy .lgy-btn:active:not(:disabled) { transform: scale(.97); }
+.lgy .lgy-btn:focus-visible { outline: 2px solid var(--do-lilac-500); outline-offset: 2px; }
+.lgy .lgy-btn--primary { background: var(--do-lilac-700); color: #fff; box-shadow: 0 2px 8px rgba(90, 29, 99, .18); }
+.lgy .lgy-btn--primary:hover:not(:disabled) { background: #6f2b79; }
+.lgy .lgy-btn--soft { background: var(--do-lilac-100); color: var(--do-lilac-700); }
+.lgy .lgy-btn--soft:hover { background: var(--do-lilac-200); }
+.lgy .lgy-btn:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+
+/* ---- Split preview ---- */
+.lgy .lgy-bar { display: flex; height: 12px; border-radius: 999px; background: var(--do-lilac-50); overflow: hidden; }
+.lgy .lgy-bar i { display: block; height: 100%; transition: width .35s cubic-bezier(.2, .8, .2, 1); }
+.lgy .lgy-bar__rider { background: var(--do-sky-500); }
+.lgy .lgy-bar__vendo { background: var(--do-lilac-500); }
+.lgy .lgy-bar__company { background: var(--do-mint-500); }
+.lgy .lgy-split { display: grid; margin: 0; }
+.lgy .lgy-split > div { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; font-size: 12px; }
+.lgy .lgy-split > div + div { border-top: 1px solid var(--do-line); }
+.lgy .lgy-split dt { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.lgy .lgy-split dt small { flex-basis: 100%; margin-left: 16px; color: var(--do-muted); font-size: 11px; }
+.lgy .lgy-split dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lgy .lgy-split .lgy-sub { color: var(--do-muted); }
+.lgy .lgy-split .lgy-sub dd { font-weight: 500; }
+.lgy .lgy-total { font-size: 13px; }
+.lgy .lgy-total dd { font-size: 15px; }
+.lgy .lgy-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.lgy .lgy-dot--rider { background: var(--do-sky-500); } .lgy .lgy-dot--vendo { background: var(--do-lilac-500); } .lgy .lgy-dot--company { background: var(--do-mint-500); }
+
+@keyframes lgy-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 720px) {
+    .lgy .lgy-head h1 { font-size: 20px; }
+    .lgy .lgy-card { padding: 16px; }
+    .lgy .lgy-actions .lgy-btn { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lgy *, .lgy *::before { animation: none !important; transition: none !important; }
+}

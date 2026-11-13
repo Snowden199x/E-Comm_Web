@@ -20,7 +20,7 @@ class PortalReportController extends Controller
     {
         $role = (string) $request->route('portal_role');
         abort_unless(in_array($role, ['company', 'province', 'station'], true), 404);
-        $data = $request->validate(['days' => ['nullable', 'in:7,30,90']]);
+        $data = $request->validate(['days' => ['nullable', 'in:7,30,90']], ['days.in' => 'Choose a period of 7, 30 or 90 days.']);
         $days = (int) ($data['days'] ?? 30);
         $since = now()->subDays($days)->startOfDay();
         $facility = $request->attributes->get('logistics_facility');
