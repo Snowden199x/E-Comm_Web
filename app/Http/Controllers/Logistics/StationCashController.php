@@ -88,6 +88,16 @@ class StationCashController extends Controller
             'order_ids.*' => ['integer'],
             'received_amount' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'note' => ['nullable', 'string', 'max:500'],
+        ], [
+            'order_ids.required' => 'No parcels selected. Tick the parcels the rider handed in.',
+            'order_ids.array' => 'The parcel list is not valid. Reload the page and try again.',
+            'order_ids.min' => 'No parcels selected. Tick the parcels the rider handed in.',
+            'order_ids.*.integer' => 'A selected parcel is not valid. Reload the page and try again.',
+            'received_amount.required' => 'Amount received is empty. Enter the cash you counted, in pesos.',
+            'received_amount.numeric' => 'Amount received must be a number, like 1250.50. Remove any symbols or letters.',
+            'received_amount.min' => 'Amount received is below zero. Enter 0 or more.',
+            'received_amount.max' => 'Amount received is too large. Check for an extra digit.',
+            'note.max' => 'Note is longer than 500 characters. Shorten it.',
         ]);
         $orderIds = array_values(array_unique(array_map('intval', $data['order_ids'])));
 
@@ -96,15 +106,16 @@ class StationCashController extends Controller
                 ->lockForUpdate()->get();
             $collections = OrderCodCollection::query()->whereIn('order_id', $orders->pluck('id'))
                 ->where('rider_user_id', $courierDetail->user_id)->where('station_hub_id', $station->id)->get()->keyBy('order_id');
-            abort_unless($orders->count() === count($orderIds) && $collections->count() === $orders->count(), 409,
-                'Some of these parcels are no longer waiting for cash from this Rider. Refresh and try again.');
+            if ($orders->count() !== count($orderIds) || $collections->count() !== $orders->count()) {
+                throw ValidationException::withMessages(['order_ids' => 'Some of these parcels are no longer waiting for cash from this rider. Reload the page to see the current list, then try again.']);
+            }
 
             $expectedCents = (int) $collections->sum(fn ($c) => (int) round(((float) $c->amount) * 100));
             $receivedCents = (int) round(((float) $data['received_amount']) * 100);
             $matches = $expectedCents === $receivedCents;
             $note = trim((string) ($data['note'] ?? ''));
             if (! $matches && $note === '') {
-                throw ValidationException::withMessages(['note' => 'Add a note explaining the difference.']);
+                throw ValidationException::withMessages(['note' => 'Amount differs from what was collected. Add a note that explains the difference.']);
             }
 
             $remittance = CashRemittance::create([
@@ -131,25 +142,30 @@ class StationCashController extends Controller
         }, 3);
 
         [$matches, $expectedCents, $receivedCents, $count] = $result;
+        $rider = $courierDetail->user?->name ?? 'the rider';
         if ($matches) {
-            return back()->with('success', 'Received ₱'.number_format($receivedCents / 100, 2).' for '.$count.' parcel(s).');
+            return back()->with('success', 'Received ₱'.number_format($receivedCents / 100, 2).' from '.$rider.' for '.$count.($count === 1 ? ' parcel' : ' parcels').'.');
         }
 
-        return back()->with('success', 'Recorded with a discrepancy of ₱'.number_format(abs($expectedCents - $receivedCents) / 100, 2)
-            .' ('.($receivedCents < $expectedCents ? 'short' : 'over').'). Resolve it on the Cash Discrepancies page.');
+        return back()->with('success', 'Recorded ₱'.number_format(abs($expectedCents - $receivedCents) / 100, 2).' '
+            .($receivedCents < $expectedCents ? 'short' : 'over').' from '.$rider.'. Resolve it on the Cash discrepancies page before sending this cash.');
     }
 
     public function remit(Request $request): RedirectResponse
     {
         $station = $request->attributes->get('logistics_facility');
         $province = $station->parent;
-        abort_unless($province && $province->is_active, 409, 'This Station Hub has no active Province Hub to send cash to.');
+        if (! $province || ! $province->is_active) {
+            throw ValidationException::withMessages(['remit' => 'This Station Hub has no active Province Hub to send cash to. Ask your company admin to assign one.']);
+        }
 
         [$count, $cents] = DB::transaction(function () use ($request, $station, $province) {
             $ids = $this->readyToRemit($station->id)->pluck('c.order_id');
             $orders = Order::query()->whereIn('id', $ids)->where('money_status', 'remitted_to_station')
                 ->lockForUpdate()->with('codCollection')->get();
-            abort_if($orders->isEmpty(), 409, 'There is no verified cash waiting to be sent.');
+            if ($orders->isEmpty()) {
+                throw ValidationException::withMessages(['remit' => 'There is no verified cash to send. Confirm cash from a rider first.']);
+            }
 
             $cents = (int) $orders->sum(fn ($order) => (int) round(((float) $order->codCollection->amount) * 100));
             $remittance = CashRemittance::create([
@@ -171,19 +187,38 @@ class StationCashController extends Controller
             return [$orders->count(), $cents];
         }, 3);
 
-        return back()->with('success', 'Sent ₱'.number_format($cents / 100, 2).' ('.$count.' parcel(s)) to '.$province->name.'. It stays pending until the Province Hub confirms receipt.');
+        return back()->with('success', 'Sent ₱'.number_format($cents / 100, 2).' for '.$count.($count === 1 ? ' parcel' : ' parcels').' to '.$province->name.'. It stays pending until the Province Hub confirms receipt.');
     }
 
-    public function discrepancies(Request $request): View
+    public function discrepancies(Request $request): View|RedirectResponse
     {
         $station = $request->attributes->get('logistics_facility');
-        $remittances = CashRemittance::query()->where('level', CashRemittance::LEVEL_RIDER_TO_STATION)
-            ->where('to_facility_id', $station->id)
-            ->whereIn('status', [CashRemittance::STATUS_DISCREPANCY, CashRemittance::STATUS_RESOLVED])
-            ->with(['fromRider', 'verifiedBy', 'resolvedBy', 'items.order:id,tracking_number'])
-            ->orderByRaw("CASE WHEN status = 'discrepancy' THEN 0 ELSE 1 END")->latest()->paginate(20);
+        $term = trim((string) $request->query('q', ''));
+        if (mb_strlen($term) > 100) {
+            return redirect()->route('lgp.station.cash.discrepancies')
+                ->withErrors(['q' => 'The search is too long. Use a receipt reference or rider name of 100 characters or fewer.']);
+        }
 
-        return view('logistics.station.cash-discrepancies', ['role' => 'station', 'remittances' => $remittances]);
+        $base = fn () => CashRemittance::query()->where('level', CashRemittance::LEVEL_RIDER_TO_STATION)
+            ->where('to_facility_id', $station->id)
+            ->whereIn('status', [CashRemittance::STATUS_DISCREPANCY, CashRemittance::STATUS_RESOLVED]);
+        $statusCounts = $base()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        // Chips: Open (discrepancy) and Resolved. The list is paged, so the filters run here.
+        $status = in_array($request->query('status'), ['discrepancy', 'resolved'], true) ? $request->query('status') : null;
+        $like = '%'.addcslashes($term, '%_\\').'%';
+        $remittances = $base()
+            ->when($status, fn ($query) => $query->where('status', $status))
+            ->when($term !== '', fn ($query) => $query->where(fn ($match) => $match->where('reference', 'like', $like)
+                ->orWhereHas('fromRider', fn ($rider) => $rider->where('name', 'like', $like))))
+            ->with(['fromRider', 'verifiedBy', 'resolvedBy', 'items.order:id,tracking_number'])
+            ->orderByRaw("CASE WHEN status = 'discrepancy' THEN 0 ELSE 1 END")->latest()->paginate(20)->withQueryString();
+
+        return view('logistics.station.cash-discrepancies', [
+            'role' => 'station', 'remittances' => $remittances,
+            'statusCounts' => $statusCounts, 'status' => $status, 'term' => $term,
+            'openDifference' => (float) $base()->where('status', CashRemittance::STATUS_DISCREPANCY)
+                ->selectRaw('COALESCE(SUM(ABS(received_amount - expected_amount)), 0) as difference')->value('difference'),
+        ]);
     }
 
     public function resolve(Request $request, CashRemittance $remittance): RedirectResponse
@@ -191,11 +226,17 @@ class StationCashController extends Controller
         $station = $request->attributes->get('logistics_facility');
         abort_unless($remittance->level === CashRemittance::LEVEL_RIDER_TO_STATION
             && (int) $remittance->to_facility_id === (int) $station->id, 404);
-        $data = $request->validate(['resolution_note' => ['required', 'string', 'min:5', 'max:1000']]);
+        $data = $request->validate(['resolution_note' => ['required', 'string', 'min:5', 'max:1000']], [
+            'resolution_note.required' => 'Resolution note is empty. Say how the difference was settled, so the next person knows.',
+            'resolution_note.min' => 'Resolution note is too short. Use at least 5 characters to say how it was settled.',
+            'resolution_note.max' => 'Resolution note is longer than 1,000 characters. Shorten it.',
+        ]);
 
         DB::transaction(function () use ($request, $remittance, $data) {
             $locked = CashRemittance::query()->whereKey($remittance->id)->lockForUpdate()->firstOrFail();
-            abort_unless($locked->status === CashRemittance::STATUS_DISCREPANCY, 409, 'This discrepancy is already resolved.');
+            if ($locked->status !== CashRemittance::STATUS_DISCREPANCY) {
+                throw ValidationException::withMessages(['resolution_note' => 'This discrepancy is already resolved. Reload the page to see its latest status.']);
+            }
             $locked->update([
                 'status' => CashRemittance::STATUS_RESOLVED, 'resolution_note' => $data['resolution_note'],
                 'resolved_by' => $request->user()->id, 'resolved_at' => now(),
@@ -205,7 +246,7 @@ class StationCashController extends Controller
                 ->where('money_status', 'discrepancy')->update(['money_status' => 'remitted_to_station']);
         }, 3);
 
-        return back()->with('success', 'Discrepancy resolved. The parcels are now ready to send to the Province Hub.');
+        return back()->with('success', 'Resolved '.$remittance->reference.'. Its parcels are now counted in full and ready to send to your Province Hub on Cash collections.');
     }
 
     /** Parcels whose cash this Station has verified and not yet put in a batch for the Province Hub. */

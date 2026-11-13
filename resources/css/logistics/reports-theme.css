@@ -1,0 +1,175 @@
+/* =========================================================
+   Logistics · Reports theme layer (all three portals). Loaded last (@push('lg-head')).
+   Same pastel lilac system as the seller pages (seller/delivered-orders.css).
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32. Status colors: delivered = mint, in transit = sky,
+   failed or cancelled = rose, late or needs review = butter, other = lilac. Read-only page: no dialogs.
+   ========================================================= */
+.lgr {
+    --do-ink: #2d2233;
+    --do-muted: #7d7285;
+    --do-line: #ece4ef;
+    --do-surface: #fff;
+    --do-lilac-50: #f8f4f9;
+    --do-lilac-100: #efe6f2;
+    --do-lilac-200: #e0d0e5;
+    --do-lilac-500: #b79ac2;
+    --do-lilac-700: #5a1d63;
+    --do-mint-100: #dff3e6;
+    --do-mint-500: #86cba1;
+    --do-mint-700: #2f6b45;
+    --do-butter-100: #fcf1cf;
+    --do-butter-500: #e3c46a;
+    --do-butter-700: #8a6417;
+    --do-sky-100: #e0ecfa;
+    --do-sky-500: #8fb4e0;
+    --do-sky-700: #355f8f;
+    --do-rose-100: #fbe2e7;
+    --do-rose-500: #e59aa9;
+    --do-rose-700: #9a3a4d;
+    display: grid;
+    gap: 16px;
+    font: 13px/1.5 'Poppins', system-ui, sans-serif;
+    color: var(--do-ink);
+}
+.lgr .lg-icon { flex: none; }
+.lgr .lgr-tone-lilac { background: var(--do-lilac-100); color: var(--do-lilac-700); }
+.lgr .lgr-tone-mint { background: var(--do-mint-100); color: var(--do-mint-700); }
+.lgr .lgr-tone-sky { background: var(--do-sky-100); color: var(--do-sky-700); }
+.lgr .lgr-tone-rose { background: var(--do-rose-100); color: var(--do-rose-700); }
+.lgr .lgr-muted { margin: 0; color: var(--do-muted); font-size: 12px; }
+.lgr .lgr-muted--pad { padding: 0 24px 24px; }
+
+/* ---- Header ---- */
+.lgr .lgr-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 8px 0 8px; }
+.lgr .lgr-head h1 { font-size: 24px; font-weight: 600; letter-spacing: -.4px; line-height: 1.3; }
+.lgr .lgr-head p { margin-top: 4px; color: var(--do-muted); font-size: 13px; }
+
+/* ---- Buttons and chips ---- */
+.lgr .lgr-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border: 1px solid transparent; border-radius: 10px; font: 500 13px/1 'Poppins', system-ui, sans-serif; text-decoration: none; white-space: nowrap; cursor: pointer; transition: background .15s, box-shadow .15s, transform .1s; }
+.lgr .lgr-btn:active { transform: scale(.97); }
+.lgr .lgr-btn:focus-visible, .lgr .lgr-chip:focus-visible, .lgr .lgr-rules summary:focus-visible { outline: 2px solid var(--do-lilac-500); outline-offset: 2px; }
+.lgr .lgr-btn--primary { background: var(--do-lilac-700); color: #fff; box-shadow: 0 2px 8px rgba(90, 29, 99, .18); }
+.lgr .lgr-btn--primary:hover { background: #6f2b79; }
+.lgr .lgr-btn--soft { background: var(--do-lilac-100); color: var(--do-lilac-700); }
+.lgr .lgr-btn--soft:hover { background: var(--do-lilac-200); }
+.lgr .lgr-btn--small { min-height: 32px; padding: 6px 12px; border-radius: 8px; font-size: 12px; }
+.lgr .lgr-down { transform: rotate(90deg); }
+.lgr .lgr-btn:hover .lgr-down { animation: lgr-drop .5s ease; }
+.lgr .lgr-nudge { transition: transform .15s; }
+.lgr .lgr-btn:hover .lgr-nudge { transform: translateX(3px); }
+.lgr .lgr-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.lgr .lgr-chip { display: inline-flex; align-items: center; min-height: 32px; padding: 6px 12px; border: 1px solid var(--do-lilac-200); border-radius: 999px; background: var(--do-lilac-50); color: var(--do-lilac-700); font: 500 12px/1 'Poppins', system-ui, sans-serif; text-decoration: none; transition: background .15s; }
+.lgr .lgr-chip:hover { background: var(--do-lilac-100); }
+.lgr .lgr-chip.is-active { background: var(--do-lilac-700); border-color: var(--do-lilac-700); color: #fff; }
+
+/* ---- Callout ---- */
+.lgr .lgr-callout { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-radius: 12px; background: var(--do-butter-100); color: var(--do-butter-700); font-size: 12px; }
+.lgr .lgr-callout p { flex: 1; min-width: 200px; margin: 0; }
+.lgr .lgr-callout--inner { margin-top: 16px; }
+
+/* ---- Tiles ---- */
+.lgr .lgr-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.lgr .lgr-tile { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--do-surface); border: 1px solid var(--do-line); border-radius: 14px; animation: lgr-rise .4s ease both; }
+.lgr .lgr-tile:nth-child(2) { animation-delay: .05s; } .lgr .lgr-tile:nth-child(3) { animation-delay: .1s; } .lgr .lgr-tile:nth-child(4) { animation-delay: .15s; }
+.lgr .lgr-tile__icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; flex: none; }
+.lgr .lgr-tile__icon .lg-icon { animation: lgr-pop .55s .15s cubic-bezier(.3, 1.6, .5, 1) both; }
+.lgr .lgr-tile:hover .lgr-tile__icon .lg-icon { animation: lgr-hop .5s ease; }
+.lgr .lgr-tile__text { display: grid; gap: 2px; min-width: 0; color: var(--do-muted); font-size: 12px; }
+.lgr .lgr-tile__text strong { color: var(--do-ink); font-size: 22px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.lgr .lgr-tile__text small { font-size: 11px; }
+
+/* ---- Cards ---- */
+.lgr .lgr-card { min-width: 0; padding: 24px; background: var(--do-surface); border: 1px solid var(--do-line); border-radius: 14px; }
+.lgr .lgr-card__head { margin-bottom: 16px; }
+.lgr .lgr-card__head h2 { font-size: 15px; font-weight: 600; }
+.lgr .lgr-card__head p { margin-top: 2px; color: var(--do-muted); font-size: 12px; }
+.lgr .lgr-table-card { padding: 0; overflow: hidden; }
+.lgr .lgr-card__head--pad { margin: 0; padding: 24px 24px 16px; }
+.lgr .lgr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 16px; align-items: start; }
+.lgr .lgr-grid--3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+
+/* ---- Shipping settlement ---- */
+.lgr .lgr-money { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.lgr .lgr-money > div { display: grid; gap: 4px; align-content: start; padding: 16px; border-radius: 12px; background: var(--do-lilac-50); }
+.lgr .lgr-money span { color: var(--do-muted); font-size: 11px; }
+.lgr .lgr-money strong { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.lgr .lgr-money small { color: var(--do-muted); font-size: 11px; line-height: 1.5; }
+.lgr .lgr-rules { margin-top: 16px; font-size: 12px; color: var(--do-muted); }
+.lgr .lgr-rules summary { width: fit-content; color: var(--do-lilac-700); font-weight: 500; cursor: pointer; }
+.lgr .lgr-rules ul { display: grid; gap: 8px; margin: 12px 0 0; padding-left: 16px; line-height: 1.6; }
+
+/* ---- Stages, bars, ranks ---- */
+.lgr .lgr-stages, .lgr .lgr-ranks { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.lgr .lgr-stages li { display: grid; grid-template-columns: 150px minmax(0, 1fr) 56px; align-items: center; gap: 12px; }
+.lgr .lgr-ranks li { display: grid; grid-template-columns: minmax(0, 180px) minmax(0, 1fr) 56px; align-items: center; gap: 12px; font-size: 12px; }
+.lgr .lgr-stages strong, .lgr .lgr-ranks strong { text-align: right; font-variant-numeric: tabular-nums; }
+.lgr .lgr-ranks li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lgr .lgr-bar { display: block; height: 8px; border-radius: 999px; background: var(--do-lilac-50); overflow: hidden; }
+.lgr .lgr-bar i { display: block; width: var(--w); min-width: 4px; height: 100%; border-radius: inherit; transform-origin: left; animation: lgr-grow .8s ease both; }
+.lgr .lgr-bar--lilac i { background: var(--do-lilac-500); } .lgr .lgr-bar--mint i { background: var(--do-mint-500); } .lgr .lgr-bar--sky i { background: var(--do-sky-500); } .lgr .lgr-bar--rose i { background: var(--do-rose-500); }
+
+/* ---- Work completed ---- */
+.lgr .lgr-work { display: grid; gap: 16px; }
+.lgr .lgr-work h3 { margin: 0 0 4px; color: var(--do-muted); font-size: 11px; font-weight: 500; }
+.lgr .lgr-work dl { display: grid; margin: 0; }
+.lgr .lgr-work dl > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: 12px; }
+.lgr .lgr-work dl > div + div { border-top: 1px solid var(--do-line); }
+.lgr .lgr-work dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.lgr .lgr-flag { padding: 2px 12px; border-radius: 999px; }
+.lgr .lgr-flag--butter { background: var(--do-butter-100); color: var(--do-butter-700); }
+
+/* ---- Tables ---- */
+.lgr .lgr-table-wrap { overflow-x: auto; }
+.lgr .lgr-table-wrap--scroll { max-height: 360px; overflow-y: auto; }
+.lgr .lgr-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; }
+.lgr .lgr-table th { position: sticky; top: 0; padding: 16px 12px 12px; background: var(--do-lilac-50); color: var(--do-muted); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.lgr .lgr-table td { padding: 12px; border-top: 1px solid var(--do-line); vertical-align: middle; }
+.lgr .lgr-table :is(th, td):first-child { padding-left: 24px; }
+.lgr .lgr-table :is(th, td):last-child { padding-right: 24px; }
+.lgr .lgr-table tbody tr { transition: background .15s; }
+.lgr .lgr-table tbody tr:hover { background: var(--do-lilac-50); }
+.lgr .lgr-table .is-num { text-align: right; font-variant-numeric: tabular-nums; }
+.lgr .lgr-table strong { font-weight: 600; }
+.lgr .lgr-table small { display: block; margin-top: 2px; color: var(--do-muted); font-size: 11px; }
+.lgr .lgr-table--compact td, .lgr .lgr-table--compact th { padding-left: 8px; padding-right: 8px; }
+.lgr .lgr-table--compact :is(th, td):first-child { padding-left: 24px; }
+.lgr .lgr-table--compact :is(th, td):last-child { padding-right: 24px; }
+.lgr .lgr-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.lgr .lgr-pill--mint { background: var(--do-mint-100); color: var(--do-mint-700); }
+.lgr .lgr-pill--butter { background: var(--do-butter-100); color: var(--do-butter-700); }
+.lgr .lgr-pill--sky { background: var(--do-sky-100); color: var(--do-sky-700); }
+.lgr .lgr-pill--lilac { background: var(--do-lilac-100); color: var(--do-lilac-700); }
+.lgr .lgr-pill--rose { background: var(--do-rose-100); color: var(--do-rose-700); }
+
+/* ---- Empty state ---- */
+.lgr .lgr-empty { display: grid; justify-items: center; gap: 8px; max-width: 420px; margin: 16px auto; padding: 48px 16px; text-align: center; border: 0; background: transparent; }
+.lgr .lgr-empty__icon { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 8px; border-radius: 16px; animation: lgr-float 3s ease-in-out infinite; }
+.lgr .lgr-empty strong { font-size: 15px; font-weight: 600; }
+.lgr .lgr-empty p { margin-bottom: 8px; color: var(--do-muted); font-size: 13px; line-height: 1.5; }
+
+@keyframes lgr-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes lgr-pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes lgr-hop { 40% { transform: translateY(-3px) scale(1.12); } 100% { transform: none; } }
+@keyframes lgr-drop { 40% { transform: rotate(90deg) translateX(3px); } 100% { transform: rotate(90deg); } }
+@keyframes lgr-float { 50% { transform: translateY(-4px); } }
+@keyframes lgr-grow { from { transform: scaleX(0); } }
+
+/* ---- Responsive ---- */
+@media (max-width: 1100px) { .lgr .lgr-tiles, .lgr .lgr-money { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) {
+    .lgr .lgr-head h1 { font-size: 20px; }
+    .lgr .lgr-tiles { gap: 8px; }
+    .lgr .lgr-tile { padding: 12px; gap: 12px; }
+    .lgr .lgr-tile__text strong { font-size: 18px; }
+    .lgr .lgr-card { padding: 16px; }
+    .lgr .lgr-card__head--pad { padding: 16px 16px 12px; }
+    .lgr .lgr-muted--pad { padding: 0 16px 16px; }
+    .lgr .lgr-money { grid-template-columns: 1fr; }
+    .lgr .lgr-stages li { grid-template-columns: 120px minmax(0, 1fr) 48px; }
+    .lgr .lgr-ranks li { grid-template-columns: minmax(0, 110px) minmax(0, 1fr) 48px; }
+    .lgr .lgr-table :is(th, td):first-child { padding-left: 16px; }
+    .lgr .lgr-table :is(th, td):last-child { padding-right: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lgr *, .lgr *::before { animation: none !important; transition: none !important; }
+}

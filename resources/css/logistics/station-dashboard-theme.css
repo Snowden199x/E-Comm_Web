@@ -1,0 +1,13 @@
+/* =========================================================
+   Logistics · Station Hub dashboard additions. Loaded after dashboard-theme.css and province-dashboard-theme.css (@push('lg-head')),
+   which supply the .lgd tokens, tiles, cards, meters, tables, pills and empty states.
+   This file only adds the note row under "Today at this station".
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32. Status colors: waiting = butter.
+   ========================================================= */
+.lgd .lgd-note { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; padding: 12px 16px; border-radius: 12px; background: var(--do-butter-100, #fcf1cf); color: var(--do-butter-700, #8a6417); font-size: 12px; line-height: 1.5; }
+.lgd .lgd-note > span { flex: 1 1 220px; min-width: 0; }
+.lgd .lgd-note .lg-icon { flex: none; }
+.lgd .lgd-note .lgd-btn { flex: none; background: rgba(255, 255, 255, .7); color: var(--do-butter-700, #8a6417); }
+@media (max-width: 720px) {
+    .lgd .lgd-note .lgd-btn { width: 100%; }
+}

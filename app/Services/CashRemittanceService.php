@@ -31,13 +31,15 @@ class CashRemittanceService
     {
         return DB::transaction(function () use ($remittance, $receivedCents, $note, $user) {
             $locked = CashRemittance::query()->whereKey($remittance->id)->lockForUpdate()->firstOrFail();
-            abort_unless($locked->status === CashRemittance::STATUS_PENDING, 409, 'This batch was already confirmed.');
+            if ($locked->status !== CashRemittance::STATUS_PENDING) {
+                throw ValidationException::withMessages(['received_amount' => ['This batch is already confirmed. Reload the page to see its latest status.']]);
+            }
 
             $expectedCents = (int) round(((float) $locked->expected_amount) * 100);
             $matches = $expectedCents === $receivedCents;
             $note = trim((string) $note);
             if (! $matches && $note === '') {
-                throw ValidationException::withMessages(['note' => 'Add a note explaining the difference.']);
+                throw ValidationException::withMessages(['note' => ['The amount differs from what was expected. Add a note explaining why.']]);
             }
 
             $orderIds = $locked->items()->pluck('order_id');
@@ -61,7 +63,9 @@ class CashRemittanceService
     {
         DB::transaction(function () use ($remittance, $note, $user) {
             $locked = CashRemittance::query()->whereKey($remittance->id)->lockForUpdate()->firstOrFail();
-            abort_unless($locked->status === CashRemittance::STATUS_DISCREPANCY, 409, 'This discrepancy is already resolved.');
+            if ($locked->status !== CashRemittance::STATUS_DISCREPANCY) {
+                throw ValidationException::withMessages(['resolution_note' => ['This discrepancy is already resolved. Reload the page to see its latest status.']]);
+            }
             $locked->update([
                 'status' => CashRemittance::STATUS_RESOLVED, 'resolution_note' => $note,
                 'resolved_by' => $user->id, 'resolved_at' => now(),

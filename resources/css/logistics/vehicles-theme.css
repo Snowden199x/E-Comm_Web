@@ -1,0 +1,19 @@
+/* =========================================================
+   Logistics · Province Hub > Vehicles additions. Loaded after hubs-theme.css and drivers-theme.css (@push('lg-head')),
+   which supply the .lgh tokens, buttons, chips, search, table, empty states, dialogs, form fields, pills (sky, butter, rose),
+   callouts and the facts list.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32.
+   Status colors: Available = mint, On trip = sky, Maintenance = butter (waiting), Inactive = lilac.
+   ========================================================= */
+.lgh .lgh-table.lgh-table--vehicles { min-width: 820px; }
+.lgh .lgh-table--vehicles .lgh-pill { margin-bottom: 0; }
+.lgh .lgh-table--vehicles td small { max-width: 280px; }
+.lgh .lgh-name--btn { padding: 0; border: 0; background: none; font: 600 12px/1.5 'Poppins', system-ui, sans-serif; text-align: left; cursor: pointer; }
+.lgh .lgh-btn--small .lg-icon { flex: none; }
+
+/* Dialog: the code hint sits under the field */
+.lgh-layer .lgh-field .lgh-hint { margin-top: 0; }
+
+@media (max-width: 720px) {
+    .lgh .lgh-table.lgh-table--vehicles { min-width: 0; }
+}

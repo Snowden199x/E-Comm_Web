@@ -95,6 +95,24 @@ class PortalAccountController extends Controller
             'zip_code' => [$role === 'company' ? 'nullable' : 'prohibited', 'string', 'max:20'],
             'latitude' => [$role === 'company' ? 'nullable' : 'prohibited', 'numeric', 'between:-90,90'],
             'longitude' => [$role === 'company' ? 'nullable' : 'prohibited', 'numeric', 'between:-180,180', 'required_with:latitude'],
+        ], [
+            'name.required' => 'Name is empty. Enter your full name.',
+            'name.max' => 'Name is too long. Use 120 characters or fewer.',
+            'phone_number.required' => 'Phone number is empty. Enter a number we can reach you on.',
+            'phone_number.max' => 'Phone number is too long. Use 24 characters or fewer.',
+            'business_name.required' => 'Company name is empty. Enter the company name.',
+            'business_name.max' => 'Company name is too long. Use 160 characters or fewer.',
+            'house_no.max' => 'Office number is too long. Use 80 characters or fewer.',
+            'street.max' => 'Office street is too long. Use 160 characters or fewer.',
+            'province.required' => 'Province is empty. Enter the province, or search the address on the map.',
+            'municipality.required' => 'Municipality or city is empty. Enter it, or search the address on the map.',
+            'barangay.required' => 'Barangay is empty. Enter the barangay, or search the address on the map.',
+            'zip_code.max' => 'ZIP code is too long. Use 20 characters or fewer.',
+            'latitude.numeric' => 'The map pin isn’t valid. Search the address again, or move the pin.',
+            'latitude.between' => 'The map pin isn’t valid. Search the address again, or move the pin.',
+            'longitude.numeric' => 'The map pin isn’t valid. Search the address again, or move the pin.',
+            'longitude.between' => 'The map pin isn’t valid. Search the address again, or move the pin.',
+            'longitude.required_with' => 'The map pin is incomplete. Move the pin again, then save.',
         ]);
         $address = $role === 'company' ? $addresses->resolve($data) : null;
         DB::transaction(function () use ($request, $role, $data, $address) {
@@ -114,18 +132,36 @@ class PortalAccountController extends Controller
             }
         });
 
-        return back()->with('success', 'Account details saved.');
+        return back()->with('success', 'Profile saved. Your changes show on your account now.');
     }
 
     public function password(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()],
+            // The same rule as before (8 or more characters, a letter and a number), with one message for each way it can fail.
+            'password' => ['required', 'confirmed', 'min:8',
+                function ($attribute, $value, $fail) {
+                    if (! preg_match('/[A-Za-z]/', (string) $value)) {
+                        $fail('New password needs at least one letter. Add a letter and try again.');
+                    }
+                },
+                function ($attribute, $value, $fail) {
+                    if (! preg_match('/[0-9]/', (string) $value)) {
+                        $fail('New password needs at least one number. Add a number and try again.');
+                    }
+                },
+            ],
+        ], [
+            'current_password.required' => 'Current password is empty. Enter the password you sign in with.',
+            'current_password.current_password' => 'Current password is wrong. Check it and try again.',
+            'password.required' => 'New password is empty. Enter a new password.',
+            'password.min' => 'New password is too short. Use at least 8 characters.',
+            'password.confirmed' => 'The two new passwords don’t match. Type the same password in both fields.',
         ]);
         $request->user()->update(['password' => Hash::make($data['password'])]);
 
-        return back()->with('success', 'Password updated.');
+        return back()->with('success', 'Password changed. Use the new password the next time you sign in.');
     }
 
     public function requestEmailChange(Request $request): RedirectResponse
@@ -134,11 +170,19 @@ class PortalAccountController extends Controller
         $data = $request->validate([
             'new_email' => ['required', 'email', 'lowercase', 'max:255', Rule::unique('users', 'email')],
             'current_password' => ['required', 'current_password'],
+        ], [
+            'new_email.required' => 'New email is empty. Enter the email you want to use.',
+            'new_email.email' => 'That doesn’t look like an email address. Check it, for example name@company.com.',
+            'new_email.lowercase' => 'Email must be in lowercase. Retype it without capital letters.',
+            'new_email.max' => 'Email is too long. Use 255 characters or fewer.',
+            'new_email.unique' => 'This email is already used by another account. Enter a different email.',
+            'current_password.required' => 'Current password is empty. Enter the password you sign in with.',
+            'current_password.current_password' => 'Current password is wrong. Check it and try again.',
         ]);
         DB::table('logistics_email_changes')->where('expires_at', '<', now())->delete();
         if (DB::table('logistics_email_changes')->where('new_email', $data['new_email'])
             ->where('user_id', '!=', $request->user()->id)->exists()) {
-            throw ValidationException::withMessages(['new_email' => 'This email has a pending change request.']);
+            throw ValidationException::withMessages(['new_email' => 'Another account already has a pending change to this email. Enter a different email.']);
         }
         $token = bin2hex(random_bytes(32));
         DB::table('logistics_email_changes')->updateOrInsert(['user_id' => $request->user()->id], [
@@ -154,10 +198,10 @@ class PortalAccountController extends Controller
                 fn ($message) => $message->to($data['new_email'])->subject('Confirm your Vendo Logistics email'));
         } catch (\Throwable $e) {
             DB::table('logistics_email_changes')->where('user_id', $request->user()->id)->delete();
-            throw ValidationException::withMessages(['new_email' => 'We could not send the verification email. Try again later.']);
+            throw ValidationException::withMessages(['new_email' => 'We couldn’t send the verification email. Check the address and try again in a few minutes.']);
         }
 
-        return back()->with('success', 'Verification link sent to the new email. Your current email remains active until you confirm it.');
+        return back()->with('success', 'Verification link sent to '.$data['new_email'].'. Your current email stays active until you open the link within 30 minutes.');
     }
 
     public function confirmEmailChange(Request $request): RedirectResponse
@@ -170,10 +214,10 @@ class PortalAccountController extends Controller
                 ->lockForUpdate()->first();
             abort_unless($pending && \Illuminate\Support\Carbon::parse($pending->expires_at)->isFuture()
                 && hash_equals($pending->token_hash, hash('sha256', $token)), 403,
-                'This email change link has expired or was already used.');
+                'This email change link has expired or was already used. Request a new one from Account management.');
             abort_if(User::query()->where('email', $pending->new_email)
                 ->where('id', '!=', $request->user()->id)->exists(), 409,
-                'This email is already used by another account.');
+                'This email is already used by another account. Request the change again with a different email.');
             $request->user()->forceFill(['email' => $pending->new_email, 'email_verified_at' => now()])->save();
             DB::table('logistics_email_changes')->where('user_id', $request->user()->id)->delete();
         }, 3);
@@ -182,7 +226,7 @@ class PortalAccountController extends Controller
             'logistics_center' => 'lgp.company.account',
             'province_hub' => 'lgp.province.account',
             default => 'lgp.station.account',
-        })->with('success', 'Your verified email address was updated.');
+        })->with('success', 'Your email is updated. Use it the next time you sign in.');
     }
 
     public function confirmManagedManagerEmailChange(Request $request): RedirectResponse
@@ -236,6 +280,14 @@ class PortalAccountController extends Controller
         $data = $request->validate([
             'document_type' => ['required', 'in:valid_id,business_permit'],
             'document' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+        ], [
+            'document_type.required' => 'Document type is not chosen. Pick Valid ID or Business permit.',
+            'document_type.in' => 'That document type isn’t available. Pick Valid ID or Business permit.',
+            'document.required' => 'No file is chosen. Pick a PDF, JPG or PNG file.',
+            'document.file' => 'The file didn’t upload. Pick it again and try again.',
+            'document.uploaded' => 'The file didn’t upload. Check that it is 5 MB or smaller, then try again.',
+            'document.mimes' => 'This file type isn’t accepted. Upload a PDF, JPG or PNG.',
+            'document.max' => 'This file is too large. Upload a file up to 5 MB.',
         ]);
         $center = $request->user()->logisticsCenterDetail;
         $path = $request->file('document')->store('private/logistics-document-updates/'.$center->id, 'local');
@@ -244,7 +296,7 @@ class PortalAccountController extends Controller
                 \App\Models\Profiles\LogisticsCenter::query()->whereKey($center->id)->lockForUpdate()->firstOrFail();
                 abort_if(LogisticsDocumentRequest::query()->where('logistics_center_id', $center->id)
                     ->where('document_type', $data['document_type'])->where('status', 'pending')->exists(), 409,
-                    'A replacement for this document is already awaiting review.');
+                    'A replacement for this document is already awaiting review. Wait for the Admin decision before sending another.');
                 LogisticsDocumentRequest::create([
                     'logistics_center_id' => $center->id, 'submitted_by' => $request->user()->id,
                     'document_type' => $data['document_type'], 'path' => $path, 'status' => 'pending',
@@ -259,7 +311,7 @@ class PortalAccountController extends Controller
             throw $e;
         }
 
-        return back()->with('success', 'Document submitted for Admin review. The current approved document remains in use.');
+        return back()->with('success', 'Document submitted for Admin review. Your current approved document stays in use until then.');
     }
 
     private function authorizeLogistics(Request $request): void
