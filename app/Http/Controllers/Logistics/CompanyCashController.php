@@ -13,6 +13,7 @@ use App\Services\DeliveryFeeDistributionCalculator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /** Company side of the COD cash chain: confirm cash from Province Hubs, send Vendo its share, set rider pay. */
@@ -20,12 +21,26 @@ class CompanyCashController extends Controller
 {
     public function __construct(private CashRemittanceService $remittances) {}
 
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
         $company = $this->company($request);
-        $incoming = CashRemittance::query()->where('level', CashRemittance::LEVEL_PROVINCE_TO_COMPANY)
-            ->where('logistics_company_id', $company->id)->with(['fromFacility', 'verifiedBy', 'resolvedBy'])->withCount('items')
-            ->orderByRaw("CASE status WHEN 'pending' THEN 0 WHEN 'discrepancy' THEN 1 ELSE 2 END")->latest()->paginate(15);
+        $term = trim((string) $request->query('q', ''));
+        if (mb_strlen($term) > 100) {
+            return redirect()->route('lgp.company.cash')
+                ->withErrors(['q' => 'The search is too long. Use a batch reference of 100 characters or fewer.']);
+        }
+
+        $batches = fn () => CashRemittance::query()->where('level', CashRemittance::LEVEL_PROVINCE_TO_COMPANY)
+            ->where('logistics_company_id', $company->id);
+        $statusCounts = $batches()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        // Chips: pending, discrepancy, and confirmed (received or resolved).
+        $status = in_array($request->query('status'), ['pending', 'discrepancy', 'confirmed'], true) ? $request->query('status') : null;
+        $incoming = $batches()
+            ->when($status === 'confirmed', fn ($query) => $query->whereIn('status', [CashRemittance::STATUS_RECEIVED, CashRemittance::STATUS_RESOLVED]))
+            ->when(in_array($status, ['pending', 'discrepancy'], true), fn ($query) => $query->where('status', $status))
+            ->when($term !== '', fn ($query) => $query->where('reference', 'like', '%'.addcslashes($term, '%_\\').'%'))
+            ->with(['fromFacility', 'verifiedBy', 'resolvedBy'])->withCount('items')
+            ->orderByRaw("CASE status WHEN 'pending' THEN 0 WHEN 'discrepancy' THEN 1 ELSE 2 END")->latest()->paginate(15)->withQueryString();
         $due = $this->remittances->vendoDue($company->id);
         $sent = CashRemittance::query()->where('level', CashRemittance::LEVEL_COMPANY_TO_VENDO)
             ->where('logistics_company_id', $company->id)->withCount('items')->latest()->limit(10)->get();
@@ -39,6 +54,7 @@ class CompanyCashController extends Controller
 
         return view('logistics.company.cash', [
             'role' => 'company', 'company' => $company, 'incoming' => $incoming, 'sent' => $sent,
+            'statusCounts' => $statusCounts, 'status' => $status, 'term' => $term,
             'dueCents' => (int) $due->sum('due_cents'), 'dueCount' => $due->count(), 'settled' => $settled,
             'awaitingConfirm' => (float) (clone $base)->where('status', CashRemittance::STATUS_PENDING)->sum('expected_amount'),
             'openDiscrepancies' => (clone $base)->where('status', CashRemittance::STATUS_DISCREPANCY)->count(),
@@ -53,20 +69,30 @@ class CompanyCashController extends Controller
         $data = $request->validate([
             'received_amount' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'note' => ['nullable', 'string', 'max:500'],
+        ], [
+            'received_amount.required' => 'Enter the amount you received.',
+            'received_amount.numeric' => 'Enter the amount as a number, for example 1250.50.',
+            'received_amount.min' => 'The amount cannot be negative. Enter 0 or more.',
+            'received_amount.max' => 'The amount is too large. Check it and enter it again.',
+            'note.max' => 'The note is too long. Use 500 characters or fewer.',
         ]);
         [$matches, $expected, $received] = $this->remittances->receive(
             $remittance, (int) round(((float) $data['received_amount']) * 100), $data['note'] ?? null, $request->user());
 
         return back()->with('success', $matches
             ? 'Received ₱'.number_format($received / 100, 2).' from the Province Hub.'
-            : 'Recorded with a discrepancy of ₱'.number_format(abs($expected - $received) / 100, 2).' ('.($received < $expected ? 'short' : 'over').'). Resolve it below.');
+            : 'Recorded with a discrepancy of ₱'.number_format(abs($expected - $received) / 100, 2).' ('.($received < $expected ? 'short' : 'over').'). Open the batch and resolve it.');
     }
 
     public function resolve(Request $request, CashRemittance $remittance): RedirectResponse
     {
         abort_unless($remittance->level === CashRemittance::LEVEL_PROVINCE_TO_COMPANY
             && (int) $remittance->logistics_company_id === (int) $this->company($request)->id, 404);
-        $data = $request->validate(['resolution_note' => ['required', 'string', 'min:5', 'max:1000']]);
+        $data = $request->validate(['resolution_note' => ['required', 'string', 'min:5', 'max:1000']], [
+            'resolution_note.required' => 'Add a resolution note so the next person knows how it was settled.',
+            'resolution_note.min' => 'Add more detail. Use at least 5 characters.',
+            'resolution_note.max' => 'The note is too long. Use 1,000 characters or fewer.',
+        ]);
         $this->remittances->resolve($remittance, $data['resolution_note'], $request->user());
 
         return back()->with('success', 'Discrepancy resolved. The parcels are now counted in full.');
@@ -82,7 +108,9 @@ class CompanyCashController extends Controller
             $locked = Order::query()->whereIn('id', $due->pluck('order_id'))->where('money_status', 'received_by_company')
                 ->lockForUpdate()->pluck('id')->flip();
             $due = $due->filter(fn ($row) => $locked->has($row['order_id']))->values();
-            abort_if($due->isEmpty(), 409, 'There is no received cash waiting to be sent to Vendo.');
+            if ($due->isEmpty()) {
+                throw ValidationException::withMessages(['remit' => ['There is no received cash waiting for Vendo. Confirm a Province Hub batch first.']]);
+            }
 
             $cents = (int) $due->sum('due_cents');
             $remittance = CashRemittance::create([
@@ -103,7 +131,7 @@ class CompanyCashController extends Controller
             return [$due->count(), $cents];
         }, 3);
 
-        return back()->with('success', 'Sent ₱'.number_format($cents / 100, 2).' ('.$count.' parcel(s)) to Vendo. It stays pending until Vendo confirms receipt.');
+        return back()->with('success', 'Sent ₱'.number_format($cents / 100, 2).' for '.$count.($count === 1 ? ' parcel' : ' parcels').' to Vendo. It stays pending until Vendo confirms receipt.');
     }
 
     public function riderPay(Request $request, DeliveryFeeDistributionCalculator $calculator): View
@@ -125,7 +153,12 @@ class CompanyCashController extends Controller
         $company = $this->company($request);
         // Never above the lowest delivery fee, so a rider payment can always be covered by the fee.
         $max = CheckoutShippingQuoteService::MINIMUM_FEE_CENTS / 100;
-        $data = $request->validate(['rider_pay_per_parcel' => ['required', 'numeric', 'min:0', 'max:'.$max]]);
+        $data = $request->validate(['rider_pay_per_parcel' => ['required', 'numeric', 'min:0', 'max:'.$max]], [
+            'rider_pay_per_parcel.required' => 'Enter the pay per delivered parcel.',
+            'rider_pay_per_parcel.numeric' => 'Enter the pay as a number, for example 12.50.',
+            'rider_pay_per_parcel.min' => 'The pay cannot be negative. Enter 0 or more.',
+            'rider_pay_per_parcel.max' => 'The pay cannot be more than ₱'.number_format($max, 2).', the lowest delivery fee. Enter that amount or less.',
+        ]);
         $company->update(['rider_pay_per_parcel' => number_format((float) $data['rider_pay_per_parcel'], 2, '.', '')]);
 
         return back()->with('success', 'Rider pay set to ₱'.number_format((float) $data['rider_pay_per_parcel'], 2).' per delivered parcel. It applies to new orders only.');

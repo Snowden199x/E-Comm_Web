@@ -1,0 +1,11 @@
+/* =========================================================
+   Logistics · Province Hub > Cash Remittances additions. Loaded after cash-theme.css (@push('lg-head')).
+   cash-theme.css uses the sky tokens (the "Sent, awaiting Company" tile and its empty state) but does not define them,
+   so those elements rendered without a background. They are defined here for this page.
+   Status colors: Pending = butter, Discrepancy = rose, Confirmed = mint, sent = sky.
+   ========================================================= */
+.lgc, .lgc-layer {
+    --do-sky-100: #e0ecfa;
+    --do-sky-700: #355f8f;
+}
+.lgc .lgc-pill--sky { background: var(--do-sky-100); color: var(--do-sky-700); }

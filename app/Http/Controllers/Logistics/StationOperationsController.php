@@ -71,7 +71,7 @@ class StationOperationsController extends Controller
                         $order->seller?->sellerDetail?->street, $order->seller?->sellerDetail?->barangay,
                         $order->seller?->sellerDetail?->municipality]))
                     : $order->shipping_address,
-                'status' => $order->status_label, 'pickup_status' => $order->pickup_request_status,
+                'status' => $order->status_label, 'key' => $order->status, 'pickup_status' => $order->pickup_request_status,
                 'rider' => $mode === 'pickups' ? $order->courier_id : $order->delivery_courier_id,
                 'next' => $next?->facility?->name ?: 'Local delivery',
                 'arrived' => $stop?->arrived_at?->format('M j, g:i A'),
@@ -87,7 +87,7 @@ class StationOperationsController extends Controller
                 ->map(fn ($task) => ['id' => $task->order_id, 'tracking' => $task->order?->tracking_number,
                     'seller' => $task->order?->seller?->name, 'buyer' => $task->order?->buyer?->name,
                     'address' => $task->type === 'pickup' ? 'Seller pickup' : $task->order?->shipping_address,
-                    'status' => ucfirst(str_replace('_', ' ', $task->status)), 'pickup_status' => null,
+                    'status' => ucfirst(str_replace('_', ' ', $task->status)), 'key' => $task->status, 'pickup_status' => null,
                     'rider_name' => $task->rider?->user?->name, 'type' => $task->type,
                     'failure_reason' => $task->failure_reason,
                     'next' => null, 'arrived' => null, 'sorted' => null, 'can_assign' => false]);
@@ -109,17 +109,23 @@ class StationOperationsController extends Controller
         // to a different Rider with no leftover task in the way.
         $expiry->expireOverdue($station->id);
         $data = $request->validate(['type' => ['required', 'in:pickup,delivery'],
-            'rider_id' => ['required', 'integer', 'exists:courier_details,id']]);
+            'rider_id' => ['required', 'integer', 'exists:courier_details,id']], [
+            'type.required' => 'The task type is missing. Reload the page and try again.',
+            'type.in' => 'That task type isn’t available. Reload the page and try again.',
+            'rider_id.required' => 'Rider is not chosen. Pick a rider from the list.',
+            'rider_id.integer' => 'That rider isn’t valid. Pick a rider from the list.',
+            'rider_id.exists' => 'That rider no longer exists. Reload the page and pick another rider.',
+        ]);
         DB::transaction(function () use ($request, $order, $station, $data) {
             $order = Order::query()->lockForUpdate()->findOrFail($order->id);
             $rider = $station->riders()->whereKey($data['rider_id'])->with('user')->firstOrFail();
             abort_unless($rider->user?->status === 'approved' && $rider->user?->account_status === 'active'
-                && in_array($rider->vehicle_type, ['Motorcycle', 'Van', 'L300'], true), 409, 'Choose an active local Rider.');
+                && in_array($rider->vehicle_type, ['Motorcycle', 'Van', 'L300'], true), 409, 'This rider isn’t available. Pick an approved, active rider from this station.');
             if ($data['type'] === 'pickup') {
                 abort_unless((int) $order->origin_station_id === (int) $station->id
                     && $order->status === 'ready_for_pickup'
                     && in_array($order->pickup_request_status, ['pending', 'verified'], true), 409,
-                    'This parcel is no longer ready for pickup at your station.');
+                    'This parcel is no longer ready for pickup here. Reload the page to see its current status.');
                 $order->pickup_request_status = 'verified';
                 $order->pickup_verified_at ??= now();
                 if ($order->pickup_scheduled_at) {
@@ -130,8 +136,8 @@ class StationOperationsController extends Controller
                         ->where('pickup_scheduled_at', $order->pickup_scheduled_at)
                         ->exists();
                     abort_if($conflict, 409,
-                        'This Rider already has a pickup scheduled at '
-                        .$order->pickup_scheduled_at->format('M j, Y g:i A').'. Choose another Rider or time.');
+                        'This rider already has a pickup scheduled at '
+                        .$order->pickup_scheduled_at->format('M j, Y g:i A').'. Pick another rider.');
                 }
                 $order->courier_id = $rider->user_id;
             } else {
@@ -139,7 +145,7 @@ class StationOperationsController extends Controller
                     ->where('facility_id', $station->id)->first();
                 abort_unless((int) $order->destination_station_id === (int) $station->id
                     && $order->status === 'at_destination_hub' && $stop?->sorted_at, 409,
-                    'Receive and sort this parcel at your station before assigning delivery.');
+                    'This parcel isn’t sorted at your station yet. Scan and sort it first, then assign a rider.');
                 $order->delivery_courier_id = $rider->user_id;
                 $order->status = 'assigned_to_rider';
             }
@@ -147,7 +153,7 @@ class StationOperationsController extends Controller
             $task = RiderTask::query()->where('order_id', $order->id)->where('type', $data['type'])
                 ->whereIn('status', ['assigned', 'in_progress'])->lockForUpdate()->first();
             if ($task && $task->status !== 'assigned') {
-                throw ValidationException::withMessages(['rider_id' => 'This Rider has already started the task.']);
+                throw ValidationException::withMessages(['rider_id' => 'This rider already started this task, so it can’t be reassigned.']);
             }
             if ($task) {
                 $task->update(['rider_id' => $rider->id, 'station_hub_id' => $station->id, 'assigned_by' => $request->user()->id]);
@@ -167,19 +173,26 @@ class StationOperationsController extends Controller
             }
         }, 3);
 
-        return back()->with('success', ucfirst($data['type']).' Rider assigned.');
+        $assigned = $station->riders()->whereKey($data['rider_id'])->with('user')->first();
+
+        return back()->with('success', ($order->tracking_number ?? $order->number).' is assigned to '.($assigned?->user?->name ?? 'the rider')
+            .'. They get the '.$data['type'].' in the Rider app.');
     }
 
     public function declinePickup(Request $request, Order $order): RedirectResponse
     {
         $station = $this->station($request);
-        $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500']]);
+        $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500']], [
+            'reason.required' => 'Reason is empty. Write why the parcel isn’t ready, so the seller knows what to fix.',
+            'reason.min' => 'Reason is too short. Write at least 5 characters so the seller knows what to fix.',
+            'reason.max' => 'Reason is too long. Keep it to 500 characters or fewer.',
+        ]);
         DB::transaction(function () use ($request, $order, $station, $data) {
             $order = Order::query()->lockForUpdate()->findOrFail($order->id);
             abort_unless((int) $order->origin_station_id === (int) $station->id
                 && $order->status === 'ready_for_pickup' && ! $order->courier_id
                 && $order->pickup_request_status === 'pending', 409,
-                'This pickup request can no longer be declined.');
+                'This pickup can no longer be returned to the seller. Reload the page to see its current status.');
             $order->status = 'preparing';
             $order->pickup_request_status = 'declined';
             $order->pickup_decline_reason = $data['reason'];
@@ -194,7 +207,7 @@ class StationOperationsController extends Controller
                 'link' => route('seller.orders.show', $order)]);
         }, 3);
 
-        return back()->with('success', 'Pickup request returned to the seller.');
+        return back()->with('success', ($order->tracking_number ?? $order->number).' is returned to the seller with your reason. They can prepare the parcel and mark it ready again.');
     }
 
     private function station(Request $request): LogisticsFacility

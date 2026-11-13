@@ -1,0 +1,14 @@
+/* =========================================================
+   Logistics · Province Hub > Station Hubs additions. Loaded after hubs-theme.css (@push('lg-head')),
+   which supplies the .lgh tokens, buttons, chips, table, empty states and dialogs shared with Company > Province Hubs.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32. Status colors: Active = mint, Setup = butter (waiting), Inactive = lilac.
+   ========================================================= */
+.lgh .lgh-pill--butter { background: var(--do-butter-100); color: var(--do-butter-700); }
+
+/* Station rows are narrower than hub rows (six columns, not eight) */
+.lgh .lgh-table.lgh-table--stations { min-width: 860px; }
+.lgh .lgh-table--stations td small { max-width: 360px; }
+
+@media (max-width: 720px) {
+    .lgh .lgh-table.lgh-table--stations { min-width: 0; }
+}

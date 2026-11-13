@@ -1,0 +1,19 @@
+/* =========================================================
+   Logistics · Station Hub parcel operations (Pickup requests, Task assignment, Delivery queue, Incoming, Sorting, Outgoing).
+   Loaded after hubs-theme.css and drivers-theme.css (@push('lg-head')), which supply the .lgh tokens, buttons, chips, search, table,
+   empty states, pills (sky, butter, rose), callouts and dialogs.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32.
+   Status colors: waiting = butter, in progress = sky, sorted = lilac, done = mint, failed or expired = rose.
+   ========================================================= */
+.lgh .lgh-table.lgh-table--ops { min-width: 880px; }
+.lgh .lgh-table.lgh-table--trips-out { min-width: 640px; }
+.lgh .lgh-table--ops td small { max-width: 320px; }
+.lgh .lgh-table--ops .lgh-name { text-decoration: none; }
+.lgh .lgh-section { margin: 8px 0 0; font-size: 14px; font-weight: 600; }
+.lgh .lgh-callout--rose { background: var(--do-rose-100); color: var(--do-rose-700); }
+.lgh .lgh-callout a { color: inherit; }
+.lgh-layer .lgh-hint { margin: 0; }
+
+@media (max-width: 720px) {
+    .lgh .lgh-table.lgh-table--ops, .lgh .lgh-table.lgh-table--trips-out { min-width: 0; }
+}

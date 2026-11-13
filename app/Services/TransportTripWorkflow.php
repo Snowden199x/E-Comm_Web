@@ -15,16 +15,16 @@ class TransportTripWorkflow
     {
         return DB::transaction(function () use ($trip, $actor) {
             $trip = LogisticsTransportTrip::query()->lockForUpdate()->findOrFail($trip->id);
-            abort_unless($trip->status === 'scheduled', 409, 'Only a scheduled trip can depart.');
+            abort_unless($trip->status === 'scheduled', 409, 'This trip is no longer scheduled, so it can’t depart. Reload the page to see its current status.');
             $orders = $trip->orders()->orderBy('orders.id')->lockForUpdate()->get();
-            abort_unless($orders->isNotEmpty(), 409, 'A trip needs a parcel manifest.');
+            abort_unless($orders->isNotEmpty(), 409, 'This trip has no parcels. Cancel it and create a trip with at least one parcel.');
             foreach ($orders as $order) {
                 abort_if($order->logisticsExceptions()->where('status', 'open')->exists(), 409,
-                    'Resolve the parcel exception before departing this trip.');
+                    'A parcel on this trip has an open exception. Resolve it in Parcel exceptions, then record the departure.');
                 $origin = OrderFacilityStop::query()->where('order_id', $order->id)
                     ->where('facility_id', $trip->origin_facility_id)->first();
                 abort_unless($origin?->departed_at, 409,
-                    'Scan departure for every manifest parcel before starting this trip.');
+                    'Not every parcel has been scanned for departure. Scan the rest at the origin, then record the departure.');
             }
 
             $trip->update(['status' => 'in_transit', 'departed_at' => now()]);
@@ -134,13 +134,13 @@ class TransportTripWorkflow
     {
         return DB::transaction(function () use ($trip, $actor) {
             $trip = LogisticsTransportTrip::query()->lockForUpdate()->findOrFail($trip->id);
-            abort_unless($trip->status === 'in_transit', 409, 'Only a departed trip can be completed.');
+            abort_unless($trip->status === 'in_transit', 409, 'This trip hasn’t departed, so it can’t be completed. Record its departure first.');
             $orders = $trip->orders()->orderBy('orders.id')->lockForUpdate()->get();
             foreach ($orders as $order) {
                 $destination = OrderFacilityStop::query()->where('order_id', $order->id)
                     ->where('facility_id', $trip->destination_facility_id)->first();
                 abort_unless($destination?->arrived_at, 409,
-                    'Scan every manifest parcel at the destination before completing this trip.');
+                    'Not every parcel has been scanned at the destination. Scan the rest, then record the arrival.');
             }
             $trip->update(['status' => 'completed', 'arrived_at' => now()]);
             $trip->driver()->where('status', 'on_trip')->update(['status' => 'available']);

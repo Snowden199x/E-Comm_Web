@@ -1,0 +1,72 @@
+/* =========================================================
+   Logistics · Province Hub > Create trip additions. Loaded after hubs-theme.css (@push('lg-head')),
+   which supplies the .lgh tokens, buttons, search, table, empty states, callouts and form fields.
+   Spacing scale: 4 / 8 / 12 / 16 / 24 / 32.
+   Status colors: a blocker or an error = rose, the selected option or row = lilac.
+   ========================================================= */
+.lgh .lgh-callout--rose { background: var(--do-rose-100); color: var(--do-rose-700); }
+.lgh .lgh-callout a { color: inherit; }
+
+.lgh .lgh-back { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 8px; color: var(--do-lilac-700); font-size: 12px; font-weight: 500; text-decoration: none; }
+.lgh .lgh-back .lg-icon { transform: rotate(180deg); transition: transform .15s; }
+.lgh .lgh-back:hover .lg-icon { transform: rotate(180deg) translateX(3px); }
+.lgh .lgh-back:focus-visible { outline: 2px solid var(--do-lilac-500); outline-offset: 2px; border-radius: 4px; }
+
+.lgh .lgh-trip { display: grid; gap: 16px; }
+.lgh .lgh-trip__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+
+/* Panels */
+.lgh .lgh-panel { overflow: hidden; }
+.lgh .lgh-panel__head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 16px 24px; border-bottom: 1px solid var(--do-line); }
+.lgh .lgh-panel__head > div { flex: 1; min-width: 160px; }
+.lgh .lgh-panel__head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.lgh .lgh-panel__head p { margin: 2px 0 0; color: var(--do-muted); font-size: 12px; }
+.lgh .lgh-panel__body { display: grid; gap: 16px; padding: 24px; }
+.lgh .lgh-panel__search { flex: 0 1 280px; min-width: 200px; }
+.lgh .lgh-panel__err { padding: 12px 24px 0; }
+.lgh .lgh-tile { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; flex: none; animation: lgh-pop .35s cubic-bezier(.2, .9, .3, 1.2) both; }
+.lgh .lgh-panel:hover .lgh-tile { animation: lgh-hop .45s ease; }
+.lgh .lgh-hint { margin: 0; color: var(--do-muted); font-size: 11px; }
+.lgh .lgh-form__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+
+/* Trip type options */
+.lgh .lgh-choices { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.lgh .lgh-choices legend { margin-bottom: 8px; padding: 0; color: var(--do-ink); font-size: 12px; font-weight: 500; }
+.lgh .lgh-choice { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border: 1px solid var(--do-lilac-200); border-radius: 12px; background: #fff; cursor: pointer; transition: background .15s, border-color .15s; }
+.lgh .lgh-choice:hover { border-color: var(--do-lilac-500); }
+.lgh .lgh-choice.is-on { border-color: var(--do-lilac-700); background: var(--do-lilac-50); }
+.lgh .lgh-choice input { margin-top: 2px; accent-color: var(--do-lilac-700); }
+.lgh .lgh-choice:has(input:focus-visible) { outline: 2px solid var(--do-lilac-500); outline-offset: 2px; }
+.lgh .lgh-choice strong { display: block; font-size: 13px; font-weight: 600; }
+.lgh .lgh-choice small { display: block; margin-top: 2px; color: var(--do-muted); font-size: 11px; }
+
+/* Parcel list */
+.lgh .lgh-table.lgh-table--load { min-width: 0; }
+.lgh .lgh-table--load .lgh-check { width: 44px; padding-right: 0; }
+.lgh .lgh-table--load input[type='checkbox'] { width: 16px; height: 16px; accent-color: var(--do-lilac-700); cursor: pointer; }
+.lgh .lgh-table--load tr.is-selected { background: var(--do-lilac-50); }
+.lgh .lgh-table--load .lgh-name { cursor: pointer; }
+.lgh .lgh-table-wrap { max-height: 420px; overflow: auto; }
+
+/* Action bar */
+.lgh .lgh-bar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 16px; border: 1px solid var(--do-line); border-radius: 14px; background: rgba(255, 255, 255, .94); backdrop-filter: blur(6px); }
+.lgh .lgh-bar__sum { margin: 0; color: var(--do-muted); font-size: 12px; }
+
+@media (max-width: 900px) {
+    .lgh .lgh-trip__grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+    .lgh .lgh-panel__head, .lgh .lgh-panel__body { padding-left: 16px; padding-right: 16px; }
+    .lgh .lgh-panel__search { flex-basis: 100%; }
+    .lgh .lgh-table.lgh-table--load tr { grid-template-columns: 32px 1fr; align-items: center; }
+    .lgh .lgh-table.lgh-table--load td.lgh-check { grid-column: 1; }
+    .lgh .lgh-table.lgh-table--load td:nth-child(2) { grid-column: 2; }
+    .lgh .lgh-table.lgh-table--load td:nth-child(3) { grid-column: 2; }
+    .lgh .lgh-form__row { grid-template-columns: 1fr; }
+    .lgh .lgh-bar { margin: 0 -8px; border-radius: 14px 14px 0 0; }
+    .lgh .lgh-bar .lgh-btn { flex: 1; }
+    .lgh .lgh-bar__sum { flex-basis: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lgh .lgh-tile, .lgh .lgh-back .lg-icon { animation: none !important; transition: none !important; }
+}

@@ -1,12 +1,23 @@
 {{--
-    Station Hub → Driver Assignments.
-    The Station Hub assigns one of the Transport Drivers linked to it to a trip
-    and names the Province Hub or Station Hub that driver must reach. Saving
-    creates a scheduled trip, which is the same trip the driver sees in the
-    Driver app, so the assignment and the destination hub stay in one record.
+    Station Hub > Driver assignments. The Station Hub assigns one of the Transport Drivers linked to it to a trip and names the Province Hub
+    or Station Hub that driver must reach. Saving creates a scheduled trip, the same trip the driver sees in the Driver app.
+    Fed by PortalController::stationTrips (trips from tripCard, destinations, drivers, vehicles, the parcels ready per destination, and the JSON urls).
+    The page state lives in one Alpine scope.
+    Look: the seller pastel lilac system, the same .lgh layer as Province Hub > Transport Trips. Styles: hubs-theme.css, drivers-theme.css
+    (pills, callouts, facts, details dialog), trips-theme.css (select, manifest, steps) and station-trips-theme.css (assign dialog), loaded last.
+    Dialogs sit in .lgh-layer and carry their own copy of the tokens.
+    Status colors: Scheduled = butter (waiting), In transit = sky, Completed = mint, Cancelled = rose.
+    Status chips with counts; search runs as you type. One click on a row opens the trip.
+    Each row has a visible primary button: Record departure for a scheduled trip that leaves here, Record arrival for a trip in transit that arrives here, otherwise View details.
+    Loading: shell skeleton on open; spinner on the button that was pressed (admin button-loading.js).
+    Empty: no trips at all, nothing in a status, and no trips match the search. Errors: under each field, inside the dialog that was open, or in the top banner.
 --}}
+@push('lg-head')
+    @vite(['resources/css/logistics/hubs-theme.css', 'resources/css/logistics/drivers-theme.css', 'resources/css/logistics/trips-theme.css', 'resources/css/logistics/station-trips-theme.css'])
+@endpush
+
 <x-logistics.shell title="Driver Assignments" role="station">
-    <div class="lg-page"
+    <div class="lgh"
          x-data="{
             trips: @js($trips),
             destinations: @js($destinations),
@@ -18,240 +29,301 @@
             cancelUrl: @js($cancelUrl),
             departUrl: @js($departUrl),
             arriveUrl: @js($arriveUrl),
-            working: false,
+            trackingUrl: @js($trackingUrl),
+            driversUrl: @js($driversUrl),
+            defaults: { departure: @js($defaultDeparture), arrival: @js($defaultArrival) },
             q: '',
-            filter: 'all',
+            tab: 'all',
             view: null,
-            cancel: { open: false, t: null, reason: '', error: '' },
-            form: {
-                // Arriving from the Drivers page opens the form with that driver chosen.
-                open: @js($selectedDriver > 0),
-                destination: '',
-                driver: String(@js($selectedDriver) || ''),
-                vehicle: '',
-                departure: @js($defaultDeparture),
-                arrival: @js($defaultArrival),
-                selected: [],
-                errors: {}
-            },
-            filters: {
-                all: t => true,
-                scheduled: t => t.status === 'scheduled',
-                in_transit: t => t.status === 'in_transit',
-                completed: t => t.status === 'completed',
-                cancelled: t => t.status === 'cancelled'
-            },
+            alert: '',
+            working: false,
+            stale: false,
+            pq: '',
+            confirm: { open: false, t: null, reason: '', error: '', alert: '' },
+            form: { open: false, destination: '', driver: '', vehicle: '', departure: '', arrival: '', selected: [], errors: {}, alert: '' },
             labels: { scheduled: 'Scheduled', in_transit: 'In transit', completed: 'Completed', cancelled: 'Cancelled' },
-            tones: { scheduled: 'lg-pill--blue', in_transit: 'lg-pill--amber', completed: 'lg-pill--green', cancelled: 'lg-pill--gray' },
+            tones: { scheduled: 'lgh-pill--butter', in_transit: 'lgh-pill--sky', completed: 'lgh-pill--mint', cancelled: 'lgh-pill--rose' },
+            tabEmpty: {
+                scheduled: ['No scheduled trips', 'A trip shows here from the moment you assign a driver until its departure is recorded.'],
+                in_transit: ['No trips in transit', 'A trip shows here after its departure is recorded, until it arrives.'],
+                completed: ['No completed trips', 'A trip shows here after its arrival is recorded.'],
+                cancelled: ['No cancelled trips', 'A trip you cancel shows here, with your reason.']
+            },
+            init() {
+                // Any popup open: the page behind it does not scroll.
+                this.$watch(() => this.view !== null || this.confirm.open || this.form.open, (isOpen) => {
+                    const main = document.querySelector('.vd-main');
+                    if (main) main.style.overflow = isOpen ? 'hidden' : '';
+                });
+                // Arriving from the Drivers page (Assign trip) opens the form with that driver chosen.
+                const wanted = @js($selectedDriver);
+                if (wanted > 0) {
+                    if (this.drivers.some(d => d.id === wanted) && !this.blocked) this.openForm(wanted);
+                    else this.$nextTick(() => window.logisticsBanner && window.logisticsBanner({ type: 'warning', title: 'That driver can’t take a trip right now', message: 'Choose another driver, or wait until the driver’s current trip arrives.' }));
+                }
+            },
+            busy(button, on) { if (button && window.vdButtonLoading) window.vdButtonLoading(button, on); },
+            headers(json) { const h = { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' }; if (json) h['Content-Type'] = 'application/json'; return h; },
+            failure(error, fallback) { return error instanceof TypeError ? 'You are offline. Check your connection and try again.' : (error.message || fallback); },
+            fallbackFor(status, action) {
+                if (status === 419) return 'Your session expired. Reload the page and try again.';
+                if (status === 403) return 'This account can’t change trips. Sign in with the Station Hub account.';
+                if (status >= 500) return 'Something went wrong on our side. Try again in a moment.';
+                return 'Could not ' + action + '. Reload the page and try again.';
+            },
+            async request(url, method, body, action) {
+                const response = await fetch(url, { method: method, headers: this.headers(!!body), body: body ? JSON.stringify(body) : undefined });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const error = new Error(Object.values(payload.errors || {})[0]?.[0] || payload.message || this.fallbackFor(response.status, action));
+                    error.payload = payload; error.status = response.status;
+                    throw error;
+                }
+                return payload;
+            },
+            get needs() {
+                const list = [];
+                if (!this.destinations.length) list.push({ text: 'There is no other active hub in your network, so there is nowhere to send a driver. Ask your Province Hub to activate a hub.' });
+                if (!this.drivers.length) list.push({ text: 'No Transport Driver is free to take a trip. Approve a driver, or wait until a driver on a trip arrives.', href: this.driversUrl, label: 'Open drivers' });
+                if (!this.vehicles.length) list.push({ text: 'No vehicle from your Province Hub is free right now. Ask your Province Hub to add a vehicle or release one.' });
+                return list;
+            },
+            get blocked() { return this.needs.length > 0; },
+            rank(t) { return t.status === 'in_transit' ? 0 : (t.status === 'scheduled' ? 1 : 2); },
+            get searching() { return this.q.trim() !== ''; },
+            get filtered() { return this.searching || this.tab !== 'all'; },
             get shown() {
                 const s = this.q.trim().toLowerCase();
                 return this.trips
-                    .filter(t => this.filters[this.filter](t)
-                        && (!s || [t.id, t.origin, t.destination, t.driver, t.vehicle].join(' ').toLowerCase().includes(s)))
-                    .sort((a, b) => {
-                        const rank = t => t.status === 'in_transit' ? 0 : (t.status === 'scheduled' ? 1 : 2);
-                        return rank(a) - rank(b) || (rank(a) < 2 ? a.scheduled.localeCompare(b.scheduled) : b.scheduled.localeCompare(a.scheduled));
-                    });
+                    .filter(t => (this.tab === 'all' || t.status === this.tab)
+                        && (!s || (t.id + ' ' + t.origin + ' ' + t.destination + ' ' + t.driver + ' ' + t.vehicle).toLowerCase().includes(s)))
+                    // Running and upcoming trips first (soonest departure first), then past trips (latest first).
+                    .sort((a, b) => this.rank(a) - this.rank(b) || (this.rank(a) < 2 ? (a.scheduled || '').localeCompare(b.scheduled || '') : (b.scheduled || '').localeCompare(a.scheduled || '')));
             },
-            count(k) { return this.trips.filter(this.filters[k]).length; },
-            fmt(iso) { return iso ? new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''; },
+            count(k) { return k === 'all' ? this.trips.length : this.trips.filter(t => t.status === k).length; },
+            clearFilters() { this.q = ''; this.tab = 'all'; },
+            fmt(iso) { return iso ? new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Not set'; },
             fmtDate(iso) { return iso ? new Date(iso + 'T00:00:00').toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : ''; },
+            canDepart(t) { return t.status === 'scheduled' && t.can_depart; },
+            canArrive(t) { return t.status === 'in_transit' && t.can_arrive; },
+            go(t, event) { if (!event.target.closest('a, button')) this.openView(t); },
+            openView(t) { this.alert = ''; this.view = t; },
+            closeView() { this.view = null; },
+            closeTop() { if (this.confirm.open) this.confirm.open = false; else if (this.form.open) this.form.open = false; else if (this.view) this.view = null; },
+
+            // ---- Assign a driver ----
             get parcels() { return this.parcelMap[this.form.destination] || []; },
+            get visible() { const s = this.pq.trim().toLowerCase(); return this.parcels.filter(p => !s || (p.tracking + ' ' + (p.number || '') + ' ' + (p.where || '') + ' ' + (p.buyer || '')).toLowerCase().includes(s)); },
             get chosen() { return this.parcels.filter(p => this.form.selected.includes(p.order)); },
             get hereParcels() { return this.parcels.filter(p => p.delivers_here); },
-            get currentDestination() {
-                return this.destinations.find(x => String(x.id) === String(this.form.destination));
-            },
+            get currentDestination() { return this.destinations.find(x => String(x.id) === String(this.form.destination)); },
             get destinationName() { return this.currentDestination ? this.currentDestination.name : 'the chosen hub'; },
-            get destinationArea() {
-                const d = this.currentDestination;
-                return d ? (d.area || d.name) : 'the chosen hub';
-            },
+            get destinationArea() { const d = this.currentDestination; return d ? (d.area || d.name) : 'the chosen hub'; },
             get parcelSummary() {
                 const n = this.parcels.length;
                 if (!n) return '';
-                return n + (n === 1 ? ' parcel' : ' parcels') + ' is sorted here for ' + this.destinationName
-                    + '. ' + this.hereParcels.length + ' end' + (this.hereParcels.length === 1 ? 's' : '')
-                    + ' in ' + this.destinationArea + '; the rest only pass through.';
+                const here = this.hereParcels.length;
+                return n + (n === 1 ? ' parcel is' : ' parcels are') + ' sorted here for ' + this.destinationName + '. ' + here + (here === 1 ? ' ends' : ' end') + ' in ' + this.destinationArea + '; the rest only pass through.';
             },
             openForm(driverId) {
-                this.form = {
-                    open: true, destination: '', driver: driverId ? String(driverId) : '',
-                    vehicle: '', departure: @js($defaultDeparture), arrival: @js($defaultArrival),
-                    selected: [], errors: {}
-                };
+                if (this.blocked) return;
+                this.pq = '';
+                this.form = { open: true, destination: '', driver: driverId ? String(driverId) : '', vehicle: '', departure: this.defaults.departure, arrival: this.defaults.arrival, selected: [], errors: {}, alert: '' };
+                this.$nextTick(() => document.getElementById('assignDestination')?.focus());
             },
             closeForm() { this.form.open = false; },
-            onDestination() { this.form.selected = this.parcels.map(p => p.order); this.form.errors = {}; },
-            toggleAll(on) { this.form.selected = on ? this.parcels.map(p => p.order) : []; },
-            selectHere() { this.form.selected = this.hereParcels.map(p => p.order); },
+            onDestination() { this.form.errors.destination_id = ''; this.form.errors.orders = ''; this.pq = ''; this.form.selected = this.parcels.map(p => p.order); },
+            toggleAll(on) { this.form.errors.orders = ''; this.form.selected = on ? this.parcels.map(p => p.order) : []; },
+            selectHere() { this.form.errors.orders = ''; this.form.selected = this.hereParcels.map(p => p.order); },
+            clearError(key) { if (this.form.errors[key]) this.form.errors[key] = ''; },
+            focusFirstError() {
+                this.$nextTick(() => {
+                    const el = document.querySelector('.lgh-dialog--assign [aria-invalid=true]') || document.getElementById('loadErr');
+                    if (!el) return;
+                    el.scrollIntoView({ block: 'center' });
+                    if (el.tabIndex >= 0) el.focus();
+                });
+            },
             validate() {
                 const f = this.form, e = {};
-                if (!f.destination) e.destination_id = 'Choose the hub the driver must reach.';
-                if (!f.driver) e.driver_id = 'Choose an available driver.';
+                if (!f.destination) e.destination_id = 'Hub is not chosen. Pick the hub the driver must reach.';
+                if (!f.driver) e.driver_id = 'Driver is not chosen. Pick an available driver.';
                 else {
                     const d = this.drivers.find(x => String(x.id) === String(f.driver));
-                    if (d && f.departure && d.expiry < f.departure.slice(0, 10)) e.driver_id = d.name + ' has a licence that expires on ' + this.fmtDate(d.expiry) + ', before this departure.';
+                    if (d && f.departure && d.expiry < f.departure.slice(0, 10)) e.driver_id = d.name + '’s licence expires on ' + this.fmtDate(d.expiry) + ', before this departure. Pick another driver, or move the departure earlier.';
                 }
-                if (!f.vehicle) e.vehicle_id = 'Choose an available vehicle.';
-                if (!f.departure) e.departure = 'Set the scheduled departure.';
-                else if (f.departure < this.now) e.departure = 'The departure cannot be in the past.';
-                if (!f.arrival || f.arrival <= f.departure) e.expected_arrival_at = 'Set an expected arrival after departure.';
-                if (f.destination && f.selected.length === 0) e.orders = 'Select at least one parcel to load.';
+                if (!f.vehicle) e.vehicle_id = 'Vehicle is not chosen. Pick an available vehicle.';
+                if (!f.departure) e.departure = 'Departure is empty. Set when the trip leaves.';
+                else if (f.departure < this.now) e.departure = 'Departure is in the past. Pick a time from now on.';
+                if (!f.arrival) e.expected_arrival_at = 'Expected arrival is empty. Set when the trip should arrive.';
+                else if (f.departure && f.arrival <= f.departure) e.expected_arrival_at = 'Expected arrival is before the departure. Pick a time after the departure.';
+                if (f.destination && f.selected.length === 0) e.orders = 'No parcels are selected. Select at least one parcel to load.';
                 f.errors = e;
                 return Object.keys(e).length === 0;
             },
-            async save() {
+            fieldErrors(errors) {
+                const known = ['destination_id', 'driver_id', 'vehicle_id', 'departure', 'expected_arrival_at', 'orders'], out = {};
+                Object.keys(errors).forEach(key => { const base = key.split('.')[0]; if (known.includes(base) && !out[base]) out[base] = errors[key][0]; });
+                return out;
+            },
+            async save(event) {
                 const f = this.form;
-                if (this.working || !this.validate()) return;
-                this.working = true;
-                try {
-                    const response = await fetch(this.storeUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
-                        body: JSON.stringify({
-                            destination_id: Number(f.destination), driver_id: Number(f.driver), vehicle_id: Number(f.vehicle),
-                            departure: f.departure, expected_arrival_at: f.arrival, orders: f.selected.map(Number)
-                        })
-                    });
-                    const payload = await response.json().catch(() => ({}));
-                    if (!response.ok) { f.errors = payload.errors || {}; throw new Error(payload.message || 'Could not assign the driver.'); }
-                    this.trips.unshift(payload.trip);
-                    f.open = false;
-                    this.filter = 'all';
-                    this.$dispatch('lg-toast', { type: 'success', message: payload.message });
-                } catch (error) { this.$dispatch('lg-toast', { type: 'error', message: error.message }); }
-                finally { this.working = false; }
-            },
-            openView(t) { this.view = t; },
-            closeView() { this.view = null; },
-            askCancel(t) { this.cancel = { open: true, t: t, reason: '', error: '' }; },
-            async submitCancel() {
-                const c = this.cancel, t = c.t;
-                if (!t || t.status !== 'scheduled') return;
-                if (c.reason.trim().length < 5) { c.error = 'Give a short reason so the driver knows why the trip was cancelled.'; return; }
-                try {
-                    const response = await fetch(this.cancelUrl.replace('__trip__', t.key), {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
-                        body: JSON.stringify({ reason: c.reason.trim() })
-                    });
-                    const payload = await response.json().catch(() => ({}));
-                    if (!response.ok) throw new Error(payload.message || 'Could not cancel the trip.');
-                    Object.assign(t, payload.trip);
-                    c.open = false; this.view = null;
-                    this.$dispatch('lg-toast', { type: 'success', message: payload.message });
-                    this.trips = this.trips.filter(x => x.key !== t.key).concat([t]);
-                } catch (error) { c.error = error.message; }
-            },
-            async changeStatus(t, action) {
                 if (this.working) return;
-                this.working = true;
+                f.alert = '';
+                if (!this.validate()) { this.focusFirstError(); return; }
+                const button = event.submitter || event.currentTarget.querySelector('button[type=submit]');
+                this.working = true; this.busy(button, true);
                 try {
-                    const response = await fetch((action === 'depart' ? this.departUrl : this.arriveUrl).replace('__trip__', t.key), {
-                        method: 'PATCH',
-                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' }
-                    });
-                    const payload = await response.json().catch(() => ({}));
-                    if (!response.ok) throw new Error(payload.message || 'Could not update the trip.');
-                    Object.assign(t, payload.trip);
+                    const payload = await this.request(this.storeUrl, 'POST', {
+                        destination_id: Number(f.destination), driver_id: Number(f.driver), vehicle_id: Number(f.vehicle),
+                        departure: f.departure, expected_arrival_at: f.arrival, orders: f.selected.map(Number)
+                    }, 'assign the driver');
+                    // The driver, the vehicle and the loaded parcels are taken now, so they leave the lists.
+                    const taken = f.selected.map(Number);
+                    this.drivers = this.drivers.filter(d => String(d.id) !== String(f.driver));
+                    this.vehicles = this.vehicles.filter(v => String(v.id) !== String(f.vehicle));
+                    this.parcelMap[f.destination] = (this.parcelMap[f.destination] || []).filter(p => !taken.includes(p.order));
+                    this.trips.unshift(payload.trip);
+                    f.open = false; this.tab = 'all'; this.q = '';
                     this.$dispatch('lg-toast', { type: 'success', message: payload.message });
-                } catch (error) { this.$dispatch('lg-toast', { type: 'error', message: error.message }); }
-                finally { this.working = false; }
+                } catch (error) {
+                    const errors = this.fieldErrors((error.payload && error.payload.errors) || {});
+                    if (Object.keys(errors).length) { f.errors = errors; this.focusFirstError(); }
+                    else f.alert = this.failure(error, 'Could not assign the driver. Try again.');
+                } finally { this.working = false; this.busy(button, false); }
+            },
+
+            // ---- Cancel, depart, arrive ----
+            askCancel(t) { this.confirm = { open: true, t: t, reason: '', error: '', alert: '' }; this.$nextTick(() => document.getElementById('tripReason')?.focus()); },
+            async submitCancel(event) {
+                const c = this.confirm, t = c.t;
+                if (this.working) return;
+                if (t.status !== 'scheduled') { c.alert = t.id + ' is no longer scheduled, so it can’t be cancelled. Close this and check its status.'; return; }
+                if (c.reason.trim().length < 5) {
+                    c.error = 'Reason is too short. Write at least 5 characters so the stations know why the trip was cancelled.';
+                    document.getElementById('tripReason')?.focus();
+                    return;
+                }
+                const button = event.currentTarget;
+                this.working = true; this.busy(button, true); c.error = ''; c.alert = '';
+                try {
+                    const payload = await this.request(this.cancelUrl.replace('__trip__', t.key), 'PATCH', { reason: c.reason.trim() }, 'cancel the trip');
+                    Object.assign(t, payload.trip);
+                    c.open = false; this.view = null; this.stale = true;
+                    this.$dispatch('lg-toast', { type: 'success', message: payload.message });
+                } catch (error) { c.alert = this.failure(error, 'Could not cancel the trip. Try again.'); }
+                finally { this.working = false; this.busy(button, false); }
+            },
+            async changeStatus(t, action, event) {
+                if (this.working) return;
+                const button = event.currentTarget;
+                this.working = true; this.busy(button, true); this.alert = '';
+                try {
+                    const payload = await this.request((action === 'depart' ? this.departUrl : this.arriveUrl).replace('__trip__', t.key), 'PATCH', null, 'update the trip');
+                    Object.assign(t, payload.trip);
+                    if (action === 'arrive') this.stale = true;
+                    this.$dispatch('lg-toast', { type: 'success', message: payload.message });
+                } catch (error) {
+                    const message = this.failure(error, 'Could not update the trip. Try again.');
+                    if (this.view === t) this.alert = message;
+                    else this.$dispatch('lg-toast', { type: 'error', message: message });
+                } finally { this.working = false; this.busy(button, false); }
             }
-         }">
-        <div class="lg-page-head">
+         }"
+         @keydown.escape.window="closeTop()">
+
+        <x-logistics.flash />
+
+        <header class="lgh-head">
             <div>
-                <h1>Driver Assignments</h1>
-                <p>Assign a Transport Driver from {{ $station['name'] }} to a trip and choose the hub they must reach. The trip and its destination appear in the driver app right away.</p>
+                <h1>Driver assignments</h1>
+                <p>Assign a Transport Driver from {{ $station['name'] }} to a trip. The trip shows in the driver app right away.</p>
             </div>
-            <div class="lg-page-head__actions">
-                <button type="button" class="lg-btn" @click="openForm(null)"><x-logistics.icon name="plus" :size="18" /> Assign driver</button>
-            </div>
+            <button type="button" class="lgh-btn lgh-btn--primary" :disabled="blocked" @click="openForm(null)">
+                <x-logistics.icon name="plus" :size="16" /> Assign driver
+            </button>
+        </header>
+
+        {{-- Why Assign driver is off: something it needs is missing --}}
+        <div class="lgh-callout lgh-callout--rose" x-show="blocked" x-cloak role="alert">
+            <x-logistics.icon name="alert" :size="18" />
+            <ul class="lgh-needs">
+                <template x-for="need in needs" :key="need.text">
+                    <li>
+                        <span x-text="need.text"></span>
+                        <a :href="need.href" x-show="need.href" x-text="need.label"></a>
+                    </li>
+                </template>
+            </ul>
         </div>
 
-        <div class="lg-grid lg-grid--4">
-            <div class="lg-stat">
-                <span class="lg-stat__icon lg-stat__icon--green"><x-logistics.icon name="users" :size="24" /></span>
-                <div class="lg-stat__body">
-                    <p class="lg-stat__label">Drivers ready</p>
-                    <p class="lg-stat__value">{{ count($drivers) }}</p>
-                </div>
-            </div>
-            <div class="lg-stat">
-                <span class="lg-stat__icon lg-stat__icon--blue"><x-logistics.icon name="truck" :size="24" /></span>
-                <div class="lg-stat__body">
-                    <p class="lg-stat__label">Trips scheduled</p>
-                    <p class="lg-stat__value">{{ collect($trips)->where('status', 'scheduled')->count() }}</p>
-                </div>
-            </div>
-            <div class="lg-stat">
-                <span class="lg-stat__icon lg-stat__icon--amber"><x-logistics.icon name="clock" :size="24" /></span>
-                <div class="lg-stat__body">
-                    <p class="lg-stat__label">On the road</p>
-                    <p class="lg-stat__value">{{ collect($trips)->where('status', 'in_transit')->count() }}</p>
-                </div>
-            </div>
-            <div class="lg-stat">
-                <span class="lg-stat__icon lg-stat__icon--blue"><x-logistics.icon name="map-pin" :size="24" /></span>
-                <div class="lg-stat__body">
-                    <p class="lg-stat__label">Hub destinations</p>
-                    <p class="lg-stat__value">{{ count($destinations) }}</p>
-                </div>
-            </div>
-        </div>
-
-        @if (! count($drivers))
-            <div class="lg-note lg-note--warn">
-                <x-logistics.icon name="alert" :size="18" />
-                <span>No Transport Driver linked to {{ $station['name'] }} is available right now. Approve a driver on the <a href="{{ route('lgp.station.drivers') }}">Drivers</a> page, or wait for a driver who is on a trip to finish.</span>
-            </div>
-        @endif
-
-        <nav class="lg-tabs" aria-label="Assignment filters">
-            @foreach (['all' => 'All', 'scheduled' => 'Scheduled', 'in_transit' => 'In transit', 'completed' => 'Completed', 'cancelled' => 'Cancelled'] as $k => $label)
-                <button type="button" class="lg-tab" :aria-pressed="filter === '{{ $k }}'" @click="filter = '{{ $k }}'">
-                    {{ $label }} <span class="lg-tab__count" x-text="count('{{ $k }}')"></span>
+        {{-- Status chips with counts, then search --}}
+        <div class="lgh-chips" role="group" aria-label="Filter trips by status" x-show="trips.length" x-cloak>
+            @foreach (['all' => 'All', 'scheduled' => 'Scheduled', 'in_transit' => 'In transit', 'completed' => 'Completed', 'cancelled' => 'Cancelled'] as $key => $text)
+                <button type="button" class="lgh-chip" :class="{ 'is-active': tab === '{{ $key }}' }" :aria-pressed="tab === '{{ $key }}'" @click="tab = '{{ $key }}'">
+                    {{ $text }} <span class="lgh-chip__count" x-text="count('{{ $key }}')"></span>
                 </button>
             @endforeach
-        </nav>
-
-        <div class="lg-toolbar">
-            <div class="lg-search">
-                <x-logistics.icon name="search" :size="18" />
-                <input type="search" class="lg-input" x-model="q" placeholder="Search trip, driver, vehicle or hub" aria-label="Search assignments">
-            </div>
-            <span class="lg-toolbar__meta" aria-live="polite" x-text="shown.length + (shown.length === 1 ? ' trip' : ' trips')"></span>
+            <button type="button" class="lgh-chip lgh-chip--clear" x-show="filtered" x-cloak @click="clearFilters()">
+                <x-logistics.icon name="x" :size="14" /> Clear filters
+            </button>
         </div>
 
-        <section class="lg-card" aria-label="Trips from this station">
-            <div class="lg-table-wrap" x-show="shown.length">
-                <table class="lg-table lg-table--stack lg-table--mid">
+        <div class="lgh-toolbar" x-show="trips.length" x-cloak>
+            <label class="lgh-search">
+                <span class="lgh-sr">Search trips</span>
+                <x-logistics.icon name="search" :size="18" />
+                <input type="search" x-model="q" @keydown.escape="q = ''" @keydown.enter.prevent autocomplete="off" maxlength="100" placeholder="Search trip, hub, driver or vehicle">
+            </label>
+            <span class="lgh-meta" aria-live="polite" x-text="shown.length + (shown.length === 1 ? ' trip' : ' trips')"></span>
+        </div>
+
+        <section class="lgh-card lgh-table-card" aria-label="Trips to and from this station">
+            <div class="lgh-table-wrap" x-show="shown.length" x-cloak>
+                <table class="lgh-table lgh-table--trips">
                     <thead>
                         <tr>
-                            <th>Trip</th><th>Driver</th><th>Send to</th><th>Vehicle</th>
-                            <th class="is-num">Parcels</th><th>Departure</th><th>Status</th><th class="is-actions">Actions</th>
+                            <th scope="col">Trip</th>
+                            <th scope="col">Route</th>
+                            <th scope="col">Driver and vehicle</th>
+                            <th scope="col" class="is-num">Parcels</th>
+                            <th scope="col">Departure</th>
+                            <th scope="col">Status</th>
+                            <th scope="col"><span class="lgh-sr">Actions</span></th>
                         </tr>
                     </thead>
                     <tbody>
                         <template x-for="t in shown" :key="t.id">
-                            <tr>
-                                <td data-label="Trip"><div class="lg-cell-title" x-text="t.id"></div><div class="lg-cell-sub" x-text="'From ' + t.origin"></div></td>
-                                <td data-label="Driver"><div x-text="t.driver"></div><div class="lg-cell-sub" x-text="t.can_depart ? 'Assigned by this station' : 'Arriving here'"></div></td>
-                                <td data-label="Send to"><div x-text="t.destination"></div><div class="lg-cell-sub" x-text="t.can_arrive ? 'This station receives it' : 'Destination hub'"></div></td>
-                                <td data-label="Vehicle" x-text="t.vehicle"></td>
-                                <td data-label="Parcels" class="is-num" x-text="t.parcels"></td>
-                                <td data-label="Departure">
-                                    <div x-text="fmt(t.departed || t.scheduled)"></div>
-                                    <div class="lg-cell-sub" x-text="t.departed ? 'Departed' : 'Scheduled'"></div>
+                            <tr class="lgh-row" @click="go(t, $event)">
+                                <td>
+                                    <button type="button" class="lgh-name lgh-name--btn" @click="openView(t)" x-text="t.id"></button>
+                                    <small x-text="t.can_depart ? 'Sent from this station' : 'Arriving here'"></small>
                                 </td>
-                                <td data-label="Status"><span class="lg-pill" :class="tones[t.status]" x-text="labels[t.status]"></span></td>
-                                <td data-label="Actions" class="is-actions">
-                                    <div class="lg-actions">
-                                        <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="openView(t)" :aria-label="'View ' + t.id"><x-logistics.icon name="eye" :size="16" /> View</button>
-                                        <button type="button" class="lg-btn lg-btn--danger lg-btn--sm" x-show="t.status === 'scheduled' && t.can_cancel" @click="askCancel(t)" :aria-label="'Cancel ' + t.id">Cancel</button>
+                                <td data-label="Route">
+                                    <span x-text="t.origin"></span>
+                                    <small x-text="'to ' + t.destination"></small>
+                                </td>
+                                <td data-label="Driver and vehicle">
+                                    <span x-text="t.driver"></span>
+                                    <small x-text="t.vehicle"></small>
+                                </td>
+                                <td class="is-num" data-label="Parcels" x-text="t.parcels"></td>
+                                <td data-label="Departure">
+                                    <span x-text="fmt(t.departed || t.scheduled)"></span>
+                                    <small x-text="t.departed ? 'Departed' : 'Scheduled'"></small>
+                                </td>
+                                <td data-label="Status"><span class="lgh-pill" :class="tones[t.status]" x-text="labels[t.status]"></span></td>
+                                <td class="lgh-actions">
+                                    <div class="lgh-actions__row">
+                                        <template x-if="canDepart(t) || canArrive(t)">
+                                            <button type="button" class="lgh-btn lgh-btn--small lgh-btn--primary" @click="changeStatus(t, canDepart(t) ? 'depart' : 'arrive', $event)"
+                                                    :aria-label="(canDepart(t) ? 'Record departure of ' : 'Record arrival of ') + t.id">
+                                                <span x-text="canDepart(t) ? 'Record departure' : 'Record arrival'"></span>
+                                            </button>
+                                        </template>
+                                        <button type="button" class="lgh-btn lgh-btn--small" :class="(canDepart(t) || canArrive(t)) ? 'lgh-btn--ghost' : 'lgh-btn--soft'" @click="openView(t)" :aria-label="'View details for ' + t.id">
+                                            View details <x-logistics.icon name="arrow-right" :size="14" class="lgh-nudge" />
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -260,231 +332,301 @@
                 </table>
             </div>
 
-            <x-logistics.empty x-show="!trips.length" x-cloak icon="truck" title="No driver assigned yet"
-                text="Assign a driver to a trip and pick the hub they must reach. It shows here and in the driver app.">
-                <button type="button" class="lg-btn lg-btn--sm" @click="openForm(null)">Assign driver</button>
-            </x-logistics.empty>
-            <x-logistics.empty x-show="trips.length && !shown.length" x-cloak icon="search" title="No trips match"
-                text="Check the spelling, or pick another filter.">
-                <button type="button" class="lg-btn lg-btn--outline lg-btn--sm" @click="q = ''; filter = 'all'">Clear filters</button>
-            </x-logistics.empty>
+            {{-- No trips at all --}}
+            <div class="lgh-empty" x-show="!trips.length" x-cloak role="status">
+                <span class="lgh-empty__icon lgh-tone-lilac"><x-logistics.icon name="calendar" :size="26" /></span>
+                <strong>No driver assigned yet</strong>
+                <p>Assign a driver to move sorted parcels to another hub. The trip shows here and in the driver app.</p>
+                <button type="button" class="lgh-btn lgh-btn--primary" :disabled="blocked" @click="openForm(null)"><x-logistics.icon name="plus" :size="16" /> Assign driver</button>
+            </div>
+
+            {{-- Nothing matches the search --}}
+            <div class="lgh-empty" x-show="trips.length && !shown.length && searching" x-cloak role="status">
+                <span class="lgh-empty__icon lgh-tone-lilac"><x-logistics.icon name="search" :size="26" /></span>
+                <strong>No trips match your search</strong>
+                <p>Check the spelling, or search by trip, hub, driver or vehicle. Try another status too.</p>
+                <button type="button" class="lgh-btn lgh-btn--primary" @click="clearFilters()">Clear filters</button>
+            </div>
+
+            {{-- Nothing in this status --}}
+            <div class="lgh-empty" x-show="trips.length && !shown.length && !searching && tab !== 'all'" x-cloak role="status">
+                <span class="lgh-empty__icon" :class="tab === 'in_transit' ? 'lgh-tone-sky' : 'lgh-tone-lilac'"><x-logistics.icon name="truck" :size="26" /></span>
+                <strong x-text="(tabEmpty[tab] || [''])[0]"></strong>
+                <p x-text="(tabEmpty[tab] || ['', ''])[1]"></p>
+                <button type="button" class="lgh-btn lgh-btn--soft" x-show="tab === 'scheduled'" :disabled="blocked" @click="openForm(null)"><x-logistics.icon name="plus" :size="16" /> Assign driver</button>
+                <button type="button" class="lgh-btn lgh-btn--soft" x-show="tab !== 'scheduled'" @click="tab = 'all'">Show all trips</button>
+            </div>
         </section>
 
-        {{-- Assign a driver: destination hub, driver, vehicle and the parcels to load. --}}
-        <div class="lg-overlay" x-show="form.open" x-cloak @click.self="closeForm()" @keydown.escape.window="closeForm()">
-            <div class="lg-modal" style="width:min(100%,640px)" role="dialog" aria-modal="true" aria-labelledby="assignTitle">
-                <form @submit.prevent="save()" novalidate>
-                    <div class="lg-modal__head">
-                        <div>
-                            <h3 id="assignTitle">Assign a driver</h3>
-                            <p>Trip starts at {{ $station['name'] }}. Choose the hub the driver must reach.</p>
-                        </div>
-                        <button type="button" class="lg-toast__close" @click="closeForm()" aria-label="Close"><x-logistics.icon name="x" :size="18" /></button>
+        {{-- Assign a driver: destination hub, driver, vehicle, schedule and the parcels to load. --}}
+        <div class="lgh-layer" x-show="form.open" x-cloak>
+            <div class="lgh-backdrop" @click="closeForm()"></div>
+            <div class="lgh-dialog lgh-dialog--assign" role="dialog" aria-modal="true" aria-labelledby="assignTitle">
+                <header class="lgh-dialog__head">
+                    <div>
+                        <h2 id="assignTitle">Assign a driver</h2>
+                        <p>The trip starts at {{ $station['name'] }}. Choose the hub the driver must reach.</p>
                     </div>
-                    <div class="lg-modal__body lg-modal__body--grid">
-                        <div class="lg-field is-wide">
-                            <label for="assignDestination">Driver must go to <span class="lg-req" aria-hidden="true">*</span></label>
-                            <select id="assignDestination" class="lg-select" x-model="form.destination" @change="onDestination()"
-                                :aria-invalid="!!form.errors.destination_id" aria-describedby="assignDestinationErr">
-                                <option value="">Choose a hub</option>
-                                <template x-for="d in destinations" :key="d.id">
-                                    <option :value="String(d.id)" x-text="d.name + ' · ' + d.kind + (d.area ? ' · ' + d.area : '')"></option>
-                                </template>
-                            </select>
-                            <p class="lg-error" id="assignDestinationErr" x-show="form.errors.destination_id" x-text="form.errors.destination_id" role="alert"></p>
-                            <p class="lg-cell-sub" x-show="!destinations.length" x-cloak>No other hub is active in this network yet.</p>
-                        </div>
+                    <button type="button" class="lgh-close" @click="closeForm()" aria-label="Close"><svg class="lgh-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+                </header>
+                <form class="lgh-dialog__body" @submit.prevent="save($event)" novalidate>
+                    <div class="lgh-callout lgh-callout--rose" x-show="form.alert" x-cloak role="alert">
+                        <x-logistics.icon name="alert" :size="18" />
+                        <p x-text="form.alert"></p>
+                    </div>
+                    <div class="lgh-callout lgh-callout--lilac" x-show="stale" x-cloak>
+                        <x-logistics.icon name="info" :size="18" />
+                        <p>A driver or vehicle freed by a cancelled or finished trip shows here after you reload. <a href="#" @click.prevent="window.location.reload()">Reload page</a></p>
+                    </div>
 
-                        <div class="lg-field">
-                            <label for="assignDriver">Driver <span class="lg-req" aria-hidden="true">*</span></label>
-                            <select id="assignDriver" class="lg-select" x-model="form.driver"
-                                :aria-invalid="!!form.errors.driver_id" aria-describedby="assignDriverErr">
+                    <div class="lgh-field">
+                        <label for="assignDestination">Driver must go to <span aria-hidden="true">*</span></label>
+                        <select id="assignDestination" x-model="form.destination" @change="onDestination()" :class="{ 'has-error': form.errors.destination_id }"
+                                :aria-invalid="!!form.errors.destination_id" aria-describedby="assignDestinationErr">
+                            <option value="">Choose a hub</option>
+                            <template x-for="d in destinations" :key="d.id">
+                                <option :value="String(d.id)" x-text="d.name + ' · ' + d.kind + (d.area ? ' · ' + d.area : '')"></option>
+                            </template>
+                        </select>
+                        <p class="lgh-err" id="assignDestinationErr" x-show="form.errors.destination_id" x-cloak x-text="form.errors.destination_id" role="alert"></p>
+                    </div>
+
+                    <div class="lgh-form__row">
+                        <div class="lgh-field">
+                            <label for="assignDriver">Driver <span aria-hidden="true">*</span></label>
+                            <select id="assignDriver" x-model="form.driver" @change="clearError('driver_id')" :class="{ 'has-error': form.errors.driver_id }"
+                                    :aria-invalid="!!form.errors.driver_id" aria-describedby="assignDriverErr">
                                 <option value="">Choose a driver</option>
                                 <template x-for="d in drivers" :key="d.id">
                                     <option :value="String(d.id)" x-text="d.name + ' · ' + (d.category || 'Licence') + ' · expires ' + fmtDate(d.expiry)"></option>
                                 </template>
                             </select>
-                            <p class="lg-error" id="assignDriverErr" x-show="form.errors.driver_id" x-text="form.errors.driver_id" role="alert"></p>
-                            <p class="lg-cell-sub" x-show="!drivers.length" x-cloak>No driver linked to this station is free. A driver on a trip is released when that trip arrives.</p>
+                            <p class="lgh-err" id="assignDriverErr" x-show="form.errors.driver_id" x-cloak x-text="form.errors.driver_id" role="alert"></p>
                         </div>
-
-                        <div class="lg-field">
-                            <label for="assignVehicle">Vehicle <span class="lg-req" aria-hidden="true">*</span></label>
-                            <select id="assignVehicle" class="lg-select" x-model="form.vehicle"
-                                :aria-invalid="!!form.errors.vehicle_id" aria-describedby="assignVehicleErr">
+                        <div class="lgh-field">
+                            <label for="assignVehicle">Vehicle <span aria-hidden="true">*</span></label>
+                            <select id="assignVehicle" x-model="form.vehicle" @change="clearError('vehicle_id')" :class="{ 'has-error': form.errors.vehicle_id }"
+                                    :aria-invalid="!!form.errors.vehicle_id" aria-describedby="assignVehicleErr">
                                 <option value="">Choose a vehicle</option>
                                 <template x-for="v in vehicles" :key="v.id">
                                     <option :value="String(v.id)" x-text="v.code + ' · ' + v.type + ' · ' + v.plate"></option>
                                 </template>
                             </select>
-                            <p class="lg-error" id="assignVehicleErr" x-show="form.errors.vehicle_id" x-text="form.errors.vehicle_id" role="alert"></p>
-                            <p class="lg-cell-sub" x-show="!vehicles.length" x-cloak>No vehicle from the Province Hub is free right now.</p>
+                            <p class="lgh-err" id="assignVehicleErr" x-show="form.errors.vehicle_id" x-cloak x-text="form.errors.vehicle_id" role="alert"></p>
                         </div>
+                    </div>
 
-                        <div class="lg-field">
-                            <label for="assignDeparture">Scheduled departure <span class="lg-req" aria-hidden="true">*</span></label>
-                            <input id="assignDeparture" type="datetime-local" class="lg-input" x-model="form.departure"
-                                :aria-invalid="!!form.errors.departure" aria-describedby="assignDepartureErr">
-                            <p class="lg-error" id="assignDepartureErr" x-show="form.errors.departure" x-text="form.errors.departure" role="alert"></p>
+                    <div class="lgh-form__row">
+                        <div class="lgh-field">
+                            <label for="assignDeparture">Departure <span aria-hidden="true">*</span></label>
+                            <input id="assignDeparture" type="datetime-local" x-model="form.departure" @input="clearError('departure')" :class="{ 'has-error': form.errors.departure }"
+                                   :aria-invalid="!!form.errors.departure" aria-describedby="assignDepartureErr">
+                            <p class="lgh-err" id="assignDepartureErr" x-show="form.errors.departure" x-cloak x-text="form.errors.departure" role="alert"></p>
                         </div>
-
-                        <div class="lg-field">
-                            <label for="assignArrival">Expected arrival <span class="lg-req" aria-hidden="true">*</span></label>
-                            <input id="assignArrival" type="datetime-local" class="lg-input" x-model="form.arrival"
-                                :aria-invalid="!!form.errors.expected_arrival_at" aria-describedby="assignArrivalErr">
-                            <p class="lg-error" id="assignArrivalErr" x-show="form.errors.expected_arrival_at" x-text="form.errors.expected_arrival_at" role="alert"></p>
+                        <div class="lgh-field">
+                            <label for="assignArrival">Expected arrival <span aria-hidden="true">*</span></label>
+                            <input id="assignArrival" type="datetime-local" x-model="form.arrival" @input="clearError('expected_arrival_at')" :class="{ 'has-error': form.errors.expected_arrival_at }"
+                                   :aria-invalid="!!form.errors.expected_arrival_at" aria-describedby="assignArrivalErr">
+                            <p class="lgh-err" id="assignArrivalErr" x-show="form.errors.expected_arrival_at" x-cloak x-text="form.errors.expected_arrival_at" role="alert"></p>
                         </div>
+                    </div>
 
-                        {{-- Parcel checklist. Rows whose delivery address sits inside the chosen hub are marked first, so the
-                             station can load the parcels that end their journey there and still see the ones passing through. --}}
-                        <div class="is-wide">
-                            <div class="lg-card__head" style="padding:0;margin-bottom:8px;align-items:flex-start">
-                                <div>
-                                    <p class="lg-section-sub">Parcels to load <span class="lg-req" aria-hidden="true">*</span></p>
-                                    <p class="lg-cell-sub" x-show="!form.destination">Choose the hub the driver must reach to see the parcels waiting for it.</p>
-                                    <p class="lg-cell-sub" x-show="form.destination" x-text="parcelSummary"></p>
-                                </div>
-                                <div class="lg-actions" x-show="parcels.length">
-                                    <button type="button" class="lg-btn lg-btn--outline lg-btn--sm"
-                                        x-show="hereParcels.length && form.selected.length !== hereParcels.length"
-                                        @click="selectHere()"
-                                        x-text="'Select the ' + hereParcels.length + ' for ' + destinationName"></button>
-                                    <button type="button" class="lg-btn lg-btn--ghost lg-btn--sm"
-                                        @click="toggleAll(form.selected.length !== parcels.length)"
-                                        x-text="form.selected.length === parcels.length ? 'Clear all' : 'Select all '"
-                                    ></button>
-                                </div>
+                    {{-- Parcel checklist. Parcels whose delivery address is inside the chosen hub are listed first, so the station can load the ones that end
+                         their journey there and still see the ones passing through. All are selected when a hub is chosen. --}}
+                    <div class="lgh-load">
+                        <div class="lgh-load__head">
+                            <div>
+                                <h3>Parcels to load <span aria-hidden="true">*</span></h3>
+                                <p aria-live="polite" x-text="!form.destination ? 'Choose a hub to see the parcels waiting for it.' : (parcelSummary || '')"></p>
                             </div>
-                            <p class="lg-error" x-show="form.errors.orders" x-text="form.errors.orders" role="alert"></p>
-                            <template x-if="form.destination && parcels.length">
-                                <ul style="display:grid;gap:6px;max-height:260px;overflow:auto;padding:0;margin:0;list-style:none">
-                                    <template x-for="p in parcels" :key="p.order">
-                                        <li>
-                                            <label class="lg-parcel-option" :class="p.delivers_here ? 'lg-parcel-option--here' : ''">
-                                                <input type="checkbox" :value="p.order" x-model="form.selected">
-                                                <span>
-                                                    <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                                                        <strong x-text="p.tracking"></strong>
-                                                        <span class="lg-pill"
-                                                            :class="p.delivers_here ? 'lg-pill--green' : 'lg-pill--gray'"
-                                                            x-text="p.delivers_here ? 'Delivers in this hub' : 'Passes through'"></span>
-                                                    </span>
-                                                    <span class="lg-parcel-option__facts">
-                                                        <span x-text="'Order ' + p.number"></span>
-                                                        <span x-show="p.buyer" x-text="'Buyer: ' + p.buyer"></span>
-                                                        <span x-show="p.where" x-text="'To ' + p.where"></span>
-                                                        <span x-show="p.sorted" x-text="'Sorted ' + fmt(p.sorted)"></span>
-                                                    </span>
-                                                </span>
-                                                <span class="lg-cell-sub" style="text-align:right"
-                                                    x-text="form.selected.includes(p.order) ? 'Loaded' : 'Not loaded'"></span>
-                                            </label>
-                                        </li>
-                                    </template>
-                                </ul>
+                            <div class="lgh-load__actions" x-show="parcels.length" x-cloak>
+                                <button type="button" class="lgh-btn lgh-btn--small lgh-btn--soft" x-show="hereParcels.length && form.selected.length !== hereParcels.length" x-cloak
+                                        @click="selectHere()" x-text="'Select the ' + hereParcels.length + ' for ' + destinationName"></button>
+                                <button type="button" class="lgh-btn lgh-btn--small lgh-btn--ghost" @click="toggleAll(form.selected.length !== parcels.length)"
+                                        x-text="form.selected.length === parcels.length ? 'Clear all' : 'Select all'"></button>
+                            </div>
+                        </div>
+                        <p class="lgh-err" id="loadErr" x-show="form.errors.orders" x-cloak x-text="form.errors.orders" role="alert"></p>
+
+                        <label class="lgh-search lgh-load__search" x-show="parcels.length > 8" x-cloak>
+                            <span class="lgh-sr">Search parcels</span>
+                            <x-logistics.icon name="search" :size="18" />
+                            <input type="search" x-model="pq" @keydown.enter.prevent autocomplete="off" maxlength="100" placeholder="Search tracking number, buyer or address">
+                        </label>
+
+                        <ul class="lgh-load__list" x-show="form.destination && visible.length" x-cloak>
+                            <template x-for="p in visible" :key="p.order">
+                                <li>
+                                    <label :class="{ 'is-on': form.selected.includes(p.order) }">
+                                        <input type="checkbox" :value="p.order" x-model="form.selected" @change="clearError('orders')">
+                                        <span class="lgh-load__body">
+                                            <span class="lgh-load__top">
+                                                <strong x-text="p.tracking"></strong>
+                                                <span class="lgh-pill" :class="p.delivers_here ? 'lgh-pill--mint' : 'lgh-pill--lilac'" x-text="p.delivers_here ? 'Delivers in this hub' : 'Passes through'"></span>
+                                            </span>
+                                            <span class="lgh-load__facts">
+                                                <span x-text="'Order ' + p.number"></span>
+                                                <span x-show="p.buyer" x-text="'Buyer: ' + p.buyer"></span>
+                                                <span x-show="p.where" x-text="'To ' + p.where"></span>
+                                                <span x-show="p.sorted" x-text="'Sorted ' + fmt(p.sorted)"></span>
+                                            </span>
+                                        </span>
+                                    </label>
+                                </li>
                             </template>
-                            <template x-if="form.destination && !parcels.length">
-                                <div class="lg-note">
-                                    <x-logistics.icon name="info" :size="18" />
-                                    <span>No parcel is waiting for a trip to <span x-text="destinationName"></span> (<span x-text="destinationArea"></span>). Sort the parcels for that hub on the <a href="{{ route('lgp.station.sorting') }}">Sorting</a> page first, then assign the driver.</span>
-                                </div>
-                            </template>
+                        </ul>
+
+                        <div class="lgh-empty lgh-empty--tight" x-show="form.destination && !parcels.length" x-cloak role="status">
+                            <span class="lgh-empty__icon lgh-tone-lilac"><x-logistics.icon name="package" :size="26" /></span>
+                            <strong>No parcels ready for this hub</strong>
+                            <p x-text="'Parcels show here after they are sorted for ' + destinationName + '. Sort them first, then assign the driver.'"></p>
+                            <a href="{{ route('lgp.station.sorting') }}" class="lgh-btn lgh-btn--soft">Open parcel sorting</a>
+                        </div>
+                        <div class="lgh-empty lgh-empty--tight" x-show="form.destination && parcels.length && !visible.length" x-cloak role="status">
+                            <span class="lgh-empty__icon lgh-tone-lilac"><x-logistics.icon name="search" :size="26" /></span>
+                            <strong>No parcels match your search</strong>
+                            <p>Check the spelling, or search by tracking number, buyer or address.</p>
+                            <button type="button" class="lgh-btn lgh-btn--soft" @click="pq = ''">Clear search</button>
                         </div>
                     </div>
-                    <div class="lg-modal__foot">
-                        <button type="button" class="lg-btn lg-btn--outline" @click="closeForm()">Cancel</button>
-                        <button type="submit" class="lg-btn" :disabled="working"><span x-text="working ? 'Assigning…' : 'Assign driver'"></span></button>
-                    </div>
+
+                    <footer class="lgh-dialog__foot lgh-dialog__foot--bar">
+                        <p class="lgh-bar__sum" aria-live="polite" x-text="form.destination ? chosen.length + (chosen.length === 1 ? ' parcel' : ' parcels') + ' will be loaded' : 'Choose a hub to start'"></p>
+                        <span class="lgh-spacer"></span>
+                        <button type="button" class="lgh-btn lgh-btn--soft" @click="closeForm()">Cancel</button>
+                        <button type="submit" class="lgh-btn lgh-btn--primary">Assign driver</button>
+                    </footer>
                 </form>
             </div>
         </div>
 
-        {{-- Trip details, with the destination hub the driver was sent to. --}}
-        <div class="lg-overlay" x-show="view" x-cloak @click.self="closeView()" @keydown.escape.window="closeView()">
-            <div class="lg-modal" style="width:min(100%,560px)" role="dialog" aria-modal="true" aria-labelledby="tripTitle" x-show="view">
-                <div class="lg-modal__head">
+        {{-- Trip details with its progress. A scheduled trip that leaves here can be cancelled; one already in transit cannot. --}}
+        <div class="lgh-layer" x-show="view" x-cloak>
+            <div class="lgh-backdrop" @click="closeView()"></div>
+            <div class="lgh-dialog lgh-dialog--wide" role="dialog" aria-modal="true" aria-labelledby="tripTitle">
+                <header class="lgh-dialog__head">
                     <div>
-                        <h3 id="tripTitle" x-text="view ? view.id + ' · Station transfer' : ''"></h3>
-                        <p x-show="view"><span class="lg-pill" :class="view ? tones[view.status] : ''" x-text="view ? labels[view.status] : ''"></span></p>
+                        <h2 id="tripTitle" x-text="view ? view.id + ' · Station transfer' : ''"></h2>
+                        <p><span class="lgh-pill" :class="view ? tones[view.status] : ''" x-text="view ? labels[view.status] : ''"></span></p>
                     </div>
-                    <button type="button" class="lg-toast__close" @click="closeView()" aria-label="Close"><x-logistics.icon name="x" :size="18" /></button>
-                </div>
-                <div class="lg-modal__body lg-modal__body--grid" x-show="view">
-                    <template x-if="view && view.status === 'in_transit'">
-                        <div class="lg-note">
+                    <button type="button" class="lgh-close" @click="closeView()" aria-label="Close"><svg class="lgh-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+                </header>
+                <div class="lgh-dialog__body">
+                    <div class="lgh-callout lgh-callout--rose" x-show="alert" x-cloak role="alert">
+                        <x-logistics.icon name="alert" :size="18" />
+                        <p x-text="alert"></p>
+                    </div>
+                    <template x-if="view && view.status === 'scheduled' && view.can_depart">
+                        <div class="lgh-callout lgh-callout--lilac">
                             <x-logistics.icon name="info" :size="18" />
-                            <span>Scan every parcel at <span x-text="view.destination"></span>, then record the trip arrival.</span>
+                            <p>Scan every parcel for departure at <strong x-text="view.origin"></strong>, then record the departure.</p>
+                        </div>
+                    </template>
+                    <template x-if="view && view.status === 'scheduled' && !view.can_depart">
+                        <div class="lgh-callout lgh-callout--lilac">
+                            <x-logistics.icon name="info" :size="18" />
+                            <p>This trip leaves <strong x-text="view.origin"></strong>. It arrives here after the departure is recorded.</p>
+                        </div>
+                    </template>
+                    <template x-if="view && view.status === 'in_transit' && view.can_arrive">
+                        <div class="lgh-callout lgh-callout--sky">
+                            <x-logistics.icon name="truck" :size="18" />
+                            <p>Scan every parcel at <strong x-text="view.destination"></strong>, then record the arrival.</p>
+                        </div>
+                    </template>
+                    <template x-if="view && view.status === 'in_transit' && !view.can_arrive">
+                        <div class="lgh-callout lgh-callout--sky">
+                            <x-logistics.icon name="truck" :size="18" />
+                            <p>On its way to <strong x-text="view.destination"></strong>. That hub records the arrival.</p>
                         </div>
                     </template>
                     <template x-if="view && view.status === 'cancelled'">
-                        <div class="lg-note lg-note--warn">
+                        <div class="lgh-callout lgh-callout--rose">
                             <x-logistics.icon name="alert" :size="18" />
-                            <span><strong>Cancelled.</strong> <span x-text="view.note"></span></span>
+                            <p><strong>Cancelled.</strong> <span x-text="view.note || 'No reason was recorded.'"></span></p>
                         </div>
                     </template>
-                    <dl class="lg-facts" x-show="view">
-                        <div><dt>Driver</dt><dd x-text="view && view.driver"></dd></div>
-                        <div><dt>Sent to</dt><dd x-text="view && view.destination"></dd></div>
+
+                    <dl class="lgh-facts" x-show="view">
                         <div><dt>From</dt><dd x-text="view && view.origin"></dd></div>
+                        <div><dt>To</dt><dd x-text="view && view.destination"></dd></div>
+                        <div><dt>Driver</dt><dd x-text="view && view.driver"></dd></div>
                         <div><dt>Vehicle</dt><dd x-text="view && view.vehicle"></dd></div>
                         <div><dt>Parcels loaded</dt><dd x-text="view && view.parcels"></dd></div>
                         <div><dt>Scheduled departure</dt><dd x-text="view && fmt(view.scheduled)"></dd></div>
                         <div><dt>Expected arrival</dt><dd x-text="view && fmt(view.expectedArrival)"></dd></div>
                     </dl>
-                    <div class="is-wide" x-show="view && view.manifest && view.manifest.length">
-                        <strong>Manifest</strong>
-                        <ul class="lg-cell-sub" style="margin-top:8px;max-height:120px;overflow:auto">
-                            <template x-for="code in (view?.manifest || [])" :key="code"><li x-text="code"></li></template>
+
+                    <div class="lgh-docs" x-show="view && view.manifest && view.manifest.length" x-cloak>
+                        <h3>Manifest · open a parcel to track it</h3>
+                        <ul class="lgh-manifest">
+                            <template x-for="code in (view ? view.manifest : [])" :key="code">
+                                <li><a :href="trackingUrl + '?q=' + encodeURIComponent(code)" x-text="code"></a></li>
+                            </template>
                         </ul>
                     </div>
+
                     <template x-if="view && view.status !== 'cancelled'">
-                        <ol class="lg-journey" style="padding:0">
-                            <li :class="view.status === 'scheduled' ? 'is-current' : ''">
-                                <div class="lg-journey__what">Scheduled</div>
-                                <div class="lg-journey__meta" x-text="'Driver assigned for ' + view.destination + ' · departure ' + fmt(view.scheduled)"></div>
+                        <ol class="lgh-steps">
+                            <li :class="view.status === 'scheduled' ? 'is-current' : 'is-done'">
+                                <strong>Scheduled</strong>
+                                <small x-text="'Driver assigned for ' + view.destination + ' · departure planned ' + fmt(view.scheduled)"></small>
                             </li>
-                            <li :class="view.status === 'in_transit' ? 'is-current' : ''">
-                                <div class="lg-journey__what">Departed</div>
-                                <div class="lg-journey__meta" x-text="view.departed ? 'Departure recorded ' + fmt(view.departed) : 'Scan every manifest parcel for departure first'"></div>
+                            <li :class="view.status === 'in_transit' ? 'is-current' : (view.status === 'completed' ? 'is-done' : '')">
+                                <strong>Departed</strong>
+                                <small x-text="view.departed ? 'Departure recorded ' + fmt(view.departed) : 'Not departed yet'"></small>
                             </li>
-                            <li :class="view.status === 'completed' ? 'is-current' : ''">
-                                <div class="lg-journey__what">Arrived</div>
-                                <div class="lg-journey__meta" x-text="view.arrived ? 'Received at ' + view.destination + ' ' + fmt(view.arrived) : 'Not yet received at ' + view.destination"></div>
+                            <li :class="view.status === 'completed' ? 'is-done' : ''">
+                                <strong>Arrived</strong>
+                                <small x-text="view.arrived ? 'Received at ' + view.destination + ' ' + fmt(view.arrived) : 'Not received at ' + view.destination + ' yet'"></small>
                             </li>
                         </ol>
                     </template>
-                </div>
-                <div class="lg-modal__foot" x-show="view">
-                    <button type="button" class="lg-btn lg-btn--outline" @click="closeView()">Close</button>
-                    <button type="button" class="lg-btn lg-btn--danger" x-show="view && view.status === 'scheduled' && view.can_cancel" @click="askCancel(view)">Cancel trip</button>
-                    <button type="button" class="lg-btn" x-show="view && view.status === 'scheduled' && view.can_depart" :disabled="working" @click="changeStatus(view, 'depart')">Record departure</button>
-                    <button type="button" class="lg-btn" x-show="view && view.status === 'in_transit' && view.can_arrive" :disabled="working" @click="changeStatus(view, 'arrive')">Record arrival</button>
+
+                    <footer class="lgh-dialog__foot lgh-dialog__foot--sticky">
+                        <span class="lgh-spacer"></span>
+                        <button type="button" class="lgh-btn lgh-btn--soft" @click="closeView()">Close</button>
+                        <template x-if="view && view.status === 'scheduled' && view.can_cancel">
+                            <button type="button" class="lgh-btn lgh-btn--danger" @click="askCancel(view)">Cancel trip</button>
+                        </template>
+                        <template x-if="view && canDepart(view)">
+                            <button type="button" class="lgh-btn lgh-btn--primary" @click="changeStatus(view, 'depart', $event)">Record departure</button>
+                        </template>
+                        <template x-if="view && canArrive(view)">
+                            <button type="button" class="lgh-btn lgh-btn--primary" @click="changeStatus(view, 'arrive', $event)">Record arrival</button>
+                        </template>
+                    </footer>
                 </div>
             </div>
         </div>
 
-        {{-- Cancel asks for a reason and releases the driver, the vehicle and the parcels. --}}
-        <div class="lg-overlay" x-show="cancel.open" x-cloak @click.self="cancel.open = false" @keydown.escape.window="cancel.open = false">
-            <div class="lg-modal" role="dialog" aria-modal="true" aria-labelledby="tripCancelTitle">
-                <div class="lg-modal__head">
+        {{-- Cancel asks for a reason. It releases the driver, the vehicle and the loaded parcels. --}}
+        <div class="lgh-layer" x-show="confirm.open" x-cloak style="z-index: 80">
+            <div class="lgh-backdrop" @click="confirm.open = false"></div>
+            <div class="lgh-dialog lgh-dialog--sm" role="dialog" aria-modal="true" aria-labelledby="tripCancelTitle">
+                <header class="lgh-dialog__head">
                     <div>
-                        <h3 id="tripCancelTitle" x-text="'Cancel ' + (cancel.t ? cancel.t.id : 'trip')"></h3>
-                        <p>The driver is released and the trip leaves their app.</p>
+                        <h2 id="tripCancelTitle" x-text="'Cancel ' + (confirm.t ? confirm.t.id : 'trip') + '?'"></h2>
+                        <p>The driver, the vehicle and the loaded parcels are released, and the trip leaves the driver app.</p>
                     </div>
-                    <button type="button" class="lg-toast__close" @click="cancel.open = false" aria-label="Close"><x-logistics.icon name="x" :size="18" /></button>
-                </div>
-                <div class="lg-modal__body lg-modal__body--grid">
-                    <div class="lg-field">
-                        <label for="tripReason">Reason <span class="lg-req" aria-hidden="true">*</span></label>
-                        <textarea id="tripReason" class="lg-textarea" rows="3" maxlength="200" x-model="cancel.reason"
-                            placeholder="For example: the destination station is closed that day"
-                            :aria-invalid="!!cancel.error" aria-describedby="tripReasonErr"></textarea>
-                        <p class="lg-error" id="tripReasonErr" x-show="cancel.error" x-text="cancel.error" role="alert"></p>
+                    <button type="button" class="lgh-close" @click="confirm.open = false" aria-label="Close"><svg class="lgh-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+                </header>
+                <div class="lgh-dialog__body">
+                    <div class="lgh-field">
+                        <label for="tripReason">Reason <span aria-hidden="true">*</span></label>
+                        <textarea id="tripReason" rows="3" maxlength="500" x-model="confirm.reason" @input="confirm.error = ''" placeholder="For example: the destination station is closed that day"
+                                  :aria-invalid="!!confirm.error" aria-describedby="tripReasonErr" :class="{ 'has-error': confirm.error }"></textarea>
+                        <p class="lgh-err" id="tripReasonErr" x-show="confirm.error" x-cloak x-text="confirm.error" role="alert"></p>
                     </div>
-                </div>
-                <div class="lg-modal__foot">
-                    <button type="button" class="lg-btn lg-btn--outline" @click="cancel.open = false">Keep trip</button>
-                    <button type="button" class="lg-btn lg-btn--danger-solid" @click="submitCancel()">Cancel trip</button>
+                    <div class="lgh-callout lgh-callout--rose" x-show="confirm.alert" x-cloak role="alert">
+                        <x-logistics.icon name="alert" :size="18" />
+                        <p x-text="confirm.alert"></p>
+                    </div>
+                    <footer class="lgh-dialog__foot">
+                        <span class="lgh-spacer"></span>
+                        <button type="button" class="lgh-btn lgh-btn--soft" @click="confirm.open = false">Keep trip</button>
+                        <button type="button" class="lgh-btn lgh-btn--danger-solid" @click="submitCancel($event)">Cancel trip</button>
+                    </footer>
                 </div>
             </div>
         </div>
