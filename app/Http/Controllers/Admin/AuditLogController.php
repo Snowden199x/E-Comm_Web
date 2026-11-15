@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AdminActionLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class AuditLogController extends Controller
 {
@@ -54,6 +55,23 @@ class AuditLogController extends Controller
     {
         // The log names which Admin suspended, deleted or overrode what; only a super admin may read it.
         abort_unless(auth('admin')->user()?->is_super_admin, 403, 'Only a super admin can view the audit log.');
+
+        // Bad filters go back to the list with a message that says how to fix them.
+        $check = Validator::make($request->query(), [
+            'q' => ['nullable', 'string', 'max:100'],
+            'from' => ['nullable', 'date'],
+            // Only compare the two dates when a start date is given.
+            'to' => array_filter(['nullable', 'date', filled($request->query('from')) ? 'after_or_equal:from' : null]),
+        ], [
+            'q.max' => 'Search is too long. Use 100 characters or fewer.',
+            'from.date' => 'Start date is not a valid date. Pick a date from the calendar.',
+            'to.date' => 'End date is not a valid date. Pick a date from the calendar.',
+            'to.after_or_equal' => 'End date is before the start date. Pick an end date on or after the start date.',
+        ]);
+        if ($check->fails()) {
+            return redirect()->route('admin.audit-logs.index', array_filter(['action' => (string) $request->query('action', '')]))
+                ->withErrors($check);
+        }
 
         $q = trim((string) $request->query('q', ''));
         $action = (string) $request->query('action', '');
