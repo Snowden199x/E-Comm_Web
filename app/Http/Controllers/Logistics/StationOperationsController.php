@@ -20,6 +20,40 @@ use Illuminate\View\View;
 
 class StationOperationsController extends Controller
 {
+    public function grantDeliveryAttempt(Request $request, Order $order): RedirectResponse
+    {
+        $station = $this->station($request);
+        $data = $request->validate(['note' => ['required', 'string', 'min:5', 'max:450']]);
+        DB::transaction(function () use ($request, $order, $station, $data) {
+            $record = Order::query()->lockForUpdate()->findOrFail($order->id);
+            abort_unless((int) $record->destination_station_id === (int) $station->id
+                && in_array($record->status, ['delivery_failed', 'assigned_to_rider'], true)
+                && (int) $record->delivery_attempts >= 1
+                && (int) $record->delivery_extra_attempts < 3, 409,
+                'This parcel is not eligible for another attempt at your station. Reload the delivery queue.');
+            $record->delivery_extra_attempts = (int) $record->delivery_extra_attempts + 1;
+            $record->delivery_failed_at = now();
+            $record->limit_override_by = $request->user()->id;
+            $record->limit_override_at = now();
+            $record->limit_override_note = $data['note'];
+            $record->save();
+            $max = DeliveryCutoff::MAX_DELIVERY_ATTEMPTS + (int) $record->delivery_extra_attempts;
+            $record->statusEvents()->create(['user_id' => $request->user()->id,
+                'from_status' => $record->status, 'to_status' => $record->status,
+                'note' => 'Station Hub '.$station->name.' granted one more delivery attempt ('.$max.' allowed): '.$data['note']]);
+            Notification::create(['user_id' => $record->buyer_id, 'type' => 'order_update',
+                'title' => $record->number.': One more delivery attempt',
+                'message' => 'Your Station Hub approved one more delivery attempt. Please keep your phone reachable.',
+                'link' => route('buyer.orders.show', $record)]);
+            if ($record->delivery_courier_id) {
+                Notification::create(['user_id' => $record->delivery_courier_id, 'type' => 'shipment_update',
+                    'title' => 'Extra attempt granted '.$record->number,
+                    'message' => 'Your Station Hub approved one more delivery attempt. Reschedule it in the Rider app.']);
+            }
+        }, 3);
+        return back()->with('success', 'One more delivery attempt granted and recorded in the order timeline.');
+    }
+
     public function index(Request $request, StationPickupExpiry $expiry, DeliveryCutoff $cutoff): View
     {
         $station = $this->station($request);
@@ -79,6 +113,11 @@ class StationOperationsController extends Controller
                 'can_assign' => $mode === 'pickups'
                     ? $order->status === 'ready_for_pickup'
                     : ($order->status === 'at_destination_hub' && $stop?->sorted_at),
+                'can_grant_attempt' => $mode === 'delivery-queue' && $order->status === 'delivery_failed'
+                    && (int) $order->delivery_attempts >= 1 && (int) $order->delivery_extra_attempts < 3
+                    && (bool) $order->delivery_courier_id,
+                'attempts_used' => (int) $order->delivery_attempts,
+                'attempts_allowed' => DeliveryCutoff::MAX_DELIVERY_ATTEMPTS + (int) $order->delivery_extra_attempts,
             ]);
         }
         if ($mode === 'tasks') {

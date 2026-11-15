@@ -1,7 +1,7 @@
 # Order Return Request (Buyer asks, Seller decides)
 
-**Status:** Implemented in code, including the 7-day window and the rider trip back to the Seller; owner migration and browser/device verification pending. Money stays display-only: approving a return records what the Buyer is owed and moves no cash.
-**Reviewed:** 11 November 2026
+**Status:** Implemented in code, including the 7-day window, the rider trip back to the Seller and the reason-based return pickup fee; owner migration and browser/device verification pending. Money stays display-only: approving a return records what the Buyer is owed and what the Rider earned, and moves no cash.
+**Reviewed:** 16 November 2026
 
 ## Routes
 
@@ -13,6 +13,7 @@
 | `seller.returns.approve` (`PATCH seller/returns/{returnRequest}/approve`) | PATCH | Seller (owner) | Approves: `returned`, stock back, refund recorded |
 | `seller.returns.reject` (`PATCH seller/returns/{returnRequest}/reject`) | PATCH | Seller (owner) | Declines with a required note |
 | `seller.returns.received` (`PATCH seller/returns/{returnRequest}/received`) | PATCH | Seller (owner) | Confirms the parcel is back after the rider collected it |
+| `seller.earnings.pickup-fees` (`GET seller/earnings/pickup-fees`) | GET | Seller | Statement of return pickup fees charged to that Seller |
 
 The Seller route group keeps `auth` + `EnsureActiveSeller`; the Buyer routes keep `auth`. Every lookup is scoped: an order by `buyer_id`, a request by `seller_id`, so another account's id is a 404, not a redirect.
 
@@ -82,3 +83,12 @@ The policy options for real payouts and refund execution stay in [settlement led
 ## Source evidence
 
 `app/Http/Controllers/Buyer/OrderController.php` (`returnForm`, `requestReturn`), `app/Http/Controllers/Seller/ReturnRequestController.php`, `app/Services/OrderReturnService.php`, `app/Models/Ecommerce/OrderReturnRequest.php`, `app/Models/Ecommerce/Order.php` (`returnRequests`, `latestReturnRequest`), `resources/views/buyer/orders/return.blade.php`, `resources/views/buyer/orders/show.blade.php`, `resources/views/seller/returns/index.blade.php`, `database/migrations/2026_11_11_140000_create_order_return_requests_table.php`.
+
+## Return pickup fee (16 November 2026)
+
+A fixed fee is paid to the Rider after a successful pickup. It is set by a super admin on **Admin → Finance → Delivery Fees** (`delivery_fee_settings.return_pickup_fee`, default ₱10.00, separate from a Company's `rider_pay_per_parcel`) and frozen on the request at approval as `pickup_fee_cents`.
+
+- **Who pays.** `damaged`, `wrong_item`, `missing_item` and `not_as_described` are Seller-fault: `pickup_fee_payer = seller`, and the Seller Returns page shows "You pay ₱10.00 pickup fee". `other` is the Buyer's: `pickup_fee_payer = buyer`, and `buyerRefundCents()` (gross `refund_cents` minus the fee) is what the Buyer order page, refund notification and Seller Returns page show. The gross refund stays in `refund_cents`, so the breakdown is auditable.
+- **When the Rider is paid.** Only inside `ReturnTripService::pickup`, after the parcel is scanned into the Rider's hands. Approval, a failed pickup and handover never create payment. The row in `order_return_pickup_earnings` is unique per return request, so a retried scan cannot pay twice, and a zero fee writes nothing.
+- **Where it appears.** `GET /api/v1/rider/earnings` adds these rows as `type = return_pickup` to the accrued total (with `summary.return_pickups`); the Rider app labels them "Return pickup", the Station Hub cash ledger adds them to each Rider's earnings, and the pickup response includes `pickup_fee_cents`, `pickup_fee_payer` and `rider_pay_cents`. The Seller sees a **Return pickup fees** statement (`seller.earnings.pickup-fees`, linked from Earnings) listing the orders, reasons, Rider pickup state and total charged to them.
+- **Not implemented.** No cash or payout is executed and no Seller balance is debited; the Seller charge is recorded and shown only, consistent with the rest of the money display. A Buyer-paid fee is deducted from the recorded refund, not collected separately.

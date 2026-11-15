@@ -4,6 +4,8 @@
 
 Buyers register, discover products, maintain a cart, place seller-specific orders, track status, manage a profile, and message other parties.
 
+The public marketplace landing page keeps a compact mobile-app link in its hero. The separate large app-download band below the hero has been removed to avoid repeating the same promotion.
+
 ## Implemented journey
 
 Registration collects profile/address/ID data and requires an email OTP proof stored in the current session and a verified database record. The cart groups items by store and lets buyers select individual items or whole stores for checkout. Checkout validates selected cart rows and stock under row locks, groups selected items by seller into separate orders, decrements stock transactionally, removes only purchased cart rows, and creates an initial order event. Buyers can list/view their orders, confirm receipt after the assigned rider scans delivery, then use the final Rate Product progress action to review purchased items. Product/category pages, account editing, cart operations, and messaging routes are present. Buyer pages share a purple storefront header with search, Messages, Cart, Notifications, an account menu, and a category/subcategory menu; the Dashboard shows an announcement banner, categories, and recommended products with Add to Cart (see `features/buyer/dashboard/`).

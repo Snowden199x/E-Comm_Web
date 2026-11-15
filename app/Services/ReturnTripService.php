@@ -41,6 +41,7 @@ class ReturnTripService
                 'user_id' => $rider->id, 'from_status' => 'returned', 'to_status' => 'returned', 'note' => $note,
             ]);
             $this->recordScan($record, $rider, 'return_pickup', $scanKey);
+            $this->recordPickupEarning($record, $return, $rider);
 
             $this->notify('Return parcel picked up '.$record->number,
                 'The rider collected the parcel for return. It is on the way back to the seller.',
@@ -120,6 +121,39 @@ class ReturnTripService
         }, 3);
     }
 
+    /**
+     * Pay the Rider once the parcel is in hand. Nothing is written at approval or handover, so a
+     * failed or skipped pickup is not paid, and the unique return_request_id makes a retried scan safe.
+     */
+    private function recordPickupEarning(Order $order, OrderReturnRequest $return, User $rider): void
+    {
+        $amountCents = (int) $return->pickup_fee_cents;
+        if ($amountCents <= 0) {
+            return;
+        }
+
+        $facilityId = DB::table('order_facility_stops')->where('order_id', $order->id)
+            ->orderByDesc('position')->value('facility_id') ?? $order->destination_station_id;
+
+        $inserted = DB::table('order_return_pickup_earnings')->insertOrIgnore([
+            'return_request_id' => $return->id,
+            'order_id' => $order->id,
+            'rider_user_id' => $rider->id,
+            'facility_id' => $facilityId,
+            'amount' => number_format($amountCents / 100, 2, '.', ''),
+            'payer' => $return->pickup_fee_payer ?? OrderReturnRequest::PICKUP_FEE_PAYER_BUYER,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        if ($inserted) {
+            $this->notify('Return pickup pay ₱'.number_format($amountCents / 100, 2),
+                'The pickup for '.$order->number.' is recorded. ₱'.number_format($amountCents / 100, 2)
+                    .' was added to your earnings.',
+                route('buyer.orders.show', $order), $rider->id);
+        }
+    }
+
     private function approvedReturn(Order $order): OrderReturnRequest
     {
         $return = $order->returnRequests()
@@ -188,6 +222,11 @@ class ReturnTripService
             'return_status_label' => $return->return_status_label,
             'picked_up_at' => $return->picked_up_at?->toIso8601String(),
             'delivered_to_seller_at' => $return->delivered_to_seller_at?->toIso8601String(),
+            'pickup_fee_cents' => (int) $return->pickup_fee_cents,
+            'pickup_fee_payer' => $return->pickup_fee_payer,
+            'rider_pay_cents' => $return->return_status === OrderReturnRequest::RETURN_STATUS_PENDING_PICKUP
+                ? 0
+                : (int) $return->pickup_fee_cents,
             'duplicate' => $duplicate,
             'message' => $message,
         ];

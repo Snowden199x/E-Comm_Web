@@ -11,9 +11,19 @@ use Illuminate\View\View;
 
 class UnifiedLoginController extends Controller
 {
-    public function create(): View
+    public function create(Request $request): View|RedirectResponse
     {
-        return view('buyer.auth.login');
+        $user = Auth::user();
+
+        if ($user?->role === 'buyer') {
+            return redirect()->route('buyer.dashboard');
+        }
+
+        if ($user?->role === 'seller') {
+            return redirect()->route('seller.dashboard');
+        }
+
+        return view('buyer.auth.login', ['unified' => true]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -31,11 +41,12 @@ class UnifiedLoginController extends Controller
 
         $user = Auth::user();
 
-        if ($user->role !== 'buyer') {
+        // Buyer and Seller share this page. Logistics, Rider and Admin keep their own login pages.
+        if (! in_array($user->role, ['buyer', 'seller'], true)) {
             Auth::logout();
 
             throw ValidationException::withMessages([
-                'email' => 'This login is for buyer accounts only. Use your account type’s login page.',
+                'email' => 'This login is for Buyer and Seller accounts only. Use your account type’s login page.',
             ]);
         }
 
@@ -45,7 +56,7 @@ class UnifiedLoginController extends Controller
 
             $message = match ($user->status) {
                 'pending' => 'Your account is still pending admin approval.',
-                'disapproved' => 'Your registration was not approved. ' . ($user->rejection_reason ?? ''),
+                'disapproved' => 'Your registration was not approved. '.($user->rejection_reason ?? ''),
                 default => 'Your account is not active.',
             };
 
@@ -58,12 +69,17 @@ class UnifiedLoginController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('buyer.dashboard', absolute: false));
+        $dashboard = $user->role === 'seller'
+            ? route('seller.dashboard', absolute: false)
+            : route('buyer.dashboard', absolute: false);
+
+        return redirect()->intended($dashboard);
     }
 
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

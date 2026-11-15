@@ -41,6 +41,8 @@
         'address' => $r['address'] ?? null, 'status' => $r['status'], 'pickup_status' => $r['pickup_status'] ?? null,
         'rider' => (bool) ($r['rider'] ?? false), 'rider_name' => $r['rider_name'] ?? null, 'type' => $r['type'] ?? null,
         'failure' => $r['failure_reason'] ?? null, 'next' => $r['next'] ?? null,
+        'can_grant_attempt' => (bool) ($r['can_grant_attempt'] ?? false),
+        'attempts_used' => (int) ($r['attempts_used'] ?? 0), 'attempts_allowed' => (int) ($r['attempts_allowed'] ?? 0),
         'arrived' => $r['arrived'] ?? null, 'sorted' => $r['sorted'] ?? null, 'can_assign' => (bool) ($r['can_assign'] ?? false),
     ])->all();
     $riderList = $riders->map(fn ($rider) => ['id' => $rider->id, 'name' => $rider->user?->name ?? 'Rider', 'vehicle' => $rider->vehicle_type])->values()->all();
@@ -78,6 +80,7 @@
             riders: @js($riderList),
             assignUrl: @js(route('lgp.station.orders.assign', '__order__')),
             declineUrl: @js(route('lgp.station.orders.decline-pickup', '__order__')),
+            attemptUrl: @js(route('lgp.station.orders.delivery-attempt', '__order__')),
             trackUrl: @js(route('lgp.station.tracking')),
             tones: @js($tones),
             q: '',
@@ -236,6 +239,13 @@
                                             </template>
                                             <template x-if="mode === 'pickups' && primary(r) && r.pickup_status === 'pending' && !r.rider">
                                                 <button type="button" class="lgh-btn lgh-btn--small lgh-btn--danger" @click="openDecline(r)" :aria-label="'Return ' + r.tracking + ' to the seller'">Return to seller</button>
+                                            </template>
+                                            <template x-if="mode === 'delivery-queue' && r.can_grant_attempt">
+                                                <form method="POST" :action="attemptUrl.replace('__order__', r.id)" @click.stop>
+                                                    @csrf
+                                                    <input name="note" minlength="5" maxlength="450" required placeholder="Reason for retry" aria-label="Reason for extra attempt" class="lgh-input" style="max-width:180px">
+                                                    <button type="submit" class="lgh-btn lgh-btn--small lgh-btn--soft" :aria-label="'Grant one more attempt for ' + r.tracking">Grant extra attempt</button>
+                                                </form>
                                             </template>
                                             <template x-if="!primary(r)">
                                                 <a :href="track(r)" class="lgh-btn lgh-btn--small lgh-btn--soft" :aria-label="'Track parcel ' + r.tracking">

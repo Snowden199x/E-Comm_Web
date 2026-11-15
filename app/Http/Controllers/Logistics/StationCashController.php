@@ -43,6 +43,13 @@ class StationCashController extends Controller
             ->join('order_shipping_settlements as s', 's.id', '=', 'l.settlement_id')
             ->where('s.status', 'accrued')->whereIn('l.rider_user_id', $userIds)
             ->groupBy('l.rider_user_id')->selectRaw('l.rider_user_id, SUM(l.amount) as total')->pluck('total', 'rider_user_id');
+        // Return pickups pay a fixed fee at collection, separate from the delivery settlement.
+        $returnEarnings = DB::table('order_return_pickup_earnings')
+            ->where('facility_id', $station->id)->whereIn('rider_user_id', $userIds)
+            ->groupBy('rider_user_id')->selectRaw('rider_user_id, SUM(amount) as total')->pluck('total', 'rider_user_id');
+        foreach ($returnEarnings as $riderId => $total) {
+            $earnings[$riderId] = (float) ($earnings[$riderId] ?? 0) + (float) $total;
+        }
         $names = User::query()->whereIn('id', $userIds)->pluck('name', 'id');
 
         $ledger = $userIds->map(function ($userId) use ($couriers, $held, $disputed, $earnings, $names) {

@@ -62,8 +62,10 @@ class ReturnRequestController extends Controller
             ->whereIn('return_status', [OrderReturnRequest::RETURN_STATUS_PENDING_PICKUP, OrderReturnRequest::RETURN_STATUS_PICKED_UP])
             ->count();
 
+        // Buyer refunds after the pickup fee is deducted when the buyer pays it.
         $refundedCents = (int) OrderReturnRequest::query()->where('seller_id', $sellerId)
-            ->where('status', OrderReturnRequest::STATUS_APPROVED)->sum('refund_cents');
+            ->where('status', OrderReturnRequest::STATUS_APPROVED)->get()
+            ->sum(fn (OrderReturnRequest $return) => $return->buyerRefundCents());
 
         // Notification links arrive as ?return=ID. Open that return even when it is not on this page of the list.
         $focusId = (int) $request->query('return');

@@ -10,10 +10,16 @@
                 <h1>Earnings</h1>
                 <p>Your pay for each delivered order, after vouchers and commission.</p>
             </div>
-            <a class="do-btn do-btn--soft" href="{{ route('seller.completed-orders.index') }}">
-                <svg class="do-ico do-ico--slide" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/></svg>
-                View delivered orders
-            </a>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <a class="do-btn do-btn--soft" href="{{ route('seller.earnings.pickup-fees') }}">
+                    <svg class="do-ico do-ico--slide" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/></svg>
+                    Return pickup fees
+                </a>
+                <a class="do-btn do-btn--soft" href="{{ route('seller.completed-orders.index') }}">
+                    <svg class="do-ico do-ico--slide" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/></svg>
+                    View delivered orders
+                </a>
+            </div>
         </header>
 
         <div class="do-stats er-stats" role="list">
@@ -29,7 +35,7 @@
 
         <details class="er-how">
             <summary><svg class="do-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/></svg>How earnings work<svg class="do-ico er-how__chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
-            <p>Your earnings = item price − vouchers you funded − Vendo commission. Each order is credited automatically as soon as it is delivered. You don't need bank details.</p>
+            <p>Your earnings = item price − vouchers you funded − Vendo commission. Each order is credited automatically as soon as it is delivered. You don't need bank details. Return pickup fees charged to you are listed separately on <a href="{{ route('seller.earnings.pickup-fees') }}" style="font-weight:600;text-decoration:underline">Return pickup fees</a>.</p>
         </details>
 
         <section class="do-card do-table-card" aria-label="Earnings by order" data-do-table>

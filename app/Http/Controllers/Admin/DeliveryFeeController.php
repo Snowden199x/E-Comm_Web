@@ -23,7 +23,7 @@ class DeliveryFeeController extends Controller
             ->selectRaw('COALESCE(SUM(s.vendo_commission), 0) as vendo')->first();
         $history = (clone $split)->orderByDesc('s.settled_at')->orderByDesc('s.id')->paginate(15, [
             's.id', 's.shipping_fee', 's.rider_total', 's.vendo_commission', 's.logistics_remainder', 's.status', 's.settled_at',
-            'o.number as order_number', 'o.rider_pay_rate', 'o.vendo_delivery_commission_rate',
+            'o.order_number', 'o.tracking_number', 'o.rider_pay_rate', 'o.vendo_delivery_commission_rate',
         ]);
 
         return view('admin.delivery-fees.index', [
@@ -49,23 +49,35 @@ class DeliveryFeeController extends Controller
             $messages["{$field}.decimal"] = 'Use at most 2 decimals, like 7.25.';
         }
 
+        $feeRule = ['required', 'numeric', 'min:0', 'max:1000', 'decimal:0,2'];
+        foreach (['return_pickup_fee'] as $field) {
+            $messages["{$field}.required"] = 'Enter a fee from 0 to 1000.';
+            $messages["{$field}.numeric"] = 'Use numbers only, like 10 or 12.50.';
+            $messages["{$field}.min"] = 'Enter a fee from 0 to 1000.';
+            $messages["{$field}.max"] = 'Enter a fee from 0 to 1000.';
+            $messages["{$field}.decimal"] = 'Use at most 2 decimals, like 12.50.';
+        }
+
         $data = $request->validate([
             'vendo_delivery_commission_rate' => $rule,
             'seller_commission_rate' => $rule,
+            'return_pickup_fee' => $feeRule,
         ], $messages);
 
         DeliveryFeeSetting::current()->update([
             'vendo_delivery_commission_rate' => number_format((float) $data['vendo_delivery_commission_rate'], 2, '.', ''),
             'seller_commission_rate' => number_format((float) $data['seller_commission_rate'], 2, '.', ''),
+            'return_pickup_fee' => number_format((float) $data['return_pickup_fee'], 2, '.', ''),
             'updated_by' => auth('admin')->id(),
         ]);
 
         \App\Models\AdminActionLog::record(null, 'delivery_rates_updated', sprintf(
-            'Vendo delivery commission %s%% · Seller commission %s%%',
+            'Vendo delivery commission %s%% · Seller commission %s%% · Return pickup fee ₱%s',
             rtrim(rtrim((string) $data['vendo_delivery_commission_rate'], '0'), '.'),
             rtrim(rtrim((string) $data['seller_commission_rate'], '0'), '.'),
+            number_format((float) $data['return_pickup_fee'], 2, '.', ''),
         ));
 
-        return back()->with('success', 'Rates saved. New orders use them; existing orders keep their rates.');
+        return back()->with('success', 'Rates and fees saved. New returns and orders use them; existing ones keep their saved values.');
     }
 }

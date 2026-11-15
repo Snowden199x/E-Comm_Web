@@ -242,7 +242,10 @@
                             <p class="font-semibold text-[#2b1730]">{{ $returnRequest->status_label }}</p>
                             <p class="text-[#5b4a60]">Reason: {{ $returnRequest->reason_label }}</p>
                             @if ($returnRequest->status === 'approved')
-                                <p class="text-[#2e6b46]">Refund {{ $fmt($returnRequest->refund_cents / 100) }} — the seller approved the return.</p>
+                                <p class="text-[#2e6b46]">Refund {{ $fmt($returnRequest->buyerRefundCents() / 100) }} — the seller approved the return.</p>
+                                @if ($returnRequest->pickup_fee_cents > 0)
+                                    <p class="mt-1 text-[12px] text-[#8a7a8e]">Return pickup fee {{ $fmt($returnRequest->pickup_fee_cents / 100) }} — {{ $returnRequest->pickup_fee_payer_label }}.</p>
+                                @endif
                                 <p class="mt-1 text-[12px] text-[#8a7a8e]">Parcel return: {{ $returnRequest->return_status_label }}@if ($returnRequest->picked_up_at) · collected {{ $returnRequest->picked_up_at->format('M j, Y') }}@endif</p>
                             @elseif ($returnRequest->status === 'rejected')
                                 <p class="text-[#a32b43]">Seller's reason: {{ $returnRequest->decision_note }}</p>
