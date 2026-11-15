@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Profiles\LogisticsCenter;
+use App\Models\Profiles\LogisticsCompany;
 use App\Models\Profiles\LogisticsFacility;
 use Illuminate\Support\Facades\DB;
 
@@ -35,6 +36,8 @@ class LogisticsCenterMatcher
 
     public function stationForAddress(string $province, string $city, ?int $companyId = null): ?LogisticsFacility
     {
+        // $companyId narrows the lookup to one Company, which is how a Rider's
+        // chosen company is honoured at registration.
         $codes = $this->locations->codesForNames($province, $city);
         if (! $codes) {
             return null;
@@ -78,6 +81,22 @@ class LogisticsCenterMatcher
         $stations = $this->stationQuery($codes, $companyId)->orderBy('id')->limit(2)->get();
 
         return $stations->count() === 1 ? $stations->first() : null;
+    }
+
+    /**
+     * Every Logistics Company whose account is open for business — approved,
+     * with an approved and active logistics-center account. Applicants choose
+     * from this list, so it answers "which companies exist" rather than
+     * "which companies already have a hub here"; station coverage is resolved
+     * separately with stationForCompanyAt().
+     */
+    public function networkCompanies()
+    {
+        return LogisticsCompany::query()->where('status', 'approved')
+            ->whereHas('logisticsCenter.user', fn ($user) => $user->where('role', 'logistics_center')
+                ->where('status', 'approved')->whereNull('archived_at')
+                ->where(fn ($active) => $active->whereNull('account_status')->orWhere('account_status', 'active')))
+            ->orderBy('business_name')->get(['id', 'business_name']);
     }
 
     private function stationsForAddress(string $province, string $city, ?int $companyId = null)

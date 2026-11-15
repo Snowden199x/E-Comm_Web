@@ -77,7 +77,7 @@ class TransportDriverApiController extends Controller
      * One shape for login and /me, so the app maps a driver the same way after
      * signing in and after restoring a stored token.
      */
-    private function profilePayload(User $user, TransportDriverDetail $driver): array
+    public function profilePayload(User $user, TransportDriverDetail $driver): array
     {
         $driver->loadMissing([
             'provinceHub:id,name,province,municipality,logistics_company_id',
@@ -131,6 +131,48 @@ class TransportDriverApiController extends Controller
             ->map(fn (LogisticsTransportTrip $trip) => $this->tripPayload($trip));
 
         return response()->json(['trips' => $trips]);
+    }
+
+    /**
+     * The trips this driver already closed, newest first. Kept apart from
+     * `trips()` because the board only carries scheduled and in-transit runs,
+     * so a finished trip never disappears without a record.
+     */
+    public function history(Request $request): JsonResponse
+    {
+        /** @var TransportDriverDetail $driver */
+        $driver = $request->attributes->get('transport_driver_detail');
+        $trips = LogisticsTransportTrip::query()->where('driver_id', $driver->id)
+            ->where('status', 'completed')
+            ->with(['origin:id,name,municipality,province,address',
+                'destination:id,name,municipality,province,address',
+                'vehicle:id,vehicle_code,plate_number,vehicle_type',
+                'orders:id,tracking_number,status'])
+            ->orderByDesc('arrived_at')
+            ->orderByDesc('id')
+            ->limit(50)->get()
+            ->map(fn (LogisticsTransportTrip $trip) => $this->tripPayload($trip));
+
+        return response()->json(['trips' => $trips]);
+    }
+
+    /**
+     * One trip as the server sees it right now. The destination handover screen
+     * polls this, so the receiving count follows the station's arrival scans as
+     * they happen instead of waiting for the driver to reload the board.
+     */
+    public function trip(Request $request, LogisticsTransportTrip $trip): JsonResponse
+    {
+        /** @var TransportDriverDetail $driver */
+        $driver = $request->attributes->get('transport_driver_detail');
+        abort_unless((int) $trip->driver_id === (int) $driver->id
+            && (int) $trip->logistics_company_id === (int) $driver->provinceHub->logistics_company_id, 404);
+        $trip->load(['origin:id,name,municipality,province,address',
+            'destination:id,name,municipality,province,address',
+            'vehicle:id,vehicle_code,plate_number,vehicle_type',
+            'orders:id,tracking_number,status']);
+
+        return response()->json(['trip' => $this->tripPayload($trip)]);
     }
 
     public function depart(Request $request, LogisticsTransportTrip $trip, TransportTripWorkflow $workflow): JsonResponse
@@ -222,6 +264,9 @@ class TransportDriverApiController extends Controller
             'origin' => $trip->origin ? ['name' => $trip->origin->name, 'municipality' => $trip->origin->municipality, 'province' => $trip->origin->province] : null,
             'destination' => $trip->destination ? ['name' => $trip->destination->name, 'municipality' => $trip->destination->municipality, 'province' => $trip->destination->province] : null,
             'vehicle' => $trip->vehicle ? ['code' => $trip->vehicle->vehicle_code, 'plate_number' => $trip->vehicle->plate_number, 'type' => $trip->vehicle->vehicle_type] : null,
+            // The history list needs a count next to the code; the manifest
+            // itself is what the app opens to see the parcels on the truck.
+            'parcel_count' => $trip->orders->count(),
             'manifest' => $trip->orders->map(fn ($order) => [
                 'order_number' => $order->number,
                 'tracking_number' => $order->tracking_number,

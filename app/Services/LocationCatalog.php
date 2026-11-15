@@ -66,7 +66,11 @@ class LocationCatalog
             }
             foreach ($entry['cities'] as $cityCode => $cityName) {
                 if ($this->normalize($cityName) === $this->normalize($city)) {
-                    return [$provinceCode, $cityCode];
+                    // JSON object keys that look numeric are decoded as PHP ints,
+                    // while every caller stores and compares PSGC codes as the
+                    // 9-digit strings in the location form. Cast back to string so
+                    // strict comparisons (e.g. a hub's province_code) still match.
+                    return [(string) $provinceCode, (string) $cityCode];
                 }
             }
         }

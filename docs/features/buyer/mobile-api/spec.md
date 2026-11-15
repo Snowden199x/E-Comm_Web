@@ -2,7 +2,7 @@
 
 **Status:** Web API and the matching Flutter screens are written in code; owner verification pending. The Flutter client lives in the separate `E-Comm_Mobile/vendo_buyer` repository.
 
-**Reviewed:** 29 October 2026
+**Reviewed:** 15 November 2026
 
 The Buyer app previously had no server API: its sign-in called `/api/v1/buyer/*` routes that did not exist and its storefront screens used sample data. This adds a scoped buyer API under `routes/api.php` and connects the app to it. The web buyer pages keep their session login and Blade views.
 
@@ -48,6 +48,14 @@ All listing queries use `Product::availableToBuy()`, so a product from an unappr
 - `GET /orders?status&page` (15 per page), `GET /orders/{order}`, `PATCH /orders/{order}/cancel` `{expected_status, reason, reason_details?}`, `POST /orders/{order}/complete`, `POST /order-items/{orderItem}/review` `{rating, comment}`. Every lookup is scoped to `buyer_id`; another buyer's order returns 404. Cancellation uses `OrderCancellationService` with the web's reason list and status guard. Completing is allowed only for `delivered`.
 - `GET /notifications?filter=all|unread`, `POST /notifications/{notification}/read`, `POST /notifications/read-all`: only the signed-in buyer's rows.
 - `GET /account`, `PUT /account` (name, phone, street, house number, ZIP), `PUT /account/password`.
+
+## Google sign-in, vouchers, reviews, help and legal
+
+- `POST /api/v1/buyer/google` `{credential, device_name}`: verifies the Google ID token with `GoogleIdTokenVerifier` and answers with the same session as `/login` (token, `expires_at`, buyer profile). Google never creates an account: an email with no Buyer account gets 404 and the message to register first, another role gets 409, and a pending, disapproved, archived or inactive buyer gets the same 403 wording as the password login. An unverified email is marked verified on the way in, because Google already proved it.
+- `GET /vouchers`: every active shop voucher from an approved, active Seller, shaped as `{data:{id, shop_id, shop, name, code, discount_label, scope_label, min_spend_label, max_discount_label, valid_label, uses_left, shop_uses_left, usable, unavailable_reason}}`. The server writes the labels (percent or peso discount, scope, minimum spend, cap, validity) and says why a voucher cannot be used — not started, shop use limit reached, or this buyer's own limit reached. `uses_left` counts what this buyer has left; `shop_uses_left` is the shop-wide remainder.
+- `GET /reviews`: the buyer's own product reviews, newest first, with `product_name`, `image`, `shop`, `rating`, `comment`, `visibility`, `created_at_label` and the Seller's `reply` when there is one. Writing a review stays on `POST /order-items/{item}/review`.
+- `GET /help`: the FAQ the app's Help screen renders — `title`, `intro`, `contact_email` from `mail.from.address`, and `groups[{title, items[{question, answer}]}]`. The copy describes the behaviour this API actually implements (COD, delivery window and reschedule, returns, voucher stacking limits, one review per item, account deletion through support).
+- `GET /legal/{page}` `| page = terms|privacy`: reads the same `docs/legal/terms-and-conditions.md` and `privacy-policy.md` the web pages render, flattens inline Markdown and returns `{title, updated_label, blocks[{type, text, level}]}` where `type` is `heading` (level 1-4), `paragraph` or `bullet`. `updated_label` is the file's modified date, so the app cannot drift from the published page. An unknown page or a missing file answers 404.
 
 ## Flutter client changes
 
