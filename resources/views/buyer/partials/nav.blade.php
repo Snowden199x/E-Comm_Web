@@ -52,6 +52,7 @@
     <a href="#how-it-works">How It Works</a>
     <a href="#trust">About Vendo</a>
     <a href="#logistics-partner">Logistics</a>
+    <a href="{{ route('buyer.login') }}">Log in</a>
     <a href="{{ route('register.choose') }}" class="btn btn-primary" style="align-self:flex-start;font-size:16px;">Get
         Started</a>
 </div>

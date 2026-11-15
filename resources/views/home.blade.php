@@ -11,7 +11,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap"
         rel="stylesheet">
-    @vite(['resources/css/buyer/landing.css', 'resources/js/buyer/landing.js'])
+    @vite(['resources/css/buyer/landing.css', 'resources/css/buyer/landing-mobile.css', 'resources/js/buyer/landing.js'])
 </head>
 
 <body>
@@ -21,6 +21,7 @@
 
     <main id="top">
         @include('buyer.partials.hero')
+        @include('buyer.partials.get-app')
         @include('buyer.partials.categories')
         @include('buyer.partials.featured')
         @include('buyer.partials.why-vendo')

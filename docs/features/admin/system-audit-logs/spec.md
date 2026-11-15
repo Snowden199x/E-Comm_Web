@@ -26,6 +26,10 @@ Platform-wide changes (rates, policies, announcements, chat welcome) are recorde
 - Seller voucher changes, Seller/Escrow-side mutations and reads are not logged (reads are not audited anywhere).
 - The viewer is read-only by design; there is no delete or edit action.
 
+## 13 November 2026: viewer restyle
+
+The list follows the Admin design system. Search runs on Enter, the action dropdown applies as soon as an action is picked, and the From and To dates show **Apply dates** only after a change. An end date before the start date is caught in the browser and on the server ("End date is before the start date. Pick an end date on or after the start date."); an overlong search returns a message too. Actions use the shared status pill: green for approvals and restores, deep red for rejections and deletions, salmon for suspensions and deactivations, plum for changes. Each row has **View details** (a row click does the same) that opens the full entry, including the whole reason. Empty states cover no entries yet and no entries matching the filters (**Clear filters**). Pagination uses the shared Admin footer. Who can read the log and what is recorded are unchanged.
+
 ## Source evidence
 
 `app/Http/Controllers/Admin/AuditLogController.php`, `app/Models/AdminActionLog.php`, `resources/views/admin/audit-logs/index.blade.php`, `resources/views/admin/partials/sidebar.blade.php`.

@@ -7,7 +7,7 @@ Buyer asks Vendo for help; Admin answers and closes the request. Separate from *
 
 ## Buyer
 
-- **`GET /buyer/support`** (`buyer.support.index`): the Buyer's own tickets only, newest activity first, 10 per page, with Open / In review / Resolved counts. Linked from the buyer account menu as **Support**. Empty state points to the new-request page.
+- **`GET /buyer/support`** (`buyer.support.index`): the Buyer's own tickets only, newest activity first, 10 per page, with Open / In review / Resolved counts as status chips (optional `?status=` and `?q=` search by subject or ticket number). Linked from the buyer account menu as **Support**. Empty state points to the new-request page.
 - **`GET /buyer/support/create`**: topic (Order or delivery, Payment or refund, Account and login, Product or shop question, Something else), optional link to one of the Buyer's own orders (last 40), subject (3–140) and the first message (10–5000). A foreign order id is rejected server-side.
 - **`GET /buyer/support/{ticket}`**: the thread, staff replies labelled **Vendo Support**, plus a reply box. A reply on a resolved ticket is refused. While unresolved the Buyer can **mark it resolved**; the resolved ticket then shows a closed note instead of the reply box.
 - **`POST /buyer/support/{ticket}/messages`** (throttle 20/min) and **`POST /buyer/support/{ticket}/close`**.

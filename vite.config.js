@@ -21,6 +21,7 @@ export default defineConfig({
                 "resources/css/admin/seller-compliance.css",
                 "resources/css/admin/motion.css",
                 "resources/css/admin/complaints.css",
+                "resources/css/admin/support-ticket.css",
                 "resources/js/admin/sidebar.js",
                 "resources/js/admin/layout.js",
                 "resources/js/admin/dashboard.js",
@@ -28,11 +29,14 @@ export default defineConfig({
 
                 // Buyer (public storefront / landing page)
                 "resources/css/buyer/landing.css",
+                "resources/css/buyer/landing-mobile.css",
                 "resources/js/buyer/landing.js",
 
                 // Buyer app shell (sidebar + top bar) and dashboard
                 "resources/css/buyer/layout.css",
                 "resources/js/buyer/sidebar.js",
+                "resources/css/buyer/support-theme.css",
+                "resources/js/buyer/support.js",
 
                 // Seller
                 "resources/css/seller/seller-dashboard.css",
@@ -66,6 +70,8 @@ export default defineConfig({
                 "resources/css/seller/account.css",
                 "resources/css/seller/orders-theme.css",
                 "resources/css/seller/ops-theme.css",
+                "resources/css/seller/returns-theme.css",
+                "resources/js/seller/returns.js",
                 "resources/css/seller/shipments-theme.css",
                 "resources/css/seller/vouchers-theme.css",
                 "resources/css/seller/products-theme.css",

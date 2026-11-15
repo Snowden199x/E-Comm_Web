@@ -15,6 +15,10 @@ class SupportTicketController extends Controller
         $status = (string) $request->query('status', '');
         $category = (string) $request->query('category', '');
         $q = trim((string) $request->query('q', ''));
+        if (mb_strlen($q) > 100) {
+            return redirect()->route('admin.support-tickets.index', array_filter(['status' => $status, 'category' => $category]))
+                ->withErrors(['q' => 'Search is too long. Use 100 characters or fewer.']);
+        }
 
         $tickets = SupportTicket::query()
             ->with(['user:id,name,email', 'order:id,order_number'])
@@ -23,9 +27,10 @@ class SupportTicketController extends Controller
             ->when(isset(SupportTicket::CATEGORIES[$category]), fn ($query) => $query->where('category', $category))
             ->when($q !== '', function ($query) use ($q) {
                 $like = '%'.$q.'%';
-                $query->where(function ($inner) use ($like) {
+                $number = '%'.ltrim($q, '#').'%'; // "#12" finds ticket 12
+                $query->where(function ($inner) use ($like, $number) {
                     $inner->where('subject', 'like', $like)
-                        ->orWhere('id', 'like', $like)
+                        ->orWhere('id', 'like', $number)
                         ->orWhereHas('user', fn ($user) => $user->where('name', 'like', $like)->orWhere('email', 'like', $like));
                 });
             })
@@ -50,7 +55,7 @@ class SupportTicketController extends Controller
     public function show(int $ticket)
     {
         $record = SupportTicket::query()
-            ->with(['user:id,name,email,phone', 'order:id,order_number', 'messages.sender:id,name,role', 'messages.attachments'])
+            ->with(['user:id,name,email,phone_number', 'order:id,order_number', 'messages.sender:id,name,role', 'messages.attachments'])
             ->findOrFail($ticket);
 
         return view('admin.support-tickets.show', ['ticket' => $record]);
@@ -62,22 +67,33 @@ class SupportTicketController extends Controller
             'body' => ['required', 'string', 'min:2', 'max:5000'],
             'attachments' => ['nullable', 'array', 'max:2'],
             'attachments.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
-        ], ['body.required' => 'Write a reply before sending.']);
+        ], [
+            'body.required' => 'Reply is empty. Write your reply, then send it.',
+            'body.min' => 'Reply is too short. Add at least 2 characters.',
+            'body.max' => 'Reply is too long. Shorten it to 5,000 characters or fewer.',
+            'attachments.max' => 'Too many files. Attach 2 files or fewer.',
+            'attachments.*.mimes' => 'One file is not a supported type. Attach a JPG, PNG, WebP or PDF.',
+            'attachments.*.max' => 'One file is over 5 MB. Attach a smaller file.',
+            'attachments.*.file' => 'One file could not be uploaded. Choose it again.',
+        ]);
 
         $record = SupportTicket::query()->findOrFail($ticket);
         if ($record->status === SupportTicket::STATUS_RESOLVED) {
-            return back()->with('error', 'This request is already resolved. Change its status to In review to reply.');
+            return back()->with('error', 'This ticket is already resolved. Reopen it, then send your reply.');
         }
 
         $support->replyByAdmin(auth('admin')->user(), $record, $data['body'], $request->file('attachments', []));
 
-        return redirect()->route('admin.support-tickets.show', $record)->with('success', 'Reply sent to the buyer.');
+        return redirect()->route('admin.support-tickets.show', $record)->with('success', 'Reply sent. The buyer is notified.');
     }
 
     public function status(Request $request, int $ticket, SupportTicketService $support)
     {
         $data = $request->validate([
             'status' => ['required', 'string', 'in:'.implode(',', array_keys(SupportTicket::STATUSES))],
+        ], [
+            'status.required' => 'No status chosen. Pick Open, In review or Resolved.',
+            'status.in' => 'That status is not available. Pick Open, In review or Resolved.',
         ]);
 
         $record = SupportTicket::query()->with('user')->findOrFail($ticket);
@@ -87,6 +103,7 @@ class SupportTicketController extends Controller
             'Ticket #'.$record->id.' "'.$record->subject.'" set to '.strtolower(SupportTicket::STATUSES[$data['status']]));
 
         return redirect()->route('admin.support-tickets.show', $record)
-            ->with('success', 'Ticket marked '.strtolower(SupportTicket::STATUSES[$data['status']]).'.');
+            ->with('success', 'Ticket marked '.strtolower(SupportTicket::STATUSES[$data['status']]).'.'
+                .($data['status'] === SupportTicket::STATUS_RESOLVED ? ' The buyer is notified.' : ''));
     }
 }

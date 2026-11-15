@@ -88,7 +88,7 @@ class OrderReturnService
                 'title' => $order->number.': Return requested',
                 'message' => 'The buyer asked to return this order. Reason: '.$request->reason_label
                     .($details !== '' ? ' — '.$details : ''),
-                'link' => route('seller.returns.index'),
+                'link' => route('seller.returns.index', ['return' => $request->id]),
             ]);
 
             return $request;
