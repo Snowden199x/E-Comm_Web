@@ -30,11 +30,13 @@ class NotificationController extends Controller
             $record->update(['read_at' => now()]);
         }
         $path = parse_url((string) $record->link, PHP_URL_PATH);
-        if (! is_string($path) || ! preg_match('~^/logistics/(dashboard|riders|incoming-parcels|parcel-sorting|delivery-assignments|delivery-monitoring|reports)(/|$)~', $path)) {
+        if (! is_string($path) || ! preg_match('~^/logistics/(dashboard|riders|incoming-parcels|parcel-sorting|delivery-assignments|delivery-monitoring|dispatch|facilities|reports)(/|$)~', $path)) {
             return redirect()->route('logistics.notifications.index');
         }
 
-        return redirect()->to(url($path));
+        $query = parse_url((string) $record->link, PHP_URL_QUERY);
+
+        return redirect()->to(url($path.($query ? '?'.$query : '')));
     }
 
     public function readAll(Request $request)

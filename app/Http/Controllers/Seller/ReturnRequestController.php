@@ -46,7 +46,7 @@ class ReturnRequestController extends Controller
                         ->orWhereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', '%'.$q.'%'));
                 });
             })
-            ->with(['order.items.product', 'buyer:id,name'])
+            ->with(['order.items.product.images', 'buyer:id,name', 'pickupRider:id,name'])
             // Requests waiting for a decision come first, oldest first; handled ones follow, newest first.
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
             ->orderByRaw("CASE WHEN status = 'pending' THEN created_at END ASC")
@@ -65,7 +65,16 @@ class ReturnRequestController extends Controller
         $refundedCents = (int) OrderReturnRequest::query()->where('seller_id', $sellerId)
             ->where('status', OrderReturnRequest::STATUS_APPROVED)->sum('refund_cents');
 
-        return view('seller.returns.index', compact('returns', 'counts', 'onTheWay', 'refundedCents', 'status', 'reason', 'q'));
+        // Notification links arrive as ?return=ID. Open that return even when it is not on this page of the list.
+        $focusId = (int) $request->query('return');
+        $focus = $focusId > 0
+            ? OrderReturnRequest::query()->where('seller_id', $sellerId)
+                ->with(['order.items.product.images', 'buyer:id,name', 'pickupRider:id,name'])->find($focusId)
+            : null;
+        $focusMissing = $focusId > 0 && ! $focus;
+        $focusOffPage = $focus && ! $returns->getCollection()->contains('id', $focus->id);
+
+        return view('seller.returns.index', compact('returns', 'counts', 'onTheWay', 'refundedCents', 'status', 'reason', 'q', 'focus', 'focusMissing', 'focusOffPage'));
     }
 
     public function approve(Request $request, int $returnRequest, OrderReturnService $returns)
