@@ -23,6 +23,11 @@ class SupportTicketAttachment extends Model
         return str_starts_with((string) $this->mime, 'image/');
     }
 
+    public function isPdf(): bool
+    {
+        return $this->mime === 'application/pdf' || str_ends_with(strtolower((string) $this->original_name), '.pdf');
+    }
+
     public function sizeLabel(): string
     {
         return $this->size >= 1048576

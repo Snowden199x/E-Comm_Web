@@ -143,9 +143,15 @@ class SupportTicketService
         }
     }
 
-    public function setStatus(SupportTicket $ticket, string $status): SupportTicket
+    /**
+     * $byBuyer = the Buyer resolved it themselves. Then Vendo Admin is told (user_id null = Admin bell)
+     * and the Buyer gets no "Vendo marked this resolved" notice for their own action.
+     */
+    public function setStatus(SupportTicket $ticket, string $status, bool $byBuyer = false): SupportTicket
     {
         abort_unless(isset(SupportTicket::STATUSES[$status]), 422, 'Choose a valid status.');
+
+        $wasResolved = $ticket->status === SupportTicket::STATUS_RESOLVED;
 
         $ticket->update([
             'status' => $status,
@@ -153,11 +159,33 @@ class SupportTicketService
         ]);
 
         if ($status === SupportTicket::STATUS_RESOLVED) {
+            if ($byBuyer) {
+                $ticket->loadMissing('user:id,name');
+                Notification::create([
+                    'user_id' => null,
+                    'type' => 'support_ticket',
+                    'title' => 'Support ticket resolved: '.$ticket->subject,
+                    'message' => ($ticket->user?->name ?? 'The buyer').' marked support ticket #'.$ticket->id.' as resolved.',
+                    'link' => route('admin.support-tickets.show', $ticket),
+                ]);
+            } else {
+                Notification::create([
+                    'user_id' => $ticket->user_id,
+                    'type' => 'support_reply',
+                    'title' => 'Support request resolved: '.$ticket->subject,
+                    'message' => 'Vendo marked this request resolved. Open it to read the last reply.',
+                    'link' => route('buyer.support.show', $ticket),
+                ]);
+            }
+        }
+
+        // Admin reopened a resolved ticket: tell the Buyer so they know they can reply again.
+        if ($wasResolved && $status !== SupportTicket::STATUS_RESOLVED && ! $byBuyer) {
             Notification::create([
                 'user_id' => $ticket->user_id,
                 'type' => 'support_reply',
-                'title' => 'Support request resolved: '.$ticket->subject,
-                'message' => 'Vendo marked this request resolved. Open it to read the last reply.',
+                'title' => 'Support request reopened: '.$ticket->subject,
+                'message' => 'Vendo reopened this request. Open it to read the update and reply.',
                 'link' => route('buyer.support.show', $ticket),
             ]);
         }
