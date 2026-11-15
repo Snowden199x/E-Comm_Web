@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Seller;
 
+use App\Support\SellerSearch;
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
 use Illuminate\Http\Request;
@@ -98,17 +99,11 @@ class CompletedOrdersController extends Controller
     private function scopedOrders(int $sellerId, array $filters)
     {
         return Order::query()->where('seller_id', $sellerId)->whereIn('status', Order::SALES_STATUSES)
-            ->when($filters['search'] ?? null, function ($query, string $search) {
-                $term = trim($search);
-                $id = preg_replace('/^VN-0*/i', '', $term);
-                $query->where(function ($query) use ($term, $id) {
-                    if ($id !== '' && ctype_digit($id)) {
-                        $query->orWhere('orders.id', (int) $id);
-                    }
-                    $query->orWhere('tracking_number', 'like', "%{$term}%")
-                        ->orWhere('carrier_tracking_number', 'like', "%{$term}%")
-                        ->orWhereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', "%{$term}%"))
-                        ->orWhereHas('items.product', fn ($product) => $product->where('name', 'like', "%{$term}%"));
+            ->when(SellerSearch::clean($filters['search'] ?? ''), function ($query, string $term) {
+                $query->where(function ($query) use ($term) {
+                    $query->whereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', SellerSearch::like($term)))
+                        ->orWhereHas('items.product', fn ($product) => $product->where('name', 'like', SellerSearch::like($term)));
+                    SellerSearch::orOrderColumns($query, $term);
                 });
             })
             ->when($filters['from'] ?? null, fn ($query, $date) => $query->whereDate('delivered_at', '>=', $date))
@@ -140,15 +135,11 @@ class CompletedOrdersController extends Controller
                     return $filters['courier'] === '0' ? $q->whereNull('courier_id') : $q->where('courier_id', $filters['courier']);
                 })
                 ->when($filters['payment'] ?? null, fn ($q, $payment) => $q->where('payment_mode', $payment))
-                ->when($filters['search'] ?? null, function ($q, string $search) {
-                    $term = trim($search);
-                    $id = preg_replace('/^VN-0*/i', '', $term);
-                    $q->where(function ($match) use ($term, $id) {
-                        if ($id !== '' && ctype_digit($id)) $match->orWhere('orders.id', (int) $id);
-                        $match->orWhere('tracking_number', 'like', "%{$term}%")
-                            ->orWhere('carrier_tracking_number', 'like', "%{$term}%")
-                            ->orWhereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', "%{$term}%"))
-                            ->orWhereHas('items.product', fn ($product) => $product->where('name', 'like', "%{$term}%"));
+                ->when(SellerSearch::clean($filters['search'] ?? ''), function ($q, string $term) {
+                    $q->where(function ($match) use ($term) {
+                        $match->whereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', SellerSearch::like($term)))
+                            ->orWhereHas('items.product', fn ($product) => $product->where('name', 'like', SellerSearch::like($term)));
+                        SellerSearch::orOrderColumns($match, $term);
                     });
                 });
             $counts[$status] = $query->count();

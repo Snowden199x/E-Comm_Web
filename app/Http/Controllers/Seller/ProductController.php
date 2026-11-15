@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Seller;
 
+use App\Support\SellerSearch;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Communication\Notification;
@@ -32,6 +33,11 @@ class ProductController extends Controller
             'search' => 'nullable|string|max:100', 'category' => 'nullable|integer',
             'stock_status' => ['nullable', Rule::in(['in_stock', 'low_stock', 'out_of_stock', 'alerts'])],
             'page' => 'nullable|integer|min:1',
+        ], [
+            'search.max' => 'Search is too long. Use 100 characters or fewer.',
+            'category.integer' => 'That category is not valid. Choose a category from the list or clear the filter.',
+            'stock_status.in' => 'Choose All, In stock, Low stock, Out of stock or Needs attention.',
+            'page.min' => 'That page does not exist. Go back to the first page.',
         ]);
         $base = Product::where('seller_id', $request->user()->id);
         $counts = [
@@ -43,8 +49,8 @@ class ProductController extends Controller
             ->withCount(['products' => fn ($query) => $query->where('seller_id', $request->user()->id)])
             ->orderBy('name')->get();
         $query = (clone $base)->with(['images', 'category']);
-        if ($search = trim($filters['search'] ?? '')) {
-            $query->where(fn ($q) => $q->where('name', 'like', '%'.$search.'%')->orWhere('product_code', 'like', '%'.$search.'%'));
+        if ($search = SellerSearch::clean($filters['search'] ?? '')) {
+            $query->where(fn ($q) => $q->where('name', 'like', SellerSearch::like($search))->orWhere('product_code', 'like', SellerSearch::like($search)));
         }
         if (! empty($filters['category'])) {
             $query->where('category_id', $filters['category']);

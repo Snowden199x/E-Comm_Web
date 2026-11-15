@@ -77,7 +77,7 @@
             <label class="do-search">
                 <span class="ops-sr-only">Search returns</span>
                 <svg class="do-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
-                <input type="search" name="q" value="{{ $q }}" placeholder="Search order or buyer, then press Enter" maxlength="100" autocomplete="off">
+                <input type="search" name="q" value="{{ $q }}" placeholder="Search order, buyer, or product, then press Enter" maxlength="100" autocomplete="off">
             </label>
             <label>
                 <span class="ops-sr-only">Reason</span>
