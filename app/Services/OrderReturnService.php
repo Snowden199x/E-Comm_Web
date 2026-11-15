@@ -6,6 +6,7 @@ use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
 use App\Models\Ecommerce\OrderReturnRequest;
 use App\Models\Ecommerce\Product;
+use App\Models\Finance\DeliveryFeeSetting;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -111,13 +112,20 @@ class OrderReturnService
             $this->restoreStock($order, $seller);
 
             $refundCents = max(0, (int) round($order->payable_total * 100));
+            $pickupFeeCents = max(0, (int) round(DeliveryFeeSetting::returnPickupFee() * 100));
+            $pickupFeePayer = OrderReturnRequest::pickupFeePayer((string) $request->reason);
+            $buyerRefundCents = $pickupFeePayer === OrderReturnRequest::PICKUP_FEE_PAYER_BUYER
+                ? max(0, $refundCents - $pickupFeeCents)
+                : $refundCents;
             $fromStatus = $order->status;
             $order->update(['status' => 'returned']);
             $order->statusEvents()->create([
                 'user_id' => $seller->id,
                 'from_status' => $fromStatus,
                 'to_status' => 'returned',
-                'note' => 'Return approved by seller. Refund ₱'.number_format($refundCents / 100, 2).' recorded for the buyer.',
+                'note' => 'Return approved by seller. Refund ₱'.number_format($buyerRefundCents / 100, 2).' recorded for the buyer.'
+                    .' Return pickup fee ₱'.number_format($pickupFeeCents / 100, 2).' '
+                    .($pickupFeePayer === OrderReturnRequest::PICKUP_FEE_PAYER_SELLER ? 'paid by the seller.' : 'deducted from the buyer refund.'),
             ]);
 
             $request->update([
@@ -125,6 +133,8 @@ class OrderReturnService
                 'decided_by' => $seller->id,
                 'decided_at' => now(),
                 'refund_cents' => $refundCents,
+                'pickup_fee_cents' => $pickupFeeCents,
+                'pickup_fee_payer' => $pickupFeePayer,
                 'return_status' => OrderReturnRequest::RETURN_STATUS_PENDING_PICKUP,
                 'pickup_rider_id' => $order->delivery_courier_id,
             ]);
@@ -152,7 +162,11 @@ class OrderReturnService
                 'user_id' => $order->buyer_id,
                 'type' => 'order_update',
                 'title' => $order->number.': Return approved',
-                'message' => 'The seller approved your return. Refund due: ₱'.number_format($refundCents / 100, 2).'. The rider will collect the parcel.',
+                'message' => 'The seller approved your return. Refund due: ₱'.number_format($buyerRefundCents / 100, 2)
+                    .($pickupFeePayer === OrderReturnRequest::PICKUP_FEE_PAYER_BUYER && $pickupFeeCents > 0
+                        ? ' after the ₱'.number_format($pickupFeeCents / 100, 2).' return pickup fee.'
+                        : '.')
+                    .' The rider will collect the parcel.',
                 'link' => route('buyer.orders.show', $order),
             ]);
 

@@ -19,6 +19,7 @@
 </head>
 
 <body class="antialiased bg-[#f5f0eb]">
+    @php($isUnified = $unified ?? false)
 
     <div class="min-h-screen flex flex-col lg:flex-row">
 
@@ -68,9 +69,14 @@
 
                     {{-- Heading --}}
                     <h2 class="text-[1.6rem] font-bold text-gray-900 mb-1 tracking-tight">Login</h2>
-                    <p class="text-[0.8rem] text-gray-500 mb-7 font-normal leading-snug">
-                        Enter your credentials to access your Vendo account.
+                    <p class="text-[0.8rem] text-gray-500 mb-3 font-normal leading-snug">
+                        {{ $isUnified ? 'Sign in with your Buyer or Seller account.' : 'Enter your credentials to access your Vendo account.' }}
                     </p>
+                    @if ($isUnified)
+                        <p class="mb-7 text-[0.72rem] leading-snug text-gray-400">
+                            Logistics partners and Admins use their own login pages.
+                        </p>
+                    @endif
 
                     {{-- Session status --}}
                     @if (session('status'))
@@ -79,7 +85,7 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('buyer.login.store') }}" x-data="{ showPassword: false }">
+                    <form method="POST" action="{{ $isUnified ? route('login.store') : route('buyer.login.store') }}" x-data="{ showPassword: false }">
                         @csrf
 
                         {{-- Email --}}
@@ -145,16 +151,18 @@
                             Login
                         </button>
 
-                        {{-- Divider --}}
-                        <div class="flex items-center gap-3 my-5">
-                            <div class="flex-1 h-px bg-gray-200"></div>
-                            <span
-                                class="text-[0.78rem] text-gray-400 font-normal px-1 border border-gray-200 rounded-full w-7 h-7 flex items-center justify-center">or</span>
-                            <div class="flex-1 h-px bg-gray-200"></div>
-                        </div>
+                        @unless ($isUnified)
+                            {{-- Divider --}}
+                            <div class="flex items-center gap-3 my-5">
+                                <div class="flex-1 h-px bg-gray-200"></div>
+                                <span
+                                    class="text-[0.78rem] text-gray-400 font-normal px-1 border border-gray-200 rounded-full w-7 h-7 flex items-center justify-center">or</span>
+                                <div class="flex-1 h-px bg-gray-200"></div>
+                            </div>
 
-                        {{-- Continue with Google --}}
-                        @include('auth.partials.google-signin', ['role' => 'buyer'])
+                            {{-- Continue with Google --}}
+                            @include('auth.partials.google-signin', ['role' => 'buyer'])
+                        @endunless
 
                     </form>
 

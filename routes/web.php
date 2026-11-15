@@ -134,7 +134,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('/support-tickets/{ticket}/status', [\App\Http\Controllers\Admin\SupportTicketController::class, 'status'])->whereNumber('ticket')->name('support-tickets.status');
         Route::get('/support-tickets/attachments/{attachment}', [\App\Http\Controllers\SupportTicketAttachmentController::class, 'admin'])->whereNumber('attachment')->name('support-tickets.attachments.show');
         Route::get('/support-tickets/attachments/{attachment}/preview', [\App\Http\Controllers\SupportTicketAttachmentController::class, 'adminPreview'])->whereNumber('attachment')->name('support-tickets.attachments.preview');
-        Route::post('/limits/{order}/attempt', [LimitOverrideController::class, 'grantAttempt'])->whereNumber('order')->name('limit-overrides.attempt');
         Route::post('/limits/{order}/window', [LimitOverrideController::class, 'extendReturnWindow'])->whereNumber('order')->name('limit-overrides.window');
         Route::get('/logistics-coverage', [\App\Http\Controllers\Admin\LogisticsCoverageController::class, 'index'])->name('logistics-coverage.index');
         Route::get('/logistics-documents', [\App\Http\Controllers\Admin\LogisticsDocumentReviewController::class, 'index'])->name('logistics-documents.index');
@@ -389,6 +388,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::patch('/returns/{returnRequest}/reject', [SellerReturnRequestController::class, 'reject'])->whereNumber('returnRequest')->name('returns.reject');
         Route::patch('/returns/{returnRequest}/received', [SellerReturnRequestController::class, 'received'])->whereNumber('returnRequest')->name('returns.received');
         Route::get('/earnings', [\App\Http\Controllers\Seller\EarningsController::class, 'index'])->name('earnings.index');
+        Route::get('/earnings/pickup-fees', [\App\Http\Controllers\Seller\EarningsController::class, 'pickupFees'])->name('earnings.pickup-fees');
         Route::get('/complaints', [\App\Http\Controllers\Seller\ComplaintController::class, 'index'])->name('complaints.index');
         Route::get('/complaints/{complaint}/evidence/{evidence}', [\App\Http\Controllers\Seller\ComplaintController::class, 'evidence'])->whereNumber(['complaint', 'evidence'])->name('complaints.evidence');
         Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('vouchers.index');

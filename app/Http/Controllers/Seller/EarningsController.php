@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
+use App\Models\Ecommerce\OrderReturnRequest;
 use App\Models\Finance\CommissionSetting;
 use App\Services\SellerEarningsCalculator;
 use Illuminate\Http\Request;
@@ -43,6 +44,31 @@ class EarningsController extends Controller
             'orders' => $orders,
             'creditedCents' => (int) $rows->sum('net_cents'),
             'commissionCents' => (int) $rows->sum('commission_cents'),
+        ]);
+    }
+
+    /**
+     * The return pickup fees charged to this Seller. They are recorded on each approved return;
+     * no Seller balance is debited because the project has no payout ledger yet.
+     */
+    public function pickupFees(Request $request): View
+    {
+        $sellerId = (int) $request->user()->id;
+        $base = OrderReturnRequest::query()
+            ->where('seller_id', $sellerId)
+            ->where('status', OrderReturnRequest::STATUS_APPROVED)
+            ->where('pickup_fee_payer', OrderReturnRequest::PICKUP_FEE_PAYER_SELLER)
+            ->where('pickup_fee_cents', '>', 0);
+
+        $fees = $base->clone()->with(['order', 'buyer:id,name', 'pickupRider:id,name'])
+            ->latest('decided_at')->latest('id')->paginate(15)->withQueryString();
+
+        return view('seller.earnings.pickup-fees', [
+            'fees' => $fees,
+            'chargedCents' => (int) $base->clone()->sum('pickup_fee_cents'),
+            'collected' => $base->clone()->whereNotNull('picked_up_at')->count(),
+            'waiting' => $base->clone()->whereNull('picked_up_at')->count(),
+            'total' => $base->clone()->count(),
         ]);
     }
 }

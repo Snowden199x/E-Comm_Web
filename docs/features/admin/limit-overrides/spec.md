@@ -3,14 +3,13 @@
 **Status:** Implemented in code; owner migration and browser verification pending.
 **Reviewed:** 11 November 2026
 
-Admin can change the two hard limits the Buyer and Logistics flows enforce: the **7-day return window** and the **two delivery attempts**. Money stays display-only; these are lifecycle overrides, not refunds or payouts.
+Admin manages the Buyer **7-day return window**. Delivery attempt exceptions belong to the destination Station Hub because it manages the last-mile delivery. Money stays display-only; these are lifecycle overrides, not refunds or payouts.
 
 ## Routes
 
 | Route | Method | Purpose |
 |---|---|---|
 | `admin.limit-overrides.index` (`GET admin/limits`) | GET | Search an order and see both limits |
-| `admin.limit-overrides.attempt` (`POST admin/limits/{order}/attempt`) | POST | Grant one more delivery attempt |
 | `admin.limit-overrides.window` (`POST admin/limits/{order}/window`) | POST | Push the return deadline later |
 
 All three sit inside the Admin group (`auth:admin`, `check.admin.active`, `force.password.change`). The sidebar entry is **Limits & Overrides** (`rotate-ccw` icon), directly after Reports.
@@ -21,12 +20,7 @@ All three sit inside the Admin group (`auth:admin`, `check.admin.active`, `force
 - A search accepts `VN-000123` / `#123` / the bare id, or a tracking number.
 - Each row shows the order and tracking number, buyer and seller, parcel status, `delivery_attempts of max` with the last failure time and any granted extras, and the current return deadline. Overrides use `<details>` forms so the table stays compact, and a failed save reopens the page with the error and the typed values.
 
-## Granting one more attempt
-
-- Allowed only while the order is `delivery_failed` or `assigned_to_rider`, at least one attempt has failed, and fewer than **3** extras were already granted.
-- In one transaction with the order row locked: `delivery_extra_attempts + 1`, `delivery_failed_at = now()` (which restarts the next-day clock), and `limit_override_by` / `limit_override_at` / `limit_override_note` are set from the signed-in Admin and the required reason (5–450 characters).
-- The effective maximum becomes `DeliveryCutoff::MAX_DELIVERY_ATTEMPTS + delivery_extra_attempts`, which the cutoff sweep, the stale-parcel sweep and the Rider reschedule endpoint all read.
-- Notifies the Buyer, the assigned Rider and the destination hub.
+Delivery attempts remain visible as platform rules; this page no longer grants extra attempts. That action is available in the destination Station Hub Delivery Queue.
 
 ## Extending the return window
 
@@ -37,13 +31,17 @@ All three sit inside the Admin group (`auth:admin`, `check.admin.active`, `force
 
 ## Audit
 
-Every override writes an `order_status_events` row with the same `from_status`/`to_status` (no lifecycle change) whose note is `Admin <name> granted one more delivery attempt (...)` or `Admin <name> extended the return window to <date>: <reason>`. The same Admin, time and reason are also stored on the order (`limit_override_by`, `limit_override_at`, `limit_override_note`) for the page and for later reports. There is no separate audit table.
+Every Admin return-window override writes an `order_status_events` row with the same `from_status`/`to_status` (no lifecycle change), plus the Admin, time and reason on the order (`limit_override_by`, `limit_override_at`, `limit_override_note`). Logistics attempt grants are recorded in the same order timeline and override fields, attributed to the Station Hub manager. There is no separate audit table.
 
 ## Not built
 
 - No revoke/undo action and no bulk override; a second grant is a separate action and a shorter window cannot be set.
 - No reason categories, attachment or approval-of-override workflow.
 - The page does not create refunds or payouts; it only moves deadlines and attempt limits.
+
+## 15 November 2026: ownership update
+
+The Admin page now grants return-window extensions only. Extra delivery attempts are granted by the destination Station Hub from its Delivery Queue; the Admin attempt route and form were removed. The standard attempt count and maximum of three extras are unchanged.
 
 ## 13 November 2026: page restyle
 

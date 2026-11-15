@@ -1,22 +1,10 @@
 /* =========================================================
-   Landing · phone fixes and the "Get the app" band
+   Landing · phone fixes and the compact hero app card
    Loaded after landing.css, so these rules win where they overlap.
    ========================================================= */
 
 /* Never let the page scroll sideways. Body already hides it; html needs it too on phones. */
 html { overflow-x: clip; }
-
-/* ---------- Get the app ---------- */
-.app-band {
-  display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: center;
-  padding: 48px 56px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius-l);
-}
-.app-copy h2 { font-size: clamp(26px, 3vw, 36px); margin-top: 10px; }
-.app-copy p { margin-top: 14px; max-width: 460px; font-size: 16px; line-height: 1.6; color: var(--ink-soft); }
-.app-qr { display: grid; justify-items: center; gap: 12px; margin: 0; }
-.app-qr-card { padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 10px 24px -14px rgba(64, 33, 67, .35); }
-.app-qr-card img { display: block; width: 140px; height: 140px; image-rendering: pixelated; }
-.app-qr figcaption { max-width: 160px; text-align: center; font-size: 12px; line-height: 1.4; color: var(--ink-soft); }
 
 /* ---------- Hero app card (first screen) ---------- */
 .hero-app {
@@ -34,9 +22,6 @@ html { overflow-x: clip; }
 
 /* ---------- Tablet and phone ---------- */
 @media (max-width: 760px) {
-  .app-band { grid-template-columns: 1fr; gap: 24px; padding: 32px 24px; justify-items: start; }
-  .app-qr { justify-self: center; }
-
   /* Header: logo, search, cart, menu. Get Started and Log in live in the menu on phones. */
   nav.navbar .nav-right > .btn-primary { display: none; }
 
@@ -76,8 +61,6 @@ html { overflow-x: clip; }
 @media (max-width: 480px) {
   /* The card row bled 4px past the screen edge. */
   .product-scroller { margin-right: -16px; padding-right: 16px; }
-  .app-band { padding: 28px 20px; }
-  .app-qr-card img { width: 128px; height: 128px; }
 }
 
 /* Small phones: six labels no longer fit side by side, so the steps stack with the line on the left. */

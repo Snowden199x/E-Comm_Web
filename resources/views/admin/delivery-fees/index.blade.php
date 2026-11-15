@@ -5,8 +5,10 @@
     @php
         $savedVendo = number_format((float) $setting->vendo_delivery_commission_rate, 2, '.', '');
         $savedSeller = number_format((float) $setting->seller_commission_rate, 2, '.', '');
+        $savedPickup = number_format((float) $setting->return_pickup_fee, 2, '.', '');
         $vendoStart = old('vendo_delivery_commission_rate', $savedVendo);
         $sellerStart = old('seller_commission_rate', $savedSeller);
+        $pickupStart = old('return_pickup_fee', $savedPickup);
 
         $input = 'h-10 w-full rounded-lg border bg-white pl-3 pr-9 text-sm tabular-nums text-vd-ink transition-colors duration-200
                   focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-vd-tint disabled:text-vd-muted';
@@ -22,9 +24,14 @@
         // Rates form
         vendo: @js((string) $vendoStart),
         seller: @js((string) $sellerStart),
-        saved: { vendo: @js($savedVendo), seller: @js($savedSeller) },
-        srv: { vendo: @js($errors->first('vendo_delivery_commission_rate')), seller: @js($errors->first('seller_commission_rate')) },
-        touched: { vendo: false, seller: false },
+        pickup: @js((string) $pickupStart),
+        saved: { vendo: @js($savedVendo), seller: @js($savedSeller), pickup: @js($savedPickup) },
+        srv: {
+            vendo: @js($errors->first('vendo_delivery_commission_rate')),
+            seller: @js($errors->first('seller_commission_rate')),
+            pickup: @js($errors->first('return_pickup_fee')),
+        },
+        touched: { vendo: false, seller: false, pickup: false },
 
         // Preview example
         fee: 100, rider: 10, item: 500,
@@ -49,22 +56,35 @@
             if (!/^\d+(\.\d{1,2})?$/.test(s)) return 'Use at most 2 decimals, like 7.25.';
             return '';
         },
+        checkFee(v) {
+            const s = String(v).trim();
+            if (s === '') return 'Enter a fee from 0 to 1000.';
+            const n = Number(s);
+            if (Number.isNaN(n)) return 'Use numbers only, like 10 or 12.50.';
+            if (n < 0 || n > 1000) return 'Enter a fee from 0 to 1000.';
+            if (!/^\d+(\.\d{1,2})?$/.test(s)) return 'Use at most 2 decimals, like 12.50.';
+            return '';
+        },
         get vendoError() { return this.srv.vendo || (this.touched.vendo ? this.check(this.vendo) : ''); },
         get sellerError() { return this.srv.seller || (this.touched.seller ? this.check(this.seller) : ''); },
-        get hasError() { return !!(this.check(this.vendo) || this.check(this.seller)); },
-        get dirty() { return Number(this.vendo) !== Number(this.saved.vendo) || Number(this.seller) !== Number(this.saved.seller); },
+        get pickupError() { return this.srv.pickup || (this.touched.pickup ? this.checkFee(this.pickup) : ''); },
+        get hasError() { return !!(this.check(this.vendo) || this.check(this.seller) || this.checkFee(this.pickup)); },
+        get dirty() { return Number(this.vendo) !== Number(this.saved.vendo) || Number(this.seller) !== Number(this.saved.seller) || Number(this.pickup) !== Number(this.saved.pickup); },
         rate(v) { const n = Number(v); return (Number.isFinite(n) ? String(n) : '?') + '%'; },
+        showFee(v) { const n = Number(v); return '₱' + (Number.isFinite(n) ? n.toFixed(2) : '?'); },
         get changes() {
             const out = [];
             if (Number(this.vendo) !== Number(this.saved.vendo)) out.push('Delivery fee commission ' + this.rate(this.saved.vendo) + ' → ' + this.rate(this.vendo));
             if (Number(this.seller) !== Number(this.saved.seller)) out.push('Seller commission ' + this.rate(this.saved.seller) + ' → ' + this.rate(this.seller));
+            if (Number(this.pickup) !== Number(this.saved.pickup)) out.push('Return pickup fee ' + this.showFee(this.saved.pickup) + ' → ' + this.showFee(this.pickup));
             return out;
         },
         discard() {
             this.vendo = this.saved.vendo;
             this.seller = this.saved.seller;
-            this.srv = { vendo: '', seller: '' };
-            this.touched = { vendo: false, seller: false };
+            this.pickup = this.saved.pickup;
+            this.srv = { vendo: '', seller: '', pickup: '' };
+            this.touched = { vendo: false, seller: false, pickup: false };
         },
 
         // ----- Preview (in cents, same rounding as the server) -------------------
@@ -75,7 +95,7 @@
         get vendoCents() { return this.pct(this.remaining, this.vendo); },
         get logisticsCents() { return this.remaining - this.vendoCents; },
         get sellerCents() { return this.pct(this.item * 100, this.seller); },
-        show(cents, field) { return this.check(this[field]) ? '—' : this.peso(cents); },
+        show(cents, field) { return (field === 'pickup' ? this.checkFee(this.pickup) : this.check(this[field])) ? '—' : this.peso(cents); },
 
         // ----- Distributions table --------------------------------------------
         onTableClick(event) {
@@ -168,9 +188,9 @@
                 @csrf @method('PUT')
 
                 <div class="p-5">
-                    <h2 class="font-display text-base font-semibold text-vd-ink">Commission rates</h2>
+                    <h2 class="font-display text-base font-semibold text-vd-ink">Rates and fees</h2>
                     <p class="mt-1 text-sm text-vd-muted">
-                        New orders use these rates. Existing orders keep theirs.
+                        New orders and new return approvals use these rates and fees. Existing orders keep theirs.
                         @if ($setting->updatedBy)
                             Last changed by {{ $setting->updatedBy->name }}, {{ $setting->updated_at?->format('M j, Y, g:i A') }}.
                         @endif
@@ -178,7 +198,7 @@
 
                     <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
                         <div>
-                            <label for="vendoRate" class="mb-1.5 block text-[13px] font-medium text-vd-ink">Delivery fee commission</label>
+                            <label for="vendoRate" class="mb-1.5 block text-[13px] font-medium text-vd-ink">Logistics fee commission</label>
                             <div class="relative">
                                 <input id="vendoRate" name="vendo_delivery_commission_rate" type="text" inputmode="decimal" autocomplete="off"
                                     x-model="vendo" @input="srv.vendo = ''; touched.vendo = true" @blur="touched.vendo = true" @disabled(! $canEdit)
@@ -204,6 +224,20 @@
                             <p id="sellerHint" class="mt-1.5 text-xs" :class="sellerError ? 'text-vd-danger-ink' : 'text-vd-muted'"
                                 x-text="sellerError || 'Vendo\'s share of the item price, taken from the Seller.'"></p>
                         </div>
+
+                        <div class="sm:col-span-2">
+                            <label for="pickupFee" class="mb-1.5 block text-[13px] font-medium text-vd-ink">Return pickup fee</label>
+                            <div class="relative">
+                                <input id="pickupFee" name="return_pickup_fee" type="text" inputmode="decimal" autocomplete="off"
+                                    x-model="pickup" @input="srv.pickup = ''; touched.pickup = true" @blur="touched.pickup = true" @disabled(! $canEdit)
+                                    :aria-invalid="pickupError ? 'true' : 'false'" aria-describedby="pickupHint"
+                                    :class="pickupError ? 'border-vd-danger-ink focus:border-vd-danger-ink focus:ring-vd-danger-ink/20' : 'border-vd-line-strong hover:border-vd-plum-soft focus:border-vd-plum focus:ring-vd-plum/20'"
+                                    class="{{ $input }}">
+                                <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-vd-muted" aria-hidden="true">PHP</span>
+                            </div>
+                            <p id="pickupHint" class="mt-1.5 text-xs" :class="pickupError ? 'text-vd-danger-ink' : 'text-vd-muted'"
+                                x-text="pickupError || 'Paid to the rider after a successful return pickup. The seller pays it for damaged, wrong, missing or not-as-described items; for Other it is deducted from the buyer refund.'"></p>
+                        </div>
                     </div>
                 </div>
 
@@ -225,13 +259,13 @@
                                 class="inline-flex h-10 items-center rounded-lg bg-vd-plum px-5 text-[13px] font-semibold text-white transition-all duration-200
                                        hover:bg-vd-plum-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-vd-plum disabled:active:scale-100
                                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40 focus-visible:ring-offset-2">
-                                Save rates
+                                Save changes
                             </button>
                         </div>
                     @else
                         <p class="flex items-center gap-2 text-[13px] text-vd-muted">
                             <x-admin.icon name="lock" class="h-4 w-4 flex-shrink-0" />
-                            Only a super admin can change these rates. Ask one to update them.
+                            Only a super admin can change these rates and fees. Ask one to update them.
                         </p>
                     @endif
                 </div>
@@ -254,6 +288,11 @@
                     <div class="flex justify-between py-1.5"><dt class="text-vd-muted">Item price</dt><dd class="tabular-nums text-vd-ink" x-text="peso(item * 100)"></dd></div>
                     <div class="flex justify-between py-1.5"><dt class="font-medium text-vd-ink">Seller commission</dt><dd class="font-semibold tabular-nums text-vd-ink" x-text="show(sellerCents, 'seller')"></dd></div>
                     <div class="flex justify-between py-1.5"><dt class="text-vd-muted">Seller keeps</dt><dd class="tabular-nums text-vd-ink" x-text="show(item * 100 - sellerCents, 'seller')"></dd></div>
+                </dl>
+
+                <dl class="mt-3 border-t border-vd-line pt-3 text-sm">
+                    <div class="flex justify-between py-1.5"><dt class="text-vd-muted">Return pickup fee</dt><dd class="font-semibold tabular-nums text-vd-ink" x-text="show(pickup * 100, 'pickup')"></dd></div>
+                    <p class="mt-1 text-[12px] text-vd-muted">Paid to the rider after collection, never at handover.</p>
                 </dl>
             </section>
         </div>

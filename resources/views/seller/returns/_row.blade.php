@@ -6,7 +6,8 @@
     $first = $items->first();
     $thumb = $first?->product?->images?->first();
     $summary = $first ? (($first->product?->name ?? 'Product removed').($items->count() > 1 ? ' +'.($items->count() - 1).' more' : '')) : null;
-    $refund = $r->status === Ret::STATUS_APPROVED ? $money($r->refund_cents / 100) : ($order ? $money($order->payable_total) : '—');
+    $refund = $r->status === Ret::STATUS_APPROVED ? $money($r->buyerRefundCents() / 100) : ($order ? $money($order->payable_total) : '—');
+    $sellerFee = $r->status === Ret::STATUS_APPROVED ? $r->sellerPickupFeeCents() : 0;
     $canReceive = $r->status === Ret::STATUS_APPROVED && $r->return_status === Ret::RETURN_STATUS_PICKED_UP;
     $buyerName = $r->buyer?->name ?? 'Buyer';
 
@@ -43,7 +44,7 @@
         {{ $r->reason_label }}
         @if (filled($r->details))<small class="rt-clamp">{{ $r->details }}</small>@endif
     </td>
-    <td data-label="Refund"><strong>{{ $refund }}</strong>@if ($r->status === Ret::STATUS_PENDING)<small>If approved</small>@endif</td>
+    <td data-label="Refund"><strong>{{ $refund }}</strong>@if ($r->status === Ret::STATUS_PENDING)<small>If approved</small>@elseif ($sellerFee > 0)<small>You pay {{ $money($sellerFee / 100) }} pickup fee</small>@endif</td>
     <td data-label="Status">
         <span class="do-badge do-tone-{{ $tone }}">{{ $label }}</span>
         @if ($r->status === Ret::STATUS_PENDING)
@@ -74,7 +75,10 @@
                 </div>
 
                 <div class="rt-summary">
-                    <div><span>Refund{{ $r->status === Ret::STATUS_APPROVED ? '' : ' if approved' }}</span><strong>{{ $refund }}</strong></div>
+                    <div><span>Refund{{ $r->status === Ret::STATUS_APPROVED ? ' to the buyer' : ' if approved' }}</span><strong>{{ $refund }}</strong></div>
+                    @if ($sellerFee > 0)
+                        <div><span>Return pickup fee you pay</span><strong>{{ $money($sellerFee / 100) }}</strong></div>
+                    @endif
                     <div><span>Reason</span><strong>{{ $r->reason_label }}</strong></div>
                 </div>
 
