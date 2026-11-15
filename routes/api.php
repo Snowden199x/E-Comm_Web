@@ -34,6 +34,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1/transport-drivers')->group(function () {
     Route::post('/login', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('/google', [\App\Http\Controllers\Api\TransportDriverGoogleAuthController::class, 'exchange'])->middleware('throttle:10,1');
     Route::get('/province-hubs', [\App\Http\Controllers\Api\TransportDriverRegistrationController::class, 'hubs'])->middleware('throttle:30,1');
     Route::get('/locations', [\App\Http\Controllers\Api\TransportDriverRegistrationController::class, 'locations'])->middleware('throttle:30,1');
     Route::get('/locations/{cityCode}/barangays', [\App\Http\Controllers\Api\TransportDriverRegistrationController::class, 'barangays'])->middleware('throttle:30,1');
@@ -47,6 +48,10 @@ Route::prefix('v1/transport-drivers')->group(function () {
     Route::middleware(['auth:sanctum', EnsureApprovedTransportDriverToken::class, 'throttle:30,1'])->group(function () {
         Route::get('/me', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'me']);
         Route::get('/trips', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'trips']);
+        Route::get('/trips/history', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'history']);
+        // One trip, for the destination handover screen: it polls this so the
+        // receiving count follows the station's scans without a full board load.
+        Route::get('/trips/{trip}', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'trip'])->whereNumber('trip');
         Route::get('/earnings', [\App\Http\Controllers\Api\RiderEarningsController::class, 'transportDriver']);
         Route::post('/trips/{trip}/scan', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'scan']);
         Route::post('/trips/{trip}/depart', [\App\Http\Controllers\Api\TransportDriverApiController::class, 'depart']);
@@ -58,6 +63,7 @@ Route::prefix('v1/transport-drivers')->group(function () {
 Route::prefix('v1/rider')->group(function () {
     Route::get('/locations', [RiderRegistrationController::class, 'locations'])->middleware('throttle:30,1');
     Route::get('/locations/{cityCode}/barangays', [RiderRegistrationController::class, 'barangays'])->middleware('throttle:30,1');
+    Route::get('/logistics-companies', [RiderRegistrationController::class, 'companies'])->middleware('throttle:30,1');
     Route::post('/register', [RiderRegistrationController::class, 'store'])->middleware('throttle:5,1');
     Route::post('/login', [RiderAuthController::class, 'login'])->middleware('throttle:5,1');
     Route::post('/email/otp/send', [RiderEmailOtpController::class, 'sendRegistrationCode'])->middleware('throttle:5,1');
@@ -69,6 +75,7 @@ Route::prefix('v1/rider')->group(function () {
 
     Route::middleware(['auth:sanctum', EnsureApprovedRiderToken::class, 'throttle:30,1'])->group(function () {
         Route::get('/assignments', [RiderScanController::class, 'assignments']);
+        Route::post('/assignments/{order}/accept', [RiderScanController::class, 'accept'])->whereNumber('order');
         Route::get('/profile', [RiderProfileController::class, 'show']);
         Route::put('/profile', [RiderProfileController::class, 'update']);
         Route::post('/profile/photo', [RiderProfileController::class, 'uploadPhoto']);
@@ -85,6 +92,7 @@ Route::prefix('v1/rider')->group(function () {
         Route::post('/scans', [RiderScanController::class, 'store']);
         Route::post('/pickups/bulk', [RiderScanController::class, 'bulkPickup']);
         Route::post('/delivery-proofs', [RiderDeliveryProofController::class, 'store']);
+        Route::get('/deliveries/history', [\App\Http\Controllers\Api\RiderDeliveryHistoryController::class, 'index']);
         Route::post('/deliveries/{order}/reschedule', [RiderDeliveryRescheduleController::class, 'store'])
             ->whereNumber('order');
         Route::post('/deliveries/{order}/return-scan', [\App\Http\Controllers\Api\RiderReturnScanController::class, 'store'])
@@ -100,6 +108,7 @@ Route::prefix('v1/rider')->group(function () {
 
 Route::prefix('v1/buyer')->group(function () {
     Route::post('/login', [BuyerAuthController::class, 'login'])->middleware('throttle:10,1');
+    Route::post('/google', [\App\Http\Controllers\Api\Buyer\BuyerGoogleAuthController::class, 'exchange'])->middleware('throttle:10,1');
     Route::post('/email/otp/send', [BuyerEmailOtpController::class, 'sendRegistrationCode'])->middleware('throttle:5,1');
     Route::post('/email/otp/verify', [BuyerEmailOtpController::class, 'verifyRegistrationCode'])->middleware('throttle:10,1');
     Route::post('/register', [BuyerRegistrationController::class, 'store'])->middleware('throttle:5,1');
@@ -144,6 +153,11 @@ Route::prefix('v1/buyer')->group(function () {
         Route::get('/notifications', [BuyerNotificationController::class, 'index']);
         Route::post('/notifications/read-all', [BuyerNotificationController::class, 'readAll']);
         Route::post('/notifications/{notification}/read', [BuyerNotificationController::class, 'markRead'])->whereNumber('notification');
+
+        Route::get('/vouchers', [\App\Http\Controllers\Api\Buyer\BuyerVoucherController::class, 'index']);
+        Route::get('/reviews', [\App\Http\Controllers\Api\Buyer\BuyerReviewController::class, 'index']);
+        Route::get('/help', [\App\Http\Controllers\Api\Buyer\BuyerContentController::class, 'help']);
+        Route::get('/legal/{page}', [\App\Http\Controllers\Api\Buyer\BuyerContentController::class, 'legal']);
 
         Route::get('/account', [BuyerAccountController::class, 'show']);
         Route::put('/account', [BuyerAccountController::class, 'update']);

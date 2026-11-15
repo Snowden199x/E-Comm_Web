@@ -65,7 +65,8 @@ class BuyerAuthController extends Controller
         return response()->json(['message' => 'Signed out.']);
     }
 
-    private function profile(User $buyer): array
+    /** One Buyer shape for login, `/me` and Google sign-in. */
+    public function profile(User $buyer): array
     {
         $detail = $buyer->buyerDetail;
 

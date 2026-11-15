@@ -8,6 +8,7 @@ use App\Models\Profiles\LogisticsFacility;
 use App\Models\Profiles\TransportDriverDetail;
 use App\Models\User;
 use App\Services\LocationCatalog;
+use App\Services\LogisticsCenterMatcher;
 use App\Services\StationHubResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,7 +24,7 @@ class TransportDriverRegistrationController extends Controller
      * Where a driver can apply. A station-only driver is reviewed by the
      * Station Hub; province and both drivers are reviewed by the Province Hub.
      */
-    public function hubs(): JsonResponse
+    public function hubs(LogisticsCenterMatcher $centers): JsonResponse
     {
         $networkIsOpen = fn ($query) => $query->where('status', 'approved')
             ->whereHas('logisticsCenter.user', fn ($user) => $user->where('status', 'approved')->where('account_status', 'active'));
@@ -32,6 +33,7 @@ class TransportDriverRegistrationController extends Controller
             ->whereHas('company', $networkIsOpen)
             ->with('company:id,business_name')->orderBy('province')->orderBy('name')->get()
             ->map(fn ($hub) => ['id' => $hub->id, 'name' => $hub->name, 'province' => $hub->province,
+                'logistics_company_id' => $hub->logistics_company_id,
                 'company' => $hub->company?->business_name]);
 
         $stationHubs = LogisticsFacility::query()->where('kind', 'station_hub')->where('is_active', true)
@@ -43,12 +45,22 @@ class TransportDriverRegistrationController extends Controller
                 'province' => $station->province, 'municipality' => $station->municipality,
                 'municipality_code' => $station->municipality_code,
                 'province_hub_id' => $station->parent_id, 'province_hub' => $station->parent?->name,
+                'logistics_company_id' => $station->logistics_company_id,
                 'company' => $station->company?->business_name,
                 'staffed' => $station->staff()->whereHas('user', fn ($user) => $user->where('status', 'approved')
                     ->where('account_status', 'active'))->exists(),
             ]);
 
+        // The app asks for the company first, then narrows the hubs to it. Every
+        // approved company is listed, whether or not it already has a hub, so
+        // the picker shows the companies that exist; each hub above carries its
+        // company id so the narrow lists stay exact.
+        $companies = $centers->networkCompanies()
+            ->map(fn ($company) => ['id' => $company->id, 'name' => $company->business_name])
+            ->values();
+
         return response()->json([
+            'companies' => $companies,
             'province_hubs' => $provinceHubs,
             'station_hubs' => $stationHubs,
             'apply_to' => [
@@ -87,6 +99,7 @@ class TransportDriverRegistrationController extends Controller
             'apply_to' => ['nullable', Rule::in(TransportDriverDetail::APPLY_SCOPES)],
             'province_hub_id' => ['nullable', 'integer', 'exists:logistics_facilities,id'],
             'station_hub_id' => ['nullable', 'integer', 'exists:logistics_facilities,id'],
+            'logistics_company_id' => ['nullable', 'integer', 'exists:logistics_companies,id'],
             'province_code' => ['required', 'string', 'max:12'],
             'city_code' => ['required', 'string', 'max:12'],
             'barangay_code' => ['nullable', 'string', 'max:12'],
@@ -141,6 +154,9 @@ class TransportDriverRegistrationController extends Controller
             ->with('staff')->first();
         if (! $hub) {
             throw ValidationException::withMessages(['province_hub_id' => 'Choose an active Province Hub.']);
+        }
+        if (! empty($data['logistics_company_id']) && (int) $hub->logistics_company_id !== (int) $data['logistics_company_id']) {
+            throw ValidationException::withMessages(['logistics_company_id' => 'Pick a hub that belongs to the logistics company you chose.']);
         }
 
         $reviewer = $applyTo === TransportDriverDetail::APPLY_STATION

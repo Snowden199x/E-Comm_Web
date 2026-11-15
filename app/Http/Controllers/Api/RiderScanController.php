@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
 use App\Models\Profiles\LogisticsFacility;
+use App\Models\Profiles\RiderAssignmentAcceptance;
 use App\Models\Profiles\RiderTask;
 use App\Services\DeliveryCutoff;
 use App\Services\OrderScanWorkflow;
@@ -12,6 +13,7 @@ use App\Services\RiderAccessService;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -105,7 +107,24 @@ class RiderScanController extends Controller
             ->whereIn('status', ['assigned', 'in_progress', 'failed'])
             ->latest('id')->get()->unique('order_id')->keyBy('order_id');
 
-        $assignments = $orders->map(function (Order $order) use ($rider, $center, $isTruck, $tasks, $cutoff) {
+        // A pickup only starts once the Rider accepts the Station Hub's request,
+        // so the app can show the map and the seller scan afterwards. The answer
+        // is read separately from the task, which a hub may reassign or expire.
+        $acceptedAt = RiderAssignmentAcceptance::query()
+            ->where('rider_id', $rider->id)
+            ->where('assignment', 'pickup')
+            ->whereIn('order_id', $orders->pluck('id'))
+            ->pluck('accepted_at', 'order_id');
+
+        $assignedAt = $this->riderAssignmentTimes($orders->pluck('id')->all(), (int) $rider->id);
+        // Parcels the hubs assigned before the assignment ledger existed only
+        // record the move to `assigned_to_rider` as a status event.
+        $missing = $orders->pluck('id')
+            ->reject(fn ($id) => isset($assignedAt[$id]) || $tasks->get($id)?->assigned_at !== null)
+            ->values()->all();
+        $eventAssignedAt = $this->statusAssignmentTimes($missing);
+
+        $assignments = $orders->map(function (Order $order) use ($rider, $center, $isTruck, $tasks, $cutoff, $assignedAt, $eventAssignedAt, $acceptedAt) {
             $facilityStops = $order->facilityStops;
             $returnRequest = $order->returnRequests->first();
             $isReturn = $returnRequest !== null && $order->status === 'returned';
@@ -119,6 +138,17 @@ class RiderScanController extends Controller
             $detail = $seller?->sellerDetail;
             $origin = $order->logisticsCenter;
             $destination = $order->destinationLogisticsCenter;
+            // When the hub put this parcel in the Rider's hands. A Station Hub task
+            // records its own `assigned_at`; a Main Hub dispatch writes an
+            // assignment row. The card shows it so the Rider can see how long the
+            // parcel has been waiting.
+            $task = $tasks->get($order->id);
+            $handedOverAt = $assignedAt[$order->id]
+                ?? $task?->assigned_at
+                ?? ($eventAssignedAt[$order->id] ?? null);
+            if ($handedOverAt === null && $isReturn) {
+                $handedOverAt = $returnRequest?->decided_at;
+            }
             $nextFacility = $facilityStops->first(fn ($stop) => ! $stop->arrived_at);
             $deliveryFacility = $facilityStops->last()?->facility;
             $buyerPin = ! $linehaul && ! $pickup ? $this->savedBuyerPin($order) : ['lat' => null, 'lng' => null];
@@ -150,6 +180,8 @@ class RiderScanController extends Controller
                 }
             }
 
+            // The Seller's saved pin from Account Management: a pickup collects
+            // the parcel at the Seller, so the map must not use the Buyer's pin.
             $sellerStop = [
                 'name' => $detail?->business_name ?: $seller?->name,
                 'phone' => $seller?->phone_number,
@@ -157,6 +189,8 @@ class RiderScanController extends Controller
                     $detail?->house_no, $detail?->street, $detail?->barangay,
                     $detail?->municipality, $detail?->province, $detail?->zip_code,
                 ])),
+                'latitude' => $detail?->latitude,
+                'longitude' => $detail?->longitude,
             ];
             $buyerStop = [
                 'name' => $order->buyer?->name,
@@ -179,6 +213,13 @@ class RiderScanController extends Controller
                 'tracking_number' => $order->tracking_number,
                 'status' => $order->status,
                 'assignment' => $linehaul ? 'linehaul' : ($pickup ? 'pickup' : ($isReturn ? 'return' : 'delivery')),
+                'assigned_at' => $handedOverAt ? Carbon::parse($handedOverAt)->toIso8601String() : null,
+                // A pickup starts with the Rider accepting the request; the map
+                // and the seller scan open only after that.
+                'acceptance_required' => $pickup && $order->status === 'ready_for_pickup',
+                'accepted_at' => $pickup && $acceptedAt->get($order->id)
+                    ? Carbon::parse($acceptedAt->get($order->id))->toIso8601String()
+                    : null,
                 // What the return leg still needs: collect from the Buyer, or hand back to the Seller.
                 'return' => $isReturn ? [
                     'status' => $returnRequest->return_status,
@@ -279,6 +320,89 @@ class RiderScanController extends Controller
                 'linehaul' => $assignments->where('assignment', 'linehaul')->count(),
             ],
         ]);
+    }
+
+    /**
+     * The Rider accepts a pickup request the Station Hub assigned. Accepting is
+     * what opens the map and the seller scan in the app, and it is recorded per
+     * Rider and parcel so the answer survives a task being reassigned.
+     */
+    public function accept(Request $request, RiderAccessService $access, Order $order): JsonResponse
+    {
+        $rider = $request->user();
+        $center = $access->approvedCenter($rider);
+        abort_unless($center, 403, 'Approved logistics membership required.');
+        abort_unless((int) $order->courier_id === (int) $rider->id
+            && (int) $order->logistics_center_id === (int) $center->id, 403,
+            'This pickup is not assigned to you.');
+        abort_unless($order->status === 'ready_for_pickup', 409,
+            'This parcel has already moved on from the pickup, so there is nothing to accept.');
+
+        $acceptance = RiderAssignmentAcceptance::query()->firstOrCreate(
+            ['rider_id' => $rider->id, 'order_id' => $order->id, 'assignment' => 'pickup'],
+            ['accepted_at' => now()],
+        );
+
+        return response()->json([
+            'order_id' => $order->id,
+            'tracking_number' => $order->tracking_number,
+            'accepted_at' => $acceptance->accepted_at?->toIso8601String(),
+            'duplicate' => ! $acceptance->wasRecentlyCreated,
+            'message' => $acceptance->wasRecentlyCreated
+                ? 'Pickup accepted. Open the map, then scan the parcel when the seller hands it to you.'
+                : 'This pickup was already accepted. Scan the parcel when the seller hands it to you.',
+        ]);
+    }
+
+    /**
+     * The first time each parcel was assigned to this Rider, from the dispatch
+     * assignment rows the hubs write. The earliest row wins so a reassignment
+     * from one hub to another does not make an old parcel look brand new.
+     *
+     * @param  list<int>  $orderIds
+     * @return array<int, string>  order id => `created_at`
+     */
+    private function riderAssignmentTimes(array $orderIds, int $riderId): array
+    {
+        if ($orderIds === []) {
+            return [];
+        }
+
+        return DB::table('order_logistics_assignments')
+            ->whereIn('order_id', $orderIds)
+            ->where('courier_id', $riderId)
+            ->whereIn('action', [
+                'pickup_courier_assigned',
+                'delivery_courier_assigned',
+                'linehaul_truck_assigned',
+                'linehaul_truck_reassigned',
+            ])
+            ->groupBy('order_id')
+            ->selectRaw('order_id, MIN(created_at) as assigned_at')
+            ->pluck('assigned_at', 'order_id')
+            ->all();
+    }
+
+    /**
+     * First `assigned_to_rider` status event per parcel, used when the assignment
+     * ledger and the Station Hub task log have nothing for it.
+     *
+     * @param  list<int>  $orderIds
+     * @return array<int, string>  order id => `created_at`
+     */
+    private function statusAssignmentTimes(array $orderIds): array
+    {
+        if ($orderIds === []) {
+            return [];
+        }
+
+        return DB::table('order_status_events')
+            ->whereIn('order_id', $orderIds)
+            ->where('to_status', 'assigned_to_rider')
+            ->groupBy('order_id')
+            ->selectRaw('order_id, MIN(created_at) as assigned_at')
+            ->pluck('assigned_at', 'order_id')
+            ->all();
     }
 
     private function facilityScanTarget(?LogisticsFacility $facility): ?array

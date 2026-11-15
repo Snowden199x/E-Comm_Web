@@ -30,6 +30,40 @@ class RiderRegistrationController extends Controller
         return response()->json(['barangays' => $barangays]);
     }
 
+    /**
+     * The Logistics Companies a Rider can apply to for a municipality: those
+     * whose active Station Hub network reaches it. Each entry names the Station
+     * Hub that will review the application.
+     */
+    public function companies(Request $request, LocationCatalog $locations, LogisticsCenterMatcher $centers): JsonResponse
+    {
+        $data = $request->validate([
+            'province_code' => ['required', 'regex:/^[0-9]{9}$/'],
+            'city_code' => ['required', 'regex:/^[0-9]{9}$/'],
+        ]);
+        $address = $locations->address($data['province_code'], $data['city_code']);
+        if (! $address) {
+            throw ValidationException::withMessages(['city_code' => 'Choose a province and municipality from the list.']);
+        }
+
+        $companies = $centers->networkCompanies()
+            ->map(function ($company) use ($centers, $address) {
+                $station = $centers->stationForCompanyAt($address['province'], $address['city'], (int) $company->id);
+
+                return [
+                    'id' => $company->id,
+                    'name' => $company->business_name,
+                    'serves_municipality' => $station !== null,
+                    'station_hub' => $station ? [
+                        'id' => $station->id, 'name' => $station->name,
+                        'municipality' => $station->municipality, 'province' => $station->province,
+                    ] : null,
+                ];
+            })->values();
+
+        return response()->json(['companies' => $companies]);
+    }
+
     public function store(Request $request, LocationCatalog $locations, LogisticsCenterMatcher $centers): JsonResponse
     {
         $data = $request->validate([
@@ -48,6 +82,7 @@ class RiderRegistrationController extends Controller
             'barangay_code' => ['required', 'regex:/^[0-9]{9}$/'],
             'street' => ['required', 'string', 'max:255'],
             'zip_code' => ['required', 'string', 'max:20'],
+            'logistics_company_id' => ['nullable', 'integer', 'exists:logistics_companies,id'],
             // Trucks are company assets now; riders register only their own vehicle.
             'vehicle_type' => ['required', Rule::in(['Motorcycle', 'Van', 'L300'])],
             'plate_number' => ['required', 'string', 'max:50'],
@@ -83,7 +118,14 @@ class RiderRegistrationController extends Controller
             throw ValidationException::withMessages(['barangay_code' => 'Select a barangay from the location list.']);
         }
 
-        $station = $centers->stationForAddress($address['province'], $address['city']);
+        $station = ! empty($data['logistics_company_id'])
+            ? $centers->stationForCompanyAt($address['province'], $address['city'], (int) $data['logistics_company_id'])
+            : $centers->stationForAddress($address['province'], $address['city']);
+        if (! empty($data['logistics_company_id']) && ! $station) {
+            $company = \App\Models\Profiles\LogisticsCompany::query()->find($data['logistics_company_id']);
+            throw ValidationException::withMessages(['logistics_company_id' => ($company?->business_name ?? 'That logistics company')
+                .' has no Station Hub in '.$address['city'].' yet. Pick a company that covers it.']);
+        }
         $center = $station?->network;
         if (! $center || ! $station) {
             throw ValidationException::withMessages(['city_code' => 'No active Station Hub serves this municipality yet. Contact Vendo support.']);
@@ -158,6 +200,7 @@ class RiderRegistrationController extends Controller
             'message' => 'Rider application submitted for Station Hub review.',
             'rider_id' => $rider->id,
             'status' => 'pending',
+            'logistics_company' => ['id' => $station->logistics_company_id, 'name' => $station->company?->business_name],
             'logistics_center' => ['id' => $center->id, 'name' => $center->business_name],
             'station_hub' => ['id' => $station->id, 'name' => $station->name],
         ], 201);
