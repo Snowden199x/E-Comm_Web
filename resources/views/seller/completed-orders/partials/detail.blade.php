@@ -37,7 +37,7 @@
     <dl class="do-facts">
         <div><dt>Customer</dt><dd>{{ $order->buyer?->name ?? 'Buyer removed' }}</dd></div>
         <div><dt>Contact</dt><dd>{{ $order->buyer?->phone_number ?: 'Not provided' }}</dd></div>
-        <div><dt>Courier</dt><dd>{{ $order->carrier_name ?? '—' }} · {{ $order->courier?->name ?? 'No rider' }}</dd></div>
+        <div><dt>Courier</dt><dd>{{ $order->deliveryCompany?->business_name ?? '—' }} · {{ $order->courier?->name ?? 'No rider' }}</dd></div>
         <div><dt>Payment</dt><dd>{{ $order->payment_mode ? $payLabel($order->payment_mode) : '—' }}</dd></div>
         <div><dt>Ordered</dt><dd>{{ $order->created_at->format('M j, Y · g:i A') }}</dd></div>
         <div><dt>Tracking no.</dt><dd>{{ $track ?: '—' }}</dd></div>

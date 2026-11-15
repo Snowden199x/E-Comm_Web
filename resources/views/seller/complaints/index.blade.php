@@ -246,7 +246,7 @@
                             <div><dt>Payment</dt><dd>{{ $order->payment_mode ? $payLabel($order->payment_mode) : '—' }}</dd></div>
                             <div><dt>Order status</dt><dd>{{ $order->status_label }}</dd></div>
                             <div><dt>Delivered</dt><dd>{{ $order->delivered_at ? $order->delivered_at->format('M j, Y · g:i A') : 'Not delivered' }}</dd></div>
-                            <div><dt>Courier</dt><dd>{{ $order->carrier_name ?? '—' }}</dd></div>
+                            <div><dt>Courier</dt><dd>{{ $order->deliveryCompany?->business_name ?? '—' }}</dd></div>
                             <div><dt>Tracking no.</dt><dd class="cmp-track">{{ $track ?: '—' }}@if($track)<button type="button" class="do-copy" data-copy="{{ $track }}" data-copy-label="Tracking number" aria-label="Copy tracking number"><svg class="do-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></svg></button>@endif</dd></div>
                         </dl>
                         <div class="cmp-links">

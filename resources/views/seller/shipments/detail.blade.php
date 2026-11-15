@@ -13,7 +13,6 @@
 
     $beforePickup = in_array($order->status, ['confirmed', 'preparing', 'ready_for_pickup'], true);
     $rider = $order->courier;
-    $canTrack = ! in_array($order->status, ['delivered', 'completed', 'cancelled', 'returned'], true);
     $group = $order->shipment_group;
     $pillFor = ['to_ship' => 'pack', 'in_transit' => 'pending', 'delivered' => 'completed', 'cancelled' => 'cancelled'];
     $cancelNote = $events->last(fn ($e) => $e->to_status === 'cancelled')?->note;
@@ -156,34 +155,13 @@
         <div><dt>Pickup schedule</dt><dd>{{ $order->pickup_scheduled_at?->format('M j, Y · g:i A') ?? 'Not scheduled' }}@if($order->pickup_reschedule_count > 0)<small> · moved {{ $order->pickup_reschedule_count }} of {{ \App\Models\Ecommerce\Order::PICKUP_RESCHEDULE_LIMIT }} times</small>@endif</dd></div>
         <div><dt>Pickup rider</dt><dd>{{ $rider?->name ?? 'Awaiting assignment' }}</dd></div>
         <div><dt>Delivery rider</dt><dd>{{ $order->deliveryCourier?->name ?? 'Awaiting assignment' }}</dd></div>
-        <div><dt>Carrier</dt><dd>{{ $order->carrier_name ?: 'Not recorded' }}</dd></div>
+        <div><dt>Courier</dt><dd>{{ $order->deliveryCompany?->business_name ?? 'Not recorded' }}</dd></div>
         <div><dt>Estimated delivery</dt><dd>{{ ($order->estimated_delivery_from && $order->estimated_delivery_to) ? $order->estimated_delivery_from->format('M j').' – '.$order->estimated_delivery_to->format('M j, Y') : 'Not scheduled' }}</dd></div>
         <div class="ops-full"><dt>Vendo tracking reference</dt><dd class="sh-track"><code>{{ $order->tracking_number }}</code><button type="button" class="sh-copy" data-sh-copy="{{ $order->tracking_number }}">Copy</button></dd></div>
         @if($order->carrier_tracking_number)
-            <div class="ops-full"><dt>Carrier tracking number</dt><dd class="sh-track"><code>{{ $order->carrier_tracking_number }}</code><button type="button" class="sh-copy" data-sh-copy="{{ $order->carrier_tracking_number }}">Copy</button></dd></div>
+            <div class="ops-full"><dt>Courier tracking number</dt><dd class="sh-track"><code>{{ $order->carrier_tracking_number }}</code><button type="button" class="sh-copy" data-sh-copy="{{ $order->carrier_tracking_number }}">Copy</button></dd></div>
         @endif
     </dl>
-
-    @if($canTrack)
-        <details class="ops-action-details">
-            <summary>Update carrier details</summary>
-            <form method="POST" action="{{ route('seller.shipments.tracking', $order) }}" data-operation class="ops-form" data-draft-key="seller-{{ auth()->id() }}-tracking-{{ $order->id }}-{{ $order->revision }}" data-draft-ajax>
-                @csrf
-                @method('PATCH')
-                <input type="hidden" name="expected_status" value="{{ $order->status }}">
-                <input type="hidden" name="expected_revision" value="{{ $order->revision }}">
-                <p class="ops-caption">Enter the details your carrier gave you. The assigned rider and shipping fee stay the same.</p>
-                <label>Carrier name<input name="carrier_name" maxlength="100" value="{{ $order->carrier_name }}"></label>
-                <label>Carrier tracking number<input name="carrier_tracking_number" maxlength="100" value="{{ $order->carrier_tracking_number }}"></label>
-                <div class="ops-form-grid">
-                    <label>Estimated delivery from<input type="date" name="estimated_delivery_from" value="{{ $order->estimated_delivery_from?->format('Y-m-d') }}"></label>
-                    <label>Estimated delivery to<input type="date" name="estimated_delivery_to" value="{{ $order->estimated_delivery_to?->format('Y-m-d') }}"></label>
-                </div>
-                <p class="ops-alert" data-form-error role="alert" hidden></p>
-                <button class="ops-button ops-button--primary">Save carrier details</button>
-            </form>
-        </details>
-    @endif
 </section>
 
 {{-- ============ CUSTOMER ============ --}}

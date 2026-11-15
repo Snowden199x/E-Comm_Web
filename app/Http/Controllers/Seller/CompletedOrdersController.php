@@ -6,6 +6,7 @@ use App\Support\SellerSearch;
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
 use Illuminate\Http\Request;
+use App\Models\Profiles\LogisticsCompany;
 use Illuminate\Validation\Rule;
 
 class CompletedOrdersController extends Controller
@@ -14,7 +15,7 @@ class CompletedOrdersController extends Controller
     {
         $sellerId = $request->user()->id;
         $courierIds = Order::query()->where('seller_id', $sellerId)->whereIn('status', Order::SALES_STATUSES)
-            ->whereNotNull('courier_id')->distinct()->pluck('courier_id')->all();
+            ->whereNotNull('delivery_company_id')->distinct()->pluck('delivery_company_id')->all();
         $paymentValues = Order::query()->where('seller_id', $sellerId)->whereIn('status', Order::SALES_STATUSES)
             ->whereNotNull('payment_mode')->distinct()->pluck('payment_mode')->all();
         $filters = $request->validate([
@@ -45,11 +46,9 @@ class CompletedOrdersController extends Controller
         $denominator = array_sum($outcomes);
         $stats['completion_rate'] = $denominator ? round(($outcomes['delivered'] / $denominator) * 100) : 0;
 
-        $orders = (clone $base)->with(['buyer:id,name', 'courier:id,name', 'items.product.images'])
+        $orders = (clone $base)->with(['buyer:id,name', 'courier:id,name', 'deliveryCompany:id,business_name', 'items.product.images'])
             ->orderByDesc('delivered_at')->orderByDesc('id')->paginate(8)->withQueryString();
-        $couriers = Order::query()->where('seller_id', $request->user()->id)
-            ->whereIn('status', Order::SALES_STATUSES)->whereNotNull('courier_id')
-            ->with('courier:id,name')->get()->pluck('courier')->filter()->unique('id')->sortBy('name')->values();
+        $couriers = LogisticsCompany::query()->whereIn('id', $courierIds)->orderBy('business_name')->get(['id', 'business_name']);
         $payments = Order::query()->where('seller_id', $request->user()->id)->whereIn('status', Order::SALES_STATUSES)
             ->whereNotNull('payment_mode')->distinct()->orderBy('payment_mode')->pluck('payment_mode');
         $topProducts = $this->topProducts($request->user()->id, $filters);
@@ -63,7 +62,7 @@ class CompletedOrdersController extends Controller
     {
         $record = Order::query()->where('seller_id', $request->user()->id)
             ->whereIn('status', Order::SALES_STATUSES)->with([
-                'buyer:id,name,phone_number', 'courier:id,name', 'items.product.images',
+                'buyer:id,name,phone_number', 'courier:id,name', 'deliveryCompany:id,business_name', 'items.product.images',
                 'statusEvents', 'items.review.reply', 'reviews',
             ])->findOrFail($order);
 
@@ -109,7 +108,7 @@ class CompletedOrdersController extends Controller
             ->when($filters['from'] ?? null, fn ($query, $date) => $query->whereDate('delivered_at', '>=', $date))
             ->when($filters['to'] ?? null, fn ($query, $date) => $query->whereDate('delivered_at', '<=', $date))
             ->when(isset($filters['courier']), function ($query) use ($filters) {
-                return $filters['courier'] === '0' ? $query->whereNull('courier_id') : $query->where('courier_id', $filters['courier']);
+                return $filters['courier'] === '0' ? $query->whereNull('delivery_company_id') : $query->where('delivery_company_id', $filters['courier']);
             })
             ->when($filters['payment'] ?? null, fn ($query, $payment) => $query->where('payment_mode', $payment));
     }
@@ -132,7 +131,7 @@ class CompletedOrdersController extends Controller
                     });
                 })
                 ->when(isset($filters['courier']), function ($q) use ($filters) {
-                    return $filters['courier'] === '0' ? $q->whereNull('courier_id') : $q->where('courier_id', $filters['courier']);
+                    return $filters['courier'] === '0' ? $q->whereNull('delivery_company_id') : $q->where('delivery_company_id', $filters['courier']);
                 })
                 ->when($filters['payment'] ?? null, fn ($q, $payment) => $q->where('payment_mode', $payment))
                 ->when(SellerSearch::clean($filters['search'] ?? ''), function ($q, string $term) {

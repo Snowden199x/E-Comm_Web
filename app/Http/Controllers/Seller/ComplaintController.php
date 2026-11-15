@@ -46,7 +46,7 @@ class ComplaintController extends Controller
         $types = (clone $base)->whereNotNull('type')->distinct()->orderBy('type')->pluck('type');
 
         $query = (clone $base)->with([
-            'order.items.product.images', 'complainant', 'respondent', 'evidences', 'activities',
+            'order.items.product.images', 'order.deliveryCompany', 'complainant', 'respondent', 'evidences', 'activities',
             // Only this seller's own thread with Vendo, plus how many of its messages are still unread.
             'conversations' => fn ($threads) => $threads->where('user_id', $sellerId)->withCount([
                 'messages',
