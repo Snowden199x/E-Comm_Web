@@ -203,13 +203,14 @@
 
                 {{-- Deletion requests come from Buyer and Seller profiles only. --}}
                 @if (in_array($user->role, ['buyer', 'seller'], true))
-                    @php $pendingDeletion = $user->pendingDeletionRequest; @endphp
+                    @php $pendingDeletion = $user->pendingDeletionRequest; $pastDeletion = $user->latestDeletionRequest; @endphp
                     <button type="button" @click="deletionId = {{ $user->id }}"
-                        class="flex w-full items-center justify-between gap-3 rounded-xl border border-vd-line bg-white px-4 py-3 text-left transition-colors duration-200
-                               hover:bg-vd-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40">
+                        class="flex w-full items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3 text-left transition-colors duration-200
+                               hover:bg-vd-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vd-plum/40
+                               {{ $pendingDeletion ? 'border-vd-sand-line' : 'border-vd-line' }}">
                         <span class="flex min-w-0 items-center gap-2 text-[13px] font-semibold text-vd-ink">
-                            <x-admin.icon name="user-x" class="h-4 w-4 flex-shrink-0 text-vd-muted" />
-                            <span class="truncate">User request for deletion of account</span>
+                            <x-admin.icon name="user-x" class="h-4 w-4 flex-shrink-0 {{ $pendingDeletion ? 'text-vd-warning-ink' : 'text-vd-muted' }}" />
+                            <span class="truncate">{{ $pendingDeletion ? 'Review deletion request' : ($pastDeletion ? 'View deletion request' : 'Deletion request') }}</span>
                         </span>
                         @if ($pendingDeletion)
                             <x-admin.status-pill tone="pending" icon="clock">Pending</x-admin.status-pill>

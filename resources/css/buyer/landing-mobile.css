@@ -1,0 +1,97 @@
+/* =========================================================
+   Landing · phone fixes and the "Get the app" band
+   Loaded after landing.css, so these rules win where they overlap.
+   ========================================================= */
+
+/* Never let the page scroll sideways. Body already hides it; html needs it too on phones. */
+html { overflow-x: clip; }
+
+/* ---------- Get the app ---------- */
+.app-band {
+  display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: center;
+  padding: 48px 56px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius-l);
+}
+.app-copy h2 { font-size: clamp(26px, 3vw, 36px); margin-top: 10px; }
+.app-copy p { margin-top: 14px; max-width: 460px; font-size: 16px; line-height: 1.6; color: var(--ink-soft); }
+.app-qr { display: grid; justify-items: center; gap: 12px; margin: 0; }
+.app-qr-card { padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 10px 24px -14px rgba(64, 33, 67, .35); }
+.app-qr-card img { display: block; width: 140px; height: 140px; image-rendering: pixelated; }
+.app-qr figcaption { max-width: 160px; text-align: center; font-size: 12px; line-height: 1.4; color: var(--ink-soft); }
+
+/* ---------- Hero app card (first screen) ---------- */
+.hero-app {
+  display: inline-flex; align-items: center; gap: 14px; max-width: 100%; margin-top: 24px; padding: 10px 18px 10px 10px;
+  background: #fff; border: 1px solid var(--line); border-radius: 18px; color: var(--deep); text-decoration: none;
+  box-shadow: 0 10px 24px -16px rgba(64, 33, 67, .4); transition: transform .2s, border-color .2s;
+}
+.hero-app:hover { transform: translateY(-2px); border-color: var(--purple); }
+.hero-app-qr { display: block; flex: none; padding: 6px; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+.hero-app-qr img { display: block; width: 64px; height: 64px; image-rendering: pixelated; }
+.hero-app-text { display: grid; gap: 2px; min-width: 0; }
+.hero-app-text strong { font-family: 'Poppins'; font-size: 15px; font-weight: 600; }
+.hero-app-text small { font-size: 12.5px; line-height: 1.4; color: var(--ink-soft); }
+.hero-app-btn { display: none; }
+
+/* ---------- Tablet and phone ---------- */
+@media (max-width: 760px) {
+  .app-band { grid-template-columns: 1fr; gap: 24px; padding: 32px 24px; justify-items: start; }
+  .app-qr { justify-self: center; }
+
+  /* Header: logo, search, cart, menu. Get Started and Log in live in the menu on phones. */
+  nav.navbar .nav-right > .btn-primary { display: none; }
+
+  /* "Why Vendo": icon beside the title, text under it, instead of three cramped columns. */
+  .why-row { grid-template-columns: 44px 1fr; gap: 6px 16px; align-items: start; padding: 24px 0; }
+  .why-row .why-icon { grid-row: 1 / span 2; }
+  .why-row h3 { font-size: 18px; align-self: center; }
+  .why-row p { max-width: none; font-size: 14.5px; }
+
+  /* Order tracking: fit all six steps on the screen. The old min-width pushed the page sideways. */
+  .track-panel { padding-left: 16px; padding-right: 16px; }
+  .track-line { min-width: 0; overflow: visible; padding-bottom: 0; }
+  .track-line::before, .track-line .fill { top: 15px; left: 16px; }
+  .track-line::before { right: 16px; }
+  .track-step { min-width: 0; padding: 0 2px; }
+  .track-step .dot { width: 32px; height: 32px; margin-bottom: 8px; }
+  .track-step .dot svg { width: 14px; height: 14px; }
+  .track-step .label { font-size: 11px; line-height: 1.3; }
+
+  /* Hero app card on phones: nobody can scan their own screen, so show a tap button instead of the QR. */
+  .hero-app { display: flex; width: 100%; margin-top: 20px; padding: 12px 14px; }
+  .hero-app-qr { display: none; }
+  .hero-app::before {
+    content: ''; flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--purple-tint);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23805487' stroke-width='2' stroke-linecap='round'><rect x='5' y='2' width='14' height='20' rx='2'/><path d='M11 18h2'/></svg>");
+    background-repeat: no-repeat; background-position: center;
+  }
+  .hero-app-text { flex: 1; }
+  .hero-app-text small { display: none; }
+  .hero-app-btn { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 999px; background: var(--purple); color: #fff; font-family: 'Poppins'; font-size: 13px; font-weight: 600; white-space: nowrap; }
+
+  /* Comfortable touch targets */
+  .btn { min-height: 46px; }
+  .icon-btn { min-width: 40px; min-height: 40px; }
+}
+
+@media (max-width: 480px) {
+  /* The card row bled 4px past the screen edge. */
+  .product-scroller { margin-right: -16px; padding-right: 16px; }
+  .app-band { padding: 28px 20px; }
+  .app-qr-card img { width: 128px; height: 128px; }
+}
+
+/* Small phones: six labels no longer fit side by side, so the steps stack with the line on the left. */
+@media (max-width: 560px) {
+  .track-line { flex-direction: column; align-items: stretch; gap: 16px; }
+  .track-line::before { top: 16px; bottom: 16px; left: 15px; right: auto; width: 2px; height: auto; }
+  .track-line .fill { display: none; }
+  .track-step { display: flex; align-items: center; gap: 14px; flex: none; padding: 0; text-align: left; }
+  .track-step .dot { margin: 0; flex: none; }
+  .track-step .label { font-size: 13.5px; }
+}
+
+@media (max-width: 360px) {
+  .hero-app { gap: 10px; padding: 10px 12px; }
+  .hero-app-text strong { font-size: 13.5px; }
+  .hero-app-btn { padding: 0 12px; font-size: 12.5px; }
+}

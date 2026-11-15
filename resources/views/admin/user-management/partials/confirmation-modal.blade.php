@@ -7,7 +7,7 @@
             'deactivated' => 'Account deactivated',
             'activated' => 'Account activated',
             'suspension_lifted' => 'Suspension lifted',
-            'deletion_approved' => 'Account deletion approved',
+            'deletion_approved' => 'Deletion approved',
             'deletion_rejected' => 'Deletion request rejected',
         ];
         $messages = [
@@ -15,8 +15,8 @@
             'deactivated' => 'The user can no longer access their Vendo account.',
             'activated' => 'The user can now access their Vendo account.',
             'suspension_lifted' => 'The user can now access their Vendo account.',
-            'deletion_approved' => 'The request is approved and the account is now deactivated. Order records are kept.',
-            'deletion_rejected' => "The request is rejected and the user's account stays active.",
+            'deletion_approved' => "The account is closed and the user can't sign in. Order records stay. Activate the account to restore access.",
+            'deletion_rejected' => 'The account stays active.',
         ];
     @endphp
 

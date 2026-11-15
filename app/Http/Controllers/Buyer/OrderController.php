@@ -18,7 +18,7 @@ class OrderController extends Controller
 {
     public function index()
     {
-        $orders = Order::with('items.product')
+        $orders = Order::with('items.product', 'latestReturnRequest')
             ->where('buyer_id', auth()->id())
             ->latest()
             ->get();
@@ -74,13 +74,18 @@ class OrderController extends Controller
     {
         $record = Order::query()->where('buyer_id', $request->user()->id)
             ->with('latestReturnRequest')->findOrFail($order);
-        abort_unless(in_array($record->status, OrderReturnService::RETURNABLE_STATUSES, true), 409, 'Only delivered orders can be returned.');
-        abort_unless($returns->canRequest($record), 409, 'The 7-day return window for this order has closed.');
-        abort_if(
-            $record->returnRequests()->where('status', OrderReturnRequest::STATUS_PENDING)->exists(),
-            409,
-            'Your return request is already waiting for the seller.',
-        );
+        // Not returnable right now: go back to the order with what to do, instead of an error page.
+        $blocked = null;
+        if (! in_array($record->status, OrderReturnService::RETURNABLE_STATUSES, true)) {
+            $blocked = 'Only delivered orders can be returned. Check the order status.';
+        } elseif (! $returns->canRequest($record)) {
+            $blocked = 'The '.OrderReturnService::RETURN_WINDOW_DAYS.'-day return window for this order has closed. Message the seller if you still need help.';
+        } elseif ($record->returnRequests()->where('status', OrderReturnRequest::STATUS_PENDING)->exists()) {
+            $blocked = 'Your return request is already waiting for the seller. You are notified when they decide.';
+        }
+        if ($blocked) {
+            return redirect()->route('buyer.orders.show', $record)->with('error', $blocked);
+        }
 
         return view('buyer.orders.return', [
             'order' => $record,
@@ -95,9 +100,27 @@ class OrderController extends Controller
         $data = $request->validate([
             'reason' => ['required', Rule::in(array_keys(OrderReturnRequest::REASONS))],
             'details' => ['required_if:reason,other', 'nullable', 'string', 'max:450'],
+        ], [
+            'reason.required' => 'No reason chosen. Pick the reason that fits best.',
+            'reason.in' => 'That reason is not available. Pick one from the list.',
+            'details.required_if' => 'Details are empty. Tell the seller what happened, because you chose Other.',
+            'details.max' => 'Details are too long. Shorten them to 450 characters or fewer.',
         ]);
 
-        $returns->request($request->user(), $order, $data['reason'], $data['details'] ?? null);
+        try {
+            $returns->request($request->user(), $order, $data['reason'], $data['details'] ?? null);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            // 409: the order changed since the form opened. 422: a field the service rejected.
+            if ($e->getStatusCode() === 409) {
+                return redirect()->route('buyer.orders.show', $order)->with('error', rtrim($e->getMessage(), '.').'. The page now shows the latest status.');
+            }
+            if ($e->getStatusCode() === 422) {
+                return back()->withInput()->withErrors(str_contains($e->getMessage(), 'details')
+                    ? ['details' => 'Details are empty. Tell the seller what happened, because you chose Other.']
+                    : ['reason' => 'That reason is not available. Pick one from the list.']);
+            }
+            throw $e;
+        }
 
         return redirect()->route('buyer.orders.show', $order)
             ->with('success', 'Return request sent. The seller will review it.');

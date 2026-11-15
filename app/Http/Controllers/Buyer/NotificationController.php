@@ -53,7 +53,10 @@ class NotificationController extends Controller
         $this->authorizeBuyer($request);
         $record = $this->owned($request)->findOrFail($notification);
         if (! $record->read_at) $record->update(['read_at' => now()]);
-        $destination = $this->destination($record);
+        // Voucher notifications always open the vouchers page, including ones saved earlier with a shop link.
+        $destination = $record->type === 'seller_voucher'
+            ? route('buyer.vouchers.index')
+            : $this->destination($record);
         if (in_array($record->type, ['account_warning', 'platform_announcement'], true)
             || $destination === route('buyer.notifications.index')) {
             return redirect()->route('buyer.notifications.index', ['show' => $record->id]);
@@ -90,7 +93,7 @@ class NotificationController extends Controller
     {
         $path = parse_url((string) $notification->link, PHP_URL_PATH);
         $query = parse_url((string) $notification->link, PHP_URL_QUERY);
-        if (! is_string($path) || ! preg_match('~^/buyer/(dashboard|orders|products|sellers|messages|case-messages|account|notifications)(/|$)~', $path)) {
+        if (! is_string($path) || ! preg_match('~^/buyer/(dashboard|orders|products|sellers|messages|case-messages|account|support|vouchers|notifications)(/|$)~', $path)) {
             return route('buyer.notifications.index');
         }
         return url($path.($query ? '?'.$query : ''));

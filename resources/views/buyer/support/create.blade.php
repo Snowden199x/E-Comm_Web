@@ -1,79 +1,85 @@
-@php
-    $card = 'rounded-lg border border-[#eee6ef] bg-white';
-    $field = 'mt-1 block w-full rounded-md border border-[#e5dce7] bg-white px-3 py-2 text-[13px] text-[#2b1730] transition-colors duration-200 focus:border-[#805487] focus:outline-none';
-    $label = 'block text-[12px] font-medium text-[#402143]';
-@endphp
-
 <x-buyer.layout title="New support request — Vendo">
-    <div class="mx-auto max-w-[720px] px-3 pb-10 pt-4 sm:px-4">
-        <nav class="vb-reveal mb-3 text-[13px] text-[#7a6a7e]" aria-label="Breadcrumb">
-            <a href="{{ route('buyer.support.index') }}" class="font-medium text-[#52245b] hover:underline">Support</a>
-            <span class="px-1">/</span><span>New request</span>
+    @vite(['resources/css/buyer/support-theme.css', 'resources/js/buyer/support.js'])
+
+    <div class="sp-page sp-page--narrow" x-data x-init="
+        @if ($errors->any()) $store.banner.show({ type: 'error', title: 'Request not sent', text: 'Fix the highlighted fields, then select Send again.' }); @endif
+    ">
+        <nav class="sp-crumb" aria-label="Breadcrumb">
+            <a href="{{ route('buyer.support.index') }}">Support</a><span>/</span><span>New request</span>
         </nav>
 
-        <div class="{{ $card }} vb-reveal p-5 sm:p-6">
-            <h1 class="text-[20px] font-semibold text-[#2b1730]">New support request</h1>
-            <p class="mt-1 text-[13px] leading-5 text-[#7a6a7e]">Tell Vendo what happened. Keep it to one problem so the replies stay clear.</p>
+        <form action="{{ route('buyer.support.store') }}" method="POST" enctype="multipart/form-data" class="sp-card sp-form" data-sp-validate novalidate>
+            @csrf
+            <div>
+                <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-.4px">New support request</h1>
+                <p style="margin:4px 0 0;color:var(--sp-muted)">Keep it to one problem so replies stay clear.</p>
+            </div>
 
-            @if ($errors->any())
-                <div class="mt-4 rounded-lg border border-[#f3d3da] bg-[#fdf1f3] px-4 py-3 text-[13px] text-[#a32b43]" role="alert">
-                    @foreach ($errors->all() as $message)<p>{{ $message }}</p>@endforeach
+            <div class="sp-grid">
+                <div class="sp-field {{ $errors->has('category') ? 'has-error' : '' }}">
+                    <label for="category">Topic</label>
+                    <select id="category" name="category" required data-sp-select>
+                        @foreach (\App\Models\Support\SupportTicket::CATEGORIES as $key => $text)
+                            <option value="{{ $key }}" @selected(old('category', 'order') === $key)>{{ $text }}</option>
+                        @endforeach
+                    </select>
+                    @error('category')<p class="sp-error">{{ $message }}</p>@enderror
                 </div>
-            @endif
-
-            <form action="{{ route('buyer.support.store') }}" method="POST" enctype="multipart/form-data" class="mt-4 space-y-4">
-                @csrf
-
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <div>
-                        <label for="category" class="{{ $label }}">Topic</label>
-                        <select id="category" name="category" required class="{{ $field }}">
-                            @foreach (\App\Models\Support\SupportTicket::CATEGORIES as $key => $text)
-                                <option value="{{ $key }}" @selected(old('category', 'order') === $key)>{{ $text }}</option>
-                            @endforeach
-                        </select>
-                        @error('category')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
-                    </div>
-                    <div>
-                        <label for="order_id" class="{{ $label }}">Order <span class="font-normal text-[#9a8a9d]">(optional)</span></label>
-                        <select id="order_id" name="order_id" class="{{ $field }}">
-                            <option value="">Not about one order</option>
-                            @foreach ($orders as $order)
-                                <option value="{{ $order->id }}" @selected((string) old('order_id') === (string) $order->id)>
-                                    {{ $order->number }} — {{ $order->created_at?->format('M j, Y') }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('order_id')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
-                    </div>
+                <div class="sp-field {{ $errors->has('order_id') ? 'has-error' : '' }}">
+                    <label for="order_id">Order <small>(optional)</small></label>
+                    <select id="order_id" name="order_id" data-sp-select>
+                        <option value="">Not about one order</option>
+                        @foreach ($orders as $order)
+                            <option value="{{ $order->id }}" @selected((string) old('order_id', request('order_id')) === (string) $order->id)>
+                                {{ $order->number }} — {{ $order->created_at?->format('M j, Y') }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('order_id')<p class="sp-error">{{ $message }}</p>@enderror
                 </div>
+            </div>
 
-                <div>
-                    <label for="subject" class="{{ $label }}">Subject</label>
-                    <input id="subject" name="subject" value="{{ old('subject') }}" required maxlength="140" class="{{ $field }}" placeholder="e.g. Rider could not find my address">
-                    @error('subject')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
-                </div>
+            <div class="sp-field {{ $errors->has('subject') ? 'has-error' : '' }}">
+                <label for="subject">Subject</label>
+                <input id="subject" name="subject" value="{{ old('subject') }}" required maxlength="140" autocomplete="off"
+                    placeholder="Example: Rider could not find my address"
+                    data-sp-min="3" data-sp-empty="Subject is empty. Add a short subject, like “Wrong item delivered”."
+                    data-sp-short="Subject is too short. Use at least 3 characters.">
+                @error('subject')<p class="sp-error">{{ $message }}</p>@enderror
+            </div>
 
-                <div>
-                    <label for="message" class="{{ $label }}">What do you need help with?</label>
-                    <textarea id="message" name="message" rows="6" required maxlength="5000" class="{{ $field }}" placeholder="Include the order number, the date and what you already tried.">{{ old('message') }}</textarea>
-                    @error('message')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
-                </div>
+            <div class="sp-field {{ $errors->has('message') ? 'has-error' : '' }}">
+                <label for="message">What do you need help with?</label>
+                <textarea id="message" name="message" rows="6" required maxlength="5000" data-sp-count="msgCount"
+                    placeholder="Include the order number, the date and what you already tried."
+                    data-sp-min="10" data-sp-empty="Message is empty. Describe the problem so Vendo can help."
+                    data-sp-short="Message is too short. Add at least 10 characters, such as what happened and when.">{{ old('message') }}</textarea>
+                <div class="sp-hint"><span></span><span id="msgCount" aria-live="off">0 / 5000</span></div>
+                @error('message')<p class="sp-error">{{ $message }}</p>@enderror
+            </div>
 
-                <div>
-                    <label for="attachments" class="{{ $label }}">Attach a photo or PDF <span class="font-normal text-[#9a8a9d]">(optional, up to 2 files, 5 MB each)</span></label>
-                    <input id="attachments" type="file" name="attachments[]" multiple accept="image/jpeg,image/png,image/webp,application/pdf"
-                        class="mt-1 block w-full rounded-md border border-[#e5dce7] bg-white px-3 py-2 text-[12px] text-[#3d2a42] focus:border-[#805487] focus:outline-none">
-                    @foreach ($errors->get('attachments.*') as $messages)
-                        @foreach ($messages as $errorText)<p class="mt-1 text-[12px] text-[#a32b43]">{{ $errorText }}</p>@endforeach
-                    @endforeach
-                </div>
+            <div class="sp-field {{ $errors->has('attachments') || $errors->has('attachments.*') ? 'has-error' : '' }}" data-sp-files>
+                <span class="sp-label">Attachments <small>(optional)</small></span>
+                <label class="sp-drop">
+                    <span class="sp-drop__icon">
+                        <svg class="sp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 12-8.6 8.6a5 5 0 0 1-7-7l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9" /></svg>
+                    </span>
+                    <span><strong>Add a photo or PDF</strong><small>Up to 2 files, 5 MB each. JPG, PNG, WebP or PDF.</small></span>
+                    <input type="file" name="attachments[]" multiple accept="image/jpeg,image/png,image/webp,application/pdf">
+                </label>
+                <ul class="sp-files" aria-live="polite"></ul>
+                <p class="sp-error" data-sp-files-error @if (! $errors->has('attachments') && ! $errors->has('attachments.*')) hidden @endif>
+                    {{ $errors->first('attachments') ?: $errors->first('attachments.*') }}
+                </p>
+            </div>
 
-                <div class="flex flex-wrap items-center gap-2">
-                    <button type="submit" class="inline-flex h-10 items-center justify-center rounded-md bg-[#402143] px-5 text-[13px] font-medium text-white transition-all duration-300 ease-vendo hover:bg-[#52245b] active:scale-[0.97]">Send request</button>
-                    <a href="{{ route('buyer.support.index') }}" class="inline-flex h-10 items-center rounded-md border border-[#e5dce7] px-5 text-[13px] font-medium text-[#3d2a42] transition-colors duration-200 hover:border-[#c9a9ce] hover:bg-[#faf5fa]">Cancel</a>
-                </div>
-            </form>
-        </div>
+            <div class="sp-actions">
+                <button type="submit" class="sp-btn sp-btn--primary">
+                    <svg class="sp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z" /></svg>
+                    Send request
+                </button>
+                <a href="{{ route('buyer.support.index') }}" class="sp-btn sp-btn--soft">Cancel</a>
+            </div>
+        </form>
     </div>
 </x-buyer.layout>
