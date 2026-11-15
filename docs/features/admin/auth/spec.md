@@ -5,7 +5,7 @@
 
 ## Current behavior
 
-Admin pages use the `admin` guard; login, password reset/verification, session tracking, active-account checks, and forced-password-change middleware are present. The password-confirmation screen uses the Vendo Admin login styling and submits to the namespaced `admin.password.confirm` route.
+Admin pages use the separate `admin` guard; login credential lookup is constrained to `role=admin`, so Buyer, Seller and Logistics accounts cannot sign in through the Admin or Super Admin form. Super Admin is an Admin account with the additional `is_super_admin` privilege; web-role sessions do not authenticate the `admin` guard. Password reset/verification, session tracking, active-account checks, and forced-password-change middleware are present. The password-confirmation screen uses the Vendo Admin login styling and submits to the namespaced `admin.password.confirm` route.
 
 ## Gaps and acceptance direction
 

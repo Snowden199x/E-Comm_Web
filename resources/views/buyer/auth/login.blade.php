@@ -79,7 +79,7 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('login.store') }}" x-data="{ showPassword: false }">
+                    <form method="POST" action="{{ route('buyer.login.store') }}" x-data="{ showPassword: false }">
                         @csrf
 
                         {{-- Email --}}

@@ -31,15 +31,16 @@ class UnifiedLoginController extends Controller
 
         $user = Auth::user();
 
-        if ($user->role === 'admin') {
+        if ($user->role !== 'buyer') {
             Auth::logout();
 
             throw ValidationException::withMessages([
-                'email' => 'Not a valid email for this Login form.',
+                'email' => 'This login is for buyer accounts only. Use your account type’s login page.',
             ]);
         }
 
-        if ($user->status !== 'approved') {
+        if ($user->status !== 'approved' || $user->archived_at
+            || ($user->account_status && $user->account_status !== 'active')) {
             Auth::logout();
 
             $message = match ($user->status) {
@@ -48,21 +49,16 @@ class UnifiedLoginController extends Controller
                 default => 'Your account is not active.',
             };
 
+            if ($user->archived_at || ($user->account_status && $user->account_status !== 'active')) {
+                $message = 'Your account is not active. Please contact the administrator.';
+            }
+
             throw ValidationException::withMessages(['email' => $message]);
         }
 
         $request->session()->regenerate();
 
-        $dashboard = match ($user->role) {
-            'seller' => route('seller.dashboard'),
-            'logistics_center' => route('lgp.company'),
-            'province_hub' => route('lgp.hub.province'),
-            'station_hub' => route('lgp.hub.station'),
-            'buyer' => route('buyer.dashboard'),
-            default => route('buyer.dashboard'),
-        };
-
-        return redirect()->to($dashboard);
+        return redirect()->intended(route('buyer.dashboard', absolute: false));
     }
 
     public function destroy(Request $request): RedirectResponse

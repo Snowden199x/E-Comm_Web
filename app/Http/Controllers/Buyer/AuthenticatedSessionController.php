@@ -23,21 +23,13 @@ class AuthenticatedSessionController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (! Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+        if (! Auth::attempt($request->only('email', 'password') + ['role' => 'buyer'], $request->boolean('remember'))) {
             throw ValidationException::withMessages([
                 'email' => 'These credentials do not match our records.',
             ]);
         }
 
         $user = Auth::user();
-
-        if ($user->role !== 'buyer') {
-            Auth::logout();
-
-            throw ValidationException::withMessages([
-                'email' => 'This login is for buyer accounts only.',
-            ]);
-        }
 
         if ($user->status !== 'approved' || $user->archived_at
             || ($user->account_status && $user->account_status !== 'active')) {
