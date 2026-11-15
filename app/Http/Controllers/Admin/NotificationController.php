@@ -66,6 +66,8 @@ class NotificationController extends Controller
             || ! preg_match('~^/admin(?:/|$)~', $path)) {
             return redirect()->route('admin.notifications.index', ['show' => $record->id]);
         }
-        return redirect()->to(url($path.($query ? '?'.$query : '')));
+        $fragment = parse_url((string) $record->link, PHP_URL_FRAGMENT);
+
+        return redirect()->to(url($path.($query ? '?'.$query : '').($fragment ? '#'.$fragment : '')));
     }
 }

@@ -47,7 +47,7 @@ class ReturnTripService
                 route('buyer.orders.show', $record), $record->buyer_id);
             $this->notify('Return parcel on the way back '.$record->number,
                 'Rider '.$rider->name.' collected the returned parcel and will hand it over to you.',
-                route('seller.returns.index'), $record->seller_id);
+                route('seller.returns.index', ['return' => $return->id]), $record->seller_id);
 
             return $this->payload($record, $return, false, 'Return collected from the buyer. Hand it over to the seller next.');
         }, 3);
@@ -84,7 +84,7 @@ class ReturnTripService
                 route('buyer.orders.show', $record), $record->buyer_id);
             $this->notify('Return parcel received '.$record->number,
                 'Rider '.$rider->name.' handed the returned parcel back to you.',
-                route('seller.returns.index'), $record->seller_id);
+                route('seller.returns.index', ['return' => $return->id]), $record->seller_id);
 
             return $this->payload($record, $return, false, 'Return handed over to the seller.');
         }, 3);
