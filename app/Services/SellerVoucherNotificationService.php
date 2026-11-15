@@ -44,8 +44,8 @@ class SellerVoucherNotificationService
                     'user_id' => $buyer->id,
                     'type' => 'seller_voucher',
                     'title' => Str::limit('New voucher from '.$shopName, 255, ''),
-                    'message' => $voucher->name.' ('.$voucher->code.'): '.$scope.'.'.$availability.' Visit the shop to see eligible items.',
-                    'link' => route('buyer.sellers.show', $seller),
+                    'message' => $voucher->name.' ('.$voucher->code.'): '.$scope.'.'.$availability.' Open your vouchers to see eligible items.',
+                    'link' => route('buyer.vouchers.index'),
                 ]);
 
                 DB::table('seller_voucher_notification_recipients')

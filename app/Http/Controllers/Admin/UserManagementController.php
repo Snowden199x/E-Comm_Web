@@ -146,6 +146,9 @@ class UserManagementController extends Controller
     public function approveDeletion(User $user): RedirectResponse
     {
         $deletion = $this->pendingDeletionFor($user);
+        if (! $deletion) {
+            return $this->deletionAlreadyHandled();
+        }
 
         DB::transaction(function () use ($user, $deletion) {
             $deletion->update([
@@ -168,10 +171,13 @@ class UserManagementController extends Controller
     public function rejectDeletion(Request $request, User $user): RedirectResponse
     {
         $deletion = $this->pendingDeletionFor($user);
+        if (! $deletion) {
+            return $this->deletionAlreadyHandled();
+        }
         $data = $request->validate([
             'admin_notes' => ['nullable', 'string', 'max:500'],
         ], [
-            'admin_notes.max' => 'Keep the note to 500 characters or fewer.',
+            'admin_notes.max' => 'Note is too long. Shorten it to 500 characters or fewer.',
         ]);
 
         DB::transaction(function () use ($user, $deletion, $data) {
@@ -187,14 +193,17 @@ class UserManagementController extends Controller
         return back()->with('confirmation', 'deletion_rejected');
     }
 
-    private function pendingDeletionFor(User $user): AccountDeletionRequest
+    /** The user's pending request, or null when another admin already handled it. */
+    private function pendingDeletionFor(User $user): ?AccountDeletionRequest
     {
         abort_unless(in_array($user->role, ['buyer', 'seller'], true) && $user->status === 'approved', 403);
 
-        $deletion = $user->pendingDeletionRequest()->first();
-        abort_unless($deletion, 404);
+        return $user->pendingDeletionRequest()->first();
+    }
 
-        return $deletion;
+    private function deletionAlreadyHandled(): RedirectResponse
+    {
+        return back()->with('error', 'Another admin already handled this request. Reload the list to see its latest status.');
     }
 
     private function authorizeManagedAccount(User $user, array $accountStatuses): void

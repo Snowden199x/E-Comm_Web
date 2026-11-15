@@ -15,12 +15,33 @@ class SupportTicketController extends Controller
         $buyer = $request->user();
         abort_unless($buyer->role === 'buyer', 403);
 
+        $status = (string) $request->query('status', '');
+        if (! array_key_exists($status, SupportTicket::STATUSES)) {
+            $status = '';
+        }
+        $q = trim((string) $request->query('q', ''));
+        if (mb_strlen($q) > 100) {
+            return redirect()->route('buyer.support.index', array_filter(['status' => $status]))
+                ->withErrors(['q' => 'Search is too long. Use 100 characters or fewer.']);
+        }
+
         $tickets = SupportTicket::query()
             ->where('user_id', $buyer->id)
+            ->when($status !== '', fn ($query) => $query->where('status', $status))
+            ->when($q !== '', function ($query) use ($q) {
+                $number = ltrim($q, '#');
+                $query->where(function ($inner) use ($q, $number) {
+                    $inner->where('subject', 'like', '%'.$q.'%');
+                    if (ctype_digit($number)) {
+                        $inner->orWhere('id', (int) $number);
+                    }
+                });
+            })
             ->with('order:id,order_number')
             ->withCount('messages')
             ->latest('last_reply_at')
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
 
         $counts = SupportTicket::query()
             ->where('user_id', $buyer->id)
@@ -28,7 +49,7 @@ class SupportTicketController extends Controller
             ->groupBy('status')
             ->pluck('total', 'status');
 
-        return view('buyer.support.index', compact('tickets', 'counts'));
+        return view('buyer.support.index', compact('tickets', 'counts', 'status', 'q'));
     }
 
     public function create(Request $request)
@@ -55,17 +76,25 @@ class SupportTicketController extends Controller
             'attachments' => ['nullable', 'array', 'max:2'],
             'attachments.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
         ], [
-            'subject.required' => 'Add a short subject so Vendo knows what this is about.',
-            'subject.min' => 'Use at least 3 characters for the subject.',
-            'message.required' => 'Describe the problem so Vendo can help.',
-            'message.min' => 'Add a little more detail (at least 10 characters).',
-            'category.in' => 'Choose a valid topic.',
+            'subject.required' => 'Subject is empty. Add a short subject, like "Wrong item delivered".',
+            'subject.min' => 'Subject is too short. Use at least 3 characters.',
+            'subject.max' => 'Subject is too long. Shorten it to 140 characters or fewer.',
+            'message.required' => 'Message is empty. Describe the problem so Vendo can help.',
+            'message.min' => 'Message is too short. Add at least 10 characters, such as what happened and when.',
+            'message.max' => 'Message is too long. Shorten it to 5,000 characters or fewer.',
+            'category.required' => 'No topic chosen. Pick the topic that fits best.',
+            'category.in' => 'That topic is not available. Pick one from the list.',
+            'order_id.exists' => 'That order was not found. Pick an order from the list, or choose "Not about one order".',
+            'attachments.max' => 'Too many files. Attach 2 files or fewer.',
+            'attachments.*.mimes' => 'One file is not a supported type. Attach a JPG, PNG, WebP or PDF.',
+            'attachments.*.max' => 'One file is over 5 MB. Attach a smaller file.',
+            'attachments.*.file' => 'One file could not be uploaded. Choose it again.',
         ]);
 
         $ticket = $support->create($request->user(), $data, $request->file('attachments', []));
 
         return redirect()->route('buyer.support.show', $ticket)
-            ->with('success', 'Your support request was sent. Vendo replies in this thread.');
+            ->with('success', 'Request sent. Vendo replies in this thread.');
     }
 
     public function show(Request $request, int $ticket)
@@ -90,12 +119,20 @@ class SupportTicketController extends Controller
             'body' => ['required', 'string', 'min:2', 'max:5000'],
             'attachments' => ['nullable', 'array', 'max:2'],
             'attachments.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
-        ], ['body.required' => 'Write a message before sending.']);
+        ], [
+            'body.required' => 'Reply is empty. Write your message, then send it.',
+            'body.min' => 'Reply is too short. Add at least 2 characters.',
+            'body.max' => 'Reply is too long. Shorten it to 5,000 characters or fewer.',
+            'attachments.max' => 'Too many files. Attach 2 files or fewer.',
+            'attachments.*.mimes' => 'One file is not a supported type. Attach a JPG, PNG, WebP or PDF.',
+            'attachments.*.max' => 'One file is over 5 MB. Attach a smaller file.',
+            'attachments.*.file' => 'One file could not be uploaded. Choose it again.',
+        ]);
 
         $record = SupportTicket::query()->where('user_id', $buyer->id)->findOrFail($ticket);
         $support->replyByBuyer($buyer, $record, $data['body'], $request->file('attachments', []));
 
-        return redirect()->route('buyer.support.show', $record)->with('success', 'Reply sent to Vendo.');
+        return redirect()->route('buyer.support.show', $record)->with('success', 'Reply sent.');
     }
 
     public function close(Request $request, int $ticket, SupportTicketService $support)
@@ -104,10 +141,13 @@ class SupportTicketController extends Controller
         abort_unless($buyer->role === 'buyer', 403);
 
         $record = SupportTicket::query()->where('user_id', $buyer->id)->findOrFail($ticket);
-        abort_if($record->status === SupportTicket::STATUS_RESOLVED, 409, 'This request is already resolved.');
+        if ($record->status === SupportTicket::STATUS_RESOLVED) {
+            return redirect()->route('buyer.support.show', $record)
+                ->withErrors(['status' => 'This request is already resolved. Open a new request if you still need help.']);
+        }
 
-        $support->setStatus($record, SupportTicket::STATUS_RESOLVED);
+        $support->setStatus($record, SupportTicket::STATUS_RESOLVED, true);
 
-        return redirect()->route('buyer.support.show', $record)->with('success', 'You marked this request resolved.');
+        return redirect()->route('buyer.support.show', $record)->with('success', 'Request marked as resolved.');
     }
 }

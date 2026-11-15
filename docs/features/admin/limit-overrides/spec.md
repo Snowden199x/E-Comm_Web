@@ -45,6 +45,10 @@ Every override writes an `order_status_events` row with the same `from_status`/`
 - No reason categories, attachment or approval-of-override workflow.
 - The page does not create refunds or payouts; it only moves deadlines and attempt limits.
 
+## 13 November 2026: page restyle
+
+The page follows the Admin design system. Two tiles show the rules (return window days, attempts per parcel). Search runs on Enter with **Clear filters**. Each row shows the order status as a pill, attempts used out of allowed, and the return deadline with how long is left (amber under two days). The row buttons **Grant attempt** and **Extend window** open one popup each, with a reason box (5 to 450 characters, with a counter and two quick reasons), and the window popup adds a date picker with 3, 7 and 14 days later shortcuts. The reason and date are checked in the browser first. If the server refuses (for example the parcel changed status in the meantime, or the order has no delivery date), the page returns with a message that says what to do and the popup reopens with what was typed. Success messages name the order. The rules, notifications, order timeline entries and audit log are unchanged.
+
 ## Source evidence
 
 `app/Http/Controllers/Admin/LimitOverrideController.php`, `resources/views/admin/limit-overrides/index.blade.php`, `resources/views/admin/partials/sidebar.blade.php`, `app/Services/OrderReturnService.php`, `app/Services/DeliveryCutoff.php`, `database/migrations/2026_11_11_160000_add_limit_overrides_to_orders.php`.

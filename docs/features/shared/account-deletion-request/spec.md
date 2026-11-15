@@ -44,3 +44,7 @@ Both decisions run in a transaction with an `admin_action_logs` row (`deletion_a
 ## Related documentation
 
 See [Buyer account](../../buyer/account-management/spec.md), [Seller account management](../../seller/account-management/spec.md), [User management](../../admin/manage-user-accounts/spec.md), and the [11 November progress log](../../../logs/PROGRESS-2026-11-11.md).
+
+## 13 November 2026: Admin review panel restyle
+
+The Admin panel keeps the same data and rules, with a clearer flow. The profile bar now reads **Review deletion request** while a request is pending (amber border), **View deletion request** after a decision, and **Deletion request** when there is none. The panel (`deletion-request-modal`) shows the requester with their avatar, requested date and how long it has waited, the reasons, and the user's words, plus a two-line summary of what each choice does. The footer is one step at a time: **Reject request** and **Approve deletion** open a short confirm step. **Approve and close account** asks first, because it deactivates the account. **Reject request** shows the optional note (500 characters, with a counter). The panel resets to the first step each time it closes. If another Admin already handled the request, the page shows "Another admin already handled this request. Reload the list to see its latest status." instead of a 404 page. The result popup wording for both decisions was shortened.

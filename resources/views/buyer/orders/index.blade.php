@@ -1,7 +1,7 @@
 {{--
     My Orders.
     Works with what OrderController@index already passes ($orders: all of the buyer's orders, newest first).
-    Tabs filter in the browser, so there is no extra request. Product photos and the shop name are read lazily
+    Tabs filter in the browser, so there is no extra request. The tabs always show, even with no orders. Product photos and the shop name are read lazily
     here; see the backend note about eager loading items.product.images and seller.sellerDetail.
 --}}
 @php
@@ -17,6 +17,8 @@
         'to_ship' => ['label' => 'To ship', 'statuses' => Order::SHIPMENT_GROUPS['to_ship']],
         'in_transit' => ['label' => 'In transit', 'statuses' => Order::SHIPMENT_GROUPS['in_transit']],
         'delivered' => ['label' => 'Delivered', 'statuses' => Order::SHIPMENT_GROUPS['delivered']],
+        // Returns is not a status of its own: it lists every order with a return request, plus returned orders.
+        'returns' => ['label' => 'Returns', 'statuses' => null],
         'cancelled' => ['label' => 'Cancelled', 'statuses' => ['cancelled']],
     ];
     $tabOf = function (string $status) use ($tabs) {
@@ -25,7 +27,24 @@
         }
         return 'all';
     };
-    $counts = collect($tabs)->map(fn ($tab, $key) => $key === 'all' ? $orders->count() : $orders->filter(fn ($o) => $tabOf($o->status) === $key)->count());
+    $isReturn = fn ($o) => $o->status === 'returned' || $o->latestReturnRequest !== null;
+    $counts = collect($tabs)->map(fn ($tab, $key) => match ($key) {
+        'all' => $orders->count(),
+        'returns' => $orders->filter($isReturn)->count(),
+        default => $orders->filter(fn ($o) => $tabOf($o->status) === $key)->count(),
+    });
+
+    // Return progress pill: waiting = amber, approved and on its way back = plum, handed back = green, declined = red.
+    $returnPill = function ($order) {
+        $r = $order->latestReturnRequest;
+        if (! $r) return $order->status === 'returned' ? ['Returned', 'bg-[#eaf5ee] text-[#2e6b46]'] : null;
+        return match (true) {
+            $r->status === 'pending' => ['Return: waiting for the seller', 'bg-[#fbf3dc] text-[#7a5a0c]'],
+            $r->status === 'rejected' => ['Return declined', 'bg-[#fdf1f3] text-[#a32b43]'],
+            $r->return_status === 'delivered_to_seller' => ['Return: handed back', 'bg-[#eaf5ee] text-[#2e6b46]'],
+            default => ['Return approved', 'bg-[#f5ecf6] text-[#52245b]'],
+        };
+    };
 
     $badge = function (string $status) {
         return match (true) {
@@ -43,7 +62,7 @@
         <div class="flex flex-wrap items-end justify-between gap-2">
             <div>
                 <h1 class="text-[20px] font-semibold text-[#2b1730]">My orders</h1>
-                <p class="mt-0.5 text-[13px] text-[#7a6a7e]">Track your orders, cancel them before the seller starts preparing, and rate what you receive. Orders cancelled by you or by the seller are under Cancelled.</p>
+                <p class="mt-0.5 text-[13px] text-[#7a6a7e]">Track your orders, cancel them before the seller starts preparing, and rate what you receive. Return requests are under Returns, and orders cancelled by you or by the seller are under Cancelled.</p>
             </div>
         </div>
 
@@ -51,14 +70,7 @@
             <p class="mt-3 rounded-md border border-[#c9e5d3] bg-[#eaf5ee] px-3 py-2.5 text-[13px] text-[#2e6b46]" role="status">{{ session('success') }}</p>
         @endif
 
-        @if ($orders->isEmpty())
-            <div class="mt-4 rounded-lg border border-[#eee6ef] bg-white">
-                <x-buyer.empty-state icon="orders" title="You have no orders yet" text="When you place an order it shows up here, with live updates as the seller and logistics move it along.">
-                    <a href="{{ route('buyer.products.index') }}" class="inline-flex h-10 items-center rounded-md bg-[#402143] px-5 text-[13px] font-medium text-white transition-colors duration-200 hover:bg-[#52245b]">Start shopping</a>
-                </x-buyer.empty-state>
-            </div>
-        @else
-            <!-- Status tabs -->
+        <!-- Status tabs: always visible -->
             <div class="vb-no-scrollbar mt-4 flex gap-1 overflow-x-auto rounded-lg border border-[#eee6ef] bg-white p-1" role="tablist" aria-label="Order status">
                 @foreach ($tabs as $key => $tab)
                     <button type="button" role="tab" @click="tab = '{{ $key }}'" :aria-selected="tab === '{{ $key }}'"
@@ -79,6 +91,9 @@
                         $shopName = $seller?->sellerDetail?->business_name ?: ($seller?->name ?? 'Vendo shop');
                         $label = Order::STATUSES[$order->status] ?? Str::headline($order->status);
                         $group = $tabOf($order->status);
+                        $returnPillData = $returnPill($order);
+                        // Which tabs show this order: All, its status tab, and Returns when it has a return.
+                        $showOn = "tab === 'all' || tab === '{$group}'" . ($isReturn($order) ? " || tab === 'returns'" : '');
                         $shown = $order->items->take(2);
                         $more = $order->items->count() - $shown->count();
                         $orderNo = $order->number ?? ('#' . $order->id);
@@ -94,7 +109,7 @@
                             $cancelReason = Str::contains($note, 'cancellation reason:') ? trim(Str::after($note, 'cancellation reason:')) : null;
                         }
                     @endphp
-                    <article x-show="tab === 'all' || tab === '{{ $group }}'" x-transition.opacity.duration.200ms
+                    <article x-show="{!! $showOn !!}" x-transition.opacity.duration.200ms
                         class="rounded-lg border border-[#eee6ef] bg-white">
                         <header class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-[#f1e8f2] px-4 py-3 sm:px-5">
                             <div class="flex min-w-0 items-center gap-2 text-[13px]">
@@ -108,6 +123,9 @@
                             <div class="flex items-center gap-3 text-[12px] text-[#7a6a7e]">
                                 <span>Order {{ $orderNo }}</span>
                                 <span class="rounded-full px-2.5 py-0.5 font-medium {{ $badge($order->status) }}">{{ $cancelledBy ? 'Cancelled by ' . $cancelledBy : $label }}</span>
+                                @if ($returnPillData)
+                                    <span class="rounded-full px-2.5 py-0.5 font-medium {{ $returnPillData[1] }}">{{ $returnPillData[0] }}</span>
+                                @endif
                             </div>
                         </header>
 
@@ -162,13 +180,20 @@
 
             <!-- Empty tab -->
             @foreach ($tabs as $key => $tab)
-                @if ($key !== 'all' && ! $counts[$key])
-                    <div x-show="tab === '{{ $key }}'" x-cloak class="mt-3 rounded-lg border border-[#eee6ef] bg-white">
-                        <x-buyer.empty-state icon="orders" compact title="No orders in {{ Str::lower($tab['label']) }}" text="Orders move here automatically as their status changes." />
+                @if (! $counts[$key])
+                    <div x-show="tab === '{{ $key }}'" @if ($key !== 'all') x-cloak @endif class="mt-3 rounded-lg border border-[#eee6ef] bg-white">
+                        @if ($key === 'all')
+                            <x-buyer.empty-state icon="orders" title="You have no orders yet" text="When you place an order it shows up here, with live updates as the seller and logistics move it along.">
+                                <a href="{{ route('buyer.products.index') }}" class="inline-flex h-10 items-center rounded-md bg-[#402143] px-5 text-[13px] font-medium text-white transition-colors duration-200 hover:bg-[#52245b]">Start shopping</a>
+                            </x-buyer.empty-state>
+                        @elseif ($key === 'returns')
+                            <x-buyer.empty-state icon="orders" compact title="No returns yet" text="Return requests and returned orders appear here. You can ask for a return from a delivered order." />
+                        @else
+                            <x-buyer.empty-state icon="orders" compact title="No orders in {{ Str::lower($tab['label']) }}" text="Orders move here automatically as their status changes." />
+                        @endif
                     </div>
                 @endif
             @endforeach
-        @endif
     </div>
     @include('shared.live-revision', ['endpoint' => route('buyer.live', 'orders'), 'mode' => 'reload'])
 </x-buyer.layout>

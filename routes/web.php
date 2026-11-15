@@ -133,6 +133,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/support-tickets/{ticket}/messages', [\App\Http\Controllers\Admin\SupportTicketController::class, 'reply'])->middleware('throttle:20,1')->whereNumber('ticket')->name('support-tickets.reply');
         Route::patch('/support-tickets/{ticket}/status', [\App\Http\Controllers\Admin\SupportTicketController::class, 'status'])->whereNumber('ticket')->name('support-tickets.status');
         Route::get('/support-tickets/attachments/{attachment}', [\App\Http\Controllers\SupportTicketAttachmentController::class, 'admin'])->whereNumber('attachment')->name('support-tickets.attachments.show');
+        Route::get('/support-tickets/attachments/{attachment}/preview', [\App\Http\Controllers\SupportTicketAttachmentController::class, 'adminPreview'])->whereNumber('attachment')->name('support-tickets.attachments.preview');
         Route::post('/limits/{order}/attempt', [LimitOverrideController::class, 'grantAttempt'])->whereNumber('order')->name('limit-overrides.attempt');
         Route::post('/limits/{order}/window', [LimitOverrideController::class, 'extendReturnWindow'])->whereNumber('order')->name('limit-overrides.window');
         Route::get('/logistics-coverage', [\App\Http\Controllers\Admin\LogisticsCoverageController::class, 'index'])->name('logistics-coverage.index');

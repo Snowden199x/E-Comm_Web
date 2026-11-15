@@ -1,59 +1,42 @@
-@php
-    $card = 'rounded-lg border border-[#eee6ef] bg-white';
-    $field = 'mt-1 block w-full rounded-md border border-[#e5dce7] bg-white px-3 py-2 text-[13px] text-[#2b1730] transition-colors duration-200 focus:border-[#805487] focus:outline-none';
-@endphp
-
 <x-buyer.layout title="{{ $ticket->subject }} — Support">
-    <div class="mx-auto max-w-[860px] px-3 pb-10 pt-4 sm:px-4">
-        <nav class="vb-reveal mb-3 text-[13px] text-[#7a6a7e]" aria-label="Breadcrumb">
-            <a href="{{ route('buyer.support.index') }}" class="font-medium text-[#52245b] hover:underline">Support</a>
-            <span class="px-1">/</span><span>#{{ $ticket->id }}</span>
+    @vite(['resources/css/buyer/support-theme.css', 'resources/js/buyer/support.js'])
+
+    <div class="sp-page sp-page--thread" x-data x-init="
+        @if (session('success')) $store.banner.show({ type: 'success', title: @js(session('success')) }); @endif
+        @if ($errors->any()) $store.banner.show({ type: 'error', title: @js($errors->has('status') ? 'Could not resolve request' : 'Reply not sent'), text: @js($errors->has('status') ? $errors->first('status') : 'Fix the highlighted fields, then select Send reply again.') }); @endif
+    ">
+        <nav class="sp-crumb" aria-label="Breadcrumb">
+            <a href="{{ route('buyer.support.index') }}">Support</a><span>/</span><span>#{{ $ticket->id }}</span>
         </nav>
 
-        <header class="vb-reveal mb-3 flex flex-wrap items-start justify-between gap-3">
+        <header class="sp-head">
             <div>
-                <h1 class="text-[20px] font-semibold text-[#2b1730]">{{ $ticket->subject }}</h1>
-                <p class="mt-1 text-[12px] text-[#7a6a7e]">
-                    {{ $ticket->category_label }}
+                <h1>{{ $ticket->subject }}</h1>
+                <div class="sp-meta">
+                    <span>{{ $ticket->category_label }}</span>
                     @if ($ticket->order)
-                        · <a href="{{ route('buyer.orders.show', $ticket->order_id) }}" class="font-medium text-[#52245b] hover:underline">{{ $ticket->order->number }}</a>
+                        <i></i><a href="{{ route('buyer.orders.show', $ticket->order_id) }}">{{ $ticket->order->number }}</a>
                     @endif
-                    · opened {{ $ticket->created_at?->format('M j, Y g:i A') }}
-                </p>
+                    <i></i><span>Opened {{ $ticket->created_at?->format('M j, Y g:i A') }}</span>
+                </div>
             </div>
-            <span class="rounded-full px-3 py-1 text-[12px] font-semibold
-                {{ $ticket->status === 'open' ? 'bg-[#FEF3C7] text-[#B45309]' : ($ticket->status === 'in_review' ? 'bg-[#DBEAFE] text-[#2563EB]' : 'bg-[#DCFCE7] text-[#15803D]') }}">
-                {{ $ticket->status_label }}
-            </span>
+            <span class="sp-badge sp-tone-{{ $ticket->status }}">{{ $ticket->status_label }}</span>
         </header>
 
-        @if (session('success'))
-            <div class="vb-reveal mb-3 rounded-lg border border-[#cfe8d8] bg-[#eaf5ee] px-4 py-3 text-[13px] text-[#2e6b46]" role="status">{{ session('success') }}</div>
-        @endif
-        @if ($errors->any())
-            <div class="vb-reveal mb-3 rounded-lg border border-[#f3d3da] bg-[#fdf1f3] px-4 py-3 text-[13px] text-[#a32b43]" role="alert">
-                @foreach ($errors->all() as $message)<p>{{ $message }}</p>@endforeach
-            </div>
-        @endif
-
-        <section class="{{ $card }} vb-reveal mb-3 p-4" aria-label="Conversation">
-            <div class="space-y-3">
+        <section class="sp-card" aria-label="Conversation">
+            <div class="sp-thread">
                 @foreach ($ticket->messages as $message)
-                    <div class="flex {{ $message->is_staff ? 'justify-start' : 'justify-end' }}">
-                        <div class="max-w-[85%] rounded-xl px-3.5 py-2.5 text-[13px] leading-5
-                            {{ $message->is_staff ? 'bg-[#f3eaf5] text-[#2b1730]' : 'bg-[#402143] text-white' }}">
-                            <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide {{ $message->is_staff ? 'text-[#805487]' : 'text-white/75' }}">
-                                {{ $message->sender_label }} · {{ $message->created_at?->format('M j, g:i A') }}
-                            </p>
-                            <div class="whitespace-pre-line">{{ $message->body }}</div>
+                    <div class="sp-msg {{ $message->is_staff ? 'sp-msg--staff' : 'sp-msg--me' }}">
+                        <div class="sp-msg__bubble" style="animation-delay: {{ min($loop->index, 8) * 30 }}ms">
+                            <span class="sp-msg__who">{{ $message->sender_label }} · {{ $message->created_at?->format('M j, g:i A') }}</span>
+                            <div class="sp-msg__text">{{ $message->body }}</div>
                             @if ($message->attachments->isNotEmpty())
-                                <ul class="mt-1.5 space-y-1 text-[12px]">
+                                <ul class="sp-msg__files">
                                     @foreach ($message->attachments as $attachment)
                                         <li>
-                                            <a href="{{ route('buyer.support.attachments.show', $attachment) }}"
-                                                class="inline-flex items-center gap-1 underline underline-offset-2 {{ $message->is_staff ? 'text-[#52245b]' : 'text-white' }}">
-                                                {{ $attachment->original_name }}
-                                                <span class="opacity-75">({{ $attachment->sizeLabel() }})</span>
+                                            <a href="{{ route('buyer.support.attachments.show', $attachment) }}">
+                                                <svg class="sp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></svg>
+                                                {{ $attachment->original_name }} ({{ $attachment->sizeLabel() }})
                                             </a>
                                         </li>
                                     @endforeach
@@ -66,33 +49,76 @@
         </section>
 
         @if ($ticket->status !== 'resolved')
-            <section class="{{ $card }} vb-reveal mb-3 p-4" aria-label="Add a reply">
-                <h2 class="text-[14px] font-semibold text-[#2b1730]">Add to this request</h2>
-                <form action="{{ route('buyer.support.reply', $ticket) }}" method="POST" enctype="multipart/form-data" class="mt-2">
+            <form action="{{ route('buyer.support.reply', $ticket) }}" method="POST" enctype="multipart/form-data" class="sp-card sp-form" data-sp-validate novalidate>
+                @csrf
+                <div class="sp-field {{ $errors->has('body') ? 'has-error' : '' }}">
+                    <label for="body">Add to this request</label>
+                    <textarea id="body" name="body" rows="4" required maxlength="5000" data-sp-count="bodyCount"
+                        placeholder="Add the missing detail or answer Vendo's question."
+                        data-sp-min="2" data-sp-empty="Reply is empty. Write your message, then select Send reply."
+                        data-sp-short="Reply is too short. Add at least 2 characters.">{{ old('body') }}</textarea>
+                    <div class="sp-hint"><span></span><span id="bodyCount">0 / 5000</span></div>
+                    @error('body')<p class="sp-error">{{ $message }}</p>@enderror
+                </div>
+
+                <div class="sp-field {{ $errors->has('attachments') || $errors->has('attachments.*') ? 'has-error' : '' }}" data-sp-files>
+                    <span class="sp-label">Attachments <small>(optional)</small></span>
+                    <label class="sp-drop">
+                        <span class="sp-drop__icon">
+                            <svg class="sp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 12-8.6 8.6a5 5 0 0 1-7-7l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9" /></svg>
+                        </span>
+                        <span><strong>Add a photo or PDF</strong><small>Up to 2 files, 5 MB each. JPG, PNG, WebP or PDF.</small></span>
+                        <input type="file" name="attachments[]" multiple accept="image/jpeg,image/png,image/webp,application/pdf">
+                    </label>
+                    <ul class="sp-files" aria-live="polite"></ul>
+                    <p class="sp-error" data-sp-files-error @if (! $errors->has('attachments') && ! $errors->has('attachments.*')) hidden @endif>
+                        {{ $errors->first('attachments') ?: $errors->first('attachments.*') }}
+                    </p>
+                </div>
+
+                <div class="sp-actions">
+                    <button type="submit" class="sp-btn sp-btn--primary">
+                        <svg class="sp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z" /></svg>
+                        Send reply
+                    </button>
+                </div>
+            </form>
+
+            <div class="sp-solved">
+                <p>Got what you needed? Close this request.</p>
+                <button type="button" class="sp-btn sp-btn--soft" data-sp-open="spResolve">
+                    <svg class="sp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
+                    Mark as resolved
+                </button>
+            </div>
+
+            <dialog id="spResolve" class="sp-dialog" aria-labelledby="spResolveTitle">
+                <form action="{{ route('buyer.support.close', $ticket) }}" method="POST" class="sp-dialog__body">
                     @csrf
-                    <label for="body" class="sr-only">Message</label>
-                    <textarea id="body" name="body" rows="4" required maxlength="5000" class="{{ $field }}" placeholder="Add the missing detail or answer Vendo's question.">{{ old('body') }}</textarea>
-                    @error('body')<p class="mt-1 text-[12px] text-[#a32b43]">{{ $message }}</p>@enderror
-                    <label for="attachments" class="mt-2 block text-[12px] font-medium text-[#5b4a60]">Attach a photo or PDF <span class="font-normal text-[#9a8a9d]">(optional, up to 2 files, 5 MB each)</span></label>
-                    <input id="attachments" type="file" name="attachments[]" multiple accept="image/jpeg,image/png,image/webp,application/pdf"
-                        class="mt-1 block w-full rounded-md border border-[#e5dce7] bg-white px-3 py-2 text-[12px] text-[#3d2a42] focus:border-[#805487] focus:outline-none">
-                    @foreach ($errors->get('attachments.*') as $messages)
-                        @foreach ($messages as $errorText)<p class="mt-1 text-[12px] text-[#a32b43]">{{ $errorText }}</p>@endforeach
-                    @endforeach
-                    <div class="mt-2 flex flex-wrap items-center gap-2">
-                        <button type="submit" class="inline-flex h-10 items-center justify-center rounded-md bg-[#402143] px-5 text-[13px] font-medium text-white transition-all duration-300 ease-vendo hover:bg-[#52245b] active:scale-[0.97]">Send reply</button>
+                    <div class="sp-dialog__top">
+                        <span class="sp-dialog__icon">
+                            <svg class="sp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" /><path d="m8.5 12.5 2.5 2.5 4.5-5" /></svg>
+                        </span>
+                        <button type="button" class="sp-dialog__close" data-sp-close aria-label="Close">
+                            <svg class="sp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+                        </button>
+                    </div>
+                    <div>
+                        <h2 id="spResolveTitle">Mark this request as resolved?</h2>
+                        <p>You can't reply after this. Open a new request if you need more help.</p>
+                    </div>
+                    <div class="sp-dialog__actions">
+                        <button type="button" class="sp-btn sp-btn--soft" data-sp-close>Keep open</button>
+                        <button type="submit" class="sp-btn sp-btn--primary">Mark as resolved</button>
                     </div>
                 </form>
-            </section>
-
-            <form action="{{ route('buyer.support.close', $ticket) }}" method="POST" class="vb-reveal" onsubmit="return confirm('Mark this request as resolved?');">
-                @csrf
-                <button type="submit" class="text-[13px] font-medium text-[#7a6a7e] underline decoration-[#d9ccdb] underline-offset-4 transition-colors hover:text-[#52245b]">This is solved — mark as resolved</button>
-            </form>
+            </dialog>
         @else
-            <p class="{{ $card }} vb-reveal px-4 py-3 text-[13px] text-[#7a6a7e]">
-                This request is resolved. Open a new request if you still need help.
-            </p>
+            <div class="sp-closed" role="status">
+                <svg class="sp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" /><path d="m8.5 12.5 2.5 2.5 4.5-5" /></svg>
+                <p>This request is resolved. Open a new request if you still need help.</p>
+                <a href="{{ route('buyer.support.create') }}" class="sp-btn sp-btn--soft sp-btn--small">New request</a>
+            </div>
         @endif
     </div>
 </x-buyer.layout>
