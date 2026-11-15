@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Seller;
 
+use App\Support\SellerSearch;
 use App\Http\Controllers\Controller;
 use App\Models\Communication\Notification;
 use App\Models\Ecommerce\ProductReview;
@@ -118,14 +119,13 @@ class FeedbackController extends Controller
     {
         return ProductReview::query()->where('seller_id', $sellerId)->where('visibility', 'published')
             ->when($filters['order'] ?? null, fn ($query, $id) => $query->where('order_id', $id))
-            ->when($filters['search'] ?? null, function ($query, string $term) {
-                $term = trim($term);
-                $id = preg_replace('/^VN-0*/i', '', $term);
-                $query->where(function ($query) use ($term, $id) {
-                    if ($id !== '' && ctype_digit($id)) $query->orWhere('order_id', (int) $id);
-                    $query->orWhere('comment', 'like', "%{$term}%")
-                        ->orWhereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', "%{$term}%"))
-                        ->orWhereHas('product', fn ($product) => $product->where(fn ($q) => $q->where('name', 'like', "%{$term}%")->orWhere('product_code', 'like', "%{$term}%")));
+            ->when(SellerSearch::clean($filters['search'] ?? ''), function ($query, string $term) {
+                $query->where(function ($query) use ($term) {
+                    $like = SellerSearch::like($term);
+                    $query->where('comment', 'like', $like)
+                        ->orWhereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', $like))
+                        ->orWhereHas('product', fn ($product) => $product->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('product_code', 'like', $like)));
+                    SellerSearch::orWhereOrder($query, $term);
                 });
             })
             ->when($filters['from'] ?? null, fn ($query, $date) => $query->whereDate('created_at', '>=', $date))

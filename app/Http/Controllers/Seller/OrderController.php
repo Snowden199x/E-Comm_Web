@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Seller;
 
+use App\Support\SellerSearch;
 use App\Http\Controllers\Controller;
 use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
@@ -21,8 +22,29 @@ class OrderController extends Controller
             'search' => 'nullable|string|max:100', 'date_from' => 'nullable|date_format:Y-m-d',
             'date_to' => ['nullable', 'date_format:Y-m-d', ...($request->filled('date_from') ? ['after_or_equal:date_from'] : [])],
             'page' => 'nullable|integer|min:1', 'order' => 'nullable|integer|min:1',
+        ], [
+            'status.in' => 'Choose All or one of the status tabs.',
+            'search.max' => 'Search is too long. Use 100 characters or fewer.',
+            'date_from.date_format' => 'Start date is not valid. Pick a date from the calendar.',
+            'date_to.date_format' => 'End date is not valid. Pick a date from the calendar.',
+            'date_to.after_or_equal' => 'End date is before the start date. Pick an end date on or after the start date.',
+            'page.min' => 'That page does not exist. Go back to the first page.',
         ]);
+        // Search and dates narrow the list and the tab counts. The status tab narrows only the list.
         $base = Order::where('seller_id', $request->user()->id);
+        if ($search = SellerSearch::clean($filters['search'] ?? '')) {
+            $base->where(function ($q) use ($search) {
+                $q->whereHas('buyer', fn ($b) => $b->where('name', 'like', SellerSearch::like($search)))
+                    ->orWhereHas('items.product', fn ($p) => $p->where('name', 'like', SellerSearch::like($search)));
+                SellerSearch::orOrderColumns($q, $search);
+            });
+        }
+        if (! empty($filters['date_from'])) {
+            $base->whereDate('created_at', '>=', $filters['date_from']);
+        }
+        if (! empty($filters['date_to'])) {
+            $base->whereDate('created_at', '<=', $filters['date_to']);
+        }
         $raw = (clone $base)->selectRaw('status, COUNT(*) total')->groupBy('status')->pluck('total', 'status');
         $counts = ['all' => (int) $raw->sum()];
         foreach (Order::SELLER_GROUPS as $group => $statuses) {
@@ -32,21 +54,6 @@ class OrderController extends Controller
         $status = $filters['status'] ?? 'all';
         if ($status !== 'all') {
             $query->whereIn('status', Order::SELLER_GROUPS[$status]);
-        }
-        if ($search = trim($filters['search'] ?? '')) {
-            $id = preg_match('/^(?:#?VN-)?0*(\d+)$/i', $search, $m) ? (int) $m[1] : null;
-            $query->where(function ($q) use ($search, $id) {
-                $q->whereHas('buyer', fn ($b) => $b->where('name', 'like', '%'.$search.'%'));
-                if ($id !== null) {
-                    $q->orWhere('id', $id);
-                }
-            });
-        }
-        if (! empty($filters['date_from'])) {
-            $query->whereDate('created_at', '>=', $filters['date_from']);
-        }
-        if (! empty($filters['date_to'])) {
-            $query->whereDate('created_at', '<=', $filters['date_to']);
         }
         $orders = $query->latest()->orderByDesc('id')->paginate(10)->withQueryString();
         if ($request->expectsJson()) {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Seller;
 
+use App\Support\SellerSearch;
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\OrderReturnRequest;
 use App\Services\OrderReturnService;
@@ -30,7 +31,7 @@ class ReturnRequestController extends Controller
         if (! array_key_exists($reason, OrderReturnRequest::REASONS)) {
             $reason = '';
         }
-        $q = trim((string) $request->query('q', ''));
+        $q = SellerSearch::clean((string) $request->query('q', ''));
         if (mb_strlen($q) > 100) {
             return redirect()->route('seller.returns.index', array_filter(['status' => $status, 'reason' => $reason]))
                 ->withErrors(['q' => 'Search is too long. Use 100 characters or fewer.']);
@@ -42,8 +43,9 @@ class ReturnRequestController extends Controller
             ->when($reason !== '', fn ($query) => $query->where('reason', $reason))
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($inner) use ($q) {
-                    $inner->whereHas('order', fn ($order) => $order->where('order_number', 'like', '%'.ltrim($q, '#').'%'))
-                        ->orWhereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', '%'.$q.'%'));
+                    SellerSearch::orWhereOrder($inner, $q);
+                    $inner->orWhereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', SellerSearch::like($q)))
+                        ->orWhereHas('order.items.product', fn ($product) => $product->where('name', 'like', SellerSearch::like($q)));
                 });
             })
             ->with(['order.items.product.images', 'buyer:id,name', 'pickupRider:id,name'])

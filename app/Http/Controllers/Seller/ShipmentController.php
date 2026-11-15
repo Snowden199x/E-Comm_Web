@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Seller;
 
+use App\Support\SellerSearch;
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
 use App\Models\Communication\Notification;
@@ -21,17 +22,22 @@ class ShipmentController extends Controller
             'date_from' => 'nullable|date_format:Y-m-d',
             'date_to' => ['nullable', 'date_format:Y-m-d', ...($request->filled('date_from') ? ['after_or_equal:date_from'] : [])],
             'page' => 'nullable|integer|min:1',
+        ], [
+            'search.max' => 'Search is too long. Use 100 characters or fewer.',
+            'status.in' => 'Choose All or one of the status tabs.',
+            'courier.regex' => 'That courier is not valid. Choose a courier from the list or clear the filter.',
+            'date_from.date_format' => 'Start date is not valid. Pick a date from the calendar.',
+            'date_to.date_format' => 'End date is not valid. Pick a date from the calendar.',
+            'date_to.after_or_equal' => 'End date is before the start date. Pick an end date on or after the start date.',
+            'page.min' => 'That page does not exist. Go back to the first page.',
         ]);
         $base = Order::where('seller_id', $request->user()->id)->where('status', '!=', 'placed');
         $couriers = User::whereIn('id', (clone $base)->whereNotNull('courier_id')->select('courier_id'))->orderBy('name')->get(['id', 'name']);
-        if ($search = trim($filters['search'] ?? '')) {
-            $id = preg_match('/^(?:#?VND?-)?0*(\d+)$/i', $search, $matches) ? (int) $matches[1] : null;
-            $base->where(function ($query) use ($search, $id) {
-                $query->whereHas('buyer', fn ($q) => $q->where('name', 'like', '%'.$search.'%'))
-                    ->orWhere('tracking_number', 'like', '%'.$search.'%')->orWhere('carrier_tracking_number', 'like', '%'.$search.'%');
-                if ($id !== null) {
-                    $query->orWhere('id', $id);
-                }
+        if ($search = SellerSearch::clean($filters['search'] ?? '')) {
+            $base->where(function ($query) use ($search) {
+                $query->whereHas('buyer', fn ($q) => $q->where('name', 'like', SellerSearch::like($search)))
+                    ->orWhereHas('items.product', fn ($p) => $p->where('name', 'like', SellerSearch::like($search)));
+                SellerSearch::orOrderColumns($query, $search);
             });
         }
         if (! empty($filters['date_from'])) {
