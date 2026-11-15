@@ -5,11 +5,9 @@ namespace App\Http\Controllers\Seller;
 use App\Support\SellerSearch;
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Order;
-use App\Models\Communication\Notification;
-use App\Models\User;
+use App\Models\Profiles\LogisticsCompany;
 use App\Services\SellerOrderWorkflow;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ShipmentController extends Controller
@@ -32,7 +30,7 @@ class ShipmentController extends Controller
             'page.min' => 'That page does not exist. Go back to the first page.',
         ]);
         $base = Order::where('seller_id', $request->user()->id)->where('status', '!=', 'placed');
-        $couriers = User::whereIn('id', (clone $base)->whereNotNull('courier_id')->select('courier_id'))->orderBy('name')->get(['id', 'name']);
+        $couriers = LogisticsCompany::whereIn('id', (clone $base)->whereNotNull('delivery_company_id')->select('delivery_company_id'))->orderBy('business_name')->get(['id', 'business_name']);
         if ($search = SellerSearch::clean($filters['search'] ?? '')) {
             $base->where(function ($query) use ($search) {
                 $query->whereHas('buyer', fn ($q) => $q->where('name', 'like', SellerSearch::like($search)))
@@ -47,16 +45,16 @@ class ShipmentController extends Controller
             $base->whereDate('created_at', '<=', $filters['date_to']);
         }
         if (($filters['courier'] ?? '') === 'unassigned') {
-            $base->whereNull('courier_id');
+            $base->whereNull('delivery_company_id');
         } elseif (! empty($filters['courier'])) {
-            $base->where('courier_id', $filters['courier']);
+            $base->where('delivery_company_id', $filters['courier']);
         }
         $raw = (clone $base)->selectRaw('status, COUNT(*) total')->groupBy('status')->pluck('total', 'status');
         $counts = ['all' => (int) $raw->sum()];
         foreach (Order::SHIPMENT_GROUPS as $group => $statuses) {
             $counts[$group] = collect($statuses)->sum(fn ($s) => (int) ($raw[$s] ?? 0));
         }
-        $query = (clone $base)->with(['buyer', 'courier', 'items.product.images'])->withSum('items', 'quantity');
+        $query = (clone $base)->with(['buyer', 'courier', 'deliveryCompany', 'items.product.images'])->withSum('items', 'quantity');
         if (! empty($filters['status'])) {
             $query->whereIn('status', Order::SHIPMENT_GROUPS[$filters['status']]);
         }
@@ -69,7 +67,7 @@ class ShipmentController extends Controller
     public function show(Request $request, int $order)
     {
         $order = Order::where('seller_id', $request->user()->id)->where('status', '!=', 'placed')
-            ->with(['buyer', 'courier', 'items.product.images', 'statusEvents'])->findOrFail($order);
+            ->with(['buyer', 'courier', 'deliveryCompany', 'items.product.images', 'statusEvents'])->findOrFail($order);
 
         if (! $request->ajax()) {
             return redirect()->route('seller.orders.show', $order);
@@ -92,30 +90,5 @@ class ShipmentController extends Controller
         );
 
         return response()->json(['message' => 'Shipment cancelled. Reserved stock has been restored.']);
-    }
-
-    public function tracking(Request $request, int $order)
-    {
-        $data = $request->validate([
-            'carrier_name' => 'nullable|string|max:100|required_with:carrier_tracking_number', 'carrier_tracking_number' => 'nullable|string|max:100|required_with:carrier_name',
-            'estimated_delivery_from' => 'nullable|date_format:Y-m-d|required_with:estimated_delivery_to',
-            'estimated_delivery_to' => 'nullable|date_format:Y-m-d|required_with:estimated_delivery_from|after_or_equal:estimated_delivery_from',
-            'expected_status' => ['required', Rule::in(array_keys(Order::STATUSES))],
-            'expected_revision' => 'required|string',
-        ]);
-        DB::transaction(function () use ($request, $order, $data) {
-            $record = Order::where('seller_id', $request->user()->id)->lockForUpdate()->findOrFail($order);
-            abort_unless($record->status === $data['expected_status'] && $record->revision === $data['expected_revision'], 409, 'Shipment changed. Reopen its details.');
-            abort_if(in_array($record->status, ['placed', 'delivered', 'completed', 'cancelled', 'returned']), 409, 'Tracking details cannot be changed for this shipment.');
-            unset($data['expected_status'], $data['expected_revision']);
-            $record->fill($data);
-            if ($record->isDirty()) {
-                $record->save();
-                $record->statusEvents()->create(['user_id' => $request->user()->id, 'from_status' => $record->status, 'to_status' => $record->status, 'note' => 'Shipment tracking details updated.']);
-                Notification::create(['user_id' => $record->buyer_id, 'type' => 'tracking_update', 'title' => $record->number.': tracking updated', 'message' => 'The seller updated the shipment tracking details for your order.', 'link' => route('buyer.orders.show', $record)]);
-            }
-        });
-
-        return response()->json(['message' => 'Tracking details saved.']);
     }
 }

@@ -374,7 +374,6 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::get('/shipments', [ShipmentController::class, 'index'])->name('shipments.index');
         Route::get('/shipments/{order}', [ShipmentController::class, 'show'])->whereNumber('order')->name('shipments.show');
         Route::patch('/shipments/{order}', [ShipmentController::class, 'update'])->whereNumber('order')->name('shipments.update');
-        Route::patch('/shipments/{order}/tracking', [ShipmentController::class, 'tracking'])->whereNumber('order')->name('shipments.tracking');
         Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}/waybill', [OrderController::class, 'waybill'])->whereNumber('order')->name('orders.waybill');
         Route::get('/orders/{order}', [OrderController::class, 'show'])->whereNumber('order')->name('orders.show');
