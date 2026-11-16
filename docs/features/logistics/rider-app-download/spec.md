@@ -16,10 +16,10 @@ The Logistics landing page is for registering a logistics **business**. Individu
 | QR image | `public/assets/logistics/rider-app-qr.png`, encodes `https://vendo-ph.app/logistics/get-the-app` |
 | Route | `GET /logistics/get-the-app` (`logistics.rider-app`, public, inside the `/logistics` prefix group) |
 | Result | `302` to `config('services.vendo.rider_app_url')` |
-| Default target | `https://github.com/Snowden199x/E-Comm_Mobile/releases/latest/download/vendo-rider.apk` |
+| Default target | `https://github.com/Snowden199x/E-Comm_Mobile/releases/download/rider-v1.0.0/vendo-rider.apk` |
 | Override | `RIDER_APP_DOWNLOAD_URL` in `.env` |
 
-The GitHub URL form is deliberate: `releases/latest/download/<asset>` always serves the newest **published** release, so a new build needs no site change. The asset name must therefore stay `vendo-rider.apk`.
+The target is pinned to the Rider release tag. `releases/latest/download/<asset>` cannot be used here: the two apps share one repository, so GitHub's "latest" is whichever of Buyer or Rider was published last. When the Buyer release `buyer-v1.0.0` became the newest, `releases/latest/download/vendo-rider.apk` redirected to a tag without that asset and the QR landed on a GitHub 404. A new Rider build therefore needs the tag in `RIDER_APP_DOWNLOAD_URL` (or the config default) bumped, or both assets uploaded to every release.
 
 ## Why a direct APK, not an app store
 
@@ -40,6 +40,7 @@ Do not change the package id: it is the app's permanent identity on phones and i
 - No release page of our own: a rider who lands on GitHub sees the release notes instead of install steps. A small `/logistics/get-the-app` download page (version, size, SHA-256, install steps) would be the next improvement, with the redirect kept as the fallback.
 - No iOS distribution.
 - The QR still needs regeneration only if the short URL (`/logistics/get-the-app`) ever changes; it does not need to change per release.
+- Each Rider release needs its tag added to `RIDER_APP_DOWNLOAD_URL`, because the URL cannot follow "latest" while Buyer and Rider publish independently from one repository.
 
 ## Source
 
