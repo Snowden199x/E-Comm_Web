@@ -46,7 +46,8 @@ class RiderEarningsController extends Controller
         // Return pickups pay a separate fixed fee after the parcel is collected, not on delivery.
         $returnBase = DB::table('order_return_pickup_earnings as earning')
             ->where('earning.rider_user_id', $userId);
-        $returnSummary = (clone $returnBase)->selectRaw('COALESCE(SUM(amount), 0) as total, COUNT(*) as lines')->first();
+        // `LINES` is a reserved word in MySQL/MariaDB; keep the aggregate alias portable.
+        $returnSummary = (clone $returnBase)->selectRaw('COALESCE(SUM(amount), 0) as total, COUNT(*) as return_count')->first();
         $returnRows = (clone $returnBase)->leftJoin('logistics_facilities as facility', 'facility.id', '=', 'earning.facility_id')
             ->orderByDesc('earning.created_at')->limit(100)
             ->get(['earning.id', 'earning.amount', 'earning.created_at', 'facility.name as facility_name', 'earning.order_id'])
@@ -68,7 +69,7 @@ class RiderEarningsController extends Controller
             'summary' => [
                 'accrued_total' => number_format(((float) $summary->accrued_total + (float) $returnSummary->total), 2, '.', ''),
                 'hub_credits' => (int) $summary->hub_credits,
-                'return_pickups' => (int) $returnSummary->lines,
+                'return_pickups' => (int) $returnSummary->return_count,
             ],
             'earnings' => $earnings,
         ]);

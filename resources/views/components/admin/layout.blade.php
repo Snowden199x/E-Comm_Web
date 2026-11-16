@@ -69,6 +69,7 @@
 
 <body class="vd-booting h-full antialiased bg-[#FBF7F2] text-[#2B1730]"
     data-skeleton="{{ $skeletonVariant }}"
+    data-realtime-role="admin" data-broadcast-auth-url="{{ url('/broadcasting/auth') }}"
     data-check-status-url="{{ route('admin.check-status') }}" data-login-url="{{ route('admin.login') }}"
     x-data="{ loading: false }"
     @ajax:before.window="loading = true" @ajax:after.window="loading = false">

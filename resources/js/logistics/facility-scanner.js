@@ -1,12 +1,17 @@
 import { BrowserMultiFormatReader } from '@zxing/browser';
 
-const root = document.querySelector('[data-facility-scanner]');
-
-if (root) {
+document.querySelectorAll('[data-facility-scanner]').forEach((root) => {
     const modal = root.querySelector('[data-scanner-modal]');
     const video = root.querySelector('[data-scanner-video]');
     const message = root.querySelector('[data-scanner-message]');
     const tracking = root.querySelector('[data-scanner-tracking]');
+    const openButton = root.querySelector('[data-scanner-open]');
+    const closeButton = modal?.querySelector('[data-scanner-close]');
+    const restartButton = modal?.querySelector('[data-scanner-restart]');
+    const form = modal?.querySelector('[data-scanner-form]');
+
+    if (!modal || !video || !message || !tracking || !openButton || !closeButton || !restartButton || !form) return;
+
     document.body.append(modal);
     const reader = new BrowserMultiFormatReader();
     let controls = null;
@@ -38,12 +43,25 @@ if (root) {
         if (!open) return;
         const run = cameraRun;
         if (!navigator.mediaDevices?.getUserMedia) {
-            status('Camera access is unavailable here. Enter the tracking number below.', 'error');
+            status('Camera access is unavailable here. Allow it in your browser site settings, or enter the Tracking ID below.', 'error');
+            tracking.focus();
             return;
         }
         status('Requesting camera access…');
         try {
-            const activeControls = await reader.decodeFromVideoDevice(undefined, video, (result) => {
+            // Request the stream directly from the button's click flow so the
+            // browser can present its camera permission prompt consistently.
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: { facingMode: { ideal: 'environment' } },
+            });
+            if (!open || run !== cameraRun) {
+                stream.getTracks().forEach((track) => track.stop());
+                return;
+            }
+            video.srcObject = stream;
+            await video.play();
+            const activeControls = await reader.decodeFromVideoElement(video, (result) => {
                 if (!result || busy || !open) return;
                 tracking.value = result.getText().trim();
                 stopCamera();
@@ -55,7 +73,8 @@ if (root) {
                 status('Camera ready. Aim at the parcel label.');
             }
         } catch {
-            status('Could not start the camera. Allow permission or enter the tracking number below.', 'error');
+            status('Camera permission was denied or unavailable. Allow camera access in your browser site settings, or enter the Tracking ID below.', 'error');
+            tracking.focus();
         }
     }
 
@@ -110,17 +129,19 @@ if (root) {
         if (refreshOnClose) window.location.reload();
     }
 
-    root.querySelector('[data-scanner-open]')?.addEventListener('click', (event) => {
+    openButton.addEventListener('click', (event) => {
         lastTrigger = event.currentTarget;
         modal.hidden = false;
         open = true;
         document.body.style.overflow = 'hidden';
-        modal.querySelector('[data-scanner-close]').focus();
+        closeButton.focus();
+        // This call is made directly from the user's click so the browser can
+        // show its camera permission prompt for this scanner instance.
         startCamera();
     });
-    modal.querySelector('[data-scanner-close]').addEventListener('click', closeModal);
-    modal.querySelector('[data-scanner-restart]').addEventListener('click', startCamera);
-    modal.querySelector('[data-scanner-form]').addEventListener('submit', (event) => {
+    closeButton.addEventListener('click', closeModal);
+    restartButton.addEventListener('click', startCamera);
+    form.addEventListener('submit', (event) => {
         event.preventDefault();
         submitScan();
     });
@@ -146,4 +167,4 @@ if (root) {
         }
     });
     window.addEventListener('beforeunload', stopCamera);
-}
+});

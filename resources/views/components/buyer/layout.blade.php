@@ -133,7 +133,9 @@
     @if(request()->routeIs('buyer.cart.index'))<link rel="stylesheet" href="{{ asset('assets/css/cart.css') }}">@endif
 </head>
 
-<body class="vb-body flex min-h-screen flex-col" x-data>
+<body class="vb-body flex min-h-screen flex-col" x-data
+    data-realtime-role="buyer" data-realtime-user-id="{{ auth()->id() }}"
+    data-broadcast-auth-url="{{ url('/broadcasting/auth') }}">
 
     <div id="vb-progress" class="vb-progress" aria-hidden="true"></div>
     <script>
@@ -528,7 +530,8 @@
                 document.getElementById('buyerBellList').innerHTML = data.html;
             } catch (_) {}
         };
-        setInterval(refresh, 3000);
+        setInterval(refresh, 30000);
+        window.addEventListener('vendo:notification', refresh);
         document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
     })();
     </script>

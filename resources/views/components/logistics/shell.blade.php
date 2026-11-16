@@ -94,7 +94,9 @@
     @stack('lg-head')
 </head>
 {{-- x-data is required: Alpine only runs :class / @click / x-show (sidebar collapse, mobile drawer, backdrop) inside an x-data root. The admin layout does the same on its <body>. --}}
-<body class="vd-booting h-full antialiased bg-[#FBF7F2] text-[#2B1730]" data-skeleton="{{ $skeletonVariant }}" x-data="{}">
+<body class="vd-booting h-full antialiased bg-[#FBF7F2] text-[#2B1730]" data-skeleton="{{ $skeletonVariant }}"
+    data-realtime-role="logistics" data-realtime-user-id="{{ $user?->id }}"
+    data-broadcast-auth-url="{{ url('/broadcasting/auth') }}" x-data="{}">
 
 {{-- Loading screen: a skeleton of the shell itself. states.js lifts it once the page is ready; the timer is a safety net. --}}
 @include('logistics.partials.boot-skeleton', ['variant' => $skeletonVariant, 'railItems' => $railItems])
@@ -243,13 +245,21 @@
                             <div class="lg-scan-dialog" role="dialog" aria-modal="true" aria-labelledby="portalScannerTitle">
                                 <div class="lg-scan-head"><div><h2 id="portalScannerTitle">Scan parcel</h2><p>{{ $facility->name }} · {{ $facility->municipality }}</p></div><button type="button" class="lg-scan-close" data-scanner-close aria-label="Close scanner" title="Close scanner"><span aria-hidden="true">×</span></button></div>
                                 <div class="lg-scan-body">
-                                    <div class="lg-scan-camera"><video data-scanner-video muted playsinline aria-label="Camera preview"></video><div class="lg-scan-target" aria-hidden="true"></div></div>
-                                    <p class="lg-scan-help">Aim at the shipping label's QR code or barcode. Scans process automatically.</p>
-                                    <p class="lg-scan-message" data-scanner-message role="status">Allow camera access. Scans are recorded automatically.</p>
-                                    <form class="lg-scan-form" data-scanner-form>
-                                        <div class="lg-field"><label for="portalScanTracking">Tracking number</label><input id="portalScanTracking" class="lg-input" data-scanner-tracking autocomplete="off" required placeholder="Scan label or enter number and press Enter"></div>
-                                        <div class="lg-scan-actions"><button type="button" class="lg-btn lg-btn--outline" data-scanner-restart>Use camera</button></div>
-                                    </form>
+                                    <div class="lg-scan-layout">
+                                        <section class="lg-scan-camera-column" aria-label="Parcel camera scanner">
+                                            <div class="lg-scan-camera"><video data-scanner-video muted playsinline aria-label="Camera preview"></video><div class="lg-scan-target" aria-hidden="true"></div></div>
+                                            <div class="lg-scan-camera-caption"><span class="lg-scan-camera-mark" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="M3 6.5h3l1.2-1.8h5.6L14 6.5h3v9H3v-9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="10" cy="11" r="2.7" stroke="currentColor" stroke-width="1.5"/></svg></span><span>Camera scan</span><span class="lg-scan-format">QR · Code 128</span></div>
+                                        </section>
+                                        <section class="lg-scan-controls" aria-label="Scan controls">
+                                            <p class="lg-scan-help">Center the shipping label in the frame. A recognized code is recorded automatically.</p>
+                                            <p class="lg-scan-message" data-scanner-message role="status" aria-live="polite">Opening this scanner requests camera access. Manual Tracking ID entry is available below.</p>
+                                            <form class="lg-scan-form" data-scanner-form>
+                                                <div class="lg-field"><label for="portalScanTracking">Tracking ID</label><input id="portalScanTracking" class="lg-input" data-scanner-tracking autocomplete="off" required placeholder="Enter parcel tracking ID"></div>
+                                                <button type="submit" class="lg-btn lg-scan-submit">Record scan</button>
+                                                <button type="button" class="lg-btn lg-btn--outline lg-scan-restart" data-scanner-restart>Restart camera</button>
+                                            </form>
+                                        </section>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -264,7 +274,8 @@
                     ringing: false,
                     timer: null,
                     init() {
-                        this.timer = window.setInterval(() => this.refresh(), 20000);
+                        this.timer = window.setInterval(() => this.refresh(), 30000);
+                        window.addEventListener('vendo:notification', () => this.refresh());
                         document.addEventListener('visibilitychange', () => {
                             if (document.visibilityState === 'visible') this.refresh();
                         });
@@ -298,7 +309,7 @@
                             if (!this.refreshError) {
                                 window.logisticsBanner?.({
                                     type: 'error', title: 'Notifications are not updating',
-                                    message: 'Check your internet connection. This page tries again every 20 seconds.'
+                                    message: 'Check your internet connection. This page tries again every 30 seconds.'
                                 });
                             }
                             this.refreshError = true;

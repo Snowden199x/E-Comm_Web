@@ -1,6 +1,6 @@
 # Vendo Project Documentation
 
-This documentation describes the Laravel web application as it exists in the repository, checked on **11 November 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
+This documentation describes the Laravel web application as it exists in the repository, checked on **17 November 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
 
 ## Start here
 
@@ -25,6 +25,8 @@ This documentation describes the Laravel web application as it exists in the rep
 - [Parcel exception and detour workflow](features/logistics/parcel-exceptions/spec.md) and [Rider delivery-proof API](features/courier/delivery-proof-api/spec.md) — current web exception and new facility-route delivery evidence contracts; the Rider app still needs integration.
 - [Google sign-in](features/shared/google-auth/spec.md) — verified web and Rider token exchange, registration continuation, configuration, and platform limits.
 - [Shared site branding](features/shared/site-branding/spec.md) — the Vendo browser tab icon and Buyer product video display.
+- [Web real-time updates and notifications](features/shared/realtime-web-updates/spec.md) — Laravel Reverb/Echo channels, role-scoped notification delivery, polling fallback, and local/Azure WebSocket setup requirements.
+- [Logistics Portal notifications](features/logistics/notifications/spec.md) — Company, Province Hub and Station Hub alert scope and feed authorization.
 - [Commission and settlement design](design/commission-calculation-and-settlement.md) — fixed Admin 10% merchandise commission, route-based Buyer shipping fee, Rider/Driver accrual, and remaining payout gaps.
 - [COD cash and delivery fee distribution](design/cod-cash-and-delivery-fee-distribution.md) — COD-only cash flow from Rider to Vendo and Seller, delivery fee split between Rider, Vendo and Logistics Company, pages per role, and the implementation order. Steps 2 to 7 are written in code with owner migration and verification pending; returns and reversals are not built. See the [29 October pull review](design/2026-10-29-cod-cash-pull-review.md).
 - [Settlement ledger, payouts and return/refund policy](design/settlement-ledger-and-return-policy.md) — **proposal only, awaiting owner approval**: append-only ledger, manual payout batches with holdback, fault-based refunds and return restocking, plus the existing defects found while mapping them. No code for it exists yet.
@@ -52,6 +54,7 @@ This documentation describes the Laravel web application as it exists in the rep
 - [7 October backend progress](logs/PROGRESS-2026-10-07.md) — saved items/settings, shop search, Admin complaint/case workflows, and cancellation-rule follow-up.
 - [12 October pull progress](logs/PROGRESS-2026-10-12.md) — current team pull review and documentation updates.
 - [14 October Logistics decision](logs/PROGRESS-2026-10-14.md) — province network, Main Hub/station hierarchy, and browser-camera scanner direction.
+- [17 November progress](logs/PROGRESS-2026-11-17.md) — Logistics scanner UI refresh and nationwide demo-company seeder/PDF update.
 - [23 October pull review](logs/PROGRESS-2026-10-23.md) — Company / Province Hub / Station preview, backend decision gate, and registration province field update.
 - [Future plan](future-plan.md) — remaining web and mobile integration work.
 

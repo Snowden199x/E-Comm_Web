@@ -1,7 +1,7 @@
 # Admin Notifications
 
-**Status:** Implemented for in-app platform events; browser verification pending.
-**Reviewed:** 16 November 2026
+**Status:** Implemented for in-app platform events with role-protected Reverb delivery; Azure service and browser verification pending.
+**Reviewed:** 17 November 2026
 
 Admin notifications use records with `user_id = null`. Buyer- and seller-targeted notifications are excluded from the admin dashboard, bell and inbox. Admin receives notifications for new buyer, seller, and Logistics Center registrations; new product submissions and resubmissions for review; account reports submitted through `UserReportController`; product-review reports; and incoming Buyer/Seller support conversations or messages. The Logistics Center registration notification opens Registrations with the Logistics Center filter selected. A product submission notification opens Products for Review filtered to the product name. Saving a product as a draft does not notify Admin. Rider applications notify the assigned Logistics Center, which owns rider approval.
 Admin also receives a platform notification when an approved Buyer, Seller, or Logistics Center replaces or removes a profile photo. Its link filters User Management to that account's role and email; the current image is visible in the list and profile modal. A no-op removal does not notify Admin. The notification records the event time but does not retain the old image.
@@ -10,8 +10,8 @@ The Admin complaints screen has status and decision actions, but this review fou
 
 Order-placement notifications go to the Seller. Buyer and Seller shipment updates, review replies/moderation, and Logistics operational alerts go to their respective actors. Admin does not receive routine buyer order or fulfillment notifications. Buyer checkout no longer creates an admin `new_order` record; legacy `new_order` records are filtered out of the admin dashboard and notification inbox/bell.
 
-The bell shows the unread count and polls for updates every three seconds while the page is visible. A new item triggers a short sound after the browser allows audio. This is near-real-time polling, not a WebSocket connection. The inbox shows newest items first, supports All and Unread filters, and lets an admin open, mark one read, or mark all read. Opening an item follows only an internal Admin path under `ADMIN_PATH`; legacy stored `/admin/...` links are rewritten to the current prefix, and invalid links return to the inbox.
+The bell refreshes immediately when a notification arrives over the authenticated `admin.notifications` private channel. If Reverb is unavailable, the bell polls every 30 seconds while visible. A new item triggers a short sound after the browser allows audio. The inbox shows newest items first, supports All and Unread filters, and lets an admin open, mark one read, or mark all read. Opening an item follows only an internal Admin path under `ADMIN_PATH`; legacy stored `/admin/...` links are rewritten to the current prefix, and invalid links return to the inbox.
 
-All admins currently share the same platform notification read state because the table has no admin recipient column. Personal admin notification preferences and external delivery channels are not implemented.
+All admins currently share the same platform notification read state because the table has no admin recipient column. Personal admin notification preferences and external delivery channels are not implemented. Channel authorization uses the `admin` guard and active account state. The browser fetches the role-authorized feed; notification text is not sent in the WebSocket payload. Azure must run Reverb persistently and proxy WSS through Nginx/Cloudflare; see [Web real-time updates](../../shared/realtime-web-updates/spec.md).
 
 **Code:** `app/Http/Controllers/Admin/NotificationController.php`, `resources/views/admin/notifications/index.blade.php`, `resources/views/components/admin/layout.blade.php`.

@@ -113,7 +113,8 @@ if (bellWrap && bellButton && bellMenu) {
         }
     }
 
-    window.setInterval(refreshAdminNotifications, 3000);
+    window.setInterval(refreshAdminNotifications, 30000);
+    window.addEventListener('vendo:notification', refreshAdminNotifications);
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) refreshAdminNotifications();
     });

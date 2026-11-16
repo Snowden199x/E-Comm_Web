@@ -2274,11 +2274,11 @@ html {
     background: rgb(28 22 32 / 72%);
 }
 .lg-scan-dialog {
-    width: min(100%, 680px);
-    height: min(620px, calc(100vh - 24px));
-    height: min(620px, calc(100dvh - 24px));
-    max-height: calc(100vh - 24px);
-    max-height: calc(100dvh - 24px);
+    width: min(100%, 900px);
+    height: min(560px, calc(100vh - 32px));
+    height: min(560px, calc(100dvh - 32px));
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     overflow: hidden;
@@ -2322,42 +2322,113 @@ html {
     outline-offset: 2px;
 }
 .lg-scan-body {
-    display: grid;
     min-height: 0;
-    grid-template-rows: minmax(0, 1fr) auto auto auto;
-    padding: 14px 20px 18px;
+    padding: 18px 20px 20px;
+}
+.lg-scan-layout {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1.45fr) minmax(250px, 0.8fr);
+    gap: 20px;
+}
+.lg-scan-camera-column {
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr) auto;
+    overflow: hidden;
+    border: 1px solid var(--lg-line);
+    border-radius: 8px;
+    background: #f8f5f1;
 }
 .lg-scan-camera {
     position: relative;
     min-height: 0;
     overflow: hidden;
-    border-radius: 8px;
-    background: #211c24;
+    background: #1e1a20;
 }
 .lg-scan-camera video { width: 100%; height: 100%; object-fit: cover; }
-.lg-scan-target { position: absolute; inset: 20%; border: 2px solid #fff; border-radius: 8px; pointer-events: none; box-shadow: 0 0 0 999px rgb(0 0 0 / 15%); }
-.lg-scan-help { margin: 8px 0 4px; color: var(--lg-muted); font-size: 13px; }
-.lg-scan-message { min-height: 20px; margin: 0 0 10px; font-size: 13px; color: var(--lg-brand); }
-.lg-scan-message[data-state="error"] { color: var(--lg-red); }
-.lg-scan-message[data-state="success"] { color: var(--lg-green); }
-.lg-scan-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+.lg-scan-target { position: absolute; top: 50%; left: 50%; width: 68%; height: 30%; transform: translate(-50%, -50%); border: 2px solid rgb(255 255 255 / 92%); border-radius: 4px; pointer-events: none; box-shadow: 0 0 0 999px rgb(20 17 22 / 24%); }
+.lg-scan-camera-caption { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; color: var(--lg-ink-2); font-size: 12px; font-weight: 600; }
+.lg-scan-camera-mark { display: grid; width: 22px; height: 22px; place-items: center; color: var(--lg-brand); }
+.lg-scan-camera-mark svg { display: block; width: 19px; height: 19px; }
+.lg-scan-format { margin-left: auto; color: var(--lg-muted); font-size: 11px; font-weight: 500; }
+.lg-scan-controls { display: flex; min-width: 0; flex-direction: column; padding: 2px 0; }
+.lg-scan-help { margin: 0 0 14px; color: var(--lg-muted); font-size: 13px; line-height: 1.55; }
+.lg-scan-message { min-height: 56px; margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--lg-brand-line); border-radius: 6px; background: var(--lg-brand-soft); color: var(--lg-brand-dark); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.lg-scan-message[data-state="error"] { border-color: #f1c6c2; background: var(--lg-red-soft); color: var(--lg-red); }
+.lg-scan-message[data-state="success"] { border-color: #c8e4d3; background: var(--lg-green-soft); color: var(--lg-green); }
+.lg-scan-form { display: grid; gap: 12px; }
 .lg-scan-form .lg-field { min-width: 0; margin: 0; }
 .lg-scan-form .lg-select,
 .lg-scan-form .lg-input { width: 100%; min-width: 0; }
-.lg-scan-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-.lg-scan-form .lg-scan-actions { grid-column: 1 / -1; margin-top: 2px; }
-@media (max-height: 680px) {
-    .lg-scan-head { padding-top: 10px; padding-bottom: 10px; }
-    .lg-scan-body { padding-top: 10px; padding-bottom: 12px; }
-    .lg-scan-message { margin-bottom: 6px; }
-    .lg-scan-actions { margin-top: 8px; }
+.lg-scan-form .lg-field > label { font-weight: 600; }
+.lg-scan-form .lg-input { min-height: 44px; }
+.lg-scan-submit,
+.lg-scan-restart { width: 100%; justify-content: center; }
+.lg-scan-restart { margin-top: auto; }
+.lg-station-scan-form { align-items: end; }
+.lg-station-scan-form .lg-field { flex: 1 1 320px; }
+.lg-station-scan-form .lg-search { width: 100%; max-width: none; }
+.lg-station-scan-form .lg-input { min-height: 42px; }
+.lg-station-scan-form .lg-btn { min-height: 42px; }
+@media (max-height: 620px) {
+    .lg-scan-dialog { height: calc(100dvh - 20px); max-height: calc(100dvh - 20px); }
+    .lg-scan-head { padding-top: 9px; padding-bottom: 9px; }
+    .lg-scan-body { padding-top: 10px; padding-bottom: 10px; }
+    .lg-scan-layout { gap: 14px; }
+    .lg-scan-help { margin-bottom: 8px; }
+    .lg-scan-message { min-height: 42px; margin-bottom: 8px; padding: 7px 9px; }
+    .lg-scan-form { gap: 8px; }
 }
 @media (max-width: 760px) {
     .lg-facility-form { grid-template-columns: 1fr; }
     .lg-scan-head,
     .lg-scan-body { padding-right: 14px; padding-left: 14px; }
+    .lg-scan-dialog { width: min(100%, 560px); height: min(680px, calc(100vh - 24px)); height: min(680px, calc(100dvh - 24px)); }
+    .lg-scan-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(170px, 0.9fr) auto; gap: 12px; }
+    .lg-scan-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: 14px; align-content: start; }
+    .lg-scan-help { grid-column: 1 / -1; margin-bottom: 8px; }
+    .lg-scan-message { min-height: 52px; margin: 0; }
+    .lg-scan-form { grid-column: 2; grid-row: 2 / span 2; align-content: start; gap: 8px; }
+    .lg-scan-form .lg-field label { font-size: 12px; }
+    .lg-scan-submit, .lg-scan-restart { min-height: 38px; }
+    .lg-scan-restart { margin-top: 0; }
 }
-@media (max-width: 380px) { .lg-scan-form { gap: 8px; } .lg-scan-head { padding-right: 10px; padding-left: 14px; } }
+@media (max-width: 420px) {
+    .lg-scan-controls { grid-template-columns: minmax(0, 1fr); }
+    .lg-scan-message, .lg-scan-form { grid-column: 1; grid-row: auto; }
+    .lg-scan-form { margin-top: 8px; }
+    .lg-scan-dialog { height: min(700px, calc(100dvh - 16px)); }
+    .lg-scan-head { padding-right: 10px; padding-left: 14px; }
+}
+@media (max-height: 540px) and (max-width: 760px) {
+    .lg-scan-overlay { padding: 8px; }
+    .lg-scan-dialog { height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); }
+    .lg-scan-head { min-height: 46px; padding-top: 5px; padding-bottom: 5px; }
+    .lg-scan-head h2 { margin-bottom: 2px; font-size: 16px; }
+    .lg-scan-body { padding: 8px 12px; }
+    .lg-scan-layout { grid-template-rows: minmax(92px, 0.35fr) auto; gap: 8px; }
+    .lg-scan-camera-caption { min-height: 30px; padding: 4px 8px; }
+    .lg-scan-camera-mark { width: 18px; height: 18px; }
+    .lg-scan-camera-mark svg { width: 16px; height: 16px; }
+    .lg-scan-controls { display: block; }
+    .lg-scan-help { display: none; }
+    .lg-scan-message { min-height: 32px; margin-bottom: 6px; padding: 6px 8px; }
+    .lg-scan-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+    .lg-scan-form .lg-field { grid-column: 1 / -1; }
+    .lg-scan-form .lg-input { min-height: 34px; padding-top: 5px; padding-bottom: 5px; }
+    .lg-scan-form .lg-field > label { font-size: 12px; }
+    .lg-scan-submit, .lg-scan-restart { min-height: 34px; padding-top: 5px; padding-bottom: 5px; }
+    .lg-scan-restart { margin-top: 0; }
+}
+@media (max-width: 560px) {
+    .lg-station-scan-form { align-items: stretch; }
+    .lg-station-scan-form .lg-field,
+    .lg-station-scan-form .lg-search { flex-basis: 100%; max-width: none; }
+    .lg-station-scan-form .lg-btn { width: 100%; justify-content: center; }
+}
 .lg-dispatch-filters { display: grid; grid-template-columns: minmax(200px, 2fr) repeat(2, minmax(140px, 1fr)) auto; align-items: end; gap: 12px; margin-bottom: 18px; }
 .lg-dispatch-filters .lg-btn { min-height: 42px; }
 .lg-dispatch-stages { display: flex; gap: 18px; overflow-x: auto; margin-bottom: 16px; border-bottom: 1px solid var(--lg-line); }

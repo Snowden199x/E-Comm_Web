@@ -47,13 +47,21 @@
             <div class="lg-scan-dialog" role="dialog" aria-modal="true" aria-labelledby="scannerTitle">
                 <div class="lg-scan-head"><div><h2 id="scannerTitle">Scan parcel</h2><p>{{ $facility->name }} · {{ $facility->municipality }}</p></div><button type="button" class="lg-scan-close" data-scanner-close aria-label="Close scanner" title="Close scanner"><span aria-hidden="true">×</span></button></div>
                 <div class="lg-scan-body">
-                    <div class="lg-scan-camera"><video data-scanner-video muted playsinline aria-label="Camera preview"></video><div class="lg-scan-target" aria-hidden="true"></div></div>
-                    <p class="lg-scan-help">Hold the shipping label's QR code or barcode inside the frame. Scans process automatically.</p>
-                    <p class="lg-scan-message" data-scanner-message role="status">Allow camera access. Scans are recorded automatically.</p>
-                    <form class="lg-scan-form" data-scanner-form>
-                        <div class="lg-field"><label for="scanTracking">Tracking number</label><input id="scanTracking" class="lg-input" data-scanner-tracking autocomplete="off" required placeholder="Scan label or enter number and press Enter"></div>
-                        <div class="lg-scan-actions"><button type="button" class="lg-btn lg-btn--outline" data-scanner-restart>Use camera</button></div>
-                    </form>
+                    <div class="lg-scan-layout">
+                        <section class="lg-scan-camera-column" aria-label="Parcel camera scanner">
+                            <div class="lg-scan-camera"><video data-scanner-video muted playsinline aria-label="Camera preview"></video><div class="lg-scan-target" aria-hidden="true"></div></div>
+                            <div class="lg-scan-camera-caption"><span class="lg-scan-camera-mark" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="M3 6.5h3l1.2-1.8h5.6L14 6.5h3v9H3v-9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="10" cy="11" r="2.7" stroke="currentColor" stroke-width="1.5"/></svg></span><span>Camera scan</span><span class="lg-scan-format">QR · Code 128</span></div>
+                        </section>
+                        <section class="lg-scan-controls" aria-label="Scan controls">
+                            <p class="lg-scan-help">Center the shipping label in the frame. A recognized code is recorded automatically.</p>
+                            <p class="lg-scan-message" data-scanner-message role="status" aria-live="polite">Opening this scanner requests camera access. Manual Tracking ID entry is available below.</p>
+                            <form class="lg-scan-form" data-scanner-form>
+                                <div class="lg-field"><label for="scanTracking-{{ $facility->id }}">Tracking ID</label><input id="scanTracking-{{ $facility->id }}" class="lg-input" data-scanner-tracking autocomplete="off" required placeholder="Enter parcel tracking ID"></div>
+                                <button type="submit" class="lg-btn lg-scan-submit">Record scan</button>
+                                <button type="button" class="lg-btn lg-btn--outline lg-scan-restart" data-scanner-restart>Restart camera</button>
+                            </form>
+                        </section>
+                    </div>
                 </div>
             </div>
         </div>

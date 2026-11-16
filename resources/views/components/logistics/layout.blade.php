@@ -9,7 +9,9 @@
     <title>{{ $title }} — Vendo Logistics</title>
     @vite(['resources/css/shared/app.css', 'resources/css/admin/layout.css', 'resources/css/logistics/workspace.css', 'resources/js/shared/app.js'])
 </head>
-<body class="bg-[#FBF7F2] text-[#2B1730]">
+<body class="bg-[#FBF7F2] text-[#2B1730]"
+    data-realtime-role="logistics" data-realtime-user-id="{{ auth()->id() }}"
+    data-broadcast-auth-url="{{ url('/broadcasting/auth') }}">
     <div class="min-h-screen lg:flex">
         <aside class="bg-[#3b1735] text-white lg:w-[272px] lg:min-h-screen lg:shrink-0">
             <div class="flex items-center justify-between border-b border-white/15 px-5 py-5">

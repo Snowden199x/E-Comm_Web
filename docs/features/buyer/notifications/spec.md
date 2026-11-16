@@ -1,7 +1,7 @@
 # Buyer Notifications
 
-**Status:** Implemented; Seller voucher alerts added 13 October 2026; owner verification pending
-**Reviewed:** 13 October 2026
+**Status:** Implemented with role-protected Reverb delivery; voucher alerts added 13 October 2026; local/Azure browser verification pending
+**Reviewed:** 17 November 2026
 
 ## Current behavior
 
@@ -14,7 +14,9 @@ Buyers see only their own notifications. The Notifications page (`buyer.notifica
 - **Mark all as read**, and pagination;
 - empty states for "No notifications yet" and "You are all caught up".
 
-Account warnings and announcements open the notification detail dialog (`shared.notification-detail`), including the policy text for policy updates. Case message notifications open the Buyer's private case thread after the route checks case participation. The header bell shows the five latest in a dropdown with an unread dot, refreshed by the existing polling. Destinations are limited to Buyer pages by `NotificationController::destination()`.
+Account warnings and announcements open the notification detail dialog (`shared.notification-detail`), including the policy text for policy updates. Case message notifications open the Buyer's private case thread after the route checks case participation. The header bell shows the five latest in a dropdown with an unread dot. It refreshes immediately over the authenticated `users.{buyer id}` private channel, with the existing feed polled every 30 seconds as a fallback and on tab visibility. Destinations are limited to Buyer pages by `NotificationController::destination()`.
+
+New approved products also publish a payload-free `catalog` event so open Buyer catalog pages can check their scoped revision. The WebSocket event never contains order, address or message contents; the browser retrieves the role-authorized feed through Laravel.
 
 ## Gaps and acceptance direction
 
@@ -30,4 +32,4 @@ The icon is chosen from keywords in the notification `type` (order, message, rev
 
 ## Related documentation
 
-See [Seller notifications](../../seller/notification/spec.md), [Admin notifications](../../admin/notification/spec.md), and [domain status](../../../domain-feature-status.md).
+See [Web real-time updates](../../shared/realtime-web-updates/spec.md), [Seller notifications](../../seller/notification/spec.md), [Admin notifications](../../admin/notification/spec.md), and [domain status](../../../domain-feature-status.md).
