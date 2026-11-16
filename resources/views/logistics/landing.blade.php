@@ -48,8 +48,8 @@
     {{-- ─── NAV ─────────────────────────────────────────────────────────── --}}
     <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100">
         <div class="max-w-7xl mx-auto px-6 lg:px-10 h-[72px] flex items-center justify-between">
-            <a href="{{ route('logistics.landing') }}">
-                <img src="{{ asset('assets/branding/vendo-logo.svg') }}" alt="Vendo" class="h-8">
+            <a href="{{ route('logistics.landing') }}" class="inline-flex items-center rounded-md bg-[#3b1735] px-3 py-2">
+                <img src="{{ asset('assets/branding/vendo-logo.svg') }}" alt="Vendo" class="h-8 brightness-0 invert">
             </a>
             <div class="flex items-center gap-3">
                 <a href="{{ route('logistics.login') }}"
