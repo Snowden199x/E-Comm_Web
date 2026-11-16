@@ -40,6 +40,8 @@ export default defineConfig({
 
                 // Seller
                 "resources/css/seller/seller-dashboard.css",
+                "resources/css/seller/mobile.css",
+                "resources/js/seller/mobile.js",
                 "resources/css/seller/order-management-orders.css",
                 "resources/css/seller/operations.css",
                 "resources/css/seller/workspace.css",
