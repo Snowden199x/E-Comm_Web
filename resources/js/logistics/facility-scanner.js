@@ -49,7 +49,19 @@ document.querySelectorAll('[data-facility-scanner]').forEach((root) => {
         }
         status('Requesting camera access…');
         try {
-            const activeControls = await reader.decodeFromVideoDevice(undefined, video, (result) => {
+            // Request the stream directly from the button's click flow so the
+            // browser can present its camera permission prompt consistently.
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: { facingMode: { ideal: 'environment' } },
+            });
+            if (!open || run !== cameraRun) {
+                stream.getTracks().forEach((track) => track.stop());
+                return;
+            }
+            video.srcObject = stream;
+            await video.play();
+            const activeControls = await reader.decodeFromVideoElement(video, (result) => {
                 if (!result || busy || !open) return;
                 tracking.value = result.getText().trim();
                 stopCamera();
