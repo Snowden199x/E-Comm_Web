@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Profiles\FacilityStaff;
+use App\Models\Profiles\LogisticsCenter;
 use App\Models\Profiles\LogisticsCompany;
 use App\Models\User;
 use Illuminate\Database\Seeder;
