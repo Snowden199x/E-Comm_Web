@@ -13,13 +13,17 @@ class DeliveryFeeSetting extends Model
     /** Matches the fixed 10% product commission already used by the Admin reports. */
     public const DEFAULT_SELLER_COMMISSION_RATE = 10.00;
 
-    protected $fillable = ['vendo_delivery_commission_rate', 'seller_commission_rate', 'updated_by'];
+    /** Fixed fee paid to the Rider after a successful return pickup. */
+    public const DEFAULT_RETURN_PICKUP_FEE = 10.00;
+
+    protected $fillable = ['vendo_delivery_commission_rate', 'seller_commission_rate', 'return_pickup_fee', 'updated_by'];
 
     protected function casts(): array
     {
         return [
             'vendo_delivery_commission_rate' => 'decimal:2',
             'seller_commission_rate' => 'decimal:2',
+            'return_pickup_fee' => 'decimal:2',
         ];
     }
 
@@ -34,6 +38,7 @@ class DeliveryFeeSetting extends Model
         return static::query()->first() ?? static::query()->create([
             'vendo_delivery_commission_rate' => self::DEFAULT_VENDO_DELIVERY_COMMISSION_RATE,
             'seller_commission_rate' => self::DEFAULT_SELLER_COMMISSION_RATE,
+            'return_pickup_fee' => self::DEFAULT_RETURN_PICKUP_FEE,
         ]);
     }
 
@@ -45,5 +50,10 @@ class DeliveryFeeSetting extends Model
     public static function sellerCommissionRate(): float
     {
         return (float) static::current()->seller_commission_rate;
+    }
+
+    public static function returnPickupFee(): float
+    {
+        return (float) static::current()->return_pickup_fee;
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Seller;
 
+use App\Support\SellerSearch;
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\OrderReturnRequest;
 use App\Services\OrderReturnService;
@@ -30,7 +31,7 @@ class ReturnRequestController extends Controller
         if (! array_key_exists($reason, OrderReturnRequest::REASONS)) {
             $reason = '';
         }
-        $q = trim((string) $request->query('q', ''));
+        $q = SellerSearch::clean((string) $request->query('q', ''));
         if (mb_strlen($q) > 100) {
             return redirect()->route('seller.returns.index', array_filter(['status' => $status, 'reason' => $reason]))
                 ->withErrors(['q' => 'Search is too long. Use 100 characters or fewer.']);
@@ -42,11 +43,12 @@ class ReturnRequestController extends Controller
             ->when($reason !== '', fn ($query) => $query->where('reason', $reason))
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($inner) use ($q) {
-                    $inner->whereHas('order', fn ($order) => $order->where('order_number', 'like', '%'.ltrim($q, '#').'%'))
-                        ->orWhereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', '%'.$q.'%'));
+                    SellerSearch::orWhereOrder($inner, $q);
+                    $inner->orWhereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', SellerSearch::like($q)))
+                        ->orWhereHas('order.items.product', fn ($product) => $product->where('name', 'like', SellerSearch::like($q)));
                 });
             })
-            ->with(['order.items.product', 'buyer:id,name'])
+            ->with(['order.items.product.images', 'buyer:id,name', 'pickupRider:id,name'])
             // Requests waiting for a decision come first, oldest first; handled ones follow, newest first.
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
             ->orderByRaw("CASE WHEN status = 'pending' THEN created_at END ASC")
@@ -62,10 +64,21 @@ class ReturnRequestController extends Controller
             ->whereIn('return_status', [OrderReturnRequest::RETURN_STATUS_PENDING_PICKUP, OrderReturnRequest::RETURN_STATUS_PICKED_UP])
             ->count();
 
+        // Buyer refunds after the pickup fee is deducted when the buyer pays it.
         $refundedCents = (int) OrderReturnRequest::query()->where('seller_id', $sellerId)
-            ->where('status', OrderReturnRequest::STATUS_APPROVED)->sum('refund_cents');
+            ->where('status', OrderReturnRequest::STATUS_APPROVED)->get()
+            ->sum(fn (OrderReturnRequest $return) => $return->buyerRefundCents());
 
-        return view('seller.returns.index', compact('returns', 'counts', 'onTheWay', 'refundedCents', 'status', 'reason', 'q'));
+        // Notification links arrive as ?return=ID. Open that return even when it is not on this page of the list.
+        $focusId = (int) $request->query('return');
+        $focus = $focusId > 0
+            ? OrderReturnRequest::query()->where('seller_id', $sellerId)
+                ->with(['order.items.product.images', 'buyer:id,name', 'pickupRider:id,name'])->find($focusId)
+            : null;
+        $focusMissing = $focusId > 0 && ! $focus;
+        $focusOffPage = $focus && ! $returns->getCollection()->contains('id', $focus->id);
+
+        return view('seller.returns.index', compact('returns', 'counts', 'onTheWay', 'refundedCents', 'status', 'reason', 'q', 'focus', 'focusMissing', 'focusOffPage'));
     }
 
     public function approve(Request $request, int $returnRequest, OrderReturnService $returns)

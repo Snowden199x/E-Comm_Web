@@ -15,9 +15,9 @@ Buyer asks Vendo for help; Admin answers and closes the request. Separate from *
 
 ## Admin
 
-- **`GET /admin/support-tickets`** (`admin.support-tickets.index`), sidebar **Support Tickets** under Users & Safety with a badge for open + in-review. Counts cards filter by status; search covers ticket id, subject, Buyer name and email; topic select; page number in the URL.
-- **`GET /admin/support-tickets/{ticket}`**: Buyer (name, email, phone), linked order, the full thread and a reply box. Replying to an `open` ticket moves it to `in_review`.
-- **`PATCH /admin/support-tickets/{ticket}/status`** sets Open / In review / Resolved; resolving notifies the Buyer. A resolved ticket cannot be replied to until its status changes.
+- **`GET /{ADMIN_PATH}/support-tickets`** (`admin.support-tickets.index`), sidebar **Support Tickets** under Users & Safety with a badge for open + in-review. Counts cards filter by status; search covers ticket id, subject, Buyer name and email; topic select; page number in the URL.
+- **`GET /{ADMIN_PATH}/support-tickets/{ticket}`**: Buyer (name, email, phone), linked order, the full thread and a reply box. Replying to an `open` ticket moves it to `in_review`.
+- **`PATCH /{ADMIN_PATH}/support-tickets/{ticket}/status`** sets Open / In review / Resolved; resolving notifies the Buyer. A resolved ticket cannot be replied to until its status changes.
 - New ticket or Buyer reply creates an Admin operational notification (`user_id = null`) linking to the thread; an Admin reply or a resolution notifies the Buyer.
 - The Admin reply form accepts the same two attachments and lists them in the thread; `admin.support-tickets.attachments.show` streams any ticket file for the authenticated Admin. Ticket list counts are unchanged.
 

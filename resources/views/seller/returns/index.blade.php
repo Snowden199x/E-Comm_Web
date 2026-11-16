@@ -1,6 +1,5 @@
+@use('App\Models\Ecommerce\OrderReturnRequest', 'Ret')
 @php
-    use App\Models\Ecommerce\OrderReturnRequest as Ret;
-
     $money = fn ($amount) => '₱'.number_format((float) $amount, 2);
     $pending = (int) ($counts[Ret::STATUS_PENDING] ?? 0);
     $approved = (int) ($counts[Ret::STATUS_APPROVED] ?? 0);
@@ -28,17 +27,25 @@
                 <h1>Returns</h1>
                 <p>Review buyer return requests. Approving one takes the order back, restores the stock and records the refund.</p>
             </div>
-            <a class="do-btn do-btn--soft" href="{{ route('seller.completed-orders.index') }}">
-                <svg class="do-ico do-ico--slide" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7zM7 19a1.8 1.8 0 100-3.6A1.8 1.8 0 007 19zm10 0a1.8 1.8 0 100-3.6 1.8 1.8 0 000 3.6z"/></svg>
-                View delivered orders
-            </a>
+            <div class="rt-head-actions">
+                @if ($pending > 0 && $status !== 'pending')
+                    <a class="do-btn do-btn--primary" href="{{ route('seller.returns.index', ['status' => 'pending']) }}" data-rt-nav>
+                        <svg class="do-ico do-ico--pop" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                        Review {{ $pending }} waiting
+                    </a>
+                @endif
+                <a class="do-btn do-btn--soft" href="{{ route('seller.completed-orders.index') }}">
+                    <svg class="do-ico do-ico--slide" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7zM7 19a1.8 1.8 0 100-3.6A1.8 1.8 0 007 19zm10 0a1.8 1.8 0 100-3.6 1.8 1.8 0 000 3.6z"/></svg>
+                    View delivered orders
+                </a>
+            </div>
         </header>
 
         <div class="rt-stats" role="list">
-            <div class="do-stat" role="listitem">
+            <a class="do-stat rt-stat--link" role="listitem" href="{{ route('seller.returns.index', ['status' => 'pending']) }}" data-rt-nav title="Show requests waiting for you">
                 <span class="do-stat__icon do-tone-butter"><svg class="do-ico do-ico--pop" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
                 <span class="do-stat__text">Waiting for you<strong>{{ number_format($pending) }}</strong></span>
-            </div>
+            </a>
             <div class="do-stat" role="listitem">
                 <span class="do-stat__icon do-tone-sky"><svg class="do-ico do-ico--spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7zM7 19a1.8 1.8 0 100-3.6A1.8 1.8 0 007 19zm10 0a1.8 1.8 0 100-3.6 1.8 1.8 0 000 3.6z"/></svg></span>
                 <span class="do-stat__text">On the way back<strong>{{ number_format($onTheWay) }}</strong></span>
@@ -48,6 +55,14 @@
                 <span class="do-stat__text">Refunded<strong>{{ $money($refundedCents / 100) }}</strong></span>
             </div>
         </div>
+
+        @if ($focusMissing)<p hidden data-rt-error="That return could not be found. It may have been removed. Check the list for the latest requests."></p>@endif
+        @if ($focus)
+            <p hidden data-rt-focus="{{ $focus->id }}"></p>
+            @if ($focusOffPage)
+                <table hidden aria-hidden="true"><tbody>@include('seller.returns._row', ['r' => $focus, 'badge' => $badge, 'money' => $money])</tbody></table>
+            @endif
+        @endif
 
         {{-- Messages become top banners (see returns.js). The inline copy only shows if scripts fail. --}}
         @if (session('success'))<p hidden data-rt-flash="{{ session('success') }}"></p>@endif
@@ -62,7 +77,7 @@
             <label class="do-search">
                 <span class="ops-sr-only">Search returns</span>
                 <svg class="do-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
-                <input type="search" name="q" value="{{ $q }}" placeholder="Search order or buyer, then press Enter" maxlength="100" autocomplete="off">
+                <input type="search" name="q" value="{{ $q }}" placeholder="Search order, buyer, or product, then press Enter" maxlength="100" autocomplete="off">
             </label>
             <label>
                 <span class="ops-sr-only">Reason</span>
@@ -91,98 +106,15 @@
         <section class="do-card do-table-card" id="rtCard" aria-label="Return requests" aria-live="polite">
             <div class="ops-table-scroll">
                 <table class="do-table rt-table">
-                    <thead><tr><th>Order</th><th>Buyer</th><th>Reason</th><th>Refund</th><th>Status</th><th><span class="ops-sr-only">Actions</span></th></tr></thead>
+                    <thead><tr><th>Order and buyer</th><th>Reason</th><th>Refund</th><th>Status</th><th><span class="ops-sr-only">Actions</span></th></tr></thead>
                     <tbody class="rt-skel" aria-hidden="true">
-                        @for ($i = 0; $i < 5; $i++)<tr class="do-skel"><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td></tr>@endfor
+                        @for ($i = 0; $i < 5; $i++)<tr class="do-skel"><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td><td><i></i></td></tr>@endfor
                     </tbody>
                     <tbody class="rt-real">
                     @forelse ($returns as $r)
-                        @php
-                            [$tone, $label] = $badge($r);
-                            $order = $r->order;
-                            $first = $order?->items->first();
-                            $refund = $r->status === Ret::STATUS_APPROVED ? $money($r->refund_cents / 100) : ($order ? $money($order->payable_total) : '—');
-                            $canReceive = $r->status === Ret::STATUS_APPROVED && $r->return_status === Ret::RETURN_STATUS_PICKED_UP;
-                        @endphp
-                        <tr class="do-row rt-row" tabindex="0" data-rt-row="{{ $r->id }}"
-                            data-approve-url="{{ route('seller.returns.approve', $r) }}" data-reject-url="{{ route('seller.returns.reject', $r) }}" data-received-url="{{ route('seller.returns.received', $r) }}"
-                            data-order="#{{ $order?->number }}" data-buyer="{{ $r->buyer?->name ?? 'Buyer' }}" data-refund="{{ $refund }}">
-                            <td>
-                                <strong>#{{ $order?->number }}</strong>
-                                <small>Requested {{ $r->created_at?->format('M j, Y') }}</small>
-                            </td>
-                            <td>{{ $r->buyer?->name ?? 'Buyer' }}</td>
-                            <td>
-                                {{ $r->reason_label }}
-                                @if (filled($r->details))<small class="rt-clamp">{{ $r->details }}</small>@endif
-                            </td>
-                            <td><strong>{{ $refund }}</strong>@if ($r->status === Ret::STATUS_PENDING)<small>If approved</small>@endif</td>
-                            <td>
-                                <span class="do-badge do-tone-{{ $tone }}">{{ $label }}</span>
-                                @if ($r->decided_at)<small>{{ ucfirst($r->status === Ret::STATUS_REJECTED ? 'declined' : 'approved') }} {{ $r->decided_at->format('M j, Y') }}</small>@endif
-                            </td>
-                            <td class="do-actions">
-                                @if ($r->status === Ret::STATUS_PENDING)
-                                    <button type="button" class="do-btn do-btn--primary do-btn--small" data-rt-approve>
-                                        <svg class="do-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Approve return
-                                    </button>
-                                    <button type="button" class="do-btn do-btn--rose do-btn--small" data-rt-decline>Decline</button>
-                                @elseif ($canReceive)
-                                    <button type="button" class="do-btn do-btn--primary do-btn--small" data-rt-receive>Mark received</button>
-                                @else
-                                    <button type="button" class="do-btn do-btn--soft do-btn--small" data-rt-open>View details
-                                        <svg class="do-ico do-ico--nudge" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-                                    </button>
-                                @endif
-
-                                <template data-rt-detail>
-                                    <div class="rt-detail">
-                                        <div class="rt-detail__head">
-                                            <div><h3>#{{ $order?->number }}</h3><p>{{ $order?->status_label }} · {{ $r->buyer?->name ?? 'Buyer' }}</p></div>
-                                            <span class="do-badge do-tone-{{ $tone }}">{{ $label }}</span>
-                                        </div>
-                                        <dl class="do-facts">
-                                            <div><dt>Reason</dt><dd>{{ $r->reason_label }}</dd></div>
-                                            <div><dt>{{ $r->status === Ret::STATUS_APPROVED ? 'Refund' : 'Refund if approved' }}</dt><dd><strong>{{ $refund }}</strong></dd></div>
-                                            <div><dt>Requested</dt><dd>{{ $r->created_at?->format('M j, Y g:i A') }}</dd></div>
-                                            <div><dt>{{ $r->status === Ret::STATUS_PENDING ? 'Decision' : 'Decided' }}</dt><dd>{{ $r->decided_at?->format('M j, Y g:i A') ?? 'Not decided yet' }}</dd></div>
-                                            @if (filled($r->details))<div class="do-full"><dt>Buyer's details</dt><dd>{{ $r->details }}</dd></div>@endif
-                                            @if (filled($r->decision_note))<div class="do-full"><dt>Your note to the buyer</dt><dd>{{ $r->decision_note }}</dd></div>@endif
-                                        </dl>
-                                        @if ($order && $order->items->isNotEmpty())
-                                            <div class="do-block">
-                                                <h4>Items on this order</h4>
-                                                <ul class="do-lines">
-                                                    @foreach ($order->items as $item)
-                                                        @php $thumb = $item->product?->images?->first(); @endphp
-                                                        <li>
-                                                            @if ($thumb)<img src="{{ asset('storage/'.$thumb->path) }}" alt="" loading="lazy">@else<span class="do-item__empty" aria-hidden="true"><svg class="do-ico" viewBox="0 0 24 24"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg></span>@endif
-                                                            <span><strong>{{ $item->product?->name ?? 'Product removed' }}</strong><small>{{ $item->quantity }} × {{ $money($item->price) }}</small></span>
-                                                        </li>
-                                                    @endforeach
-                                                </ul>
-                                            </div>
-                                        @endif
-                                        @if ($r->status === Ret::STATUS_APPROVED)
-                                            <div class="do-block">
-                                                <h4>Return trip</h4>
-                                                <p class="rt-trip">{{ $r->return_status_label }}@if ($r->pickupRider) · Rider {{ $r->pickupRider->name }}@endif</p>
-                                            </div>
-                                        @endif
-                                        @if ($r->status === Ret::STATUS_PENDING)
-                                            <div class="do-detail__actions">
-                                                <button type="button" class="do-btn do-btn--primary" data-rt-approve>Approve return</button>
-                                                <button type="button" class="do-btn do-btn--rose" data-rt-decline>Decline return</button>
-                                            </div>
-                                        @elseif ($canReceive)
-                                            <div class="do-detail__actions"><button type="button" class="do-btn do-btn--primary" data-rt-receive>Mark received</button></div>
-                                        @endif
-                                    </div>
-                                </template>
-                            </td>
-                        </tr>
+                        @include('seller.returns._row', ['r' => $r, 'badge' => $badge, 'money' => $money])
                     @empty
-                        <tr><td colspan="6" class="do-empty-cell">
+                        <tr><td colspan="5" class="do-empty-cell">
                             @if ($filtered)
                                 <div class="do-empty">
                                     <span class="do-empty__icon do-tone-lilac"><svg class="do-ico do-ico--float" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4M9 11h4"/></svg></span>

@@ -28,6 +28,8 @@
     $dateLabel = $dateActive
         ? (($dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('M j') : 'Start').' – '.($dateTo ? \Carbon\Carbon::parse($dateTo)->format('M j') : 'Today'))
         : 'All dates';
+    $courierOptions = ['' => 'All couriers', 'unassigned' => 'Unassigned'] + $couriers->mapWithKeys(fn ($c) => [(string) $c->id => $c->business_name])->all();
+    $courierLabel = $courierOptions[(string) ($filters['courier'] ?? '')] ?? 'All couriers';
     $urlWith = fn (array $extra) => route('seller.shipments.index', array_filter(array_merge(request()->except('page'), $extra), fn ($v) => $v !== null && $v !== ''));
 
     $emptyCopy = [
@@ -86,23 +88,26 @@
                     <label class="sh-search">
                         <span class="omo-sr">Search shipments</span>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-                        <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" maxlength="100" placeholder="Search order no., customer, or tracking no." autocomplete="off" data-sh-search>
+                        <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" maxlength="100" placeholder="Search shipments" title="Search by order no., buyer, product, or tracking no." autocomplete="off" data-sh-search>
                     </label>
 
-                    <label class="omo-filter-btn sh-select">
-                        <span class="omo-sr">Courier</span>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>
-                        <select name="courier" data-sh-autosubmit>
-                            <option value="">All couriers</option>
-                            <option value="unassigned" @selected(($filters['courier'] ?? '') === 'unassigned')>Unassigned</option>
-                            @foreach($couriers as $courier)
-                                <option value="{{ $courier->id }}" @selected(($filters['courier'] ?? '') == $courier->id)>{{ $courier->name }}</option>
+                    <details class="omo-filter sh-date sh-courier @if(($filters['courier'] ?? '') !== '') is-active @endif" data-sh-date>
+                        <summary class="omo-filter-btn" aria-label="Filter by courier">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>
+                            <span>{{ $courierLabel }}</span>
+                            <svg class="omo-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </summary>
+                        <div class="omo-filter-panel sh-date-panel sh-courier-panel">
+                            @foreach($courierOptions as $value => $label)
+                                <a class="omo-status-option @if(($filters['courier'] ?? '') === (string) $value) is-selected @endif" href="{{ $urlWith(['courier' => $value]) }}">
+                                    <span>{{ $label }}</span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                                </a>
                             @endforeach
-                        </select>
-                        <svg class="omo-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-                    </label>
+                        </div>
+                    </details>
 
-                    <details class="omo-filter sh-date" data-sh-date>
+                    <details class="omo-filter sh-date @if($dateActive) is-active @endif" data-sh-date>
                         <summary class="omo-filter-btn">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 3v3M16 3v3"/></svg>
                             <span>{{ $dateLabel }}</span>
@@ -134,7 +139,7 @@
                         $group = $order->shipment_group;
                         $buyerName = $order->buyer?->name ?? 'Buyer unavailable';
                         $trackingNo = $order->carrier_tracking_number ?: $order->tracking_number;
-                        $carrier = $order->carrier_name ?: ($order->courier?->name ?? 'Unassigned');
+                        $carrier = $order->deliveryCompany?->business_name ?? 'Not recorded';
                         $needsRider = $order->status === 'ready_for_pickup' && ! $order->courier_id;
                         $failed = $order->status === 'delivery_failed';
                         $qty = (int) ($order->items_sum_quantity ?? 0);
@@ -162,7 +167,7 @@
                         <div class="sh-card__mid">
                             <div class="sh-mid-top">
                                 <span class="omo-pill omo-pill--{{ $pillFor[$group] ?? 'pack' }}"><i aria-hidden="true"></i>{{ Order::SHIPMENT_LABELS[$group] ?? $group }}</span>
-                                <span class="sh-carrier" title="Carrier">{{ $carrier }}</span>
+                                <span class="sh-carrier" title="Courier">{{ $carrier }}</span>
                             </div>
                             @if($group === 'delivered')
                                 <p class="sh-eta">Delivered on <strong>{{ \Illuminate\Support\Carbon::parse($order->delivered_at ?? $order->updated_at)->format('M j, Y · g:i A') }}</strong></p>

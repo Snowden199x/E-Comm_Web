@@ -17,7 +17,7 @@ if (page) {
     const showError = (url) => {
         const body = $('.rt-real', card());
         card().classList.remove('is-loading');
-        body.innerHTML = '<tr><td colspan="6" class="do-empty-cell"><div class="do-empty" role="alert">'
+        body.innerHTML = '<tr><td colspan="5" class="do-empty-cell"><div class="do-empty" role="alert">'
             + '<span class="do-empty__icon do-tone-rose"><svg class="do-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg></span>'
             + '<strong>Could not load returns</strong><p>Check your connection, then select Retry.</p>'
             + '<button type="button" class="do-btn do-btn--primary" data-rt-retry>Retry</button></div></td></tr>';
@@ -134,17 +134,34 @@ if (page) {
         if (!template) return;
         $('#rtPanelBody').replaceChildren(template.content.cloneNode(true));
         $('#rtPanelTitle').textContent = `Return ${row.dataset.order}`;
-        panel.showModal();
+        panel.dataset.row = row.dataset.rtRow;
+        if (!panel.open) panel.showModal();
     }
     // Buttons inside the details panel act on the same row.
     $('#rtPanelBody').addEventListener('click', (event) => {
-        const id = $('#rtPanelTitle').textContent.replace('Return ', '');
-        const row = $$('.rt-row').find((r) => r.dataset.order === id);
+        const row = $(`.rt-row[data-rt-row="${panel.dataset.row}"]`);
         if (!row) return;
         if (event.target.closest('[data-rt-approve]')) openConfirm(row, 'approve');
         else if (event.target.closest('[data-rt-decline]')) openDecline(row);
         else if (event.target.closest('[data-rt-receive]')) openConfirm(row, 'receive');
     });
+
+    // Opened from a notification (?return=ID): scroll to the return, highlight it and open its details.
+    const focus = $('[data-rt-focus]');
+    if (focus) {
+        const row = $(`.rt-row[data-rt-row="${focus.dataset.rtFocus}"]`);
+        if (row) {
+            if (!row.closest('table[hidden]')) {
+                row.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+                row.classList.add('is-focus');
+                setTimeout(() => row.classList.remove('is-focus'), 4000);
+            }
+            openDetails(row);
+        }
+        // Drop ?return= so a refresh or a new filter does not reopen it.
+        const url = new URL(location.href);
+        if (url.searchParams.has('return')) { url.searchParams.delete('return'); history.replaceState(history.state, '', url); }
+    }
 
     // After a server error on Decline, reopen the dialog with what was typed.
     const reopen = $('[data-rt-reopen]');

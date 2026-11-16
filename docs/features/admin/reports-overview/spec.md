@@ -5,7 +5,7 @@
 
 ## What the page shows
 
-`GET /admin/reports` with `view=daily|monthly`, a date filter and custom date. The same data feeds the in-page preview (`admin.reports.preview`), the main body partial and the PDF download.
+`GET /{ADMIN_PATH}/reports` with `view=daily|monthly`, a date filter and custom date. The same data feeds the in-page preview (`admin.reports.preview`), the main body partial and the PDF download.
 
 - **Sales summary:** gross sales (orders placed, not cancelled), total orders, average order value, completed orders (delivered/completed) and returns/refunds (orders in `returned`).
 - **Commission:** per order from its saved Seller rate, never the current setting.

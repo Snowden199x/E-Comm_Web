@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Seller;
 
+use App\Support\SellerSearch;
 use App\Http\Controllers\Controller;
 use App\Models\Complaints\Complaint;
 use App\Models\Complaints\ComplaintEvidence;
@@ -45,7 +46,7 @@ class ComplaintController extends Controller
         $types = (clone $base)->whereNotNull('type')->distinct()->orderBy('type')->pluck('type');
 
         $query = (clone $base)->with([
-            'order.items.product.images', 'complainant', 'respondent', 'evidences', 'activities',
+            'order.items.product.images', 'order.deliveryCompany', 'complainant', 'respondent', 'evidences', 'activities',
             // Only this seller's own thread with Vendo, plus how many of its messages are still unread.
             'conversations' => fn ($threads) => $threads->where('user_id', $sellerId)->withCount([
                 'messages',
@@ -59,15 +60,11 @@ class ComplaintController extends Controller
             $query->where('type', $filters['type']);
         }
         if ($filters['search'] !== '') {
-            $term = $filters['search'];
-            $caseId = preg_match('/^CMP-0*(\d+)$/i', $term, $matches) ? (int) $matches[1] : null;
-            $orderId = preg_match('/^VN-0*(\d+)$/i', $term, $orderMatches) ? (int) $orderMatches[1] : null;
-            $query->where(function ($cases) use ($term, $caseId, $orderId) {
-                $cases->where('type', 'like', '%'.$term.'%')
-                    ->orWhereHas('order', function ($orders) use ($term, $orderId) {
-                        $orders->where('tracking_number', 'like', '%'.$term.'%');
-                        if ($orderId) $orders->orWhere('orders.id', $orderId);
-                    });
+            $term = SellerSearch::clean($filters['search']);
+            $caseId = preg_match('/^CMP-?0*(\d+)$/i', $term, $matches) ? (int) $matches[1] : null;
+            $query->where(function ($cases) use ($term, $caseId) {
+                $cases->where('type', 'like', SellerSearch::like($term));
+                SellerSearch::orWhereOrder($cases, $term);
                 if ($caseId) {
                     $cases->orWhere('complaints.id', $caseId);
                 }

@@ -7,6 +7,7 @@ use App\Models\Communication\Notification;
 use App\Models\Ecommerce\Order;
 use App\Models\Ecommerce\OrderItem;
 use App\Models\Ecommerce\OrderReturnRequest;
+use App\Models\Finance\DeliveryFeeSetting;
 use App\Services\DeliveryCutoff;
 use App\Services\OrderCancellationService;
 use App\Services\OrderReturnService;
@@ -92,6 +93,7 @@ class OrderController extends Controller
             'reasons' => OrderReturnRequest::REASONS,
             'windowClosesAt' => $returns->windowClosesAt($record),
             'daysLeft' => $returns->daysLeft($record),
+            'pickupFee' => DeliveryFeeSetting::returnPickupFee(),
         ]);
     }
 

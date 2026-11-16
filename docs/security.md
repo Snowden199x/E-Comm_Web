@@ -13,7 +13,7 @@
 
 ### Browser identity and sessions
 
-- Admin routes use the `admin` guard and active-account/password-change middleware where required. Buyer, Seller, and Logistics pages use authenticated sessions and role-specific active/approval gates.
+- Admin routes use the `admin` guard and active-account/password-change middleware where required. The Admin console is mounted on `ADMIN_PATH` (default `vendo-control`) instead of `/admin`; the old path is unrouted. This is obscurity, not authorization: the `admin` guard and super-admin checks remain mandatory. Admin self-registration and unused Admin verification routes are removed; accounts are provisioned by the Super Admin. Buyer, Seller, and Logistics pages use authenticated sessions and role-specific active/approval gates. The Logistics web login rejects Rider and Transport Driver accounts because their work is mobile-only.
 - Login controllers regenerate the session after authentication; logout invalidates the session and rotates its CSRF token.
 - Passwords are stored through Laravel password hashing. State-changing browser forms use CSRF protection. Sensitive operations have route-level throttles where implemented.
 - Buyer, Seller, and Logistics Google login validates a signed Google ID token on the server. The verifier checks RS256 signature, issuer, expiry, verified email, and configured audience/authorized-party IDs. Google only satisfies email verification for new registration; it does not skip the role's profile or approval requirements.

@@ -116,6 +116,7 @@ Route::prefix('logistics/portal')->name('lgp.')->middleware('auth')->group(funct
         Route::post('/exceptions', [ParcelExceptionController::class, 'store'])->name('station.exceptions.store');
         Route::patch('/exceptions/{exception}/resolve', [ParcelExceptionController::class, 'resolve'])->whereNumber('exception')->name('station.exceptions.resolve');
         Route::post('/orders/{order}/assign', [StationOperationsController::class, 'assign'])->whereNumber('order')->name('station.orders.assign');
+        Route::post('/orders/{order}/delivery-attempt', [StationOperationsController::class, 'grantDeliveryAttempt'])->whereNumber('order')->name('station.orders.delivery-attempt');
         Route::post('/orders/{order}/decline-pickup', [StationOperationsController::class, 'declinePickup'])->whereNumber('order')->name('station.orders.decline-pickup');
         Route::get('/tracking', [PortalController::class, 'facilityTracking'])->name('station.tracking');
         Route::get('/riders', [PortalController::class, 'stationRiders'])->name('station.riders');

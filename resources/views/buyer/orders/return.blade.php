@@ -15,6 +15,9 @@
 
     <div class="sp-page sp-page--narrow" x-data="{
             reason: @js((string) old('reason')), details: @js((string) old('details')),
+            fee: @js((float) $pickupFee), refund: @js((float) $order->payable_total),
+            money(v) { return '₱' + Number(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+            get refundNet() { return this.reason === 'other' ? Math.max(0, this.refund - this.fee) : this.refund; },
             reasonError: @js((string) $errors->first('reason')), detailsError: @js((string) $errors->first('details')),
             check(event) {
                 this.reasonError = this.reason ? '' : 'No reason chosen. Pick the reason that fits best.';
@@ -43,7 +46,7 @@
         <div class="sp-stats sp-stats--two">
             <div class="sp-stat">
                 <span class="sp-stat__icon sp-tone-mint"><svg class="sp-ico sp-ico--pop" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/></svg></span>
-                <span class="sp-stat__text">Refund if approved<strong>{{ $fmt($order->payable_total) }}</strong><span>The amount you paid on delivery</span></span>
+                <span class="sp-stat__text">Refund if approved<strong x-text="money(refundNet)">{{ $fmt($order->payable_total) }}</strong><span x-text="reason === 'other' ? 'After the ₱' + fee.toFixed(2) + ' pickup fee' : 'The amount you paid on delivery'">The amount you paid on delivery</span></span>
             </div>
             @if ($windowClosesAt)
                 <div class="sp-stat">
@@ -80,7 +83,7 @@
 
             <div class="sp-note">
                 <svg class="sp-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/></svg>
-                <p>If the seller approves, a rider collects the item and the refund is recorded. If they decline, you see their reason on the order.</p>
+                <p>If the seller approves, a rider collects the item and the refund is recorded. The ₱{{ number_format((float) $pickupFee, 2) }} pickup fee goes to the rider: the seller pays it for damaged, wrong, missing or not-as-described items, and it is deducted from your refund for Other. If they decline, you see their reason on the order.</p>
             </div>
 
             <div class="sp-actions">

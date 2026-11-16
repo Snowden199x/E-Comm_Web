@@ -24,7 +24,7 @@
                     @foreach ($history as $row)
                         <tr style="--i: {{ $loop->index }}" class="transition-colors duration-200 hover:bg-vd-tint">
                             <td class="whitespace-nowrap px-5 py-3 font-medium text-vd-ink">
-                                {{ $row->order_number }}
+                                {{ $row->order_number ?: ($row->tracking_number ?: ('#'.$row->id)) }}
                                 @if ($row->status === 'review')
                                     <span title="Route mismatch" class="ml-2 inline-flex items-center rounded-full border border-vd-warning-line bg-vd-warning-bg px-2 py-0.5 text-[11px] font-medium text-vd-warning-ink">Needs review</span>
                                 @endif

@@ -11,9 +11,19 @@ use Illuminate\View\View;
 
 class UnifiedLoginController extends Controller
 {
-    public function create(): View
+    public function create(Request $request): View|RedirectResponse
     {
-        return view('buyer.auth.login');
+        $user = Auth::user();
+
+        if ($user?->role === 'buyer') {
+            return redirect()->route('buyer.dashboard');
+        }
+
+        if ($user?->role === 'seller') {
+            return redirect()->route('seller.dashboard');
+        }
+
+        return view('buyer.auth.login', ['unified' => true]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -31,43 +41,45 @@ class UnifiedLoginController extends Controller
 
         $user = Auth::user();
 
-        if ($user->role === 'admin') {
+        // Buyer and Seller share this page. Logistics, Rider and Admin keep their own login pages.
+        if (! in_array($user->role, ['buyer', 'seller'], true)) {
             Auth::logout();
 
             throw ValidationException::withMessages([
-                'email' => 'Not a valid email for this Login form.',
+                'email' => 'This login is for Buyer and Seller accounts only. Use your account type’s login page.',
             ]);
         }
 
-        if ($user->status !== 'approved') {
+        if ($user->status !== 'approved' || $user->archived_at
+            || ($user->account_status && $user->account_status !== 'active')) {
             Auth::logout();
 
             $message = match ($user->status) {
                 'pending' => 'Your account is still pending admin approval.',
-                'disapproved' => 'Your registration was not approved. ' . ($user->rejection_reason ?? ''),
+                'disapproved' => 'Your registration was not approved. '.($user->rejection_reason ?? ''),
                 default => 'Your account is not active.',
             };
+
+            if ($user->archived_at || ($user->account_status && $user->account_status !== 'active')) {
+                $message = 'Your account is not active. Please contact the administrator.';
+            }
 
             throw ValidationException::withMessages(['email' => $message]);
         }
 
         $request->session()->regenerate();
 
-        $dashboard = match ($user->role) {
-            'seller' => route('seller.dashboard'),
-            'logistics_center' => route('lgp.company'),
-            'province_hub' => route('lgp.hub.province'),
-            'station_hub' => route('lgp.hub.station'),
-            'buyer' => route('buyer.dashboard'),
-            default => route('buyer.dashboard'),
-        };
+        $dashboard = $user->role === 'seller'
+            ? route('seller.dashboard', absolute: false)
+            : route('buyer.dashboard', absolute: false);
 
-        return redirect()->to($dashboard);
+        return redirect()->intended($dashboard);
     }
 
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

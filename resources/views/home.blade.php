@@ -21,7 +21,6 @@
 
     <main id="top">
         @include('buyer.partials.hero')
-        @include('buyer.partials.get-app')
         @include('buyer.partials.categories')
         @include('buyer.partials.featured')
         @include('buyer.partials.why-vendo')

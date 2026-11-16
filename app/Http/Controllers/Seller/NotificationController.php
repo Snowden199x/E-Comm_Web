@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Communication\Notification;
 use App\Models\Communication\PlatformPolicy;
 use App\Models\Ecommerce\Order;
+use App\Models\Ecommerce\OrderReturnRequest;
 use App\Services\SellerVoucherExpirationNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -94,11 +95,24 @@ class NotificationController extends Controller
 
             return $order ? route('seller.orders.show', $order) : route('seller.orders.index');
         }
-        if (! is_string($path) || ! preg_match('~^/seller/(dashboard|orders|products|vouchers|shipments|completed-orders|feedback|messages|case-messages|reports|account|notifications)(/|$)~', $path)) {
+        if (! is_string($path) || ! preg_match('~^/seller/(dashboard|orders|products|vouchers|shipments|completed-orders|feedback|messages|case-messages|complaints|returns|earnings|reports|account|notifications)(/|$)~', $path)) {
             return route('seller.notifications.index');
         }
 
-        return url($path.($query ? '?'.$query : ''));
+        // Older return notifications only link to the list. Find their return from the order number in the title.
+        if (rtrim($path, '/') === '/seller/returns' && ! str_contains((string) $query, 'return=')
+            && preg_match('/[A-Z]{2,}-\d{4}-\d+/', (string) $notification->title, $number)) {
+            $returnId = OrderReturnRequest::query()
+                ->where('seller_id', $notification->user_id)
+                ->whereHas('order', fn ($order) => $order->where('order_number', $number[0]))
+                ->latest('id')->value('id');
+            if ($returnId) {
+                $query = 'return='.$returnId;
+            }
+        }
+        $fragment = parse_url((string) $notification->link, PHP_URL_FRAGMENT);
+
+        return url($path.($query ? '?'.$query : '').($fragment ? '#'.$fragment : ''));
     }
 
     private function owned(Request $request)

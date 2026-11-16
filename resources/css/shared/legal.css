@@ -35,6 +35,24 @@
     padding: 1rem 1.5rem;
 }
 
+.legal-brand {
+    display: inline-flex;
+    align-items: center;
+    padding: .45rem .7rem;
+    border-radius: 10px;
+    background: #3b1735;
+    line-height: 0;
+    transition: background .2s ease;
+}
+
+.legal-brand:hover {
+    background: #4d1f45;
+}
+
+.legal-brand:focus-visible {
+    outline-color: #c9a9ce;
+}
+
 .legal-brand img {
     display: block;
     width: 116px;
@@ -319,6 +337,10 @@
 @media (max-width: 540px) {
     .legal-header__lead {
         gap: .6rem;
+    }
+
+    .legal-brand {
+        padding: .35rem .55rem;
     }
 
     .legal-brand img {

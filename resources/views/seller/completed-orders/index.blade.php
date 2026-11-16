@@ -64,7 +64,7 @@
                 <select name="courier" data-auto-submit>
                     <option value="">All couriers</option>
                     <option value="0" @selected(($filters['courier'] ?? '') === '0')>Unassigned</option>
-                    @foreach($couriers as $courier)<option value="{{ $courier->id }}" @selected(($filters['courier'] ?? '') == $courier->id)>{{ $courier->name }}</option>@endforeach
+                    @foreach($couriers as $courier)<option value="{{ $courier->id }}" @selected(($filters['courier'] ?? '') == $courier->id)>{{ $courier->business_name }}</option>@endforeach
                 </select>
             </label>
             <label>
@@ -125,7 +125,7 @@
                             </td>
                             <td><strong>₱{{ number_format($order->payable_total, 2) }}</strong>@if($order->payment_mode)<small><span class="do-pay">{{ $payLabel($order->payment_mode) }}</span></small>@endif</td>
                             <td>{{ $order->delivered_at?->format('M j, Y') ?? 'No date' }}<small>{{ $order->delivered_at?->diffForHumans() ?? '' }}</small></td>
-                            <td>{{ $order->carrier_name ?? '—' }}<small>{{ $order->courier?->name ?? 'No rider' }}</small></td>
+                            <td>{{ $order->deliveryCompany?->business_name ?? '—' }}<small>{{ $order->courier?->name ?? 'No rider' }}</small></td>
                             <td class="do-actions"><a class="do-btn do-btn--soft do-btn--small" href="{{ route('seller.completed-orders.show', $order) }}" data-panel data-panel-title="Order #{{ $order->number }}">
                                 View details
                                 <svg class="do-ico do-ico--nudge" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>

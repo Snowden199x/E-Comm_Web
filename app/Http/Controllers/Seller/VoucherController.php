@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Seller;
 
+use App\Support\SellerSearch;
 use App\Http\Controllers\Controller;
 use App\Models\Ecommerce\Product;
 use App\Models\Ecommerce\SellerVoucher;
@@ -56,8 +57,8 @@ class VoucherController extends Controller
             ->orWhere(fn ($q) => $q->whereNotNull('usage_limit')->whereColumn('used_count', '>=', 'usage_limit')));
         if ($filters['status'] === 'paused') $query->where('status', 'paused');
         if ($filters['search'] !== '') {
-            $term = $filters['search'];
-            $query->where(fn ($q) => $q->where('name', 'like', '%'.$term.'%')->orWhere('code', 'like', '%'.$term.'%'));
+            $term = SellerSearch::clean($filters['search']);
+            $query->where(fn ($q) => $q->where('name', 'like', SellerSearch::like($term))->orWhere('code', 'like', SellerSearch::like($term)));
         }
         $products = Product::query()->with('category')->where('seller_id', $sellerId)->orderBy('name')->get(['id', 'name', 'product_code', 'price', 'category_id']);
         if ($filters['product'] !== '') {

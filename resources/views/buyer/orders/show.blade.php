@@ -232,7 +232,10 @@
                             <p class="font-semibold text-[#2b1730]">{{ $returnRequest->status_label }}</p>
                             <p class="text-[#5b4a60]">Reason: {{ $returnRequest->reason_label }}</p>
                             @if ($returnRequest->status === 'approved')
-                                <p class="text-[#2e6b46]">Refund {{ $fmt($returnRequest->refund_cents / 100) }} — the seller approved the return.</p>
+                                <p class="text-[#2e6b46]">Refund {{ $fmt($returnRequest->buyerRefundCents() / 100) }} — the seller approved the return.</p>
+                                @if ($returnRequest->pickup_fee_cents > 0)
+                                    <p class="mt-1 text-[12px] text-[#8a7a8e]">Return pickup fee {{ $fmt($returnRequest->pickup_fee_cents / 100) }} — {{ $returnRequest->pickup_fee_payer_label }}.</p>
+                                @endif
                                 <p class="mt-1 text-[12px] text-[#8a7a8e]">Parcel return: {{ $returnRequest->return_status_label }}@if ($returnRequest->picked_up_at) · collected {{ $returnRequest->picked_up_at->format('M j, Y') }}@endif</p>
                             @elseif ($returnRequest->status === 'rejected')
                                 <p class="text-[#a32b43]">Seller's reason: {{ $returnRequest->decision_note }}</p>
@@ -296,8 +299,8 @@
                     <h2 class="{{ $cardHead }}">Shipment tracking</h2>
                     <dl class="space-y-2 p-4 text-[13px] sm:p-5">
                         <div><dt class="text-[12px] text-[#8a7a8e]">Vendo reference</dt><dd class="break-all text-[#2b1730]">{{ $order->tracking_number }}</dd></div>
-                        @if ($order->carrier_name)<div><dt class="text-[12px] text-[#8a7a8e]">Carrier</dt><dd class="text-[#2b1730]">{{ $order->carrier_name }}</dd></div>@endif
-                        @if ($order->carrier_tracking_number)<div><dt class="text-[12px] text-[#8a7a8e]">Carrier tracking</dt><dd class="break-all text-[#2b1730]">{{ $order->carrier_tracking_number }}</dd></div>@endif
+                        @if ($order->deliveryCompany)<div><dt class="text-[12px] text-[#8a7a8e]">Courier</dt><dd class="text-[#2b1730]">{{ $order->deliveryCompany->business_name }}</dd></div>@endif
+                        @if ($order->carrier_tracking_number)<div><dt class="text-[12px] text-[#8a7a8e]">Courier tracking</dt><dd class="break-all text-[#2b1730]">{{ $order->carrier_tracking_number }}</dd></div>@endif
                         @if ($order->deliveryProof)<div><dt class="text-[12px] text-[#8a7a8e]">Delivery proof</dt><dd><a class="text-[#52245b] underline" href="{{ route('orders.delivery-proof', $order) }}" target="_blank" rel="noopener">View delivery photo</a></dd></div>@endif
                         <div><dt class="text-[12px] text-[#8a7a8e]">Estimated delivery</dt>
                             <dd class="text-[#2b1730]">@if ($order->estimated_delivery_from && $order->estimated_delivery_to){{ $order->estimated_delivery_from->format('M j, Y') }} to {{ $order->estimated_delivery_to->format('M j, Y') }}@else Not yet scheduled @endif</dd></div>
