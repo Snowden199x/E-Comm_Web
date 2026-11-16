@@ -34,6 +34,8 @@ Rider and Transport Driver user interfaces and clients remain in `E-Comm_Mobile`
 
 ## Azure production setup
 
+The Azure VM currently runs PHP 8.3.33. Composer dependency resolution is pinned to that production PHP version in the root `composer.json` platform config, so lockfile updates made on a newer local PHP runtime remain installable on the VM. Keep the platform value aligned with the server PHP version when the server is upgraded.
+
 Set the following in `/var/www/vendo/.env` and keep the secret private:
 
 ```dotenv
