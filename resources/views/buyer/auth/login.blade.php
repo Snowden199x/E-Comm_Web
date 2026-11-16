@@ -151,18 +151,18 @@
                             Login
                         </button>
 
-                        @unless ($isUnified)
-                            {{-- Divider --}}
-                            <div class="flex items-center gap-3 my-5">
-                                <div class="flex-1 h-px bg-gray-200"></div>
-                                <span
-                                    class="text-[0.78rem] text-gray-400 font-normal px-1 border border-gray-200 rounded-full w-7 h-7 flex items-center justify-center">or</span>
-                                <div class="flex-1 h-px bg-gray-200"></div>
-                            </div>
+                        {{-- Divider --}}
+                        <div class="flex items-center gap-3 my-5">
+                            <div class="flex-1 h-px bg-gray-200"></div>
+                            <span
+                                class="text-[0.78rem] text-gray-400 font-normal px-1 border border-gray-200 rounded-full w-7 h-7 flex items-center justify-center">or</span>
+                            <div class="flex-1 h-px bg-gray-200"></div>
+                        </div>
 
-                            {{-- Continue with Google --}}
-                            @include('auth.partials.google-signin', ['role' => 'buyer'])
-                        @endunless
+                        {{-- Continue with Google. This page also serves Seller when it is the
+                             shared login, so it sends no role and the server signs the
+                             account in under its own role. --}}
+                        @include('auth.partials.google-signin', ['role' => $isUnified ? null : 'buyer'])
 
                     </form>
 
