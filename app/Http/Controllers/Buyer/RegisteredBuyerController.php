@@ -61,8 +61,8 @@ class RegisteredBuyerController extends Controller
             'id_type' => 'exclude_unless:id_category,primary|required|string|max:255',
             'id_type_1' => 'exclude_unless:id_category,secondary|required|string|max:255',
             'id_type_2' => 'exclude_unless:id_category,secondary|required|string|max:255',
-            'valid_id_2' => 'exclude_unless:id_category,secondary|required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'valid_id' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'valid_id_2' => 'exclude_unless:id_category,secondary|required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            'valid_id' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
             'password' => ['required', 'confirmed', Rules\Password::min(8)->mixedCase()->numbers()->symbols()],
             'province' => 'required|string',
             'municipality' => 'required|string',
@@ -76,6 +76,12 @@ class RegisteredBuyerController extends Controller
             'agree_terms' => 'accepted',
         ], [
             'contact_number.regex' => 'Enter an 11-digit mobile number that starts with 09 (for example 09171234567).',
+            'valid_id.max' => 'The ID file must be 10MB or smaller.',
+            'valid_id.mimes' => 'The ID file must be a JPEG, PNG, or PDF.',
+            'valid_id.uploaded' => 'The ID file could not be uploaded. Choose a file under 10MB and submit again.',
+            'valid_id_2.max' => 'The second ID file must be 10MB or smaller.',
+            'valid_id_2.mimes' => 'The second ID file must be a JPEG, PNG, or PDF.',
+            'valid_id_2.uploaded' => 'The second ID file could not be uploaded. Choose a file under 10MB and submit again.',
         ]);
         $googleProof = $request->session()->get('google_registration_verification', []);
         $googleVerified = ($googleProof['role'] ?? null) === 'buyer'
