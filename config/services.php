@@ -65,6 +65,13 @@ return [
     ],
 
     'vendo' => [
+        // Where the buyer landing page's "Get the app" button and its printed QR
+        // send a shopper. Same GitHub asset pattern as the Rider app, so the URL
+        // survives new builds; point it at Google Play once the Buyer app ships.
+        'buyer_app_url' => env(
+            'BUYER_APP_DOWNLOAD_URL',
+            'https://github.com/Snowden199x/E-Comm_Mobile/releases/latest/download/vendo-buyer.apk',
+        ),
         // Where the buyer-facing landing sends someone who wants the Rider app.
         // Keep the GitHub asset name stable: releases/latest/download/<asset> always
         // serves the newest release, so the URL survives new builds.
