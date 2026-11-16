@@ -26,9 +26,12 @@
     @vite(['resources/css/seller/mobile.css', 'resources/js/seller/mobile.js'])
     @vite(['resources/css/seller/waybill-modal.css', 'resources/js/seller/waybill-modal.js'])
     @vite('resources/js/shared/form-drafts.js')
+    @vite('resources/js/echo.js')
     <link rel="stylesheet" href="{{ asset('assets/css/notification-actions.css') }}">
 </head>
-<body class="sd-body @if($hideTabbar) sd-no-tabbar @endif">
+<body class="sd-body @if($hideTabbar) sd-no-tabbar @endif"
+    data-realtime-role="seller" data-realtime-user-id="{{ auth()->id() }}"
+    data-broadcast-auth-url="{{ url('/broadcasting/auth') }}">
     {{-- Sidebar rests collapsed on every page. Only the hamburger pins it open, and that choice is remembered across pages. --}}
     <script>
         try { if (localStorage.getItem('vendo.sellerSidebarPinned') === '1' && !window.matchMedia('(max-width: 900px)').matches) document.body.classList.add('sd-sidebar-pinned'); } catch (e) {}
@@ -375,7 +378,8 @@
                     if (dashboardList) dashboardList.innerHTML = data.dashboard_html;
                 } catch (_) {}
             };
-            window.setInterval(refreshBell, 3000);
+            window.setInterval(refreshBell, 30000);
+            window.addEventListener('vendo:notification', refreshBell);
             document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshBell(); });
         })();
     </script>

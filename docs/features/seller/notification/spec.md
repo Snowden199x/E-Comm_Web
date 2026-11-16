@@ -1,16 +1,17 @@
 # Seller Notifications
 
-**Status:** Seller inbox and bell implemented in code; voucher expiration alerts added 13 October 2026; manual verification and migration pending.
+**Status:** Seller inbox and bell use role-protected Reverb delivery; voucher expiration alerts added 13 October 2026; local/Azure browser verification pending.
+**Reviewed:** 17 November 2026
 
 ## Current behavior
 
 Checkout creates a targeted `new_order` notification. Buyer review submission creates a targeted `product_review` notification. Admin policy publication can create a targeted `platform_announcement` notification. Product review outcomes, stock threshold crossings, shipment status changes and admin support replies now create seller notifications. The seller bell opens recent items; the full inbox filters All/Unread and marks items read. The seller inbox excludes records with `user_id = null`.
 
-The Seller notification polling endpoint also checks this Seller's active vouchers for an elapsed end time or exhausted total-use limit. It records one `seller_voucher_expired` notification per voucher and links to Vouchers. The check runs on notification page loads and recent-notification polls; while a Seller page is open, the alert appears on the next poll after expiry. It does not require a scheduler, though no alert is generated until a Seller next loads or polls notifications.
+The Seller notification polling endpoint also checks this Seller's active vouchers for an elapsed end time or exhausted total-use limit. It records one `seller_voucher_expired` notification per voucher and links to Vouchers. The check runs on notification page loads and recent-notification requests; while a Seller page is open, the alert appears by the 30-second fallback poll after expiry. It does not require a scheduler, though no alert is generated until a Seller next loads or polls notifications.
 
 ## Seller experience
 
-The bell stays in the pinned seller header. It shows an unread badge when needed and opens a compact list of recent notifications. **View all** opens a paginated inbox with All and Unread filters. Opening a notification marks it read and follows its destination. Sellers can also mark one item or all items read. The badge refreshes while the page is open.
+The bell stays in the pinned seller header. It shows an unread badge when needed and opens a compact list of recent notifications. **View all** opens a paginated inbox with All and Unread filters. Opening a notification marks it read and follows its destination. Sellers can also mark one item or all items read. The bell refreshes immediately over the authenticated `users.{seller id}` channel; the existing feed is polled every 30 seconds as a fallback and on tab visibility.
 
 In the bell menu, **Mark all as read** sits beside **View all** with the same link-style hover treatment.
 
@@ -41,7 +42,9 @@ The notification destination resolves owned order detail URLs through the full O
 
 The dashboard's recent list and the header badge should use the same notification source so their counts agree. Future mobile clients can consume the same recipient-scoped event records without changing the event definitions.
 
-**Related:** [Seller Messages](../chat-messaging/spec.md) · [Seller domain](../../../domains/Seller.md)
+WebSocket messages contain only the notification ID and type. The browser retrieves notification text and URLs from the seller-owned feed; the private channel is authorized against the signed-in Seller. Azure needs a persistent Reverb service and WSS proxy. See [Web real-time updates](../../shared/realtime-web-updates/spec.md).
+
+**Related:** [Web real-time updates](../../shared/realtime-web-updates/spec.md) · [Seller Messages](../chat-messaging/spec.md) · [Seller domain](../../../domains/Seller.md)
 ## 25 September 2026 update
 
-The dashboard notification panel and header bell reveal roughly three recent items before scrolling. Both expose View all; the Inventory Alerts panel opens the low-stock inventory filter. The seller bell and dashboard card refresh every three seconds. The bell plays a short tone for newly observed notifications and notification controls, subject to browser audio permission after interaction.
+The dashboard notification panel and header bell reveal roughly three recent items before scrolling. Both expose View all; the Inventory Alerts panel opens the low-stock inventory filter. The seller bell/dashboard panel refresh immediately from Reverb and poll every 30 seconds as fallback. The bell plays a short tone for newly observed notifications and notification controls, subject to browser audio permission after interaction.
