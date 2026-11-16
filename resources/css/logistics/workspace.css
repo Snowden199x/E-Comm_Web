@@ -2363,9 +2363,16 @@ html {
 .lg-scan-form .lg-field { min-width: 0; margin: 0; }
 .lg-scan-form .lg-select,
 .lg-scan-form .lg-input { width: 100%; min-width: 0; }
+.lg-scan-form .lg-field > label { font-weight: 600; }
+.lg-scan-form .lg-input { min-height: 44px; }
 .lg-scan-submit,
 .lg-scan-restart { width: 100%; justify-content: center; }
 .lg-scan-restart { margin-top: auto; }
+.lg-station-scan-form { align-items: end; }
+.lg-station-scan-form .lg-field { flex: 1 1 320px; }
+.lg-station-scan-form .lg-search { width: 100%; max-width: none; }
+.lg-station-scan-form .lg-input { min-height: 42px; }
+.lg-station-scan-form .lg-btn { min-height: 42px; }
 @media (max-height: 620px) {
     .lg-scan-dialog { height: calc(100dvh - 20px); max-height: calc(100dvh - 20px); }
     .lg-scan-head { padding-top: 9px; padding-bottom: 9px; }
@@ -2395,6 +2402,32 @@ html {
     .lg-scan-form { margin-top: 8px; }
     .lg-scan-dialog { height: min(700px, calc(100dvh - 16px)); }
     .lg-scan-head { padding-right: 10px; padding-left: 14px; }
+}
+@media (max-height: 540px) and (max-width: 760px) {
+    .lg-scan-overlay { padding: 8px; }
+    .lg-scan-dialog { height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); }
+    .lg-scan-head { min-height: 46px; padding-top: 5px; padding-bottom: 5px; }
+    .lg-scan-head h2 { margin-bottom: 2px; font-size: 16px; }
+    .lg-scan-body { padding: 8px 12px; }
+    .lg-scan-layout { grid-template-rows: minmax(92px, 0.35fr) auto; gap: 8px; }
+    .lg-scan-camera-caption { min-height: 30px; padding: 4px 8px; }
+    .lg-scan-camera-mark { width: 18px; height: 18px; }
+    .lg-scan-camera-mark svg { width: 16px; height: 16px; }
+    .lg-scan-controls { display: block; }
+    .lg-scan-help { display: none; }
+    .lg-scan-message { min-height: 32px; margin-bottom: 6px; padding: 6px 8px; }
+    .lg-scan-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+    .lg-scan-form .lg-field { grid-column: 1 / -1; }
+    .lg-scan-form .lg-input { min-height: 34px; padding-top: 5px; padding-bottom: 5px; }
+    .lg-scan-form .lg-field > label { font-size: 12px; }
+    .lg-scan-submit, .lg-scan-restart { min-height: 34px; padding-top: 5px; padding-bottom: 5px; }
+    .lg-scan-restart { margin-top: 0; }
+}
+@media (max-width: 560px) {
+    .lg-station-scan-form { align-items: stretch; }
+    .lg-station-scan-form .lg-field,
+    .lg-station-scan-form .lg-search { flex-basis: 100%; max-width: none; }
+    .lg-station-scan-form .lg-btn { width: 100%; justify-content: center; }
 }
 .lg-dispatch-filters { display: grid; grid-template-columns: minmax(200px, 2fr) repeat(2, minmax(140px, 1fr)) auto; align-items: end; gap: 12px; margin-bottom: 18px; }
 .lg-dispatch-filters .lg-btn { min-height: 42px; }
