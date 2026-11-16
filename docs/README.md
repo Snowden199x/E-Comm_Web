@@ -1,6 +1,6 @@
 # Vendo Project Documentation
 
-This documentation describes the Laravel web application as it exists in the repository, checked on **11 November 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
+This documentation describes the Laravel web application as it exists in the repository, checked on **17 November 2026**. It distinguishes working code from partial flows, UI placeholders, and future work so that teams do not treat a mock screen as a finished feature.
 
 ## Start here
 
@@ -52,6 +52,7 @@ This documentation describes the Laravel web application as it exists in the rep
 - [7 October backend progress](logs/PROGRESS-2026-10-07.md) — saved items/settings, shop search, Admin complaint/case workflows, and cancellation-rule follow-up.
 - [12 October pull progress](logs/PROGRESS-2026-10-12.md) — current team pull review and documentation updates.
 - [14 October Logistics decision](logs/PROGRESS-2026-10-14.md) — province network, Main Hub/station hierarchy, and browser-camera scanner direction.
+- [17 November progress](logs/PROGRESS-2026-11-17.md) — Logistics scanner UI refresh and nationwide demo-company seeder/PDF update.
 - [23 October pull review](logs/PROGRESS-2026-10-23.md) — Company / Province Hub / Station preview, backend decision gate, and registration province field update.
 - [Future plan](future-plan.md) — remaining web and mobile integration work.
 
