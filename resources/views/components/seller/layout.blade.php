@@ -3,6 +3,8 @@
 @php
     $sellerName = auth()->user()->name;
     $sellerRole = 'Seller';
+    // Message threads have their own composer at the bottom, so the tab bar steps aside there.
+    $hideTabbar = request()->routeIs('seller.marketplace-messages.*', 'seller.messages.*') && ! request()->routeIs('seller.messages.index');
     $icon = fn (string $file) => asset('assets/icons/seller/' . $file);
     $recentNotifications = \App\Models\Communication\Notification::query()->where('user_id', auth()->id())->latest()->limit(10)->get();
     $unreadNotifications = \App\Models\Communication\Notification::query()->where('user_id', auth()->id())->whereNull('read_at')->count();
@@ -12,7 +14,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     @include('shared.site-icon')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title }} | Vendo</title>
@@ -21,11 +23,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     @vite('resources/css/seller/seller-dashboard.css')
+    @vite(['resources/css/seller/mobile.css', 'resources/js/seller/mobile.js'])
     @vite(['resources/css/seller/waybill-modal.css', 'resources/js/seller/waybill-modal.js'])
     @vite('resources/js/shared/form-drafts.js')
     <link rel="stylesheet" href="{{ asset('assets/css/notification-actions.css') }}">
 </head>
-<body class="sd-body">
+<body class="sd-body @if($hideTabbar) sd-no-tabbar @endif">
     {{-- Sidebar rests collapsed on every page. Only the hamburger pins it open, and that choice is remembered across pages. --}}
     <script>
         try { if (localStorage.getItem('vendo.sellerSidebarPinned') === '1' && !window.matchMedia('(max-width: 900px)').matches) document.body.classList.add('sd-sidebar-pinned'); } catch (e) {}
@@ -138,6 +141,30 @@
             });
         })();
     </script>
+
+    {{-- ============ MOBILE TAB BAR (hidden on desktop by mobile.css) ============ --}}
+    <nav class="sd-tabbar" aria-label="Quick navigation">
+        <a href="{{ route('seller.dashboard') }}" class="sd-tabbar__item @if(request()->routeIs('seller.dashboard')) is-active @endif" @if(request()->routeIs('seller.dashboard')) aria-current="page" @endif>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>
+            <span>Home</span>
+        </a>
+        <a href="{{ route('seller.orders.index') }}" class="sd-tabbar__item @if(request()->routeIs('seller.orders.*')) is-active @endif" @if(request()->routeIs('seller.orders.*')) aria-current="page" @endif>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12l2 4v13a1 1 0 01-1 1H5a1 1 0 01-1-1V7z"/><path d="M4 7h16M9 11a3 3 0 006 0"/></svg>
+            <span>Orders</span>
+        </a>
+        <a href="{{ route('seller.shipments.index') }}" class="sd-tabbar__item @if(request()->routeIs('seller.shipments.*')) is-active @endif" @if(request()->routeIs('seller.shipments.*')) aria-current="page" @endif>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>
+            <span>Shipments</span>
+        </a>
+        <a href="{{ route('seller.messages.index') }}" class="sd-tabbar__item @if(request()->routeIs('seller.messages.*', 'seller.marketplace-messages.*')) is-active @endif" @if(request()->routeIs('seller.messages.*', 'seller.marketplace-messages.*')) aria-current="page" @endif>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/></svg>
+            <span>Messages</span>
+        </a>
+        <button type="button" class="sd-tabbar__item" onclick="document.getElementById('sdMenuBtn').click()" aria-label="Open full menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            <span>More</span>
+        </button>
+    </nav>
 
     <div class="sd-backdrop" id="sdBackdrop"></div>
     <div class="sd-banners" id="sdBanners" aria-live="polite" aria-atomic="false"></div>

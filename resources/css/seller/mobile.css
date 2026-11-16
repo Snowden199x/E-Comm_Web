@@ -1,0 +1,202 @@
+/* =========================================================
+   Seller · Mobile layer
+   Everything here lives inside a max-width media query, so the desktop
+   layout is untouched. Selectors are prefixed with .sd-body to win over the
+   page stylesheets, which load after this one.
+   Breakpoints: 900px (tablet and phone), 640px (phone), 400px (small phone).
+   ========================================================= */
+
+/* The bottom tab bar only exists on small screens. */
+.sd-tabbar { display: none; }
+
+@media (max-width: 900px) {
+    :root { --tabbar-h: 62px; --m-pad: 14px; }
+
+    .sd-body { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+
+    /* ---------- Shell ---------- */
+    .sd-body .sd-topbar { height: 56px; padding: 0 12px; padding-top: env(safe-area-inset-top, 0px); box-sizing: content-box; }
+    .sd-body .sd-topbar__menu, .sd-body .sd-topbar__bell { width: 40px; height: 40px; }
+    .sd-body .sd-content { padding: 6px var(--m-pad) calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); }
+    .sd-body.sd-no-tabbar .sd-content { padding-bottom: 24px; }
+    .sd-body .sd-sidebar { padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; }
+    .sd-body .sd-nav__item { min-height: 46px; }
+
+    /* ---------- Bottom tab bar ---------- */
+    .sd-body .sd-tabbar {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+        display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+        height: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);
+        background: #fff; border-top: 1px solid var(--line, #ece5e0); box-shadow: 0 -6px 20px rgba(54, 9, 60, .06);
+    }
+    .sd-body.sd-no-tabbar .sd-tabbar { display: none; }
+    .sd-body .sd-tabbar__item {
+        position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+        padding: 6px 2px 4px; border: 0; background: none; color: #8a7e90; font: 500 10.5px/1.1 'Poppins', system-ui, sans-serif; text-decoration: none; cursor: pointer;
+    }
+    .sd-body .sd-tabbar__item svg { width: 22px; height: 22px; }
+    .sd-body .sd-tabbar__item.is-active { color: var(--plum-700, #5a1d63); font-weight: 600; }
+    .sd-body .sd-tabbar__item.is-active::before { content: ""; position: absolute; top: 0; left: 28%; right: 28%; height: 3px; border-radius: 0 0 3px 3px; background: var(--plum-700, #5a1d63); }
+    .sd-body .sd-tabbar__item:active { background: #f8f4f9; }
+    body.sd-sidebar-open .sd-tabbar { display: none; }
+    .sd-body .sd-sidebar { z-index: 60; }
+    .sd-body .sd-backdrop { z-index: 55; }
+
+    /* ---------- Page headings ---------- */
+    .sd-body :is(.do-head, .ops-page-head, .omo-head, .pi-head, .sw-heading, .vc-head, .rp-bar-top) {
+        flex-direction: column; align-items: stretch; gap: 10px; margin: 6px 0 14px;
+    }
+    .sd-body :is(.do-head, .ops-page-head, .omo-head, .pi-head, .sw-heading, .vc-head) h1 { font-size: 20px; line-height: 1.25; }
+    .sd-body :is(.do-head, .ops-page-head, .omo-head, .pi-head, .sw-heading) p { font-size: 12.5px; }
+    .sd-body :is(.do-head, .ops-page-head, .pi-head, .vc-head) > :is(a, button, .do-btn, .pi-btn, .vc-btn, .ops-button) { align-self: stretch; }
+
+    /* ---------- Buttons and inputs: thumb-sized, no iOS zoom ---------- */
+    .sd-body :is(.do-btn, .pi-btn, .vc-btn, .ops-button, .sw-button, .db-btn):not(.do-btn--small) { min-height: 44px; }
+    .sd-body :is(.do-btn--small, .pi-btn--sm, .pi-btn--small) { min-height: 38px; }
+    .sd-body :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea) { font-size: 16px; }
+    .sd-body :is(.do-filters, .ops-filters) :is(input, select), .sd-body :is(.omo-search, .omo-filter-btn, .sh-search input, .sh-controls .omo-filter-btn) { min-height: 44px; }
+    .sd-body .sh-controls .sh-search input, .sd-body .sh-controls .omo-filter-btn { height: 44px; }
+
+    /* ---------- Stat cards: two across, compact ---------- */
+    .sd-body :is(.do-stats, .ops-stats, .omo-stats, .pi-stats, .vc-stats, .sw-stats, .sh-stats, .er-stats, .rt-stats, .sd-stats) {
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px;
+    }
+    .sd-body :is(.do-stats, .ops-stats, .omo-stats, .pi-stats, .vc-stats, .sw-stats, .sh-stats, .er-stats, .rt-stats) > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+    .sd-body :is(.do-stat, .omo-stat, .pi-stat, .vc-stat, .sw-stat, .ops-stat) { padding: 12px; gap: 10px; min-width: 0; border-radius: 14px; }
+    .sd-body :is(.do-stat__icon, .omo-stat__icon) { width: 36px; height: 36px; flex: none; }
+    .sd-body :is(.do-stat__text, .omo-stat__text) { min-width: 0; }
+    .sd-body :is(.do-stat__text strong, .omo-stat__value) { font-size: 18px; line-height: 1.2; overflow-wrap: anywhere; }
+    .sd-body :is(.do-stat__text span, .omo-stat__label) { font-size: 11.5px; }
+    .sd-body .db-stats { gap: 10px; margin-inline: calc(var(--m-pad) * -1); padding-inline: var(--m-pad); scroll-padding-inline: var(--m-pad); }
+    .sd-body .db-stat { flex-basis: 190px; }
+
+    /* Shipments and Orders have five or more stat cards: a swipeable strip saves a lot of scrolling. */
+    .sd-body :is(.omo-stats, .sh-stats) { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin-inline: calc(var(--m-pad) * -1); padding: 2px var(--m-pad) 4px; scroll-padding-inline: var(--m-pad); }
+    .sd-body :is(.omo-stats, .sh-stats)::-webkit-scrollbar { display: none; }
+    .sd-body :is(.omo-stats, .sh-stats) > * { flex: 0 0 148px; scroll-snap-align: start; grid-column: auto !important; }
+    .sd-body :is(.omo-stats, .sh-stats) :is(.omo-stat__icon) { width: 32px; height: 32px; }
+
+    /* ---------- Tabs and chips: one swipeable row ---------- */
+    .sd-body :is(.omo-tabs, .sh-tabs, .sw-tabs, .sw-notification-tabs, .pi-tabs, .vc-seg, .fb-tabs, .ac-tabs) {
+        display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity;
+        margin-inline: calc(var(--m-pad) * -1); padding-inline: var(--m-pad);
+    }
+    .sd-body :is(.omo-tabs, .sh-tabs, .sw-tabs, .pi-tabs, .vc-seg, .fb-tabs, .ac-tabs)::-webkit-scrollbar { display: none; }
+    .sd-body :is(.omo-tab, .sh-tab, .sw-tab, .pi-tab, .fb-tab, .ac-tab) { flex: 0 0 auto; min-height: 40px; white-space: nowrap; scroll-snap-align: start; }
+    .sd-body .sh-board__head { padding: 10px 12px; }
+    .sd-body .sh-tabs { margin-inline: 0; padding-inline: 0; }
+
+    /* ---------- Search and filters: stacked, full width ---------- */
+    .sd-body :is(.do-filters, .ops-filters, .omo-filters, .sw-toolbar, .pi-filters, .pi-filters__form, .vc-filters) { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+    .sd-body :is(.do-search, .ops-search, .omo-search, .pi-search, .sw-search) { flex: 1 1 100%; max-width: none; width: 100%; }
+    .sd-body :is(.do-filters, .ops-filters) :is(select, details, .ops-date-filter) { flex: 1 1 calc(50% - 4px); max-width: none; min-width: 0; }
+    .sd-body :is(.do-filters, .ops-filters) :is(select, input) { width: 100%; }
+    .sd-body :is(.omo-filter, .omo-filter-btn) { flex: 1 1 calc(50% - 4px); }
+
+    /* Filter popovers open as a sheet above the tab bar instead of hanging off the edge. */
+    .sd-body :is(.omo-filter-panel, .sh-date-panel, .ops-date-panel, .pi-fpanel) {
+        position: fixed; left: 10px; right: 10px; top: auto; bottom: calc(var(--tabbar-h) + 10px + env(safe-area-inset-bottom, 0px));
+        width: auto; max-width: none; max-height: 70dvh; overflow-y: auto; z-index: 70; border-radius: 18px; box-shadow: 0 -10px 40px rgba(54, 9, 60, .22);
+    }
+    .sd-body.sd-no-tabbar :is(.omo-filter-panel, .sh-date-panel, .ops-date-panel, .pi-fpanel) { bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+    .sd-body .sh-controls { flex: 1 1 100%; flex-wrap: wrap; gap: 8px; }
+    .sd-body .sh-controls .sh-search { flex: 1 1 100%; width: 100%; }
+    .sd-body .sh-controls :is(.sh-date, .sh-courier) { flex: 1 1 140px; width: auto; min-width: 0; }
+    .sd-body .sh-controls :is(.sh-date, .sh-courier) > summary { width: 100%; }
+    .sd-body .sh-board { overflow: visible; }
+    .sd-body .sh-board__head { border-radius: 14px 14px 0 0; }
+
+    /* ---------- Tables become cards (labels come from mobile.js) ---------- */
+    .sd-body :is(.do-table-card, .ops-table-card, .omo-table-wrap, .ops-table-scroll, .pi-table-wrap, .rp-table-wrap) { overflow: visible; background: transparent; border: 0; box-shadow: none; padding: 0; }
+    .sd-body :is(.do-table, .ops-table, .omo-table, .pi-table, .rp-table, .rt-table) { min-width: 0 !important; width: 100%; display: block; font-size: 13px; }
+    .sd-body :is(.do-table, .ops-table, .omo-table, .pi-table, .rp-table, .rt-table) :is(tbody, tr, td) { display: block; }
+    .sd-body :is(.do-table, .ops-table, .omo-table, .pi-table, .rp-table, .rt-table) thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .sd-body :is(.do-table, .ops-table, .omo-table, .pi-table, .rp-table, .rt-table) tbody tr {
+        margin: 0 0 10px; padding: 12px 14px; background: #fff; border: 1px solid var(--do-line, #ece4ef); border-radius: 16px;
+        box-shadow: 0 1px 2px rgba(54, 9, 60, .04);
+    }
+    .sd-body :is(.do-table, .ops-table, .omo-table, .pi-table, .rp-table, .rt-table) tbody tr:active { background: #faf6fb; }
+    /* Each cell: label on the left, value on the right. Block + absolute label keeps multi-line values (name + small text) tidy. */
+    .sd-body :is(.do-table, .ops-table, .omo-table, .pi-table, .rp-table, .rt-table) tbody td,
+    .sd-body :is(.do-table, .ops-table, .omo-table, .pi-table, .rp-table, .rt-table) tbody td:is(:first-child, :last-child) {
+        position: relative; display: block; min-height: 32px; padding: 7px 0 7px 40%; border: 0; text-align: right; white-space: normal; min-width: 0; overflow-wrap: anywhere;
+    }
+    .sd-body :is(.do-table, .ops-table, .omo-table, .pi-table, .rp-table, .rt-table) tbody td[data-label]::before {
+        content: attr(data-label); position: absolute; left: 0; top: 8px; width: 36%; color: var(--do-muted, #8a8590); font-size: 11.5px; font-weight: 500; line-height: 1.4; text-align: left;
+    }
+    .sd-body :is(.do-table, .ops-table, .omo-table, .pi-table, .rp-table, .rt-table) tbody td small { display: block; }
+    /* First cell is the card title. */
+    .sd-body :is(.do-table, .ops-table, .omo-table, .pi-table, .rp-table, .rt-table) tbody td:first-child { padding: 2px 0 10px; margin-bottom: 4px; border-bottom: 1px dashed var(--do-line, #ece4ef); font-weight: 600; text-align: left; }
+    .sd-body :is(.do-table, .ops-table, .omo-table, .pi-table, .rp-table, .rt-table) tbody td:first-child::before { display: none; }
+    /* Cells with no header text (actions) take the full row. */
+    .sd-body :is(.do-table, .ops-table, .omo-table, .pi-table, .rp-table, .rt-table) tbody td:not([data-label]):not(:first-child) { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 10px 0 2px; }
+    .sd-body :is(.do-table, .ops-table, .omo-table, .pi-table, .rp-table, .rt-table) tbody td:not([data-label]):not(:first-child) :is(.do-btn, .pi-btn, a, button) { flex: 1 1 auto; text-align: center; }
+    .sd-body :is(.omo-table, .pi-table) tbody td { white-space: normal; }
+    .sd-body .omo-row.is-selected td:first-child { box-shadow: none; }
+    .sd-body .omo-row.is-selected { border-color: var(--plum-700, #5a1d63); }
+    .sd-body .omo-table tbody tr.omo-empty-row { padding: 0; border: 0; background: transparent; box-shadow: none; }
+    .sd-body .pi-table tbody tr:has(td[colspan]) { padding: 0; border: 0; background: transparent; box-shadow: none; }
+    .sd-body tbody td[colspan] { display: block; text-align: center; }
+
+    /* ---------- Shipments cards ---------- */
+    .sd-body .sh-card { padding: 14px; border-radius: 16px; }
+    .sd-body .sh-card__end { gap: 10px; }
+    .sd-body .sh-actions { margin: 6px 0 0; width: 100%; }
+    .sd-body .sh-actions :is(a, button) { flex: 1; min-height: 44px; }
+
+    /* ---------- Drawers and dialogs ---------- */
+    .sd-body :is(.ops-drawer, .omo-drawer, .omo-drawer__inner) { width: 100vw; max-width: 100vw; border-radius: 0; }
+    .sd-body .omo-layout.is-open .omo-drawer { width: 100vw; }
+    .sd-body .ops-drawer-head { padding: 14px 16px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
+    .sd-body .ops-drawer-head button, .sd-body .ops-modal [data-close-dialog] { width: 40px; height: 40px; }
+    .sd-body .ops-drawer-body { padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px)); }
+    .sd-body dialog:is(.ops-modal, .ops-cancel-dialog, .rt-dialog, .cmp-dialog, .rp-dialog, .pi-confirm, .pi-modal, .vc-modal, .ac-crop-dialog) {
+        position: fixed; inset: auto 0 0 0; margin: 0; width: 100%; max-width: 100%; max-height: 92dvh; overflow-y: auto;
+        border-radius: 20px 20px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .sd-body dialog:is(.ops-modal, .ops-cancel-dialog, .rt-dialog, .cmp-dialog, .rp-dialog, .pi-confirm, .pi-modal, .vc-modal)::before {
+        content: ""; display: block; width: 40px; height: 4px; margin: 8px auto 0; border-radius: 4px; background: #e0d0e5;
+    }
+    .sd-body .ops-cancel-dialog__actions, .sd-body .rt-dialog__actions, .sd-body .cmp-dialog__actions { flex-direction: column-reverse; gap: 8px; }
+    .sd-body .ops-cancel-dialog__actions > *, .sd-body .rt-dialog__actions > *, .sd-body .cmp-dialog__actions > * { width: 100%; }
+
+    /* ---------- Forms ---------- */
+    .sd-body :is(.ops-form-grid, .pi-grid, .pi-grid--3, .vc-grid, .ac-grid, .sw-form__grid, .do-facts) { grid-template-columns: minmax(0, 1fr); }
+    .sd-body :is(.do-card, .ac-section, .pi-section, .vc-card):not(.do-table-card) { padding: 16px; border-radius: 16px; }
+
+    /* ---------- Pagination ---------- */
+    .sd-body :is(.omo-pager, .ops-pagination, .pi-pager, .vc-pager, .sw-pagination, .do-pagination) { flex-direction: column; align-items: center; gap: 10px; padding: 14px 4px; text-align: center; }
+    .sd-body :is(.sh-pager, .omo-pager__pages) { flex-wrap: wrap; justify-content: center; }
+    .sd-body .sh-board__foot { flex-direction: column; gap: 10px; align-items: center; }
+    .sd-body :is(.sh-pager a, .sh-pager span) { min-width: 40px; height: 40px; }
+
+    /* ---------- Toasts clear the tab bar ---------- */
+    .sd-body .omo-toast { left: 12px; right: 12px; max-width: none; bottom: calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom, 0px)); }
+    .sd-body .sd-banners { top: calc(56px + env(safe-area-inset-top, 0px) + 8px); }
+    .sd-body .sd-bell-menu { position: fixed; left: 10px; right: 10px; top: calc(56px + env(safe-area-inset-top, 0px) + 6px); width: auto; max-height: 70dvh; }
+    .sd-body .sd-user-menu { right: 0; }
+
+    /* ---------- Page extras ---------- */
+    .sd-body :is(.rp-range, .rp-actions) { flex-direction: column; align-items: stretch; gap: 8px; }
+    .sd-body .db-welcome { gap: 12px; }
+    .sd-body .sd-chart-canvas, .sd-body .db-chart { height: 220px; }
+    .sd-body .vc-ticket { border-radius: 16px; }
+}
+
+@media (max-width: 640px) {
+    :root { --m-pad: 12px; }
+    .sd-body .sd-user__text { display: none; }
+    .sd-body :is(.do-head, .ops-page-head, .omo-head, .pi-head, .sw-heading, .vc-head) h1 { font-size: 19px; }
+    .sd-body :is(.do-stat__text strong, .omo-stat__value) { font-size: 17px; }
+    .sd-body :is(.omo-info-grid, .pi-info) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
+@media (max-width: 400px) {
+    .sd-body .sd-tabbar__item { font-size: 10px; }
+    .sd-body :is(.do-stat, .omo-stat, .pi-stat, .vc-stat, .sw-stat) { padding: 10px; gap: 8px; }
+    .sd-body :is(.do-stat__icon, .omo-stat__icon) { width: 32px; height: 32px; }
+}
+
+@media (max-width: 900px) and (prefers-reduced-motion: reduce) {
+    .sd-body .sd-tabbar__item, .sd-body tbody tr { transition: none; }
+}
