@@ -23,17 +23,40 @@ class RegisteredUserController extends Controller
     public function create(Request $request): View
     {
         $categories = Category::whereNull('parent_id')->orderBy('id')->get();
-        $verification = $request->session()->get('registration_verification', []);
         $google = $request->session()->get('google_registration_verification', []);
-        $googleVerified = ($google['role'] ?? null) === 'seller'
+        $googleRole = $google['role'] ?? null;
+        $googleProofValid = in_array($googleRole, ['seller', null], true)
+            && filter_var($google['email'] ?? null, FILTER_VALIDATE_EMAIL)
+            && ($google['expires_at'] ?? 0) > now()->timestamp;
+
+        if ($googleProofValid && $googleRole === null) {
+            $this->adoptSharedProof($request, $google);
+        }
+
+        $verification = $request->session()->get('registration_verification', []);
+        $googleVerified = $googleProofValid
             && ($google['email'] ?? null) === ($verification['email'] ?? null)
-            && ($google['expires_at'] ?? 0) > now()->timestamp
             && Cache::get('otp_verified:'.($google['email'] ?? ''), false);
 
         return view('seller.auth.register', [
             'categories' => $categories,
             'googleRegistration' => $googleVerified ? $google : null,
         ]);
+    }
+
+    /**
+     * The shared login page verifies the email before the account type is chosen.
+     * Adopt that proof into the OTP-verified state the rest of the Seller pipeline
+     * already reads, so the form opens with the address filled in, locked, and
+     * verified instead of asking for a code.
+     */
+    private function adoptSharedProof(Request $request, array $proof): void
+    {
+        $request->session()->put('registration_verification', [
+            'email' => $proof['email'],
+            'expires_at' => $proof['expires_at'],
+        ]);
+        Cache::put('otp_verified:'.$proof['email'], true, now()->setTimestamp((int) $proof['expires_at']));
     }
 
     public function store(Request $request, PsgcAddressResolver $addresses): JsonResponse
@@ -72,15 +95,20 @@ class RegisteredUserController extends Controller
 
         $verification = $request->session()->get('registration_verification', []);
         $googleProof = $request->session()->get('google_registration_verification', []);
-        if (($googleProof['email'] ?? null) === $email && ($googleProof['role'] ?? null) !== 'seller') {
+        $googleRole = $googleProof['role'] ?? null;
+        $googleVerified = in_array($googleRole, ['seller', null], true)
+            && ($googleProof['email'] ?? null) === $email
+            && ($googleProof['expires_at'] ?? 0) > now()->timestamp;
+
+        if (($googleProof['email'] ?? null) === $email && $googleRole !== null && $googleRole !== 'seller') {
             throw ValidationException::withMessages(['email' => 'Continue registration using the account type chosen in Google sign-in.']);
         }
 
-        if (
-            ($verification['email'] ?? null) !== $email ||
-            ($verification['expires_at'] ?? 0) <= now()->timestamp ||
-            ! Cache::get('otp_verified:'.$email)
-        ) {
+        $otpVerified = ($verification['email'] ?? null) === $email
+            && ($verification['expires_at'] ?? 0) > now()->timestamp
+            && Cache::get('otp_verified:'.$email);
+
+        if (! $googleVerified && ! $otpVerified) {
             throw ValidationException::withMessages([
                 'email' => 'Please verify your email address before submitting.',
             ]);
@@ -136,6 +164,7 @@ class RegisteredUserController extends Controller
 
         Cache::forget('otp_verified:'.$email);
         $request->session()->forget('registration_verification');
+        $request->session()->forget('google_registration_verification');
         Notification::create(['user_id' => null, 'type' => 'new_seller_registration', 'title' => 'New seller registration', 'message' => 'A seller account is awaiting review.', 'link' => route('admin.registrations.index')]);
 
         return response()->json([

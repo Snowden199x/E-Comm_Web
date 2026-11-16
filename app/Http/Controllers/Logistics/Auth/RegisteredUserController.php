@@ -83,7 +83,10 @@ class RegisteredUserController extends Controller
         }
 
         $googleProof = $request->session()->get('google_registration_verification', []);
-        if (($googleProof['email'] ?? null) === $email && ($googleProof['role'] ?? null) !== 'logistics_center') {
+        $googleProofRole = $googleProof['role'] ?? null;
+        // A null role came from the shared Buyer+Seller login page, so it never chose
+        // this account type; the normal code check below still applies to it.
+        if (($googleProof['email'] ?? null) === $email && $googleProofRole !== null && $googleProofRole !== 'logistics_center') {
             throw ValidationException::withMessages(['email' => 'Continue registration using the account type chosen in Google sign-in.']);
         }
 

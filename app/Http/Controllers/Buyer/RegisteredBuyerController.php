@@ -20,7 +20,9 @@ class RegisteredBuyerController extends Controller
     {
         $proof = $request->session()->get('buyer_registration_verification', []);
         $googleProof = $request->session()->get('google_registration_verification', []);
-        $googleVerified = ($googleProof['role'] ?? null) === 'buyer'
+        // A null role means the shared login page verified the email before the
+        // account type was chosen, so it still satisfies the Buyer form.
+        $googleVerified = in_array($googleProof['role'] ?? null, ['buyer', null], true)
             && filter_var($googleProof['email'] ?? null, FILTER_VALIDATE_EMAIL)
             && ($googleProof['expires_at'] ?? 0) > now()->timestamp;
         $email = $googleVerified ? $googleProof['email'] : ($proof['email'] ?? '');
@@ -84,7 +86,7 @@ class RegisteredBuyerController extends Controller
             'valid_id_2.uploaded' => 'The second ID file could not be uploaded. Choose a file under 10MB and submit again.',
         ]);
         $googleProof = $request->session()->get('google_registration_verification', []);
-        $googleVerified = ($googleProof['role'] ?? null) === 'buyer'
+        $googleVerified = in_array($googleProof['role'] ?? null, ['buyer', null], true)
             && ($googleProof['email'] ?? null) === $request->email
             && ($googleProof['expires_at'] ?? 0) > now()->timestamp;
         $otp = $googleVerified ? null : $this->verifiedRecord($request, $request->email);

@@ -77,15 +77,6 @@ class GoogleAuthController extends Controller
             return response()->json(['redirect' => $route]);
         }
 
-        if ($requested === null) {
-            // Nobody owns this Google email yet, and the shared page has no role to
-            // build a registration proof for, so the chooser starts a normal signup.
-            return response()->json([
-                'redirect' => route('register.choose', absolute: false),
-                'registration' => true,
-            ]);
-        }
-
         $expiresAt = now()->addMinutes(30);
         $request->session()->put('google_registration_verification', [
             'role' => $role,
@@ -94,6 +85,16 @@ class GoogleAuthController extends Controller
             'first_name' => $claims['given_name'] ?? '',
             'last_name' => $claims['family_name'] ?? '',
         ]);
+
+        if ($role === null) {
+            // The shared login page cannot know the account type yet. The proof above
+            // keeps the verified email for whichever type the chooser picks, so the
+            // Buyer or Seller form opens with that address already verified.
+            return response()->json([
+                'redirect' => route('register.choose', absolute: false),
+                'registration' => true,
+            ]);
+        }
 
         if ($role !== 'buyer') {
             Cache::put('otp_verified:'.$email, true, $expiresAt);
