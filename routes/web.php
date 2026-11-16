@@ -518,6 +518,13 @@ Route::prefix('logistics')->name('logistics.')->group(function () {
     })->name('rider-app');
 });
 
+// The shopper landing page's "Get the app" button and its printed QR both point
+// here, so moving the Buyer app to Google Play later means changing
+// config('services.vendo.buyer_app_url') only.
+Route::get('/get-the-app', function () {
+    return redirect()->away(config('services.vendo.buyer_app_url'));
+})->name('buyer-app');
+
 Route::get('/login', [UnifiedLoginController::class, 'create'])->name('login');
 Route::post('/login', [UnifiedLoginController::class, 'store'])->name('login.store');
 Route::post('/logout', [UnifiedLoginController::class, 'destroy'])->middleware('auth')->name('logout');
