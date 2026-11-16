@@ -83,7 +83,7 @@ class NationalLogisticsCompaniesSeeder extends Seeder
                         [
                             'logistics_center_id' => $company->logistics_center_id,
                             'parent_id' => $provinceHub->id,
-                            'name' => "{$businessName} - {$municipalityName} Station Hub",
+                            'name' => "{$businessName} - {$municipalityName}, {$provinceName} Station Hub",
                             'province_code' => $provinceCode,
                             'province' => $provinceName,
                             'municipality_code' => $municipalityCode,
