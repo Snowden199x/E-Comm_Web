@@ -23,7 +23,7 @@
                     Back
                 </button>
                 <a class="legal-brand" href="{{ $homeUrl }}" aria-label="Vendo home">
-                    <img src="{{ asset('images/logo/vendo-full.png') }}" alt="Vendo">
+                    <img src="{{ asset('assets/branding/log-in-logo.svg') }}" alt="Vendo">
                 </a>
             </div>
             <nav class="legal-nav" aria-label="Legal pages">

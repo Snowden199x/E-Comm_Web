@@ -31,7 +31,17 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
-        if (! in_array($user->role, ['courier', 'logistics_center', 'province_hub', 'station_hub'], true)) {
+        // Rider and Transport Driver work is mobile-only. Do not issue a web session
+        // or redirect these accounts to a web dashboard.
+        if (in_array($user->role, ['courier', 'transport_driver'], true)) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'Rider and Transport Driver accounts sign in only in the Vendo mobile apps.',
+            ]);
+        }
+
+        if (! in_array($user->role, ['logistics_center', 'province_hub', 'station_hub'], true)) {
             Auth::logout();
 
             throw ValidationException::withMessages([
@@ -42,13 +52,8 @@ class AuthenticatedSessionController extends Controller
         if ($user->status !== 'approved') {
             Auth::logout();
 
-            // Riders are approved by their chosen Logistics/Sorting Center, not the admin.
-            $pendingMessage = $user->role === 'courier'
-                ? 'Your account is still pending approval from your chosen Logistics/Sorting Center.'
-                : 'Your account is still pending admin approval.';
-
             $message = match ($user->status) {
-                'pending' => $pendingMessage,
+                'pending' => 'Your account is still pending approval.',
                 'disapproved' => 'Your registration was not approved. '.($user->rejection_reason ?? ''),
                 default => 'Your account is not active.',
             };
@@ -62,7 +67,7 @@ class AuthenticatedSessionController extends Controller
             'logistics_center' => 'lgp.company',
             'province_hub' => 'lgp.hub.province',
             'station_hub' => 'lgp.hub.station',
-            default => 'logistics.courier.dashboard',
+            default => 'logistics.landing',
         };
 
         return redirect()->intended(route($redirectRoute, absolute: false));

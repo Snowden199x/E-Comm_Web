@@ -44,7 +44,7 @@ class AppServiceProvider extends ServiceProvider
             return match ($user?->role) {
                 'buyer' => route('buyer.dashboard'),
                 'seller' => route('seller.dashboard'),
-                'courier' => route('logistics.courier.dashboard'),
+                'courier' => route('logistics.rider-app'),
                 'logistics_center' => route('logistics.dashboard'),
                 default => '/',
             };

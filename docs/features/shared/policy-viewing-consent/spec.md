@@ -1,13 +1,16 @@
 # Policy Viewing and Consent
 
-**Status:** Partial  
-**Reviewed:** 28 September 2026
+**Status:** Partial
+
+**Reviewed:** 16 November 2026
 
 ## Current behavior
 
 Admin can store and display platform policies. Admin previews and Buyer/Seller policy notification dialogs share a formatted policy component. Ordered lists, bullet lists, headings, emphasis and paragraph spacing are preserved from the saved editor content. Rendering allows only supported formatting tags and attributes; scripts and arbitrary HTML attributes are discarded. Existing stored policies do not need to be re-entered.
 
-The website now serves public Terms and Conditions at `/terms-and-conditions` and Privacy Policy at `/privacy-policy`. The content comes from `docs/legal/terms-and-conditions.md` and `docs/legal/privacy-policy.md`, rendered as Markdown with inline HTML stripped and unsafe links disabled. Buyer, Seller, and Logistics Center registration links open these pages in a new tab so form entries are preserved. The public landing footer also links to both pages. These legal pages are separate from Admin-managed role policies.
+The website now serves public Terms and Conditions at `/terms-and-conditions` and Privacy Policy at `/privacy-policy`. The content comes from `docs/legal/terms-and-conditions.md` and `docs/legal/privacy-policy.md`, rendered as Markdown with inline HTML stripped and unsafe links disabled. Buyer, Seller, and Logistics Company registration links open these pages in a new tab so form entries are preserved. The public landing footer also links to both pages. These legal pages are separate from Admin-managed role policies.
+
+The 16 November copy uses the current Buyer, Seller, Logistics Company, Province Hub, Station Hub, Rider, and Transport Driver vocabulary. It covers cash on delivery, route-based delivery fees, vouchers, delivery proof, the seven-day return request and return pickup fee, Buyer support tickets, account-deletion requests, and Rider Firebase push tokens. The legal header uses the white-on-purple `assets/branding/log-in-logo.svg` inside a purple brand chip; `resources/css/shared/legal.css` owns the chip and responsive sizing. The pages still show the file modification date as "Last updated", so a content edit changes that date automatically.
 
 ## Account access
 
@@ -21,7 +24,7 @@ Registration still validates the required `agree_terms` checkbox, but does not r
 
 ## Source evidence
 
-`app/Models/Communication/PlatformPolicy.php`, `app/Http/Controllers/LegalPageController.php`, `routes/web.php`, `resources/views/legal/show.blade.php`
+`app/Models/Communication/PlatformPolicy.php`, `app/Http/Controllers/LegalPageController.php`, `routes/web.php`, `resources/views/legal/show.blade.php`, `resources/css/shared/legal.css`, `docs/legal/terms-and-conditions.md`, `docs/legal/privacy-policy.md`
 
 ## Related documentation
 

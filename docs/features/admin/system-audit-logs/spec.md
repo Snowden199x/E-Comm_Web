@@ -1,7 +1,7 @@
 # Admin Audit Trail
 
-**Status:** Implemented for the Admin decisions the application performs; browsable at `GET /admin/audit-logs`
-**Reviewed:** 11 November 2026
+**Status:** Implemented for the Admin decisions the application performs; browsable at `GET /{ADMIN_PATH}/audit-logs`
+**Reviewed:** 16 November 2026
 
 ## What is recorded
 
@@ -9,7 +9,7 @@
 
 Current writers: registration approve/reject; account suspend/deactivate/activate/suspension lift; account-deletion approve/reject; primary Logistics coverage set; Seller category-request approve/reject; product approve/reject/warn; commission-rate changes; policy create/update/delete; announcement create/update/delete; chat welcome changes; limit overrides (extra attempt, return window); support-ticket status; Logistics document approve/reject; Admin account create/suspend/reactivate/archive/restore/delete; complaint status; account-report approve/reject; review-report resolve/dismiss. Admin login/logout keep their own `admin_login_sessions` records.
 
-## Viewer (`admin.audit-logs.index`, `GET /admin/audit-logs`)
+## Viewer (`admin.audit-logs.index`, `GET /{ADMIN_PATH}/audit-logs`)
 
 - **Super admin only.** The sidebar entry appears only for `is_super_admin` accounts, and `AuditLogController@index` aborts with 403 for any other Admin, so the URL cannot be reached directly. Reason: the log names which Admin suspended, removed or overrode what.
 - Filters: free-text search over the Admin, the account, email or reason; action select (only the actions present in the table); From/To dates. Filters and page number stay in the URL.

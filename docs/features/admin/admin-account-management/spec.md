@@ -1,11 +1,11 @@
 # Admin Account Management
 
 **Status:** Implemented with sensitive operations  
-**Reviewed:** 24 September 2026
+**Reviewed:** 16 November 2026
 
 ## Current behavior
 
-Supports admin list/detail/create/update, force-password change, temporary-password display, suspend/reactivate, reset-link send, restore/force-delete, and profile/password updates.
+Supports admin list/detail/create/update, force-password change, temporary-password display, suspend/reactivate, reset-link send, restore/force-delete, and profile/password updates. The admin list and management actions require `is_super_admin`; the `/table` partial now applies the same server-side check instead of relying on the UI. Other Admins can still use their own account/profile pages.
 The create-admin form restores unfinished non-secret fields after a same-tab reload for up to two hours; password fields are excluded. See [form reload recovery](../../shared/form-draft-recovery/spec.md).
 
 ## Gaps and acceptance direction
