@@ -7,11 +7,14 @@ use App\Models\User;
 use App\Services\GoogleIdTokenVerifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 /**
  * Buyer Google sign-in. The token comes from the app's `google_sign_in` flow;
- * the API verifies it and issues the same session as a password login. Google
- * never creates a Buyer account, so an unknown email is told to register first.
+ * the API verifies it and issues the same session as a password login. An
+ * unknown email gets a short-lived registration proof, so the app opens the
+ * Buyer form with that address filled in and already verified.
  */
 class BuyerGoogleAuthController extends Controller
 {
@@ -25,9 +28,23 @@ class BuyerGoogleAuthController extends Controller
         $buyer = User::query()->whereRaw('LOWER(email) = ?', [$claims['email']])->first();
 
         if (! $buyer) {
+            // Google proved this address, so the Buyer form can skip the emailed
+            // code and start with the email filled in and marked verified.
+            $registrationToken = Str::random(64);
+            Cache::put(BuyerEmailOtpController::googleProofKey($registrationToken), [
+                'email' => $claims['email'],
+                'first_name' => $claims['given_name'] ?? '',
+                'last_name' => $claims['family_name'] ?? '',
+            ], now()->addMinutes(BuyerEmailOtpController::PROOF_TTL_MINUTES));
+
             return response()->json([
-                'message' => 'No Vendo Buyer account uses this Google email. Create a Buyer account with this address first, then sign in with Google.',
-            ], 404);
+                'registration_required' => true,
+                'registration_token' => $registrationToken,
+                'email' => $claims['email'],
+                'first_name' => $claims['given_name'] ?? '',
+                'last_name' => $claims['family_name'] ?? '',
+                'expires_in' => BuyerEmailOtpController::PROOF_TTL_MINUTES * 60,
+            ], 202);
         }
 
         if ($buyer->role !== 'buyer') {

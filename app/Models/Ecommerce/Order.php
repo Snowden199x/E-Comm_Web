@@ -36,6 +36,58 @@ class Order extends Model
 
     public const SHIPMENT_LABELS = ['to_ship' => 'To Ship', 'in_transit' => 'In Transit', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled', 'returned' => 'Returned'];
 
+    /**
+     * The status tabs on the Buyer's My orders page. The web filters in the browser
+     * and the app asks the API for one tab, so both read this list and these rules.
+     */
+    public const BUYER_TABS = [
+        'all' => ['label' => 'All', 'statuses' => null],
+        'placed' => ['label' => 'Placed', 'statuses' => ['placed']],
+        'to_ship' => ['label' => 'To ship', 'statuses' => self::SHIPMENT_GROUPS['to_ship']],
+        'in_transit' => ['label' => 'In transit', 'statuses' => self::SHIPMENT_GROUPS['in_transit']],
+        'delivered' => ['label' => 'Delivered', 'statuses' => self::SHIPMENT_GROUPS['delivered']],
+        // Returns is not a status of its own: it holds every order with a return
+        // request, plus returned orders (see hasReturnRequest()).
+        'returns' => ['label' => 'Returns', 'statuses' => null],
+        'cancelled' => ['label' => 'Cancelled', 'statuses' => ['cancelled']],
+    ];
+
+    /** The one status tab an order sits in, ignoring Returns. */
+    public function buyerTab(): string
+    {
+        foreach (self::BUYER_TABS as $key => $tab) {
+            if ($tab['statuses'] !== null && in_array($this->status, $tab['statuses'], true)) {
+                return $key;
+            }
+        }
+
+        return 'all';
+    }
+
+    /** True for an order the Returns tab lists: a returned order or one with any return request. */
+    public function hasReturnRequest(): bool
+    {
+        return $this->status === 'returned' || $this->latestReturnRequest !== null;
+    }
+
+    /** Does this order show under [$tabKey]? Same rule the web's tabs use. */
+    public function inBuyerTab(string $tabKey): bool
+    {
+        if ($tabKey === 'all') {
+            return true;
+        }
+
+        return $tabKey === 'returns'
+            ? $this->hasReturnRequest()
+            : $this->buyerTab() === $tabKey;
+    }
+
+    /** The statuses a tab's SQL filter needs; null means "not a status filter". */
+    public static function buyerTabStatuses(string $tabKey): ?array
+    {
+        return self::BUYER_TABS[$tabKey]['statuses'] ?? null;
+    }
+
     public function facilityStops()
     {
         return $this->hasMany(\App\Models\Profiles\OrderFacilityStop::class)->orderBy('position');
@@ -286,6 +338,32 @@ class Order extends Model
         }
 
         return 'pending';
+    }
+
+    /**
+     * The progress rail on the Buyer order page: every status this parcel passes through.
+     * The SOC5/SOC6 legs and the destination hub only appear when the parcel really goes
+     * that way, so the rail matches the route the parcel takes. Shared by the web order page
+     * and the app so both draw the same steps.
+     *
+     * @return array<int, string>
+     */
+    public function buyerProgressSteps(): array
+    {
+        $steps = ['placed', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted'];
+        $socRoute = $this->scanEvents()->whereIn('scan_type', ['soc5', 'soc6', 'destination_hub'])->exists()
+            || ($this->logistics_center_id && $this->destination_logistics_center_id
+                && $this->logistics_center_id !== $this->destination_logistics_center_id
+                && ! in_array($this->status, ['in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed'], true));
+        if ($socRoute) {
+            array_push($steps, 'to_soc5', 'to_soc6');
+        }
+        if ($this->logistics_center_id !== $this->destination_logistics_center_id) {
+            array_push($steps, 'in_transit_to_hub', 'at_destination_hub');
+        }
+        array_push($steps, 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed');
+
+        return $steps;
     }
 
     public function statusEvents()

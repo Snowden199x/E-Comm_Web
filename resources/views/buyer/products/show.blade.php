@@ -23,7 +23,10 @@
     $seller = $product->seller;
     $sellerDetail = $seller?->sellerDetail;
     $shopName = $sellerDetail?->business_name ?: $seller?->name;
-    $shipsFrom = implode(', ', array_filter([$sellerDetail?->municipality, $sellerDetail?->province]));
+    // Delivery, specification and rating copy comes from ProductPageContent so the web page
+    // and the buyer mobile API always show the same facts.
+    $pageContent = app(\App\Services\ProductPageContent::class);
+    $shipsFrom = $pageContent->shipsFrom($product);
     $category = $product->category;
 
     $fmt = fn ($amount) => '₱' . number_format($amount, fmod((float) $amount, 1) ? 2 : 0);
@@ -54,8 +57,9 @@
     $stepped = $variantTypes->isNotEmpty(); // false for old variants that only have a label: the single list is used
 
     // Shipping fee shown before checkout. Checkout currently charges 0 (no quotes yet), so 0 is the honest default.
-    $shippingFee = isset($shippingFee) ? (float) $shippingFee : 0.0;
+    $shippingFee = isset($shippingFee) ? (float) $shippingFee : $pageContent->shippingFee($product);
     $shippingFeeText = '₱' . number_format($shippingFee, 2);
+    $shippingNote = $pageContent->shippingNote($shippingFee);
     $variantPrices = $variantData->pluck('price');
     $startPrice = $variantPrices->isNotEmpty() ? $variantPrices->min() : (float) $product->effective_price;
     $basePriceText = ($variantPrices->isNotEmpty() && $variantPrices->min() != $variantPrices->max())
@@ -89,39 +93,11 @@
         ? $product->publishedReviews()->selectRaw('rating, COUNT(*) as total')->groupBy('rating')->pluck('total', 'rating')
         : collect();
 
-    $shopStats = null;
-    if ($seller) {
-        $shopReviews = \App\Models\Ecommerce\ProductReview::query()->where('seller_id', $seller->id)->where('visibility', 'published');
-        $shopStats = [
-            'ratings' => (clone $shopReviews)->count(),
-            'average' => (clone $shopReviews)->avg('rating'),
-            'products' => \App\Models\Ecommerce\Product::query()->where('seller_id', $seller->id)->where('status', 'approved')->count(),
-            'joined' => $seller->created_at?->diffForHumans(),
-        ];
-    }
+    // Shop card numbers come from the same service the buyer mobile API uses.
+    $shopStats = $seller ? $pageContent->shopStats($seller) : null;
 
     // Specification rows: base facts, then category details, then extra specifications
-    $specs = collect([
-        'Category' => collect([$category?->parent?->name, $category?->name])->filter()->implode(' / '),
-        'Brand' => $product->brand,
-        'Material' => $product->material,
-        'Weight' => $product->weight,
-        'Country of origin' => $product->country_of_origin,
-        'Ships from' => $shipsFrom,
-    ])->filter(fn ($value) => filled($value))
-        ->map(fn ($value, $label) => ['label' => $label, 'value' => $value])->values();
-
-    foreach ($product->attributeValues as $item) {
-        $value = collect($item->value ?? [])->filter(fn ($v) => filled($v))->implode(', ');
-        if ($value !== '') {
-            $specs->push(['label' => $attributeLabels[$item->key] ?? Str::headline($item->key), 'value' => $value]);
-        }
-    }
-    foreach ($product->specifications as $item) {
-        if (filled($item->name) && filled($item->value)) {
-            $specs->push(['label' => $item->name, 'value' => $item->value]);
-        }
-    }
+    $specs = $pageContent->specifications($product);
 
     $chip = 'inline-flex min-h-[36px] items-center rounded-md border border-[#e5dce7] bg-white px-3 py-1.5 text-[13px] text-[#3d2a42] transition-colors duration-200 ease-vendo hover:border-[#c9a9ce] peer-checked:border-[#805487] peer-checked:bg-[#f5ecf6] peer-checked:text-[#52245b] peer-checked:shadow-[inset_0_0_0_1px_#805487] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#805487] peer-disabled:cursor-not-allowed peer-disabled:border-dashed peer-disabled:bg-[#faf7fb] peer-disabled:text-[#b7a9ba] peer-disabled:line-through';
     $chipBase = 'inline-flex min-h-[36px] items-center rounded-md border px-3 py-1.5 text-[13px] transition-colors duration-200 ease-vendo focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#805487]';
@@ -328,18 +304,12 @@
                                         <span class="text-[#5b4a60]">Shipping fee</span>
                                         <span class="text-[15px] font-semibold text-[#52245b]">{{ $shippingFeeText }}</span>
                                     </span>
-                                    <span class="mt-0.5 block text-[12px] text-[#6f5f73]">
-                                        @if ($shippingFee > 0)
-                                            Added to your total at checkout.
-                                        @else
-                                            Shipping quotes are not available yet, so no shipping fee is charged.
-                                        @endif
-                                    </span>
+                                    <span class="mt-0.5 block text-[12px] text-[#6f5f73]">{{ $shippingNote }}</span>
                                 </dd>
                             </div>
                             <div class="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[104px_minmax(0,1fr)]">
                                 <dt class="pt-0.5 text-[#8a7a8e]">Payment</dt>
-                                <dd class="text-[#2b1730]">Cash on delivery</dd>
+                                <dd class="text-[#2b1730]">{{ \App\Services\ProductPageContent::PAYMENT_METHOD }}</dd>
                             </div>
 
                             @if ($product->stock > 0)

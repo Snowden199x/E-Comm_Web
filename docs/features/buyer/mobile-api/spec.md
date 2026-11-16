@@ -21,7 +21,7 @@ Every protected route runs `auth:sanctum` plus `EnsureApprovedBuyerToken`, which
 ## Storefront
 
 - `GET /home`: top-level categories, up to five announcements for buyers, and 18 recommended products with card metrics.
-- `GET /categories`: all categories with their children.
+- `GET /categories`: all categories with their children, in the same order the web Categories page lists them.
 - `GET /products?category_id&search&sort&page`: paginated 12 at a time; `category_id` includes the category's children.
 - `GET /products/{product}`: full detail (images, variants, specifications, seller, description) plus up to eight recommended products from the same parent category. Unavailable products and sellers return 404.
 - `GET /sellers?search&page` and `GET /sellers/{seller}?search&sort&page`: approved, active sellers and their approved products.
@@ -43,10 +43,14 @@ All listing queries use `Product::availableToBuy()`, so a product from an unappr
 
 `BuyerCheckoutService` now holds the checkout transaction (locks, stock, revision check, voucher redemption, COD amount, rate snapshots, inventory movements, seller notification, cart cleanup) and is called by both the web `CheckoutController@store` and the mobile API. `CheckoutRevisionService` holds the revision hash used by both. Web behaviour is unchanged: it still validates the posted `shipping_quotes` before calling the shared service.
 
+## Rate limits
+
+Every protected route is capped at 120 requests a minute per Buyer, and the endpoints that need a tighter cap keep their own bucket: `POST /checkout` 10/min, shipping and voucher quotes 20/min, geo lookups 30/min, return requests 10/min and chat writes 20/min. Each `throttle` in the group carries a prefix (`buyer`, `buyer-checkout`, `buyer-shipping-quote`, …) because Laravel resolves a throttle key from the authenticated user alone: without the prefix the group counter (every API call) and the endpoint counter are the same bucket, so ten ordinary calls in a minute made `POST /checkout` answer 429 *Too Many Attempts* before the order was ever submitted.
+
 ## Orders, notifications and account
 
 - `GET /orders?status&page` (15 per page), `GET /orders/{order}`, `PATCH /orders/{order}/cancel` `{expected_status, reason, reason_details?}`, `POST /orders/{order}/complete`, `POST /order-items/{orderItem}/review` `{rating, comment}`. Every lookup is scoped to `buyer_id`; another buyer's order returns 404. Cancellation uses `OrderCancellationService` with the web's reason list and status guard. Completing is allowed only for `delivered`.
-- `GET /notifications?filter=all|unread`, `POST /notifications/{notification}/read`, `POST /notifications/read-all`: only the signed-in buyer's rows.
+- `GET /notifications?filter=all|unread`, `POST /notifications/{notification}/read`, `POST /notifications/read-all`: only the signed-in buyer's rows. Each row carries `product` (name and image of the parcel's first item) and `order` (`{id, number, status, status_label}`) resolved from the notification's link. `order` is null for announcements, support replies and reviews; the app labels an order card from `order.status` and opens that order, so "…: Completed" no longer reads as an order that was only placed.
 - `GET /account`, `PUT /account` (name, phone, street, house number, ZIP), `PUT /account/password`.
 
 ## Google sign-in, vouchers, reviews, help and legal

@@ -65,30 +65,42 @@ class BuyerCartController extends Controller
         if ($availableStock <= 0) {
             throw ValidationException::withMessages(['quantity' => $product->name.' is currently unavailable.']);
         }
-        if ($quantity > $availableStock) {
-            throw ValidationException::withMessages(['quantity' => 'Only '.$availableStock.' item(s) left in stock.']);
-        }
 
-        $alreadyInCart = CartItem::where('user_id', $request->user()->id)
-            ->where('product_id', $product->id)
-            ->where('product_variant_id', $variant?->id)
-            ->exists();
-        if (! $alreadyInCart && CartItem::where('user_id', $request->user()->id)->count() >= CartItem::MAX_LINES) {
-            throw ValidationException::withMessages([
-                'cart' => 'Your cart is full. A cart can hold up to '.CartItem::MAX_LINES.' different products.',
-            ]);
-        }
-
-        CartItem::create([
+        // The same product/variant is one cart line: adding it again only raises its quantity.
+        $line = [
             'user_id' => $request->user()->id,
             'product_id' => $product->id,
             'product_variant_id' => $variant?->id,
-            'color' => $request->color,
-            'size' => $request->size,
-            'quantity' => $quantity,
-        ]);
+            'color' => $variant ? null : $request->input('color'),
+            'size' => $variant ? null : $request->input('size'),
+        ];
 
-        return response()->json($this->payload($request) + ['message' => 'Added to cart.'], 201);
+        $existing = CartItem::where($line)->first();
+        $totalQuantity = ($existing?->quantity ?? 0) + $quantity;
+
+        if ($totalQuantity > $availableStock) {
+            $message = $existing
+                ? 'Only '.$availableStock.' item(s) left in stock and your cart already has '.$existing->quantity.'.'
+                : 'Only '.$availableStock.' item(s) left in stock.';
+            throw ValidationException::withMessages(['quantity' => $message]);
+        }
+
+        if ($existing) {
+            $existing->update(['quantity' => $totalQuantity]);
+        } else {
+            if (CartItem::where('user_id', $request->user()->id)->count() >= CartItem::MAX_LINES) {
+                throw ValidationException::withMessages([
+                    'cart' => 'Your cart is full. A cart can hold up to '.CartItem::MAX_LINES.' different products.',
+                ]);
+            }
+
+            CartItem::create($line + ['quantity' => $quantity]);
+        }
+
+        return response()->json(
+            $this->payload($request) + ['message' => $existing ? 'Cart quantity updated.' : 'Added to cart.'],
+            $existing ? 200 : 201,
+        );
     }
 
     public function update(Request $request, CartItem $cartItem): JsonResponse

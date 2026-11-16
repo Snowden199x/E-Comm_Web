@@ -21,18 +21,8 @@
     $label = Order::STATUSES[$order->status] ?? Str::headline($order->status);
     $itemsTotal = $order->items->sum(fn ($item) => $item->quantity * $item->price);
 
-    $steps = ['placed', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted'];
-    $socRoute = $order->scanEvents()->whereIn('scan_type', ['soc5', 'soc6', 'destination_hub'])->exists()
-        || ($order->logistics_center_id && $order->destination_logistics_center_id
-            && $order->logistics_center_id !== $order->destination_logistics_center_id
-            && ! in_array($order->status, ['in_transit_to_hub', 'at_destination_hub', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed'], true));
-    if ($socRoute) {
-        array_push($steps, 'to_soc5', 'to_soc6');
-    }
-    if ($order->logistics_center_id !== $order->destination_logistics_center_id) {
-        array_push($steps, 'in_transit_to_hub', 'at_destination_hub');
-    }
-    array_push($steps, 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed');
+    // The same rail the app draws; see Order::buyerProgressSteps().
+    $steps = $order->buyerProgressSteps();
     $currentIndex = array_search($order->status, $steps);
     $isTerminalIssue = in_array($order->status, ['cancelled', 'returned', 'delivery_failed'], true);
 

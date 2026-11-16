@@ -10,29 +10,10 @@
 
     $fmt = fn ($amount) => '₱' . number_format($amount, 2);
 
-    // Tabs -> the order statuses each one covers
-    $tabs = [
-        'all' => ['label' => 'All', 'statuses' => null],
-        'placed' => ['label' => 'Placed', 'statuses' => ['placed']],
-        'to_ship' => ['label' => 'To ship', 'statuses' => Order::SHIPMENT_GROUPS['to_ship']],
-        'in_transit' => ['label' => 'In transit', 'statuses' => Order::SHIPMENT_GROUPS['in_transit']],
-        'delivered' => ['label' => 'Delivered', 'statuses' => Order::SHIPMENT_GROUPS['delivered']],
-        // Returns is not a status of its own: it lists every order with a return request, plus returned orders.
-        'returns' => ['label' => 'Returns', 'statuses' => null],
-        'cancelled' => ['label' => 'Cancelled', 'statuses' => ['cancelled']],
-    ];
-    $tabOf = function (string $status) use ($tabs) {
-        foreach ($tabs as $key => $tab) {
-            if ($tab['statuses'] && in_array($status, $tab['statuses'], true)) return $key;
-        }
-        return 'all';
-    };
-    $isReturn = fn ($o) => $o->status === 'returned' || $o->latestReturnRequest !== null;
-    $counts = collect($tabs)->map(fn ($tab, $key) => match ($key) {
-        'all' => $orders->count(),
-        'returns' => $orders->filter($isReturn)->count(),
-        default => $orders->filter(fn ($o) => $tabOf($o->status) === $key)->count(),
-    });
+    // Tabs and their rules live on the Order model, so the Buyer app draws the same seven tabs.
+    $tabs = Order::BUYER_TABS;
+    $isReturn = fn ($o) => $o->hasReturnRequest();
+    $counts = collect($tabs)->map(fn ($tab, $key) => $orders->filter(fn ($o) => $o->inBuyerTab($key))->count());
 
     // Return progress pill: waiting = amber, approved and on its way back = plum, handed back = green, declined = red.
     $returnPill = function ($order) {
@@ -90,7 +71,7 @@
                         $seller = $order->seller;
                         $shopName = $seller?->sellerDetail?->business_name ?: ($seller?->name ?? 'Vendo shop');
                         $label = Order::STATUSES[$order->status] ?? Str::headline($order->status);
-                        $group = $tabOf($order->status);
+                        $group = $order->buyerTab();
                         $returnPillData = $returnPill($order);
                         // Which tabs show this order: All, its status tab, and Returns when it has a return.
                         $showOn = "tab === 'all' || tab === '{$group}'" . ($isReturn($order) ? " || tab === 'returns'" : '');

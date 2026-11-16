@@ -93,7 +93,10 @@ class TransportDriverRegistrationController extends Controller
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-            'email_verification_token' => ['required', 'string', 'size:64'],
+            // Google sign-in proves the address without an emailed code, so a
+            // token from that exchange is accepted in its place.
+            'email_verification_token' => ['required_without:google_registration_token', 'nullable', 'string', 'size:64'],
+            'google_registration_token' => ['required_without:email_verification_token', 'nullable', 'string', 'size:64'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'phone_number' => ['required', 'regex:/^09[0-9]{9}$/'],
             'apply_to' => ['nullable', Rule::in(TransportDriverDetail::APPLY_SCOPES)],
@@ -169,7 +172,11 @@ class TransportDriverRegistrationController extends Controller
         }
 
         $email = strtolower(trim($data['email']));
-        $proofKey = RiderEmailOtpController::proofKey('email', $data['email_verification_token']);
+        // Either the emailed code or the Google exchange proved this address;
+        // both proofs are cached by the same controller under different kinds.
+        $proofKey = isset($data['google_registration_token'])
+            ? RiderEmailOtpController::proofKey('google-registration', $data['google_registration_token'])
+            : RiderEmailOtpController::proofKey('email', $data['email_verification_token']);
         $proof = Cache::get($proofKey);
         if (! is_array($proof) || ($proof['email'] ?? null) !== $email) {
             throw ValidationException::withMessages(['email' => 'Verify this email before applying.']);

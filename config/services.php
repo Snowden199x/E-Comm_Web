@@ -1,5 +1,14 @@
 <?php
 
+/*
+| Google sign-in allows more than one client ID per platform: every Android
+| package (Buyer, Rider) registers its own OAuth client, so these env values
+| take comma-separated lists.
+*/
+$clientIds = static function (?string $value): array {
+    return array_values(array_unique(array_filter(array_map('trim', explode(',', (string) $value)))));
+};
+
 return [
 
     /*
@@ -35,10 +44,24 @@ return [
 
     'google' => [
         'web_client_id' => env('GOOGLE_WEB_CLIENT_ID'),
-        'allowed_client_ids' => array_values(array_filter(array_map(
-            'trim',
-            explode(',', (string) env('GOOGLE_ALLOWED_CLIENT_IDS', env('GOOGLE_WEB_CLIENT_ID', ''))),
-        ))),
+        // The mobile apps sign in against the web client above (it is what the
+        // Android serverClientId takes), so an Android token carries that web
+        // ID as `aud` and the package's own Android client as `azp`; the
+        // verifier requires both to be accepted. Each Android package
+        // (com.example.vendo_buyer, vendoph.rider) has its own client in the
+        // same Google Cloud project, hence comma-separated lists.
+        'android_client_ids' => $clientIds(env('GOOGLE_ANDROID_CLIENT_ID')),
+        'ios_client_ids' => $clientIds(env('GOOGLE_IOS_CLIENT_ID')),
+        // CA bundle for the TLS calls that verify Google ID tokens. Windows PHP
+        // builds often ship without curl.cainfo, which makes every Google key
+        // fetch fail with "cURL error 60". Leave empty to use the system store.
+        'ca_bundle' => env('GOOGLE_CA_BUNDLE'),
+        // GOOGLE_ALLOWED_CLIENT_IDS (comma separated) still overrides all of it.
+        'allowed_client_ids' => $clientIds(env('GOOGLE_ALLOWED_CLIENT_IDS')) ?: $clientIds(implode(',', array_filter([
+            env('GOOGLE_WEB_CLIENT_ID'),
+            env('GOOGLE_ANDROID_CLIENT_ID'),
+            env('GOOGLE_IOS_CLIENT_ID'),
+        ]))),
     ],
 
     'vendo' => [

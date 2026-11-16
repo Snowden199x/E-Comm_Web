@@ -91,4 +91,10 @@ class BuyerEmailOtpController extends Controller
     {
         return 'buyer:registration:proof:'.$token;
     }
+
+    /** Proof minted by the Google exchange, accepted in place of an emailed code. */
+    public static function googleProofKey(string $token): string
+    {
+        return 'buyer:registration:google:'.$token;
+    }
 }
