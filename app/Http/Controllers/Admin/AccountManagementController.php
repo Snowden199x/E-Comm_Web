@@ -29,6 +29,8 @@ class AccountManagementController extends Controller
 
     public function table(Request $request): View
     {
+        $this->authorizeSuperAdmin();
+
         $admins = $this->filteredAdmins($request);
 
         return view('admin.account-management.partials.admins-table', compact('admins'));

@@ -61,9 +61,16 @@ class NotificationController extends Controller
         $record->update(['read_at' => $record->read_at ?? now()]);
         $path = parse_url((string) $record->link, PHP_URL_PATH);
         $query = parse_url((string) $record->link, PHP_URL_QUERY);
+        $adminPrefix = '/'.trim((string) (config('app.admin_path') ?: 'vendo-control'), '/');
 
-        if (! is_string($path) || $path === '/admin/notifications'
-            || ! preg_match('~^/admin(?:/|$)~', $path)) {
+        // Notifications created before the Admin path was hidden still point at /admin.
+        // Move them onto the current path before checking the destination.
+        if (is_string($path) && str_starts_with($path, '/admin/')) {
+            $path = $adminPrefix.substr($path, strlen('/admin'));
+        }
+
+        if (! is_string($path) || $path === $adminPrefix.'/notifications'
+            || ! preg_match('~^'.preg_quote($adminPrefix, '~').'(?:/|$)~', $path)) {
             return redirect()->route('admin.notifications.index', ['show' => $record->id]);
         }
         $fragment = parse_url((string) $record->link, PHP_URL_FRAGMENT);

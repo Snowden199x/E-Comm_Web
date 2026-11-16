@@ -101,11 +101,9 @@ Route::get('/buyer', function () {
 | Admin
 |--------------------------------------------------------------------------
 */
-Route::get('/admin', function () {
-    return redirect('/admin/login');
-});
-
-Route::prefix('admin')->name('admin.')->group(function () {
+// The Admin console lives on a configurable, non-obvious path (ADMIN_PATH).
+// The old /admin entry is intentionally not routed so it returns the branded 404 page.
+Route::prefix(config('app.admin_path') ?: 'vendo-control')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware(['auth:admin', 'verified', 'check.admin.active', 'force.password.change'])->name('dashboard');
     Route::get('/live/{scope}', [\App\Http\Controllers\LiveRevisionController::class, 'admin'])->middleware(['auth:admin', 'check.admin.active', 'force.password.change'])->name('live');

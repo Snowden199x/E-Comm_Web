@@ -1,6 +1,6 @@
 # Domain and Feature Status
 
-**Reviewed:** 15 November 2026. Delivery attempt overrides are assigned to destination Station Hubs; Admin retains Buyer return-window overrides. The 9 November Seller and Logistics UI pass (PR #94) is reviewed in the [10 November progress log](logs/PROGRESS-2026-11-10.md); the 11 November Buyer/Seller account-deletion request is in the [11 November progress log](logs/PROGRESS-2026-11-11.md). This is a code-based snapshot, not a promise of production readiness. The settlement ledger, payout and return/refund policy is still **unapproved and unimplemented**; its options are in the [settlement ledger proposal](design/settlement-ledger-and-return-policy.md). The Company / Province Hub / Station hierarchy, primary coverage, real-facility scan/trip flow, and scoped portal screens have additive migrations; owner migration and manual verification are pending. See the feature spec for exact boundaries.
+**Reviewed:** 16 November 2026. Delivery attempt overrides are assigned to destination Station Hubs; Admin retains Buyer return-window overrides. The 9 November Seller and Logistics UI pass (PR #94) is reviewed in the [10 November progress log](logs/PROGRESS-2026-11-10.md); the 11 November Buyer/Seller account-deletion request is in the [11 November progress log](logs/PROGRESS-2026-11-11.md). This is a code-based snapshot, not a promise of production readiness. The settlement ledger, payout and return/refund policy is still **unapproved and unimplemented**; its options are in the [settlement ledger proposal](design/settlement-ledger-and-return-policy.md). The Company / Province Hub / Station hierarchy, primary coverage, real-facility scan/trip flow, and scoped portal screens have additive migrations; owner migration and manual verification are pending. See the feature spec for exact boundaries.
 
 | Domain | Current status | Implemented in code | Main gaps / next work |
 |---|---|---|---|
@@ -27,6 +27,13 @@ Unfinished work in the main web registration, product, checkout, profile, review
 - Sample orders created by `SellerDemoSeeder` are development data and are not operational fulfillment records.
 - Seller Delivered Orders, buyer product reviews, seller replies and admin review moderation are implemented. The feature specs document their current behavior.
 - The [seller domain page](domains/Seller.md) links Reports, Messages, Account Management and Notifications. Buyer–seller order chat is available and includes product photos in shared order cards. Live updates currently use visibility-aware short polling.
+
+## Admin entry and error pages (16 November 2026)
+
+- The Admin console is now mounted on `ADMIN_PATH` (default `vendo-control`), and `/admin` is intentionally unrouted so it returns the branded 404 page. Admin self-registration and unused Admin email-verification routes were removed; Admin accounts are provisioned by the Super Admin. The Admin account-list partial now enforces `is_super_admin` server-side.
+- The Logistics web login rejects `courier` and `transport_driver` accounts with a mobile-app message instead of redirecting to the missing `logistics.courier.dashboard` route. Rider and Driver interfaces remain mobile-only.
+- Custom `404` and `500` views use the Vendo plum background, white-on-purple Vendo logo, status code, and a link back. The 500 page hides exception details and points to the public support email. See the [site branding spec](features/shared/site-branding/spec.md).
+- No migration was added. Owner browser verification and route-cache rebuilding on the VM remain pending.
 
 ## Pre-deploy changes (11 November 2026)
 

@@ -27,10 +27,10 @@ The order-item/product links are authoritative. If product deletion is added lat
 | `POST /seller/feedback/{review}/reply` (`seller.feedback.reply`) | One reply to seller-owned, published review; validate body and enforce unique review reply in a transaction. Duplicate/stale submission returns a useful conflict. |
 | `POST /seller/feedback/{review}/report` (`seller.feedback.report`) | Seller-owned review report with reason; one report per review/seller, routed to admin queue. |
 | `POST /buyer/order-items/{orderItem}/review` (`buyer.reviews.store`) | Authenticated owner, parent order `completed`, item/product ownership rechecked inside transaction. |
-| `GET /admin/review-reports` (`admin.review-reports.index`) | Existing admin active-account middleware; list open/resolved/dismissed reports with review, order and seller context. |
-| `GET /admin/review-reports/{report}` (`admin.review-reports.show`) | Inspect the original review, seller report, order item and any seller reply. |
-| `POST /admin/reviews/{review}/visibility` (`admin.reviews.visibility`) | Set `published`/`hidden` with required reason; persist actor and audit event in one transaction. |
-| `POST /admin/review-reports/{report}/resolve` (`admin.review-reports.resolve`) | Resolve or dismiss with required admin note; this action alone does not alter review visibility. |
+| `GET /{ADMIN_PATH}/review-reports` (`admin.review-reports.index`) | Existing admin active-account middleware; list open/resolved/dismissed reports with review, order and seller context. |
+| `GET /{ADMIN_PATH}/review-reports/{report}` (`admin.review-reports.show`) | Inspect the original review, seller report, order item and any seller reply. |
+| `POST /{ADMIN_PATH}/reviews/{review}/visibility` (`admin.reviews.visibility`) | Set `published`/`hidden` with required reason; persist actor and audit event in one transaction. |
+| `POST /{ADMIN_PATH}/review-reports/{report}/resolve` (`admin.review-reports.resolve`) | Resolve or dismiss with required admin note; this action alone does not alter review visibility. |
 
 The buyer's completed-order detail should expose the review form or link for each eligible item. Public product pages may show only published ratings/reviews; seller dashboard average rating should use the same published set. Buyer should see their own submitted review and, if hidden, a moderation label. Admin and the owning seller may inspect hidden records; hidden rows are excluded from public rating aggregates, seller metric cards, lower panels, and default table, with an explicit admin/moderation view as needed. Never leak buyer contact details in public reviews.
 

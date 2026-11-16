@@ -56,6 +56,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Admin Path
+    |--------------------------------------------------------------------------
+    |
+    | The Admin console is mounted on this path instead of the predictable
+    | /admin segment. Set ADMIN_PATH to a private value in production and
+    | rebuild the route cache after changing it.
+    |
+    */
+
+    'admin_path' => trim((string) env('ADMIN_PATH', 'vendo-control'), '/') ?: 'vendo-control',
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
