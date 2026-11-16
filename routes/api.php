@@ -167,6 +167,7 @@ Route::prefix('v1/buyer')->group(function () {
         Route::post('/orders/{order}/complete', [BuyerOrderController::class, 'complete'])->whereNumber('order');
         Route::post('/orders/{order}/return', [BuyerOrderController::class, 'requestReturn'])->whereNumber('order')->middleware('throttle:10,1,buyer-return');
         Route::get('/orders/{order}/delivery-proof', [BuyerOrderController::class, 'deliveryProof'])->whereNumber('order');
+        Route::get('/orders/{order}/pickup-photo', [BuyerOrderController::class, 'pickupPhoto'])->whereNumber('order');
         Route::post('/order-items/{orderItem}/review', [BuyerOrderController::class, 'review'])->whereNumber('orderItem');
 
         // The inbox list and Vendo Support, the same rows the web Messages page reads.

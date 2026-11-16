@@ -112,6 +112,20 @@ class BuyerOrderController extends Controller
         ]);
     }
 
+    /** The Seller's packed-item photo. Same private file and checks as the web's orders.pickup-photo route. */
+    public function pickupPhoto(Request $request, Order $order): StreamedResponse|BinaryFileResponse
+    {
+        abort_unless((int) $order->buyer_id === (int) $request->user()->id, 404);
+        $path = (string) $order->pickup_photo_path;
+        abort_unless($path !== '' && str_starts_with($path, 'private/pickup-photos/'.$order->id.'/')
+            && Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path, 'packed-item.'.pathinfo($path, PATHINFO_EXTENSION), [
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     /** Ask the seller to take a delivered order back. Same service and rules as the web page. */
     public function requestReturn(Request $request, Order $order, OrderReturnService $returns): JsonResponse
     {
