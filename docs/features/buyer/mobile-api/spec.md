@@ -50,6 +50,7 @@ Every protected route is capped at 120 requests a minute per Buyer, and the endp
 ## Orders, notifications and account
 
 - `GET /orders?status&page` (15 per page), `GET /orders/{order}`, `PATCH /orders/{order}/cancel` `{expected_status, reason, reason_details?}`, `POST /orders/{order}/complete`, `POST /order-items/{orderItem}/review` `{rating, comment}`. Every lookup is scoped to `buyer_id`; another buyer's order returns 404. Cancellation uses `OrderCancellationService` with the web's reason list and status guard. Completing is allowed only for `delivered`.
+- The order payload carries `has_pickup_photo`, true when the Seller uploaded the packed-item photo the web order page shows. `GET /orders/{order}/pickup-photo` serves that private file with the Buyer's token, with the same path and existence checks as the web `orders.pickup-photo` route; another buyer's order returns 404.
 - `GET /notifications?filter=all|unread`, `POST /notifications/{notification}/read`, `POST /notifications/read-all`: only the signed-in buyer's rows. Each row carries `product` (name and image of the parcel's first item) and `order` (`{id, number, status, status_label}`) resolved from the notification's link. `order` is null for announcements, support replies and reviews; the app labels an order card from `order.status` and opens that order, so "…: Completed" no longer reads as an order that was only placed.
 - `GET /account`, `PUT /account` (name, phone, street, house number, ZIP), `PUT /account/password`.
 
