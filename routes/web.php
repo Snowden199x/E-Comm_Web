@@ -63,6 +63,8 @@ use App\Http\Middleware\EnsureActiveSeller;
 use App\Http\Middleware\EnsureActiveLogisticsCenter;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/orders/{order}/pickup-photo', [\App\Http\Controllers\OrderPickupPhotoController::class, 'show'])
+    ->middleware('auth')->whereNumber('order')->name('orders.pickup-photo');
 Route::get('/orders/{order}/delivery-proof', [\App\Http\Controllers\OrderDeliveryProofController::class, 'show'])
     ->middleware('auth')->whereNumber('order')->name('orders.delivery-proof');
 
@@ -172,6 +174,8 @@ Route::prefix(config('app.admin_path') ?: 'vendo-control')->name('admin.')->grou
             Route::patch('/{remittance}/resolve', [\App\Http\Controllers\Admin\CashRemittanceController::class, 'resolve'])->whereNumber('remittance')->name('resolve');
         });
 
+        Route::get('/buyer-compliance', [\App\Http\Controllers\Admin\BuyerComplianceController::class, 'index'])->name('buyer-compliance.index');
+
         Route::prefix('seller-compliance')->name('seller-compliance.')->group(function () {
             Route::get('/', [SellerComplianceController::class, 'overview'])->name('overview');
             Route::get('/products-for-review', [SellerComplianceController::class, 'productsForReview'])->name('products-for-review');
@@ -264,6 +268,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     })->name('login');
     Route::post('/login', [BuyerAuthenticatedSessionController::class, 'store'])->name('login.store');
     Route::post('/logout', [BuyerAuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
+    Route::get('/account-standing', [\App\Http\Controllers\Buyer\StandingController::class, 'show'])->middleware('auth')->name('standing');
+    Route::get('/account-standing/reports/{complaint}', [\App\Http\Controllers\Buyer\StandingController::class, 'report'])->middleware('auth')->whereNumber('complaint')->name('standing.report');
 
     Route::middleware(['auth', \App\Http\Middleware\EnsureActiveBuyer::class])->group(function () {
     Route::get('/dashboard', [BuyerDashboardController::class, 'index'])->middleware('auth')->name('dashboard');
@@ -376,6 +382,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
         Route::get('/orders/{order}/waybill', [OrderController::class, 'waybill'])->whereNumber('order')->name('orders.waybill');
         Route::get('/orders/{order}', [OrderController::class, 'show'])->whereNumber('order')->name('orders.show');
         Route::patch('/orders/{order}', [OrderController::class, 'update'])->whereNumber('order')->name('orders.update');
+        Route::post('/orders/{order}/pickup-photo', [OrderController::class, 'uploadPickupPhoto'])->middleware('throttle:20,1')->whereNumber('order')->name('orders.pickup-photo.store');
         Route::patch('/orders/{order}/pickup-schedule', [OrderController::class, 'reschedulePickup'])->whereNumber('order')->name('orders.pickup-reschedule');
         Route::post('/orders/{order}/pickup-report', [OrderController::class, 'reportPickup'])->whereNumber('order')->name('orders.pickup-report');
         Route::get('/completed-orders', [CompletedOrdersController::class, 'index'])->name('completed-orders.index');
