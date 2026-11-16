@@ -94,7 +94,9 @@
     @stack('lg-head')
 </head>
 {{-- x-data is required: Alpine only runs :class / @click / x-show (sidebar collapse, mobile drawer, backdrop) inside an x-data root. The admin layout does the same on its <body>. --}}
-<body class="vd-booting h-full antialiased bg-[#FBF7F2] text-[#2B1730]" data-skeleton="{{ $skeletonVariant }}" x-data="{}">
+<body class="vd-booting h-full antialiased bg-[#FBF7F2] text-[#2B1730]" data-skeleton="{{ $skeletonVariant }}"
+    data-realtime-role="logistics" data-realtime-user-id="{{ $user?->id }}"
+    data-broadcast-auth-url="{{ url('/broadcasting/auth') }}" x-data="{}">
 
 {{-- Loading screen: a skeleton of the shell itself. states.js lifts it once the page is ready; the timer is a safety net. --}}
 @include('logistics.partials.boot-skeleton', ['variant' => $skeletonVariant, 'railItems' => $railItems])
@@ -272,7 +274,8 @@
                     ringing: false,
                     timer: null,
                     init() {
-                        this.timer = window.setInterval(() => this.refresh(), 20000);
+                        this.timer = window.setInterval(() => this.refresh(), 30000);
+                        window.addEventListener('vendo:notification', () => this.refresh());
                         document.addEventListener('visibilitychange', () => {
                             if (document.visibilityState === 'visible') this.refresh();
                         });
@@ -306,7 +309,7 @@
                             if (!this.refreshError) {
                                 window.logisticsBanner?.({
                                     type: 'error', title: 'Notifications are not updating',
-                                    message: 'Check your internet connection. This page tries again every 20 seconds.'
+                                    message: 'Check your internet connection. This page tries again every 30 seconds.'
                                 });
                             }
                             this.refreshError = true;

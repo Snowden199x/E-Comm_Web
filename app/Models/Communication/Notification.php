@@ -3,8 +3,11 @@
 namespace App\Models\Communication;
 
 use App\Jobs\SendPushNotification;
+use App\Events\NotificationCreated as NotificationCreatedEvent;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class Notification extends Model
 {
@@ -50,6 +53,23 @@ class Notification extends Model
     protected static function booted(): void
     {
         static::created(function (Notification $notification) {
+            $notificationId = (int) $notification->id;
+            $recipientId = $notification->user_id === null ? null : (int) $notification->user_id;
+            $type = (string) $notification->type;
+
+            // Publish only after the row is committed. A Reverb outage must not
+            // turn a successful order, scan, or account action into an HTTP error.
+            DB::afterCommit(function () use ($notificationId, $recipientId, $type): void {
+                try {
+                    event(new NotificationCreatedEvent($notificationId, $recipientId, $type));
+                } catch (\Throwable $exception) {
+                    Log::warning('Could not publish a real-time notification event.', [
+                        'notification_id' => $notificationId,
+                        'exception_class' => $exception::class,
+                    ]);
+                }
+            });
+
             if ($notification->user_id === null) {
                 return;
             }

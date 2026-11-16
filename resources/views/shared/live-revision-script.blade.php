@@ -5,11 +5,20 @@
     let pending = false;
     let timer = null;
     let checkCurrent = null;
+    const hasUnsavedFormChanges = () => [...document.forms].some(form =>
+        [...form.elements].some(field => {
+            if (field.disabled || ['hidden', 'submit', 'button', 'reset', 'file', 'password'].includes(field.type)) return false;
+            if (field.type === 'checkbox' || field.type === 'radio') return field.checked !== field.defaultChecked;
+            if (field.tagName === 'SELECT') return [...field.options].some(option => option.selected !== option.defaultSelected);
+            return 'defaultValue' in field && field.value !== field.defaultValue;
+        })
+    );
     const busy = () => {
         const active = document.activeElement;
         const dialog = [...document.querySelectorAll('dialog[open], [role="dialog"]')]
             .some(node => node.getClientRects().length > 0);
-        return dialog || (active && active.matches('input, textarea, select, [contenteditable="true"]'));
+        return dialog || hasUnsavedFormChanges()
+            || (active && active.matches('input, textarea, select, [contenteditable="true"]'));
     };
     const bind = () => {
         const banner = document.querySelector('[data-live-revision]');
@@ -42,9 +51,12 @@
         };
         checkCurrent = check;
         check();
-        timer = setInterval(check, 3000);
+        // WebSocket events request an immediate scoped revision check. Keep a
+        // slower poll as a fallback for deployments where Reverb is offline.
+        timer = setInterval(check, 30000);
     };
     new MutationObserver(bind).observe(document.body, {childList: true, subtree: true});
+    window.addEventListener('vendo:live-update', () => checkCurrent?.());
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) checkCurrent?.();
     });

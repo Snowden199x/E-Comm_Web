@@ -17,7 +17,7 @@ Same layout as before, restyled for readability. Frontend only; `DashboardContro
 - **Recent Orders:** row list (order number and time, buyer with initials, total, status pill) linking to that order's drawer; empty state with a link to Products.
 - **Top Selling Products:** rank, product image, relative sales bar, revenue and units sold; empty state.
 - **Inventory Alerts:** Out of stock and Low stock groups with stock bars and links to each product; "Everything is stocked" state. Product images appear only when the controller eager-loads `images` (see backend needs); placeholders otherwise.
-- **Notifications:** unread dot, title, two-line message, relative time. This list is re-rendered every 3 seconds by the seller layout's notification poll, so it intentionally has no entrance animation.
+- **Notifications:** unread dot, title, two-line message, relative time. This list is re-rendered immediately on Reverb notification events, with a 30-second poll fallback, so it intentionally has no entrance animation.
 - Minimum text size raised from 7–9 px to 11.5–12 px. Styles use the `db-` prefix, appended to `seller-dashboard.css` and scoped under `.sd-body`; the older `sd-welcome`/`sd-stat`/`sd-card` dashboard rules are now unused and can be removed later.
 
 ## Gaps and acceptance direction

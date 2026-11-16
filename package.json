@@ -22,6 +22,8 @@
     },
     "dependencies": {
         "@imacrayon/alpine-ajax": "^0.12.7",
-        "@zxing/browser": "^0.1.5"
+        "@zxing/browser": "^0.1.5",
+        "laravel-echo": "^2.6.3",
+        "pusher-js": "^8.6.0"
     }
 }
