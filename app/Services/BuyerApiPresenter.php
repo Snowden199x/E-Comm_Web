@@ -371,6 +371,8 @@ class BuyerApiPresenter
                 'next_attempt_label' => $order->delivery_scheduled_for?->format('M j, Y'),
                 'has_delivery_proof' => $order->deliveryProof !== null,
             ],
+            // The Seller's packed-item photo the web order page shows below the tracking.
+            'has_pickup_photo' => filled($order->pickup_photo_path),
             'cancel_reasons' => collect(OrderCancellationService::BUYER_REASONS)
                 ->map(fn ($label, $key) => ['key' => $key, 'label' => $label])->values()->all(),
             'can_request_return' => ! $returnPending && $returns->canRequest($order),
