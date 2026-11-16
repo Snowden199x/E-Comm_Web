@@ -40,6 +40,7 @@ class SellerOrderWorkflow
                 return;
             }
             if ($to === 'ready_for_pickup') {
+                abort_unless(filled($order->pickup_photo_path), 422, 'Add a photo of the packed item before requesting pickup.');
                 $order->pickup_request_status = 'pending';
                 $order->pickup_decline_reason = null;
                 $order->pickup_verified_at = null;
@@ -65,7 +66,9 @@ class SellerOrderWorkflow
             Notification::create([
                 'user_id' => $order->buyer_id, 'type' => 'order_update',
                 'title' => $order->number.': '.Order::STATUSES[$to],
-                'message' => $to === 'cancelled' ? $reason : 'Your order status has been updated.',
+                'message' => $to === 'cancelled'
+                    ? $reason
+                    : ($to === 'ready_for_pickup' ? 'The seller packed your order and added a photo of it.' : 'Your order status has been updated.'),
                 'link' => route('buyer.orders.show', $order),
             ]);
             if ($to === 'cancelled' && $order->courier_id) {

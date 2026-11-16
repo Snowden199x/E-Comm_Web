@@ -150,10 +150,13 @@ class ComplaintController extends Controller
                     'type' => 'account_warning',
                     'title' => 'Account warning',
                     'message' => 'Admin reviewed an account report and issued a warning for: '.$report->type.'. Please follow Vendo policies.',
-                    'link' => $respondent->role === 'buyer'
-                        ? route('buyer.notifications.index')
-                        : route('seller.notifications.index'),
+                    'link' => match ($respondent->role) {
+                        'buyer' => route('buyer.standing.report', $report->id),
+                        'seller' => route('seller.notifications.index'),
+                        default => null,
+                    },
                 ]);
+                app(\App\Services\BuyerComplianceService::class)->enforce($respondent);
             }
         });
 

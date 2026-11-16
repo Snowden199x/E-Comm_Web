@@ -150,4 +150,34 @@
     <script type="application/json" id="omoInitial">@json($initialOrderData)</script>
     @vite('resources/js/seller/order-management-orders/index.js')
 
+    @vite('resources/css/shared/user-report.css')
+    @include('shared.user-report-modal', [
+        'reportRole' => 'seller',
+        'reportContext' => '',
+        'reportTargetName' => '',
+        'reportStoreUrl' => route('seller.user-reports.store'),
+    ])
+    <script>
+        // The photo form lives inside the order drawer, which is loaded after the page, so listen on the document.
+        document.addEventListener('submit', async event => {
+            const form = event.target.closest('[data-pickup-photo-form]');
+            if (!form) return;
+            event.preventDefault();
+            const error = form.querySelector('[data-pickup-photo-error]');
+            const button = form.querySelector('[type="submit"]');
+            error.hidden = true;
+            button.disabled = true;
+            try {
+                const response = await fetch(form.action, {method: 'POST', body: new FormData(form), headers: {'Accept': 'application/json'}});
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(Object.values(data.errors || {})[0]?.[0] || data.message || 'Could not upload the photo. Try again.');
+                location.assign(@js(route('seller.orders.index')) + '?order=' + form.dataset.orderId);
+            } catch (problem) {
+                error.textContent = problem.message;
+                error.hidden = false;
+                button.disabled = false;
+            }
+        });
+    </script>
+
 </x-seller.layout>

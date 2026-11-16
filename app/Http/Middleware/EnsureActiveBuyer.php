@@ -10,6 +10,9 @@ class EnsureActiveBuyer
     public function handle(Request $request, Closure $next)
     {
         $buyer = $request->user();
+        if ($buyer) {
+            \App\Services\BuyerComplianceService::liftIfExpired($buyer);
+        }
         abort_unless($buyer && $buyer->role === 'buyer' && $buyer->status === 'approved'
             && ! $buyer->archived_at
             && (! $buyer->account_status || $buyer->account_status === 'active'), 403,

@@ -270,6 +270,39 @@
                     </dl>
                 </section>
 
+                @if (filled($order->pickup_photo_path))
+                    <section class="{{ $card }}">
+                        <h2 class="{{ $cardHead }}">Photo of your packed item</h2>
+                        <div class="p-4 sm:p-5">
+                            <a href="{{ route('orders.pickup-photo', $order) }}" target="_blank" rel="noopener">
+                                <img src="{{ route('orders.pickup-photo', $order) }}" alt="Photo of your item, packed by the seller" class="max-h-64 rounded-lg border border-[#f1e8f2] object-cover">
+                            </a>
+                            <p class="mt-2 text-[12px] text-[#7a6a7e]">The seller took this before handing it to the rider.</p>
+                        </div>
+                    </section>
+                @endif
+
+                @php
+                    $reportableRider = $order->deliveryCourier ?? $order->courier;
+                    $riderReasons = ['Rude or unprofessional', 'Late or no-show', 'Damaged parcel', 'Item missing or tampered', 'Asked for extra payment', 'Other'];
+                @endphp
+                @if ($reportableRider)
+                    <section class="{{ $card }}">
+                        <h2 class="{{ $cardHead }}">Problem with the rider?</h2>
+                        <div class="flex flex-wrap items-center justify-between gap-3 p-4 text-[13px] text-[#3d2a42] sm:p-5">
+                            <p>Tell Admin what happened with {{ $reportableRider->name }}.</p>
+                            <button type="button" data-report-open class="vb-btn" data-report-context="rider:{{ $order->id }}" data-report-target="rider {{ $reportableRider->name }}" data-report-reasons='@json($riderReasons)'>Report rider</button>
+                        </div>
+                    </section>
+                    @vite('resources/css/shared/user-report.css')
+                    @include('shared.user-report-modal', [
+                        'reportRole' => 'buyer',
+                        'reportContext' => '',
+                        'reportTargetName' => '',
+                        'reportStoreUrl' => route('buyer.user-reports.store'),
+                    ])
+                @endif
+
                 <section class="{{ $card }}">
                     <h2 class="{{ $cardHead }}">Delivery address</h2>
                     <p class="break-words p-4 text-[13px] leading-6 text-[#3d2a42] sm:p-5">{{ $order->shipping_address }}</p>

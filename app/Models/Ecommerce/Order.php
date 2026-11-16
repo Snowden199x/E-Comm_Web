@@ -382,6 +382,7 @@ class Order extends Model
         'buyer_note',
         'voucher_discount', 'voucher_code', 'voucher_codes',
         'courier_id',
+        'pickup_photo_path', 'pickup_photo_at',
         'total_amount',
         'status',
         'payment_mode',

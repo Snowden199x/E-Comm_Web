@@ -296,6 +296,7 @@
                                         ['Orders', route('buyer.orders.index'), 'M7 3h10a1 1 0 0 1 1 1v17l-3-2-3 2-3-2-3 2V4a1 1 0 0 1 1-1zM9.5 8h5M9.5 12h5'],
                                         ['Vouchers', route('buyer.vouchers.index'), 'M3 8a2 2 0 0 0 0 4v4h18v-4a2 2 0 0 1 0-4V6H3zM9 6v12'],
                                         ['Complaints', route('buyer.complaints.index'), 'M5 21V4M5 4h11l-2 4 2 4H5'],
+                                        ['Account standing', route('buyer.standing'), 'M12 3l8 3v6c0 4.500-3.200 8-8 9-4.800-1-8-4.500-8-9V6zM9 12l2 2 4-4'],
                                         ['Support', route('buyer.support.index'), 'M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12zM9 11h6M9 14h4'],
                                     ];
                                 @endphp
