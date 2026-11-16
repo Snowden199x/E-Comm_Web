@@ -3,9 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Profiles\FacilityStaff;
-use App\Models\Profiles\LogisticsCenter;
 use App\Models\Profiles\LogisticsCompany;
-use App\Models\Profiles\LogisticsFacility;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -129,7 +127,7 @@ class NationalLogisticsCompaniesSeeder extends Seeder
             );
         }
 
-        $this->deactivatePreviousProvinceDemoNetwork($catalog);
+        $this->deletePreviousProvinceDemoNetwork($catalog);
     }
 
     private function seedCompany(string $companyKey, string $businessName, string $passwordHash): LogisticsCompany
@@ -186,37 +184,39 @@ class NationalLogisticsCompaniesSeeder extends Seeder
         ]);
     }
 
-    /** Retire only the deterministic accounts made by the former one-company-per-province seeder. */
-    private function deactivatePreviousProvinceDemoNetwork(array $catalog): void
+    /** Delete only the deterministic accounts made by the former one-company-per-province seeder. */
+    private function deletePreviousProvinceDemoNetwork(array $catalog): void
     {
+        $companyEmails = [];
+        $managerEmails = [];
+
         foreach ($catalog as $province) {
             $provinceSlug = Str::slug(Str::ascii($province['name']));
-            $legacyEmails = [
-                ["logistics.{$provinceSlug}@vendo.com", 'logistics_center'],
-                ["logistics.{$provinceSlug}@vendo.test", 'logistics_center'],
-                ["province.{$provinceSlug}@vendo.com", 'province_hub'],
-            ];
+            $companyEmails[] = "logistics.{$provinceSlug}@vendo.com";
+            $companyEmails[] = "logistics.{$provinceSlug}@vendo.test";
+            $managerEmails[] = "province.{$provinceSlug}@vendo.com";
 
             foreach ($province['cities'] as $municipalityName) {
                 $municipalitySlug = Str::slug(Str::ascii($municipalityName));
-                $legacyEmails[] = ["station.{$provinceSlug}.{$municipalitySlug}@vendo.com", 'station_hub'];
-            }
-
-            foreach ($legacyEmails as [$email, $role]) {
-                $legacyUser = User::query()->where('email', $email)->where('role', $role)->first();
-                if (! $legacyUser) {
-                    continue;
-                }
-
-                $legacyUser->forceFill(['account_status' => 'deactivated'])->save();
-
-                if ($role === 'logistics_center') {
-                    $centerId = LogisticsCenter::query()->where('user_id', $legacyUser->id)->value('id');
-                    if ($centerId) {
-                        LogisticsFacility::query()->where('logistics_center_id', $centerId)->update(['is_active' => false]);
-                    }
-                }
+                $managerEmails[] = "station.{$provinceSlug}.{$municipalitySlug}@vendo.com";
             }
         }
+
+        $legacyCompanies = User::query()->whereIn('email', array_unique($companyEmails))
+            ->where('role', 'logistics_center')->get();
+        $legacyManagers = User::query()->whereIn('email', array_unique($managerEmails))
+            ->whereIn('role', ['province_hub', 'station_hub'])->get();
+
+        DB::transaction(function () use ($legacyCompanies, $legacyManagers): void {
+            // Deleting the Company owner cascades to its Logistics Center, Company and facilities.
+            // Protected operational references abort this cleanup transaction instead of being forced away.
+            foreach ($legacyCompanies as $legacyCompany) {
+                $legacyCompany->delete();
+            }
+
+            foreach ($legacyManagers as $legacyManager) {
+                $legacyManager->delete();
+            }
+        });
     }
 }
