@@ -250,9 +250,9 @@
                                         </section>
                                         <section class="lg-scan-controls" aria-label="Scan controls">
                                             <p class="lg-scan-help">Center the shipping label in the frame. A recognized code is recorded automatically.</p>
-                                            <p class="lg-scan-message" data-scanner-message role="status" aria-live="polite">Allow camera access. You can also enter the tracking number.</p>
+                                            <p class="lg-scan-message" data-scanner-message role="status" aria-live="polite">Opening this scanner requests camera access. Manual Tracking ID entry is available below.</p>
                                             <form class="lg-scan-form" data-scanner-form>
-                                                <div class="lg-field"><label for="portalScanTracking">Tracking number</label><input id="portalScanTracking" class="lg-input" data-scanner-tracking autocomplete="off" required placeholder="Enter tracking number"></div>
+                                                <div class="lg-field"><label for="portalScanTracking">Tracking ID</label><input id="portalScanTracking" class="lg-input" data-scanner-tracking autocomplete="off" required placeholder="Enter parcel tracking ID"></div>
                                                 <button type="submit" class="lg-btn lg-scan-submit">Record scan</button>
                                                 <button type="button" class="lg-btn lg-btn--outline lg-scan-restart" data-scanner-restart>Restart camera</button>
                                             </form>
