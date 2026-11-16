@@ -90,12 +90,15 @@
                     <p class="lg-section-sub">Scan the label or type the number, then press Enter.</p>
                 </div>
             </div>
-            <form @submit.prevent="submitScan()" class="lg-toolbar" novalidate>
-                <div class="lg-search">
-                    <x-logistics.icon name="package" :size="18" />
-                    <input type="text" class="lg-input" x-model="scan" placeholder="VND-10501" autocomplete="off" aria-label="Tracking number to receive" aria-describedby="scanResult">
+            <form @submit.prevent="submitScan()" class="lg-toolbar lg-station-scan-form" novalidate>
+                <div class="lg-field">
+                    <label for="stationScanTracking">Tracking ID</label>
+                    <div class="lg-search">
+                        <x-logistics.icon name="package" :size="18" />
+                        <input id="stationScanTracking" type="text" class="lg-input" x-model="scan" placeholder="Enter parcel tracking ID" autocomplete="off" aria-describedby="scanResult">
+                    </div>
                 </div>
-                <button type="submit" class="lg-btn" :disabled="!scan.trim()">Receive</button>
+                <button type="submit" class="lg-btn" :disabled="!scan.trim()">Receive parcel</button>
             </form>
             <p id="scanResult" class="lg-hint" role="status" aria-live="polite" x-show="scanMsg" x-cloak
                :style="'margin-top:10px;color:' + (scanOk ? 'inherit' : 'var(--lg-red, #b42318)')" x-text="scanMsg"></p>
