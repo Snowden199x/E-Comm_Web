@@ -284,7 +284,14 @@ document.addEventListener('alpine:init', () => {
                     window.vendoDraftNotice?.clear(draftKey);
                 } else {
                     const name = Object.keys(data.errors || {})[0];
-                    const message = data.errors?.[name]?.[0] || data.message || 'Registration failed. Please try again.';
+                    // A body PHP rejects is answered before validation, so these
+                    // two statuses are the upload and expired-form cases and
+                    // need their own wording; the raw 413/419 page is unreadable.
+                    const message = response.status === 413
+                        ? 'That file is larger than the server accepts. Use an ID under 10MB and submit again.'
+                        : response.status === 419
+                            ? 'This page expired before the form was submitted. Refresh it and try again.'
+                            : data.errors?.[name]?.[0] || data.message || 'Registration failed. Please try again.';
                     const field = Array.from(form.elements).find(field => field.name === name && !field.disabled);
                     const step = field ? [1, 2, 3].find(number => this.$refs['step' + number].contains(field)) : this.step;
                     await this.showFieldError(field, message, step);

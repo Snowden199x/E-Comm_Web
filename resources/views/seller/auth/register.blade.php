@@ -229,6 +229,14 @@
                 } else if (res.status === 422 && data.errors) {
                     this.formError = Object.values(data.errors)[0][0];
                     vendoToast(this.formError);
+                } else if (res.status === 413) {
+                    // PHP rejects an oversized body before validation, so the
+                    // generic message would hide the real cause.
+                    this.formError = 'That file is larger than the server accepts. Use an ID or permit under 10MB and submit again.';
+                    vendoToast(this.formError);
+                } else if (res.status === 419) {
+                    this.formError = 'This page expired before the form was submitted. Refresh it and try again.';
+                    vendoToast(this.formError);
                 } else {
                     this.formError = data.message || 'Something went wrong. Please try again.';
                     vendoToast(this.formError);
@@ -640,7 +648,7 @@
                                         :required="idCategory === 'primary'"
                                         onchange="document.getElementById('valid-id-label').textContent = this.files[0]?.name || 'Upload Valid ID here'">
                                 </label>
-                                <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF.</p>
+                                <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF, up to 10MB each.</p>
                             </div>
 
                         </div>
@@ -688,7 +696,7 @@
                                         :required="idCategory === 'secondary'"
                                         onchange="document.getElementById('valid-id-1-label').textContent = this.files[0]?.name || 'Upload ID here'">
                                 </label>
-                                <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF.</p>
+                                <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF, up to 10MB each.</p>
                             </div>
 
                             <div>

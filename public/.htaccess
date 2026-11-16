@@ -1,3 +1,12 @@
+# Registration uploads: an ID photo or business permit up to 10MB, so PHP must
+# accept a body a little larger than that. Only mod_php reads these values;
+# PHP-FPM uses public/.user.ini and nginx needs them in php.ini or the pool.
+<IfModule mod_php.c>
+    php_value upload_max_filesize 12M
+    php_value post_max_size 16M
+    php_value max_file_uploads 20
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

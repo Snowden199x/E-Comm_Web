@@ -30,7 +30,7 @@ class RegisteredUserController extends Controller
             'sex' => ['required', Rule::in(['male', 'female'])],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'birthday' => ['required', 'date', 'before:today'],
-            'valid_id' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'valid_id' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
             'province' => ['required', 'string', 'max:255'],
             'municipality' => ['required', 'string', 'max:255'],
             'barangay' => ['required', 'string', 'max:255'],
@@ -39,6 +39,10 @@ class RegisteredUserController extends Controller
             'contact_number' => ['required', 'regex:/^09[0-9]{9}$/'],
             'password' => ['required', 'confirmed', Rules\Password::min(8)->mixedCase()->numbers()->symbols()],
             'agree_terms' => ['accepted'],
+        ], [
+            'valid_id.max' => 'The ID file must be 10MB or smaller.',
+            'valid_id.mimes' => 'The ID file must be a JPEG, PNG, or PDF.',
+            'valid_id.uploaded' => 'The ID file could not be uploaded. Choose a file under 10MB and submit again.',
         ]);
 
         $email = strtolower($validated['email']);

@@ -599,7 +599,7 @@
                                         accept="image/*,.pdf" :disabled="idCategory !== 'secondary'"
                                         onchange="document.getElementById('valid-id-1-label').textContent = this.files[0]?.name || 'Upload ID here'">
                                 </label>
-                                <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF.</p>
+                                <p class="text-[0.7rem] text-gray-400 mt-1">Accepted formats: JPEG, PNG, or PDF, up to 10MB each.</p>
                             </div>
 
                             <div>
