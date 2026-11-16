@@ -17,14 +17,31 @@ class GoogleAuthController extends Controller
     {
         $data = $request->validate([
             'credential' => ['required', 'string', 'max:8192'],
-            'role' => ['required', Rule::in(['buyer', 'seller', 'logistics'])],
+            // The shared /login page serves Buyer and Seller at once, so it sends no
+            // role and the account's own type decides where it lands. The role-scoped
+            // pages still send one, so an account cannot enter through the wrong page.
+            'role' => ['nullable', Rule::in(['buyer', 'seller', 'logistics'])],
         ]);
-        $role = $data['role'] === 'logistics' ? 'logistics_center' : $data['role'];
+        $requested = $data['role'] ?? null;
+        $role = $requested === 'logistics' ? 'logistics_center' : $requested;
         $claims = $verifier->verify($data['credential']);
         $email = $claims['email'];
         $user = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
 
         if ($user) {
+            $role ??= $user->role;
+
+            if ($requested === null && ! in_array($role, ['buyer', 'seller'], true)) {
+                return response()->json([
+                    'message' => match ($role) {
+                        'logistics_center' => 'This Google email belongs to a Logistics account. Use the Logistics Partner login page.',
+                        'courier' => 'This Google email belongs to a Rider account. Sign in from the Rider app.',
+                        'admin' => 'This Google email belongs to an Admin account. Use the Admin login page.',
+                        default => 'This Google email belongs to another account type. Use that account type’s login page.',
+                    },
+                ], 409);
+            }
+
             if ($user->role !== $role) {
                 return response()->json([
                     'message' => 'This Google email is already registered under a different account type. Use that account type to sign in.',
@@ -68,6 +85,16 @@ class GoogleAuthController extends Controller
             'first_name' => $claims['given_name'] ?? '',
             'last_name' => $claims['family_name'] ?? '',
         ]);
+
+        if ($role === null) {
+            // The shared login page cannot know the account type yet. The proof above
+            // keeps the verified email for whichever type the chooser picks, so the
+            // Buyer or Seller form opens with that address already verified.
+            return response()->json([
+                'redirect' => route('register.choose', absolute: false),
+                'registration' => true,
+            ]);
+        }
 
         if ($role !== 'buyer') {
             Cache::put('otp_verified:'.$email, true, $expiresAt);

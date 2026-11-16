@@ -14,7 +14,7 @@
         </div>
 
         {{-- Mobile app, visible without scrolling. The QR is a fixed image; phones get the button instead. --}}
-        <a class="hero-app" href="https://vendo-ph.app/get-the-app" rel="noopener" aria-label="Get the Vendo mobile app">
+        <a class="hero-app" href="{{ route('buyer-app') }}" rel="noopener" aria-label="Get the Vendo mobile app">
           <span class="hero-app-qr"><img src="{{ asset('assets/buyer/buyer-app-qr.png') }}" alt="" width="64" height="64"></span>
           <span class="hero-app-text">
             <strong>Vendo is on mobile</strong>

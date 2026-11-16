@@ -11,6 +11,7 @@ use App\Services\ShippingLabelCodeGenerator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
@@ -76,7 +77,47 @@ class OrderController extends Controller
             return redirect()->route('seller.orders.index', ['order' => $order->id]);
         }
 
-        return response()->json(['html' => view('seller.order-management-orders.drawer', compact('order'))->render()]);
+        // How many of this seller's orders this buyer cancelled, shown beside the report button.
+        $buyerCancelCount = Order::where('seller_id', $order->seller_id)->where('buyer_id', $order->buyer_id)
+            ->where('status', 'cancelled')
+            ->whereHas('statusEvents', fn ($events) => $events->where('to_status', 'cancelled')->whereColumn('order_status_events.user_id', 'orders.buyer_id'))
+            ->count();
+
+        return response()->json(['html' => view('seller.order-management-orders.drawer', compact('order', 'buyerCancelCount'))->render()]);
+    }
+
+    /** The seller adds a photo of the packed item. The buyer sees it, and the order cannot be marked ready without it. */
+    public function uploadPickupPhoto(Request $request, int $order)
+    {
+        $request->validate([
+            'pickup_photo' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ], [
+            'pickup_photo.required' => 'Choose a photo of the packed item.',
+            'pickup_photo.mimes' => 'Use a JPG, PNG, or WEBP photo.',
+            'pickup_photo.max' => 'The photo is over 5 MB. Choose a smaller one.',
+            'pickup_photo.uploaded' => 'The photo could not be uploaded. Try a smaller photo.',
+        ]);
+
+        $path = null;
+        try {
+            DB::transaction(function () use ($request, $order, &$path) {
+                $record = Order::where('seller_id', $request->user()->id)->lockForUpdate()->findOrFail($order);
+                abort_unless($record->status === 'preparing', 409, 'Add the photo while the order is being prepared.');
+                $path = $request->file('pickup_photo')->store('private/pickup-photos/'.$record->id, 'local');
+                $previous = $record->pickup_photo_path;
+                $record->update(['pickup_photo_path' => $path, 'pickup_photo_at' => now()]);
+                if ($previous && $previous !== $path) {
+                    Storage::disk('local')->delete($previous);
+                }
+            }, 3);
+        } catch (\Throwable $exception) {
+            if ($path) {
+                Storage::disk('local')->delete($path);
+            }
+            throw $exception;
+        }
+
+        return response()->json(['message' => 'Photo added.']);
     }
 
     public function waybill(Request $request, int $order, ShippingLabelCodeGenerator $codes)

@@ -3,21 +3,21 @@
         <div class="ur-head">
             <div>
                 <p class="ur-eyebrow">Account report</p>
-                <h2 id="userReportTitle">Report {{ $reportTargetName }}</h2>
+                <h2 id="userReportTitle">Report {{ $reportTargetName ?? '' }}</h2>
             </div>
             <button type="button" class="ur-close" data-report-close aria-label="Close report form">&times;</button>
         </div>
         <p class="ur-intro">Tell us what happened in this conversation. Admin will review the report before taking action.</p>
-        <form id="userReportForm" action="{{ $reportStoreUrl }}" method="POST" enctype="multipart/form-data" data-draft-key="{{ $reportRole }}-{{ auth()->id() }}-report-{{ md5($reportContext) }}" data-draft-ajax>
+        <form id="userReportForm" action="{{ $reportStoreUrl }}" method="POST" enctype="multipart/form-data" data-draft-key="{{ $reportRole }}-{{ auth()->id() }}-report-{{ md5($reportContext ?? 'dynamic') }}" data-draft-ajax>
             @csrf
-            <input type="hidden" name="context" value="{{ $reportContext }}">
+            <input type="hidden" name="context" id="userReportContext" value="{{ $reportContext ?? '' }}">
             <label class="ur-field" for="userReportReason"><span>Reason</span>
                 <select id="userReportReason" name="reason" required>
                     <option value="">Select a reason</option>
                     @php
-                        $reportReasons = $reportRole === 'buyer'
+                        $reportReasons = $reportReasons ?? ($reportRole === 'buyer'
                             ? ['Misleading listing', 'Item not received', 'Seller harassment', 'Suspected fraud', 'Other']
-                            : ['Bogus order', 'Abusive messages', 'Suspected fraud', 'Repeated cancellations', 'Other'];
+                            : ['Bogus order', 'Abusive messages', 'Suspected fraud', 'Repeated cancellations', 'Other']);
                     @endphp
                     @foreach($reportReasons as $reason)
                         <option value="{{ $reason }}">{{ $reason }}</option>
@@ -45,10 +45,30 @@
     const error = document.getElementById('userReportError');
     const notice = document.getElementById('userReportNotice');
 
-    document.querySelectorAll('[data-report-open]').forEach(button => button.addEventListener('click', () => {
+    // Delegated, so buttons added later (like the ones in the Orders drawer) work too.
+    // A button can set its own target: data-report-context, data-report-target,
+    // data-report-reasons (JSON list) and data-report-reason (preselected).
+    const contextInput = document.getElementById('userReportContext');
+    const title = document.getElementById('userReportTitle');
+    const reasonSelect = document.getElementById('userReportReason');
+    const defaults = {context: contextInput.value, title: title.textContent, options: [...reasonSelect.options].map(o => o.value).filter(Boolean)};
+    const setReasons = list => {
+        reasonSelect.innerHTML = '<option value="">Select a reason</option>';
+        list.forEach(reason => reasonSelect.add(new Option(reason, reason)));
+    };
+    document.addEventListener('click', event => {
+        const button = event.target.closest('[data-report-open]');
+        if (!button) return;
         error.hidden = true;
+        const own = button.dataset.reportContext;
+        contextInput.value = own || defaults.context;
+        title.textContent = own ? 'Report ' + (button.dataset.reportTarget || 'this account') : defaults.title;
+        let list = defaults.options;
+        try { if (button.dataset.reportReasons) list = JSON.parse(button.dataset.reportReasons); } catch (e) {}
+        setReasons(list);
+        if (button.dataset.reportReason) reasonSelect.value = button.dataset.reportReason;
         dialog.showModal();
-    }));
+    });
     dialog.querySelectorAll('[data-report-close]').forEach(button => button.addEventListener('click', () => dialog.close()));
     dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
     form.addEventListener('submit', async event => {

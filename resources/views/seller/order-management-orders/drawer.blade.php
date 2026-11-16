@@ -141,6 +141,21 @@
         <p id="omoActionError" class="omo-error" role="alert" hidden></p>
     </div>
 
+    @if($order->status === 'preparing')
+        <form class="omo-drawer__actions" method="POST" enctype="multipart/form-data" action="{{ route('seller.orders.pickup-photo.store', $order) }}" data-pickup-photo-form data-order-id="{{ $order->id }}">
+            @csrf
+            <label class="omo-hint" style="display:grid;gap:6px;">Photo of the packed item (required)
+                @if($order->pickup_photo_path)
+                    <img src="{{ route('orders.pickup-photo', $order) }}" alt="Packed item photo" style="max-width:160px;border-radius:8px;border:1px solid #eadcec;">
+                @endif
+                <input type="file" name="pickup_photo" accept="image/jpeg,image/png,image/webp" required>
+                <small>The buyer sees this photo. JPG, PNG, or WEBP, up to 5 MB.</small>
+            </label>
+            <p class="omo-error" role="alert" data-pickup-photo-error hidden></p>
+            <button class="omo-btn omo-btn--soft" type="submit">{{ $order->pickup_photo_path ? 'Replace photo' : 'Upload photo' }}</button>
+        </form>
+    @endif
+
     <form id="omoActionForm" class="omo-drawer__actions" data-url="{{ route('seller.orders.update', $order) }}" data-draft-key="seller-{{ auth()->id() }}-order-action-{{ $order->id }}-{{ $order->status }}" data-draft-ajax>
         <input type="hidden" name="expected_status" value="{{ $order->status }}">
                 @if($order->canPrintShippingLabel())
@@ -164,7 +179,8 @@
                 <input type="datetime-local" name="pickup_scheduled_at"
                     value="{{ $order->pickup_scheduled_at?->format('Y-m-d\TH:i') ?? now()->addDay()->setTime(9, 0)->format('Y-m-d\TH:i') }}">
             </label>
-            <button class="omo-btn omo-btn--primary" name="action" value="ready">Mark ready for pickup</button>
+            @unless($order->pickup_photo_path)<p class="omo-hint omo-hint--warn" role="status">Upload a photo of the packed item to request pickup.</p>@endunless
+            <button class="omo-btn omo-btn--primary" name="action" value="ready" @disabled(! $order->pickup_photo_path)>Mark ready for pickup</button>
             <button class="omo-btn omo-btn--danger-ghost" type="button" data-omo-cancel-open="cancel">Cancel order</button>
         @elseif($order->status === 'ready_for_pickup')
             <p class="omo-hint">Waiting for Logistics to assign a rider. The rider scans the parcel at pickup.</p>
@@ -195,4 +211,21 @@
             </div>
         </div>
     </form>
+
+    @php
+        $buyerCancelled = $order->status === 'cancelled'
+            && $order->statusEvents->contains(fn ($event) => $event->to_status === 'cancelled' && (int) $event->user_id === (int) $order->buyer_id);
+        $riderReasons = ['Rude or unprofessional', 'Late or no-show', 'Damaged parcel', 'Item missing or tampered', 'Asked for extra payment', 'Other'];
+    @endphp
+    @if($buyerCancelled || $order->courier_id)
+        <div class="omo-drawer__actions">
+            @if($buyerCancelled)
+                <p class="omo-hint">{{ $order->buyer?->name ?? 'This buyer' }} cancelled {{ $buyerCancelCount ?? 1 }} of your {{ \Illuminate\Support\Str::plural('order', $buyerCancelCount ?? 1) }}.</p>
+                <button type="button" class="omo-btn omo-btn--soft" data-report-open data-report-context="order:{{ $order->id }}" data-report-target="{{ $order->buyer?->name ?? 'this buyer' }}" data-report-reason="Repeated cancellations">Report buyer for cancelling</button>
+            @endif
+            @if($order->courier_id)
+                <button type="button" class="omo-btn omo-btn--soft" data-report-open data-report-context="rider:{{ $order->id }}" data-report-target="rider {{ $order->courier?->name }}" data-report-reasons='@json($riderReasons)'>Report rider</button>
+            @endif
+        </div>
+    @endif
 </div>

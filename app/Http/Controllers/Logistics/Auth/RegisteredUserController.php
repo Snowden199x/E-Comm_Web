@@ -47,7 +47,7 @@ class RegisteredUserController extends Controller
             'sex' => ['required', Rule::in(['male', 'female'])],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'birthday' => ['required', 'date', 'before:today'],
-            'valid_id' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'valid_id' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
             'contact_number' => ['required', 'regex:/^09[0-9]{9}$/'],
             'province' => ['required', 'string', 'max:255'],
             'municipality' => ['required', 'string', 'max:255'],
@@ -58,8 +58,15 @@ class RegisteredUserController extends Controller
             'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
             'password' => ['required', 'confirmed', Rules\Password::min(8)->mixedCase()->numbers()->symbols()],
             'business_name' => ['required', 'string', 'max:255'],
-            'business_permit' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'business_permit' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
             'agree_terms' => ['accepted'],
+        ], [
+            'valid_id.max' => 'The ID file must be 10MB or smaller.',
+            'valid_id.mimes' => 'The ID file must be a JPEG, PNG, or PDF.',
+            'valid_id.uploaded' => 'The ID file could not be uploaded. Choose a file under 10MB and submit again.',
+            'business_permit.max' => 'The business permit must be 10MB or smaller.',
+            'business_permit.mimes' => 'The business permit must be a JPEG, PNG, or PDF.',
+            'business_permit.uploaded' => 'The business permit could not be uploaded. Choose a file under 10MB and submit again.',
         ]);
 
         $validated = array_merge($validated, $addresses->resolve($validated));
@@ -76,7 +83,10 @@ class RegisteredUserController extends Controller
         }
 
         $googleProof = $request->session()->get('google_registration_verification', []);
-        if (($googleProof['email'] ?? null) === $email && ($googleProof['role'] ?? null) !== 'logistics_center') {
+        $googleProofRole = $googleProof['role'] ?? null;
+        // A null role came from the shared Buyer+Seller login page, so it never chose
+        // this account type; the normal code check below still applies to it.
+        if (($googleProof['email'] ?? null) === $email && $googleProofRole !== null && $googleProofRole !== 'logistics_center') {
             throw ValidationException::withMessages(['email' => 'Continue registration using the account type chosen in Google sign-in.']);
         }
 

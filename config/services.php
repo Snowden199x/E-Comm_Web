@@ -65,12 +65,21 @@ return [
     ],
 
     'vendo' => [
+        // Where the buyer landing page's "Get the app" button and its printed QR
+        // send a shopper. The URL is pinned to the Buyer release tag: GitHub
+        // resolves releases/latest per repository, not per app, so publishing
+        // either app moves "latest" and the other app's asset disappears from it.
+        // Point it at Google Play once the Buyer app ships.
+        'buyer_app_url' => env(
+            'BUYER_APP_DOWNLOAD_URL',
+            'https://github.com/Snowden199x/E-Comm_Mobile/releases/download/buyer-v1.0.0/vendo-buyer.apk',
+        ),
         // Where the buyer-facing landing sends someone who wants the Rider app.
-        // Keep the GitHub asset name stable: releases/latest/download/<asset> always
-        // serves the newest release, so the URL survives new builds.
+        // Pinned to the Rider tag for the same reason as the Buyer URL above.
+        // Bump the tag (or set RIDER_APP_DOWNLOAD_URL) when a new Rider build ships.
         'rider_app_url' => env(
             'RIDER_APP_DOWNLOAD_URL',
-            'https://github.com/Snowden199x/E-Comm_Mobile/releases/latest/download/vendo-rider.apk',
+            'https://github.com/Snowden199x/E-Comm_Mobile/releases/download/rider-v1.0.0/vendo-rider.apk',
         ),
     ],
 

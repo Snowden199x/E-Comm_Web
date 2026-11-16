@@ -42,6 +42,7 @@
             'items' => [
                 ['route' => 'admin.user-management.index', 'active' => 'admin.user-management.*', 'icon' => 'users', 'label' => 'User Management'],
                 ['route' => 'admin.seller-compliance.overview', 'active' => 'admin.seller-compliance.*', 'icon' => 'shield-check', 'label' => 'Seller Compliance', 'badge' => $productsForReview, 'anim' => 'pop'],
+                ['route' => 'admin.buyer-compliance.index', 'active' => 'admin.buyer-compliance.*', 'icon' => 'shield-check', 'label' => 'Buyer Compliance'],
                 ['route' => 'admin.complaints.index', 'active' => 'admin.complaints.*', 'icon' => 'scale', 'label' => 'Complaints & Disputes', 'badge' => $openComplaints, 'anim' => 'tilt'],
                 ['route' => 'admin.support-tickets.index', 'active' => 'admin.support-tickets.*', 'icon' => 'inbox', 'label' => 'Support Tickets', 'badge' => $openSupportTickets, 'anim' => 'pop'],
                 ['route' => 'admin.messages.index', 'active' => 'admin.messages.*', 'icon' => 'message', 'label' => 'Messages', 'anim' => 'tilt'],
