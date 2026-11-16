@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\Buyer\BuyerCatalogController;
 use App\Http\Controllers\Api\Buyer\BuyerCheckoutController;
 use App\Http\Controllers\Api\Buyer\BuyerEmailOtpController;
 use App\Http\Controllers\Api\Buyer\BuyerLocationController;
+use App\Http\Controllers\Api\Buyer\BuyerMessageController;
 use App\Http\Controllers\Api\Buyer\BuyerNotificationController;
 use App\Http\Controllers\Api\Buyer\BuyerOrderController;
 use App\Http\Controllers\Api\Buyer\BuyerPasswordResetController;
@@ -118,7 +119,11 @@ Route::prefix('v1/buyer')->group(function () {
     Route::post('/password/otp/verify', [BuyerPasswordResetController::class, 'verifyCode'])->middleware('throttle:10,1');
     Route::post('/password/reset', [BuyerPasswordResetController::class, 'reset'])->middleware('throttle:5,1');
 
-    Route::middleware(['auth:sanctum', EnsureApprovedBuyerToken::class, 'throttle:120,1'])->group(function () {
+    // Each throttle in this group carries its own prefix. Laravel keys a
+    // throttle by the authenticated user alone, so without a prefix the group
+    // counter (every API call) would be the same bucket the stricter per-route
+    // limits read, and a busy minute would 429 placing an order.
+    Route::middleware(['auth:sanctum', EnsureApprovedBuyerToken::class, 'throttle:120,1,buyer'])->group(function () {
         Route::post('/logout', [BuyerAuthController::class, 'logout']);
         Route::get('/me', [BuyerAuthController::class, 'me']);
 
@@ -139,16 +144,38 @@ Route::prefix('v1/buyer')->group(function () {
         Route::patch('/cart/{cartItem}', [BuyerCartController::class, 'update'])->whereNumber('cartItem');
         Route::delete('/cart/{cartItem}', [BuyerCartController::class, 'destroy'])->whereNumber('cartItem');
 
+        Route::get('/geo/config', [\App\Http\Controllers\Api\Buyer\BuyerGeoController::class, 'config']);
+        Route::get('/geo/search', [\App\Http\Controllers\Api\Buyer\BuyerGeoController::class, 'search'])->middleware('throttle:30,1,buyer-geo');
+        Route::get('/geo/reverse', [\App\Http\Controllers\Api\Buyer\BuyerGeoController::class, 'reverse'])->middleware('throttle:30,1,buyer-geo');
+
         Route::post('/checkout/preview', [BuyerCheckoutController::class, 'preview']);
-        Route::post('/checkout/shipping-quote', [BuyerCheckoutController::class, 'shippingQuote'])->middleware('throttle:20,1');
-        Route::post('/checkout/voucher-quote', [BuyerCheckoutController::class, 'voucherQuote'])->middleware('throttle:20,1');
-        Route::post('/checkout', [BuyerCheckoutController::class, 'store'])->middleware('throttle:10,1');
+        Route::post('/checkout/shipping-quote', [BuyerCheckoutController::class, 'shippingQuote'])->middleware('throttle:20,1,buyer-shipping-quote');
+        Route::post('/checkout/voucher-quote', [BuyerCheckoutController::class, 'voucherQuote'])->middleware('throttle:20,1,buyer-voucher-quote');
+        Route::post('/checkout', [BuyerCheckoutController::class, 'store'])->middleware('throttle:10,1,buyer-checkout');
 
         Route::get('/orders', [BuyerOrderController::class, 'index']);
         Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->whereNumber('order');
         Route::patch('/orders/{order}/cancel', [BuyerOrderController::class, 'cancel'])->whereNumber('order');
         Route::post('/orders/{order}/complete', [BuyerOrderController::class, 'complete'])->whereNumber('order');
+        Route::post('/orders/{order}/return', [BuyerOrderController::class, 'requestReturn'])->whereNumber('order')->middleware('throttle:10,1,buyer-return');
+        Route::get('/orders/{order}/delivery-proof', [BuyerOrderController::class, 'deliveryProof'])->whereNumber('order');
         Route::post('/order-items/{orderItem}/review', [BuyerOrderController::class, 'review'])->whereNumber('orderItem');
+
+        // Seller chat (no order) and per-order chats, the same threads the web chat page uses.
+        Route::get('/messages/sellers/{seller}', [BuyerMessageController::class, 'seller'])
+            ->whereNumber('seller')->name('api.buyer.messages.seller');
+        Route::post('/messages/sellers/{seller}', [BuyerMessageController::class, 'storeSeller'])
+            ->whereNumber('seller')->middleware('throttle:20,1,buyer-chat')->name('api.buyer.messages.seller.store');
+        Route::get('/messages/sellers/{seller}/fetch', [BuyerMessageController::class, 'fetchSeller'])
+            ->whereNumber('seller');
+        Route::get('/messages/orders/{order}', [BuyerMessageController::class, 'order'])
+            ->whereNumber('order')->name('api.buyer.messages.order');
+        Route::post('/messages/orders/{order}', [BuyerMessageController::class, 'storeOrder'])
+            ->whereNumber('order')->middleware('throttle:20,1,buyer-chat')->name('api.buyer.messages.order.store');
+        Route::get('/messages/orders/{order}/fetch', [BuyerMessageController::class, 'fetchOrder'])
+            ->whereNumber('order');
+        Route::get('/messages/attachments/{message}', [BuyerMessageController::class, 'attachment'])
+            ->whereNumber('message')->name('api.buyer.messages.attachment');
 
         Route::get('/notifications', [BuyerNotificationController::class, 'index']);
         Route::post('/notifications/read-all', [BuyerNotificationController::class, 'readAll']);

@@ -45,7 +45,8 @@ class BuyerRegistrationController extends Controller
             'zip_code' => 'required|string',
             'contact_number' => ['required', 'regex:/^09[0-9]{9}$/'],
             'agree_terms' => 'accepted',
-            'verification_token' => 'required|string',
+            'verification_token' => 'required_without:google_registration_token|nullable|string',
+            'google_registration_token' => 'required_without:verification_token|nullable|string',
         ]);
 
         // The app picks the address from /locations, so the names must still exist in the same
@@ -68,9 +69,16 @@ class BuyerRegistrationController extends Controller
             ]);
         }
 
-        $proof = Cache::get(BuyerEmailOtpController::proofKey((string) $request->input('verification_token')));
+        // Either the emailed code or the Google exchange proved this address;
+        // both proofs are cached under different keys by the same controller.
+        $usedGoogleToken = $request->filled('google_registration_token');
+        $proofField = $usedGoogleToken ? 'google_registration_token' : 'verification_token';
+        $proofKey = $usedGoogleToken
+            ? BuyerEmailOtpController::googleProofKey((string) $request->input('google_registration_token'))
+            : BuyerEmailOtpController::proofKey((string) $request->input('verification_token'));
+        $proof = Cache::get($proofKey);
         if (! is_array($proof) || ($proof['email'] ?? null) !== $request->email) {
-            throw ValidationException::withMessages(['verification_token' => 'Your email verification expired. Verify your email again.']);
+            throw ValidationException::withMessages([$proofField => 'Your email verification expired. Verify your email again.']);
         }
 
         $paths = [];
@@ -119,7 +127,7 @@ class BuyerRegistrationController extends Controller
             throw $exception;
         }
 
-        Cache::forget(BuyerEmailOtpController::proofKey((string) $request->input('verification_token')));
+        Cache::forget($proofKey);
 
         return response()->json([
             'success' => true,

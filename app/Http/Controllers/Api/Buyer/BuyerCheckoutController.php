@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Buyer;
 
 use App\Http\Controllers\Controller;
+use App\Models\BuyerAddress;
 use App\Models\Ecommerce\CartItem;
 use App\Models\Ecommerce\Product;
 use App\Models\Ecommerce\ProductVariant;
@@ -10,8 +11,8 @@ use App\Models\Ecommerce\SellerVoucher;
 use App\Models\Profiles\BuyerDetail;
 use App\Services\BuyerApiPresenter;
 use App\Services\BuyerCheckoutService;
+use App\Services\CheckoutLogisticsOptionsService;
 use App\Services\CheckoutRevisionService;
-use App\Services\CheckoutShippingQuoteService;
 use App\Services\LocationCatalog;
 use App\Services\SellerVoucherService;
 use Illuminate\Http\JsonResponse;
@@ -70,6 +71,29 @@ class BuyerCheckoutController extends Controller
         [$provinceCode, $cityCode] = BuyerLocationController::codesForNames(
             $locations, $detail?->province, $detail?->municipality);
 
+        // Same address book the web checkout lists: saved rows carry their own PSGC codes, and an
+        // address outside the catalog stays visible but cannot be picked (usable: false).
+        $savedAddresses = BuyerAddress::query()->where('user_id', $request->user()->id)
+            ->orderByDesc('is_default')->oldest('id')->get()
+            ->map(function (BuyerAddress $address) use ($locations) {
+                $codes = $locations->codesForNames($address->province, $address->municipality);
+                $line = $address->fullLine();
+
+                return [
+                    'id' => $address->id,
+                    'label' => $address->label,
+                    'line' => $line,
+                    'province' => $address->province,
+                    'city' => $address->municipality,
+                    'province_code' => $codes ? (string) $codes[0] : '',
+                    'city_code' => $codes ? (string) $codes[1] : '',
+                    'is_default' => (bool) $address->is_default,
+                    'usable' => (bool) ($codes && filled($line)),
+                    'latitude' => $address->latitude,
+                    'longitude' => $address->longitude,
+                ];
+            })->values()->all();
+
         return response()->json([
             'checkout_revision' => $this->revisions->forLoadedCart($cartItems),
             'cart' => $this->presenter->cartPayload($cartItems),
@@ -88,11 +112,19 @@ class BuyerCheckoutController extends Controller
                 'city' => $detail?->municipality,
                 'province_code' => $provinceCode,
                 'city_code' => $cityCode,
+                'latitude' => $detail?->latitude,
+                'longitude' => $detail?->longitude,
             ],
+            'buyer' => [
+                'name' => $request->user()->name,
+                'phone_number' => $request->user()->phone_number,
+            ],
+            'saved_addresses' => $savedAddresses,
+            'seller_notes_enabled' => true,
         ]);
     }
 
-    public function shippingQuote(Request $request, LocationCatalog $locations, CheckoutShippingQuoteService $shippingQuotes): JsonResponse
+    public function shippingQuote(Request $request, LocationCatalog $locations, CheckoutLogisticsOptionsService $logisticsOptions): JsonResponse
     {
         $data = $request->validate([
             'items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct'],
@@ -110,16 +142,28 @@ class BuyerCheckoutController extends Controller
             throw ValidationException::withMessages(['items' => 'Your cart changed. Refresh checkout and try again.']);
         }
 
+        // Same Companies the web checkout offers: an active Station Hub network has to reach both
+        // the Seller and this address. The Buyer's saved Company wins when it serves the route.
+        $preferredCompanyId = (int) (BuyerDetail::query()->where('user_id', $request->user()->id)
+            ->value('preferred_delivery_company_id') ?? 0);
+
         $quotes = [];
         $totalCents = 0;
         foreach ($items->groupBy(fn (CartItem $item) => $item->product->seller_id) as $sellerId => $sellerItems) {
             $seller = $sellerItems->first()->product->seller->sellerDetail;
-            $quote = collect($shippingQuotes->quote(
+            $options = $logisticsOptions->options(
                 $seller?->province, $seller?->municipality, $location['province'], $location['city'],
-            ))->except('delivery_company_id')->all();
-            $quote['shipping_fee_label'] = $this->presenter->money($quote['shipping_fee']);
-            $quotes[(string) $sellerId] = $quote;
-            $totalCents += (int) round(((float) $quote['shipping_fee']) * 100);
+            );
+            if ($options === []) {
+                throw ValidationException::withMessages([
+                    'shipping_city_code' => 'No Logistics Company has an active Station Hub in both the Seller and delivery municipality yet.',
+                ]);
+            }
+            $selected = collect($options)->firstWhere('company_id', $preferredCompanyId) ?? $options[0];
+            $selected['shipping_fee_label'] = $this->presenter->money($selected['shipping_fee']);
+            $selected['options'] = $options;
+            $quotes[(string) $sellerId] = $selected;
+            $totalCents += (int) round(((float) $selected['shipping_fee']) * 100);
         }
 
         return response()->json([
@@ -135,7 +179,10 @@ class BuyerCheckoutController extends Controller
         $data = $request->validate([
             'items' => ['required', 'array', 'min:1'], 'items.*' => ['required', 'integer', 'distinct'],
             'seller_id' => ['required', 'integer'],
-            'code' => ['required', 'string', 'regex:/^[A-Z0-9]{4,12}$/'],
+            // Up to two stacked codes, exactly like the web checkout.
+            'code' => ['nullable', 'string', 'regex:/^[A-Z0-9]{4,12}$/'],
+            'codes' => ['nullable', 'array', 'max:'.SellerVoucherService::MAX_STACK],
+            'codes.*' => ['required', 'string', 'regex:/^[A-Z0-9]{4,12}$/'],
         ]);
         $cartItems = CartItem::query()->where('user_id', $request->user()->id)->whereIn('id', $data['items'])->get();
         if ($cartItems->count() !== count($data['items'])) {
@@ -146,18 +193,32 @@ class BuyerCheckoutController extends Controller
         if ($items->isEmpty()) {
             throw ValidationException::withMessages(['code' => 'This shop is not in your checkout.']);
         }
-        $variants = ProductVariant::query()->whereIn('id', $items->pluck('product_variant_id')->filter())->get()->keyBy('id');
-        $voucher = SellerVoucher::query()->where('seller_id', $data['seller_id'])->where('code', $data['code'])->first();
-        if (! $voucher) {
-            throw ValidationException::withMessages(['code' => 'This shop voucher was not found.']);
+        $codes = collect($data['codes'] ?? array_filter([$data['code'] ?? null]))
+            ->map(fn ($code) => trim((string) $code))->filter()->unique()->values()->all();
+        if ($codes === []) {
+            throw ValidationException::withMessages(['code' => 'Enter a shop voucher code.']);
         }
-        $cents = $vouchers->discountCents($voucher, $items, $products, $variants, (int) $request->user()->id);
+
+        $variants = ProductVariant::query()->whereIn('id', $items->pluck('product_variant_id')->filter())->get()->keyBy('id');
+        $found = [];
+        foreach ($codes as $code) {
+            $voucher = SellerVoucher::query()->where('seller_id', $data['seller_id'])->where('code', $code)->first();
+            if (! $voucher) {
+                throw ValidationException::withMessages(['code' => 'Shop voucher '.$code.' was not found.']);
+            }
+            $found[] = $voucher;
+        }
+        $stack = $vouchers->stackedDiscountCents($found, $items, $products, $variants, (int) $request->user()->id);
 
         return response()->json([
-            'code' => $voucher->code,
-            'name' => $voucher->name,
-            'discount' => number_format($cents / 100, 2, '.', ''),
-            'discount_label' => $this->presenter->money($cents / 100),
+            'code' => $codes[0],
+            'codes' => $codes,
+            'name' => $found[0]->name,
+            'discount' => number_format($stack['total'] / 100, 2, '.', ''),
+            'discount_label' => $this->presenter->money($stack['total'] / 100),
+            'lines' => collect($stack['lines'])->map(fn ($cents, $code) => [
+                'code' => $code, 'discount' => number_format($cents / 100, 2, '.', ''),
+            ])->values()->all(),
         ]);
     }
 
@@ -170,13 +231,40 @@ class BuyerCheckoutController extends Controller
             'shipping_city_code' => ['required', 'string', 'size:9'],
             'payment_mode' => ['required', Rule::in(['cod'])],
             'checkout_revision' => ['required', 'regex:/^[a-f0-9]{64}$/'],
+            'shipping_address_id' => ['nullable', 'integer'],
+            'shipping_quotes' => ['sometimes', 'array'],
+            'shipping_quotes.*' => ['required', 'numeric', 'min:45'],
+            'logistics_company_ids' => ['sometimes', 'array'],
+            'logistics_company_ids.*' => ['required', 'integer', 'exists:logistics_companies,id'],
             'seller_notes' => ['sometimes', 'array'],
             'seller_notes.*' => ['nullable', 'string', 'max:300'],
+            // Each seller entry is either one code or a list of up to two stacked codes.
             'voucher_codes' => ['sometimes', 'array'],
-            'voucher_codes.*' => ['nullable', 'string', 'regex:/^[A-Z0-9]{4,12}$/'],
+            'voucher_codes.*' => ['nullable'],
+            'voucher_codes.*.*' => ['nullable', 'string', 'regex:/^[A-Z0-9]{4,12}$/'],
             'shipping_latitude' => ['nullable', 'required_with:shipping_longitude', 'numeric', 'between:-90,90'],
             'shipping_longitude' => ['nullable', 'required_with:shipping_latitude', 'numeric', 'between:-180,180'],
         ]);
+
+        // A saved address is authoritative, exactly like the web checkout: rebuild the shipping
+        // fields from the Buyer's own row instead of trusting the posted text and codes.
+        if (! empty($data['shipping_address_id'])) {
+            $saved = BuyerAddress::query()
+                ->where('user_id', $request->user()->id)
+                ->find($data['shipping_address_id']);
+            if (! $saved) {
+                throw ValidationException::withMessages(['shipping_address_id' => 'Pick one of your saved addresses, or enter a new one.']);
+            }
+            $codes = $locations->codesForNames($saved->province, $saved->municipality);
+            if (! $codes) {
+                throw ValidationException::withMessages(['shipping_address_id' => 'This saved address is outside our delivery area. Update it in Account.']);
+            }
+            $data['shipping_address'] = $saved->fullLine();
+            $data['shipping_province_code'] = (string) $codes[0];
+            $data['shipping_city_code'] = (string) $codes[1];
+            $data['shipping_latitude'] = $saved->latitude;
+            $data['shipping_longitude'] = $saved->longitude;
+        }
 
         $location = $locations->address($data['shipping_province_code'], $data['shipping_city_code']);
         if (! $location) {

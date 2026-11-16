@@ -74,6 +74,12 @@ class GoogleIdTokenVerifier
                 'subject_valid' => $subjectValid,
                 'audience_count' => count($audiences),
                 'has_authorized_party' => isset($claims['azp']),
+                // The audience is the web client every app signs in against, so
+                // the rejected token's own client IDs are what identify the
+                // build that needs registering: `azp` is the package's Android
+                // OAuth client and must be in the allowed list too.
+                'authorized_party' => (string) ($claims['azp'] ?? ''),
+                'audiences' => implode(',', $audiences),
             ]);
         }
 
@@ -92,11 +98,36 @@ class GoogleIdTokenVerifier
         ]);
     }
 
+    /**
+     * The Google endpoints are verified against a CA bundle when the host PHP
+     * has none of its own. A Windows build without curl.cainfo rejects Google's
+     * certificate chain, which would otherwise make every Google sign-in fail.
+     */
+    private function http(): \Illuminate\Http\Client\PendingRequest
+    {
+        $request = Http::acceptJson()->timeout(10);
+        $bundle = $this->caBundle();
+
+        return $bundle === null ? $request : $request->withOptions(['verify' => $bundle]);
+    }
+
+    private function caBundle(): ?string
+    {
+        $configured = config('services.google.ca_bundle');
+        if (is_string($configured) && is_file($configured)) {
+            return $configured;
+        }
+
+        $bundled = storage_path('certs/cacert.pem');
+
+        return is_file($bundled) ? $bundled : null;
+    }
+
     /** @return array<string, \Firebase\JWT\Key> */
     private function keys(): array
     {
         $jwks = Cache::remember('google_oidc_jwks', now()->addHours(6), function (): array {
-            $discovery = Http::acceptJson()->timeout(10)
+            $discovery = $this->http()
                 ->get('https://accounts.google.com/.well-known/openid-configuration')
                 ->throw()->json();
             $jwksUri = is_array($discovery) ? ($discovery['jwks_uri'] ?? null) : null;
@@ -104,7 +135,7 @@ class GoogleIdTokenVerifier
                 throw new \UnexpectedValueException('Google key endpoint unavailable.');
             }
 
-            $jwks = Http::acceptJson()->timeout(10)->get($jwksUri)->throw()->json();
+            $jwks = $this->http()->get($jwksUri)->throw()->json();
             if (! is_array($jwks) || ! is_array($jwks['keys'] ?? null)) {
                 throw new \UnexpectedValueException('Google signing keys unavailable.');
             }

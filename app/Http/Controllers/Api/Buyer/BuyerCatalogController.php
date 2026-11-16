@@ -46,7 +46,9 @@ class BuyerCatalogController extends Controller
 
     public function categories(): JsonResponse
     {
-        $categories = Category::query()->with('children:id,parent_id,name')->orderBy('name')->get();
+        // Catalogue order, not alphabetical: the web Categories page lists the
+        // same rows in insertion order, so the app and the site read alike.
+        $categories = Category::query()->with('children:id,parent_id,name')->orderBy('id')->get();
 
         return response()->json([
             'categories' => $categories->whereNull('parent_id')->values()->map(fn (Category $category) => [
@@ -91,7 +93,7 @@ class BuyerCatalogController extends Controller
             && ! $product->seller->archived_at
             && (! $product->seller->account_status || $product->seller->account_status === 'active'), 404);
 
-        $product->load('images', 'category.parent', 'seller.sellerDetail', 'variants', 'specifications');
+        $product->load('images', 'category.parent', 'seller.sellerDetail', 'variants', 'attributeValues', 'specifications');
 
         $recommended = Product::query()
             ->availableToBuy()->withCardMetrics()->with(['images', 'seller.sellerDetail'])
@@ -152,7 +154,7 @@ class BuyerCatalogController extends Controller
             ->paginate(12);
 
         return $this->paginated($products, fn (Product $product) => $this->presenter->productCard($product), [
-            'seller' => $this->presenter->sellerSummary($seller),
+            'seller' => $this->presenter->sellerShop($seller),
         ]);
     }
 
