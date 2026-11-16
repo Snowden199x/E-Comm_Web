@@ -17,7 +17,7 @@
             ['key' => 'all', 'label' => 'Total Users', 'value' => $stats['total_users'], 'icon' => 'users'],
             ['key' => 'seller', 'label' => 'Sellers', 'value' => $stats['sellers'], 'icon' => 'store'],
             ['key' => 'buyer', 'label' => 'Buyers', 'value' => $stats['buyers'], 'icon' => 'user'],
-            ['key' => 'logistics_center', 'label' => 'Courier', 'value' => $stats['logistics_centers'], 'icon' => 'truck'],
+            ['key' => 'logistics_center', 'label' => 'Logistics', 'value' => $stats['logistics_centers'], 'icon' => 'truck'],
         ];
 
     @endphp

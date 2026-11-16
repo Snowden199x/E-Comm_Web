@@ -3,6 +3,12 @@
 **Status:** Logistics web hierarchy and operational workflows implemented in code; owner migrations and runtime verification pending; mobile Rider/Driver integration remains partial
 **Decision recorded:** 23 October 2026
 
+## Local Philippines demo company accounts (16 November 2026)
+
+`PhilippinesLogisticsCompanySeeder` creates one approved Logistics Company account for each province/area in `resources/data/psgc-locations.json` (82 entries at creation time), one Province Hub and Province Hub manager, and a Station Hub plus Station Hub manager for every catalog municipality/city (1,632 at creation time). Each Company account owns its province network; there is no Sub Station kind in the current schema. Company emails use `logistics.<province-slug>@vendo.com`; Province Hub manager emails use `province.<province-slug>@vendo.com`; Station Hub manager emails use `station.<province-slug>.<municipality-slug>@vendo.com`. All accounts use the shared `password123` demo password. The seeder is opt-in and is not called by `DatabaseSeeder`; re-running updates these deterministic accounts, facilities and manager links.
+
+Generate the full credential list with `php artisan logistics:demo-accounts-pdf`; an optional absolute output path may be passed. The PDF includes Company, Province Hub Manager and Station Hub Manager logins. These are demo credentials; keep the PDF restricted to the project team.
+
 **Current decision note (23 October 2026):** The owner approved the pulled Company / Province Hub / Station Hub structure. Multiple companies may operate in the same province; each company can have one active Province Hub per province and one active Station Hub per municipality under that Province Hub. This supersedes the prior one-network-account-per-province rule. See the [pull review](../../../design/2026-10-23-logistics-pull-review.md) and [implementation spec](../../../design/logistics-hub-restructure-backend-spec.md).
 
 ## Agreed direction

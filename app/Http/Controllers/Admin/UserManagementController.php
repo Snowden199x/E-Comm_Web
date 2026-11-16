@@ -15,6 +15,8 @@ use Illuminate\View\View;
 
 class UserManagementController extends Controller
 {
+    private const LOGISTICS_ROLES = ['logistics_center', 'logistics'];
+
     public function index(Request $request): View
     {
         $showRejected = $request->boolean('rejected');
@@ -23,10 +25,10 @@ class UserManagementController extends Controller
 
         $managed = User::query()->where('status', 'approved');
         $stats = [
-            'total_users' => (clone $managed)->whereIn('role', ['seller', 'buyer', 'logistics_center'])->count(),
+            'total_users' => (clone $managed)->where(fn ($query) => $query->whereIn('role', ['seller', 'buyer'])->orWhereIn('role', self::LOGISTICS_ROLES))->count(),
             'sellers' => (clone $managed)->where('role', 'seller')->count(),
             'buyers' => (clone $managed)->where('role', 'buyer')->count(),
-            'logistics_centers' => (clone $managed)->where('role', 'logistics_center')->count(),
+            'logistics_centers' => (clone $managed)->whereIn('role', self::LOGISTICS_ROLES)->count(),
         ];
         // Badge count for the "Deletion requests" filter; only approved Buyer/Seller rows can request.
         $pendingDeletions = AccountDeletionRequest::query()->where('status', 'pending')
@@ -47,7 +49,7 @@ class UserManagementController extends Controller
 
     private function filteredUsers(Request $request, bool $showRejected, bool $showDeletionRequests = false)
     {
-        $query = User::whereIn('role', ['seller', 'buyer', 'logistics_center']);
+        $query = User::where(fn ($roles) => $roles->whereIn('role', ['seller', 'buyer'])->orWhereIn('role', self::LOGISTICS_ROLES));
 
         if ($showRejected) {
             $query->where('status', 'disapproved');
@@ -64,7 +66,11 @@ class UserManagementController extends Controller
         }
 
         if (in_array($request->input('user_type'), ['seller', 'buyer', 'logistics_center'], true)) {
-            $query->where('role', $request->user_type);
+            if ($request->user_type === 'logistics_center') {
+                $query->whereIn('role', self::LOGISTICS_ROLES);
+            } else {
+                $query->where('role', $request->user_type);
+            }
         }
 
         if ($request->filled('date')) {
