@@ -21,6 +21,10 @@ const mountGoogleSignIn = (container) => {
         callback: async ({ credential }) => {
             error.classList.add('hidden');
             button.setAttribute('aria-busy', 'true');
+            const payload = { credential };
+            // The shared login page omits data-role, and the server then signs the
+            // verified email in under whatever account type owns it.
+            if (container.dataset.role) payload.role = container.dataset.role;
             try {
                 const response = await fetch(container.dataset.exchangeUrl, {
                     method: 'POST',
@@ -30,7 +34,7 @@ const mountGoogleSignIn = (container) => {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': container.dataset.csrf,
                     },
-                    body: JSON.stringify({ credential, role: container.dataset.role }),
+                    body: JSON.stringify(payload),
                 });
                 const data = await response.json();
                 if (!response.ok || !data.redirect) {

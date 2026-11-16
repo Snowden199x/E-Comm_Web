@@ -1,9 +1,13 @@
+@php($signInRole = $role ?? null)
 @if (config('services.google.web_client_id'))
+    {{-- A page that serves more than one account type omits the role and lets the
+         server read it from the verified email; a role-scoped page keeps sending
+         it so an account cannot sign in through the wrong login page. --}}
     <div class="w-full" data-google-signin
         data-client-id="{{ config('services.google.web_client_id') }}"
         data-exchange-url="{{ route('auth.google.exchange', absolute: false) }}"
         data-csrf="{{ csrf_token() }}"
-        data-role="{{ $role }}">
+        @if ($signInRole) data-role="{{ $signInRole }}" @endif>
         <div data-google-button class="flex min-h-11 w-full justify-center"></div>
         <p data-google-error class="mt-2 hidden text-center text-sm text-red-700" role="alert"></p>
     </div>
