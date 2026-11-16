@@ -22,6 +22,44 @@ use Illuminate\Validation\ValidationException;
  */
 class BuyerMessageController extends Controller
 {
+    /** The Buyer's shop chats, newest first — the list on the web Messages page. */
+    public function index(Request $request): JsonResponse
+    {
+        $buyerId = (int) $request->user()->id;
+        $chats = MarketplaceConversation::query()
+            ->where('buyer_id', $buyerId)
+            ->with(['seller:id,name,profile_picture', 'order:id', 'latestMessage'])
+            ->withCount(['messages as unread_count' => fn ($query) => $query
+                ->where('sender_id', '!=', $buyerId)->whereNull('read_at')])
+            ->orderByDesc('last_message_at')
+            ->get();
+
+        return response()->json([
+            'data' => $chats->map(function (MarketplaceConversation $chat) {
+                $latest = $chat->latestMessage;
+
+                return [
+                    'id' => $chat->id,
+                    'seller' => [
+                        'id' => $chat->seller_id,
+                        'name' => $chat->seller?->name ?? 'Seller unavailable',
+                        'avatar' => $chat->seller?->profile_picture
+                            ? asset('storage/'.$chat->seller->profile_picture)
+                            : null,
+                    ],
+                    'order' => $chat->order
+                        ? ['id' => $chat->order->id, 'number' => $chat->order->number]
+                        : null,
+                    'preview' => $latest?->body
+                        ?: ($latest?->shared_order_id ? 'Order shared' : ($latest ? 'Photo' : 'No messages yet')),
+                    'time' => $latest?->created_at?->diffForHumans(null, true, true),
+                    'unread' => (int) $chat->unread_count,
+                ];
+            })->values()->all(),
+            'unread_total' => (int) $chats->sum('unread_count'),
+        ]);
+    }
+
     public function seller(Request $request, User $seller): JsonResponse
     {
         $this->ensurePublicSeller($seller);

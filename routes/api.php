@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\Buyer\BuyerAccountController;
 use App\Http\Controllers\Api\Buyer\BuyerAuthController;
 use App\Http\Controllers\Api\Buyer\BuyerCartController;
 use App\Http\Controllers\Api\Buyer\BuyerCatalogController;
+use App\Http\Controllers\Api\Buyer\BuyerComplaintController;
 use App\Http\Controllers\Api\Buyer\BuyerCheckoutController;
 use App\Http\Controllers\Api\Buyer\BuyerEmailOtpController;
 use App\Http\Controllers\Api\Buyer\BuyerLocationController;
@@ -27,6 +28,8 @@ use App\Http\Controllers\Api\Buyer\BuyerOrderController;
 use App\Http\Controllers\Api\Buyer\BuyerPasswordResetController;
 use App\Http\Controllers\Api\Buyer\BuyerRegistrationController;
 use App\Http\Controllers\Api\Buyer\BuyerSavedItemController;
+use App\Http\Controllers\Api\Buyer\BuyerStandingController;
+use App\Http\Controllers\Api\Buyer\BuyerSupportController;
 use App\Http\Middleware\EnsureApprovedBuyerToken;
 use App\Http\Middleware\EnsureApprovedRiderToken;
 use App\Http\Middleware\EnsureApprovedTransportDriverToken;
@@ -119,6 +122,11 @@ Route::prefix('v1/buyer')->group(function () {
     Route::post('/password/otp/verify', [BuyerPasswordResetController::class, 'verifyCode'])->middleware('throttle:10,1');
     Route::post('/password/reset', [BuyerPasswordResetController::class, 'reset'])->middleware('throttle:5,1');
 
+    // Reachable while suspended (unlike the group below) so a Buyer can always
+    // read their strikes — the same rule the web account-standing page follows.
+    Route::get('/account-standing', [BuyerStandingController::class, 'show'])
+        ->middleware(['auth:sanctum', 'throttle:60,1,buyer-standing']);
+
     // Each throttle in this group carries its own prefix. Laravel keys a
     // throttle by the authenticated user alone, so without a prefix the group
     // counter (every API call) would be the same bucket the stricter per-route
@@ -161,6 +169,18 @@ Route::prefix('v1/buyer')->group(function () {
         Route::get('/orders/{order}/delivery-proof', [BuyerOrderController::class, 'deliveryProof'])->whereNumber('order');
         Route::post('/order-items/{orderItem}/review', [BuyerOrderController::class, 'review'])->whereNumber('orderItem');
 
+        // The inbox list and Vendo Support, the same rows the web Messages page reads.
+        Route::get('/messages', [BuyerMessageController::class, 'index']);
+        Route::get('/messages/support', [BuyerSupportController::class, 'show']);
+        Route::post('/messages/support', [BuyerSupportController::class, 'start'])
+            ->middleware('throttle:5,1,buyer-support');
+        Route::get('/messages/support/{conversation}', [BuyerSupportController::class, 'thread'])
+            ->whereNumber('conversation');
+        Route::post('/messages/support/{conversation}', [BuyerSupportController::class, 'store'])
+            ->whereNumber('conversation')->middleware('throttle:20,1,buyer-support-chat');
+        Route::post('/messages/support/{conversation}/close', [BuyerSupportController::class, 'close'])
+            ->whereNumber('conversation');
+
         // Seller chat (no order) and per-order chats, the same threads the web chat page uses.
         Route::get('/messages/sellers/{seller}', [BuyerMessageController::class, 'seller'])
             ->whereNumber('seller')->name('api.buyer.messages.seller');
@@ -176,6 +196,8 @@ Route::prefix('v1/buyer')->group(function () {
             ->whereNumber('order');
         Route::get('/messages/attachments/{message}', [BuyerMessageController::class, 'attachment'])
             ->whereNumber('message')->name('api.buyer.messages.attachment');
+
+        Route::get('/complaints', [BuyerComplaintController::class, 'index']);
 
         Route::get('/notifications', [BuyerNotificationController::class, 'index']);
         Route::post('/notifications/read-all', [BuyerNotificationController::class, 'readAll']);
